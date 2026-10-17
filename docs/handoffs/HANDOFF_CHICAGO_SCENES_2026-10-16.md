@@ -636,3 +636,31 @@ RECOMMENDATIONS: (a) `montage-shot` finds dressed takes only by `shot_id`; a dup
 assignment — look them up through `shot_asset_assignments` too. (b) The storyboard Montage button has no b-roll branch.
 (c) The every-animal platform still's station sign reads "KEDZIE" on a London-style roundel — regenerate if it shows.
 
+
+
+## The 1-minute cut — v1 preview DONE (17 Oct, ~09:00 UTC)
+
+Fendi topped up $100 and said "go"; then "I only want the approved clothing", "the trousers don't have to be exact",
+"we can edit the zoom or angle … we don't always need to regenerate", and "stop worrying about the money".
+
+DONE (VERIFIED from the filed assets and the review sheets):
+- Every shot of c001–c034 has a clip that passed the clothing check, except the flags below. 3 b-roll retries passed
+  content safety (c021 c026 c029). Ledger rows 127–130 (≈ $137 list this run).
+- Preview `YSL_minute_preview_v1.mp4` (61.0 s, song under) posted to Fendi — scratchpad only, not in the repo (it
+  carries Fendi and the song). Clips per shot: session scratchpad `prod/minute_final.json`.
+- Edit decisions in the preview that are NOT yet on the board: **c010 dropped** (three montages rendered a cast member
+  or the cast's look in his place) — c009 holds to 18.13 s and c011 opens at 18.13 s on its sewing-machine cutaway;
+  **c031 → b-roll** (shot_type changed on the board; two dresses kept his own cap + sunglasses), its clip slipped
+  1.45 s to open on the fox instead of the models' boots.
+- Wardrobe data changed (the tool's own lane): the coat `fb82c0d2` relabelled "Glossy black leather car coat - Noir"
+  with construction words (product name in metadata); the Y cap `f1dc9486` got construction words.
+- Tool: per-shot **Frame** (punch-in, `override_json.reframe`, render contract v3) and montage-shot no longer
+  re-shoots a take marked `usable:false` — PR below. CODED, not live until Publish + montage-shot redeploy.
+
+FLAGS for Fendi (OBSERVED): c009 cap is plain black (no ivory Y); c030 glasses read tinted in profile under street
+light; c021 geese wear parkas with a red roundel that reads as Canada Goose.
+
+NOT DONE:
+- Put the preview's edit decisions on the board (c009 end / c011 start / c010, c031 slip) once Fendi approves v1.
+- The SL trousers need a real picture of the trousers (their only reference is a track-jacket outfit shot).
+- Region swap of the Y onto c009's cap, if Fendi wants it.
