@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Execute a render contract: the storyboard, as Review plays it, made into one video file.
 
-The contract (storyboard_timeline.json, version 2 — src/lib/storyboard/renderContract.ts) already says, per shot and
+The contract (storyboard_timeline.json, version 3 — src/lib/storyboard/renderContract.ts) already says, per shot and
 in output frames, everything a renderer does: the original file to read, where its picture starts, how many frames
-hold the first picture, play, and hold the last, and what the edit does to the picture frame run by frame run. This
-script decides NOTHING editorial and re-derives nothing: it reads those numbers and has ffmpeg do them.
+hold the first picture, play, and hold the last, what the edit does to the picture frame run by frame run, and the
+punch-in (reframe) on the shot's media. This script decides NOTHING editorial and re-derives nothing: it reads those
+numbers and has ffmpeg do them. (A version-2 contract has no reframe: every shot is as filmed.)
 
     python3 scripts/render/render_contract.py CONTRACT.json --media MEDIA.json --out cut.mp4
 
@@ -28,7 +29,10 @@ import shutil
 import subprocess
 import sys
 
-SUPPORTED_VERSION = 2
+SUPPORTED_VERSION = 3
+# a version-2 contract is a version-3 one whose every shot is as filmed (it has no reframe)
+READABLE_VERSIONS = (2, 3)
+MAX_REFRAME_SCALE = 3
 
 
 class ContractError(Exception):
@@ -42,8 +46,8 @@ def even(n):
 def load_contract(path):
     with open(path, "r", encoding="utf-8") as f:
         c = json.load(f)
-    if c.get("version") != SUPPORTED_VERSION:
-        raise ContractError(f"this renderer executes render contract version {SUPPORTED_VERSION}; the file says {c.get('version')!r}")
+    if c.get("version") not in READABLE_VERSIONS:
+        raise ContractError(f"this renderer executes render contract version {SUPPORTED_VERSION} (and 2); the file says {c.get('version')!r}")
     if c.get("clock") != "song":
         raise ContractError("the contract's clock is not the song")
     if not c.get("frames") or not c.get("fps"):
@@ -72,7 +76,24 @@ def validate(c):
         for r in s.get("picture_runs", []):
             if r["frame_in"] < fi or r["frame_out"] > fo or r["frame_out"] <= r["frame_in"]:
                 raise ContractError(f"shot {s['index']} ({s['key']}): an effect run lies outside the shot")
+        rf = s.get("reframe")
+        if rf is not None and not (1 <= rf.get("scale", 0) <= MAX_REFRAME_SCALE and 0 <= rf.get("x", -1) <= 1 and 0 <= rf.get("y", -1) <= 1):
+            raise ContractError(f"shot {s['index']} ({s['key']}): its reframe {rf!r} is out of range")
     return covered
+
+
+def crop_of(reframe, frame_w, frame_h):
+    """The shot's reframe as an ffmpeg crop of its source, or "" when it is as filmed — the arithmetic of reframe.ts
+    reframeRect: on each side the smaller of the whole source and the frame's span at that zoom, centred on (x, y) and
+    moved only as far as it takes to stay inside the source. The crop is then fitted whole like any picture."""
+    if not reframe or float(reframe["scale"]) <= 1:
+        return ""
+    k, x, y = float(reframe["scale"]), float(reframe["x"]), float(reframe["y"])
+    fr = frame_w / frame_h
+    return (
+        f"crop=w='min(iw,max(iw,ih*{fr:.6f})/{k:.6f})':h='min(ih,max(ih,iw/{fr:.6f})/{k:.6f})'"
+        f":x='clip({x:.6f}*iw-ow/2,0,iw-ow)':y='clip({y:.6f}*ih-oh/2,0,ih-oh)',"
+    )
 
 
 def media_location(media_map, bucket, path):
@@ -100,10 +121,11 @@ def build(c, media_map, scale=1, matrices=None):
     W, H = even(c["frame"]["width"] / scale), even(c["frame"]["height"] / scale)
     matrices = matrices or {}
 
-    def fit_of(loc=None):
-        # the whole picture inside the frame, never cropped; black where it does not reach
+    def fit_of(loc=None, reframe=None):
+        # the whole picture inside the frame, never cropped but by the shot's own reframe; black where it does not reach
         matrix = f":in_color_matrix={matrices[loc]}" if loc in matrices and matrices[loc] else ""
-        return f"scale={W}:{H}:force_original_aspect_ratio=decrease:flags=bicubic{matrix},pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=rgb24"
+        crop = crop_of(reframe, c["frame"]["width"], c["frame"]["height"])
+        return f"{crop}scale={W}:{H}:force_original_aspect_ratio=decrease:flags=bicubic{matrix},pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=rgb24"
 
     inputs, chains, labels = [], [], []
 
@@ -127,7 +149,7 @@ def build(c, media_map, scale=1, matrices=None):
             black(n, base)
         elif m["kind"] == "image":
             inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{n / fps + 1:.6f}", "-i", media_location(media_map, m["bucket"], m["path"])]
-            chains.append(f"[{len(inputs_index(inputs)) - 1}:v]{fit_of()},fps={fps},trim=end_frame={n},setpts=PTS-STARTPTS[{base}]")
+            chains.append(f"[{len(inputs_index(inputs)) - 1}:v]{fit_of(None, s.get('reframe'))},fps={fps},trim=end_frame={n},setpts=PTS-STARTPTS[{base}]")
         else:
             f = m["frames"]
             # read the file from the picture the first played frame shows; the file runs at its own rate; the frames
@@ -135,7 +157,7 @@ def build(c, media_map, scale=1, matrices=None):
             loc = media_location(media_map, m["bucket"], m["path"])
             inputs += ["-ss", f"{max(0.0, f['source_first']):.6f}", "-i", loc]
             chains.append(
-                f"[{len(inputs_index(inputs)) - 1}:v]{fit_of(loc)},fps={fps},trim=end_frame={max(1, f['play'])},setpts=PTS-STARTPTS,"
+                f"[{len(inputs_index(inputs)) - 1}:v]{fit_of(loc, s.get('reframe'))},fps={fps},trim=end_frame={max(1, f['play'])},setpts=PTS-STARTPTS,"
                 f"tpad=start={f['lead']}:start_mode=clone:stop=-1:stop_mode=clone,trim=end_frame={n},setpts=PTS-STARTPTS[{base}]"
             )
         runs = s.get("picture_runs") or []
@@ -253,7 +275,7 @@ def render(contract_path, media_path, out, scale=1, crf=18, plan_only=False):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Execute a render contract (storyboard_timeline.json, version 2) with ffmpeg.")
+    ap = argparse.ArgumentParser(description="Execute a render contract (storyboard_timeline.json, version 3) with ffmpeg.")
     ap.add_argument("contract")
     ap.add_argument("--media", required=True, help='JSON: { "<bucket>/<path>": "<local path or https URL>" }')
     ap.add_argument("--out", default="cut.mp4")

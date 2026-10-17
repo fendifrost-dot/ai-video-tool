@@ -23,6 +23,7 @@ import { ContinuityChips } from "./Continuity";
 import { ProductionChips } from "./ShotProduction";
 import { isSyncedTake } from "@/lib/storyboard/footageEdit";
 import { FootageEditPanel } from "./FootageEdit";
+import { ReframePanel } from "./Reframe";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -169,6 +170,8 @@ export function FocusView() {
               )}
             </div>
             <p className="text-center text-[10px] text-foreground/35 md:hidden">Swipe left or right to move between shots</p>
+            {/* a punch-in on what the shot shows: a picture good but for an edge is fixed in the edit, not regenerated */}
+            {media.showing && <ReframePanel key={box.id} box={box} item={media.showing} />}
 
             {lines.length > 0 ? (
               <div className="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2" data-testid="focus-lyrics">

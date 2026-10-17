@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 
 import { parseShotSpec, type ShotEvent } from "@/lib/treatment/shotSpec";
-import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
+import { BLANK_OVERRIDE, applyOverride, boxFromRow, boxWrite, parseBoxOverride, withReframe, writeOf, type BoxRow } from "./boxes";
 import { buildTimeline, type Assignment, type MediaAsset, type TakeSync } from "./media";
 import { contractFrameAt, DEFAULT_RENDER_FPS, renderContract, renderReadiness, reviewFrameAt, type RenderContract } from "./renderContract";
 
@@ -64,7 +64,7 @@ describe("the render contract is what Review plays", () => {
   const contract = renderContract({ timeline, assets, song, fps: 10 });
 
   it("covers the cut in whole frames, gapless, each shot naming its record", () => {
-    expect(contract).toMatchObject({ version: 2, clock: "song", fps: 10, range: { song_in: 0, song_out: 13 }, frames: 130, duration_seconds: 13 });
+    expect(contract).toMatchObject({ version: 3, clock: "song", fps: 10, range: { song_in: 0, song_out: 13 }, frames: 130, duration_seconds: 13 });
     expect(contract.segments.map((s) => [s.key, s.shot_id, s.frame_in, s.frame_out, s.media.kind])).toEqual([
       ["c001", "r1", 0, 40, "video"],
       ["c002", "r2", 40, 80, "video"],
@@ -143,6 +143,46 @@ describe("the render contract is what Review plays", () => {
       ["c003", 40, 60],
     ]);
     for (let n = 0; n < part.frames; n++) expect(contractFrameAt(part, n).picture).toEqual(reviewFrameAt(timeline, assets, 4 + n / 10).picture);
+  });
+
+  it("carries each shot's reframe — as filmed unless the edit pushed in — and Review shows the same one", () => {
+    expect(contract.segments.every((s) => s.reframe.scale === 1 && s.reframe.x === 0.5 && s.reframe.y === 0.5)).toBe(true);
+    const pushed = boxes.map((b) => (b.id === "r2" ? boxFromRow({ id: b.id, project_id: "p1", shot_number: 1, ...writeOf(b, { override: withReframe(b.override, { scale: 1.6, x: 0.5, y: 0.3 }) }), updated_at: AT } as BoxRow)! : b));
+    const tl = buildTimeline({ boxes: pushed, assignments: [assign("a2", "r2", "clip1", "generated_clip"), assign("a3", "r3", "still1", "generated_image")], assets, syncs: [sync] });
+    expect(tl[1].reframe).toEqual({ scale: 1.6, x: 0.5, y: 0.3 });
+    // a shot nobody reframed has no reframe on its segment: the timeline of an unframed board is what it was
+    expect("reframe" in tl[0]).toBe(false);
+    const c = renderContract({ timeline: tl, assets, song, fps: 10 });
+    expect(c.segments.map((s) => s.reframe.scale)).toEqual([1, 1.6, 1, 1, 1]);
+    for (let n = 0; n < c.frames; n++) expect(contractFrameAt(c, n).reframe).toEqual(reviewFrameAt(tl, assets, n / 10).reframe);
+    expect(renderReadiness(c).notes).toContain("shot 2 is reframed — pushed in on its footage");
+  });
+
+  it("a reframe lives on the shot record: an edit of the footage, kept by a scene edit or a reset, and it does not lock the box", () => {
+    const b = boxes[1];
+    const framed = withReframe(b.override, { scale: 1.4, x: 0.5, y: 0.25 });
+    expect(framed).toMatchObject({ reframe: { scale: 1.4, x: 0.5, y: 0.25 } });
+    // as filmed again: nothing is left to say
+    expect(withReframe(framed, { scale: 1, x: 0.5, y: 0.5 })).toBeNull();
+    expect(withReframe(framed, null)).toBeNull();
+    const row = (w: ReturnType<typeof writeOf>) => boxFromRow({ id: b.id, project_id: "p1", shot_number: 1, ...w, updated_at: AT } as BoxRow)!;
+    const withFrame = row(writeOf(b, { override: framed }));
+    expect(withFrame.locked).toBe(false);
+    expect(withFrame.override?.reframe).toEqual({ scale: 1.4, x: 0.5, y: 0.25 });
+    // stored and read back as it was saved; a stored value out of range is held to the range
+    expect(parseBoxOverride({ reframe: { scale: 7, x: 0.5, y: -1 } })?.reframe).toEqual({ scale: 3, x: 0.5, y: 0 });
+    expect(parseBoxOverride({ reframe: { scale: 1 } })).toBeNull();
+    // the director rewrites the scene: the scene locks the box, the reframe stays
+    const edited = row(applyOverride(withFrame, { ...BLANK_OVERRIDE, direction: "he turns to the window" }, AT, "edit"));
+    expect(edited.locked).toBe(true);
+    expect(edited.override).toMatchObject({ direction: "he turns to the window", reframe: { scale: 1.4 } });
+    // back to the generated scene: the scene goes, the box is handed back, the reframe stays
+    const reset = row(applyOverride(edited, null, AT, "reset"));
+    expect(reset.locked).toBe(false);
+    expect(reset.override?.direction ?? null).toBeNull();
+    expect(reset.override?.reframe).toEqual({ scale: 1.4, x: 0.5, y: 0.25 });
+    // an edit that never had one is exactly what it was
+    expect(applyOverride(b, null, AT, "reset").override_json).toBeNull();
   });
 
   it("a shot is on screen until the next one starts — a gap in the board is not a hole in the render", () => {

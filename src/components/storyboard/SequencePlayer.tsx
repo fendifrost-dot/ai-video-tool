@@ -1,13 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
-import { DEFAULT_PROJECT_ASPECT, frameBoxStyle, type ProjectAspect } from "@/lib/project/aspect";
+import { DEFAULT_PROJECT_ASPECT, frameBoxStyle, frameSize, type ProjectAspect } from "@/lib/project/aspect";
 import { cn } from "@/lib/utils";
 import { formatTimecode } from "@/components/treatment/shotLabels";
 import { pictureAt, pictureFilter } from "@/lib/storyboard/events";
 import { DRIFT_TOLERANCE, segmentAt, videoStateAt, videoTick, type MediaAsset, type TimelineSegment } from "@/lib/storyboard/media";
+import { reframeStyle } from "@/lib/storyboard/reframe";
 import { ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { safePlay } from "./RangeVideo";
 import { mediaRefKey, playbackRef, useSignedRefs, type MediaRef } from "./signedUrls";
+
+type Placement = ReturnType<typeof reframeStyle>;
+
+/**
+ * A media element where its shot's reframe puts it (reframe.ts reframeStyle — the rect a render crops, fitted whole
+ * in the frame), or back to the whole picture. The stage hides what falls outside it.
+ */
+function placeMedia(el: HTMLElement, place: Placement) {
+  const s = el.style;
+  s.left = place ? `${place.left}%` : "";
+  s.top = place ? `${place.top}%` : "";
+  s.width = place ? `${place.width}%` : "";
+  s.height = place ? `${place.height}%` : "";
+  if (place) el.dataset.reframed = "true";
+  else delete el.dataset.reframed;
+}
 
 /**
  * The storyboard played as one continuous piece: the SONG is the clock, and at every moment the stage shows the
@@ -43,6 +60,9 @@ export function SequencePlayer({
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(timeline[0]?.shotId ?? null);
+  // the frame a render draws into: a reframe is placed in it as a render crops it
+  const frame = useMemo(() => frameSize(aspect), [aspect]);
+  const [imageSize, setImageSize] = useState<{ src: string; w: number; h: number } | null>(null);
 
   const end = timeline.length ? timeline[timeline.length - 1].end : 0;
   const start = timeline.length ? timeline[0].start : 0;
@@ -90,6 +110,9 @@ export function SequencePlayer({
           if (!el.paused) el.pause();
           continue;
         }
+        // the shot's reframe, on the element its media plays in (one element per file: two shots of the same take
+        // can be framed differently, so it is put on at every tick, as the shot changes)
+        placeMedia(el, reframeStyle(el.videoWidth, el.videoHeight, seg!.reframe, frame));
         const state = videoStateAt(seg!, now, el.duration);
         if (!state) continue;
         // it holds its first frame inside a take's lead-in, and its last frame once the media has run out before
@@ -123,7 +146,7 @@ export function SequencePlayer({
         }
       }
     },
-    [timeline, activeId, onSegment],
+    [timeline, activeId, onSegment, frame],
   );
 
   // the clock: while the song plays, follow it every frame
@@ -190,6 +213,7 @@ export function SequencePlayer({
 
   const activeImage = active?.media.kind === "image" ? urlOf(active.media.assetId) : undefined;
   const activeVideoId = active?.media.kind === "video" ? active.media.assetId : null;
+  const imagePlace = activeImage && imageSize?.src === activeImage ? reframeStyle(imageSize.w, imageSize.h, active?.reframe, frame) : null;
 
   return (
     <div className="space-y-3" data-testid="sequence-player" data-active-shot={active?.key ?? ""} data-playing={playing ? "true" : "false"}>
@@ -210,11 +234,23 @@ export function SequencePlayer({
               playsInline
               preload={id === activeVideoId ? "auto" : "metadata"}
               className={cn("absolute inset-0 h-full w-full object-contain", id === activeVideoId ? "opacity-100" : "pointer-events-none opacity-0")}
+              // the picture's size is known only now: a reframe can be placed (when paused, no tick would)
+              onLoadedMetadata={() => id === activeVideoId && sync(audio.current?.currentTime ?? t, !!audio.current && !audio.current.paused)}
               data-asset-id={id}
             />
           );
         })}
-        {activeImage && <img src={activeImage} alt="" className="absolute inset-0 h-full w-full object-contain" />}
+        {activeImage && (
+          <img
+            src={activeImage}
+            alt=""
+            onLoad={(e) => setImageSize({ src: activeImage, w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+            className="absolute inset-0 h-full w-full object-contain"
+            style={imagePlace ? { left: `${imagePlace.left}%`, top: `${imagePlace.top}%`, width: `${imagePlace.width}%`, height: `${imagePlace.height}%` } : undefined}
+            data-reframed={imagePlace ? "true" : undefined}
+            data-testid="sequence-image"
+          />
+        )}
         </div>
         <div ref={flashLayer} className="pointer-events-none absolute inset-0 bg-white" style={{ opacity: 0 }} data-testid="sequence-flash" aria-hidden />
         {active?.media.kind === "none" && (

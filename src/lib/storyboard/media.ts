@@ -17,6 +17,7 @@ import { DEFAULT_FRAME_FIT, DEFAULT_PROJECT_ASPECT, frameSize, type FrameFit, ty
 import { sourceRangeForSongRange, type PerformanceSync } from "@/lib/sync/performanceSync";
 import { orderBoxes, type StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock, type ResolvedEvent } from "./events";
+import { parseReframe, type ShotReframe } from "./reframe";
 import { editOf, isUsableSync, takeCoverage, takeRangeForBox, type TakeCoverage } from "./footageEdit";
 import type { BeatCheck } from "./beatCheck";
 import type { TakeCheck } from "./takeCheck";
@@ -437,6 +438,8 @@ export type TimelineSegment = {
   events: ResolvedEvent[];
   /** The transition the shot record declares into this shot. Review plays every one as a cut; it is carried so a render contract can say so. */
   transitionIn?: { type: string | null; preset: string | null } | null;
+  /** The punch-in the edit puts on the shot's media (reframe.ts). Absent = as filmed. Review shows it and a render applies it. */
+  reframe?: ShotReframe | null;
 };
 
 /**
@@ -462,7 +465,8 @@ export function buildTimeline(input: {
         : { kind: "video", assetId: showing.asset.id, role: showing.role, sourceIn: showing.sourceIn ?? 0, sourceOut: showing.sourceOut, leadIn: showing.leadIn, base: showing.base };
     const events = box.spec.events.length ? resolveEvents(box.spec.events, { start: box.start, end: box.end }, input.clock ?? {}) : [];
     const transitionIn = { type: box.spec.transitionIn?.type ?? null, preset: box.spec.transitionIn?.preset ?? null };
-    return { shotId: box.id, key: box.key, index: i + 1, start: box.start, end: box.end, section: box.section, media, scene, note: showing?.note ?? null, events, transitionIn };
+    const reframe = parseReframe(box.override?.reframe);
+    return { shotId: box.id, key: box.key, index: i + 1, start: box.start, end: box.end, section: box.section, media, scene, note: showing?.note ?? null, events, transitionIn, ...(reframe ? { reframe } : {}) };
   });
 }
 

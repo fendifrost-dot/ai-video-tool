@@ -35,7 +35,7 @@ renderer that re-derived them would be a second implementation of the edit, and 
 
 It is made from the **same timeline Review plays** (`buildTimeline`), by asking the **player's own functions**
 (`segmentAt`, `videoStateAt`, `pictureAt`) what is on screen at every output frame and writing the answers down. Export
-writes it into the package as `storyboard_timeline.json` (version 2). Per shot it says, in output frames:
+writes it into the package as `storyboard_timeline.json` (version 3). Per shot it says, in output frames:
 
 - `frame_in` / `frame_out` — the frames the shot covers. Gapless: a shot is on screen until the next one starts, as in Review.
 - `media` — the **original** file (never the lighter copy the browser plays), and for a video
@@ -46,6 +46,10 @@ writes it into the package as `storyboard_timeline.json` (version 2). Per shot i
 - `effects` — the same effects as keys on the song clock (what they are, for a person reading the file).
 - `direction` — timed direction that must already be in the footage. Carried for the record. Nothing is drawn for it.
 - `transition_in: { declared, realized: "cut" }`.
+- `reframe: { scale, x, y }` — the punch-in the edit puts on the shot's media (`override_json.reframe`). The rect of the
+  source a zoom of `scale` about (x, y) keeps, clamped inside the source (`src/lib/storyboard/reframe.ts`
+  `reframeRect`), is fitted whole into the frame. `scale: 1` = as filmed. New in version 3; the renderer still reads
+  version 2 (every shot as filmed).
 
 and for the whole render: the frame (`width`, `height`, `fit: "contain"`, black behind), `fps`, the stretch of the
 song (`range`), the frame count, and the song with where it starts.

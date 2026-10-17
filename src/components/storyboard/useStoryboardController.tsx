@@ -62,11 +62,13 @@ import {
   planSplit,
   planSplitAtBeats,
   rewrittenOverride,
+  withReframe,
   writeOf,
   type BoxOverride,
   type StoryboardBox,
 } from "@/lib/storyboard/boxes";
 import { resolveEvents, type EventClock, type ResolvedEvent, type ShotEvent } from "@/lib/storyboard/events";
+import type { ShotReframe } from "@/lib/storyboard/reframe";
 import { ALTERNATIVE_LABEL, beatLines, type TemporalPlan } from "@/lib/storyboard/temporal";
 import type { AskedChange } from "@/lib/storyboard/beatCheck";
 import { measureClip as measureClipFile, saveBeatCheck } from "@/lib/queries/beatCheck";
@@ -220,6 +222,8 @@ export type StoryboardController = {
   clock: EventClock;
   /** Save the shot's timed events (the director's list is exactly the shot's events). */
   saveEvents: (box: StoryboardBox, events: ShotEvent[]) => Promise<void>;
+  /** Save the punch-in the edit puts on the shot's media (null = as filmed). Review shows it; a render applies it. */
+  saveReframe: (box: StoryboardBox, reframe: ShotReframe | null) => Promise<void>;
   /** Cut the shot at its beats: every state becomes a shot of its own. */
   splitAtBeats: (box: StoryboardBox) => Promise<void>;
   /** What generating a clip (or restaging) does with this shot's timed events. */
@@ -719,6 +723,17 @@ export function useStoryboardController(projectId: string): StoryboardController
         const next: BoxOverride = { ...(box.override ?? BLANK_OVERRIDE), events };
         await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), new Date().toISOString(), "edit") }] });
         toast.success(events.length ? "Timed beats saved" : "Timed beats removed — the shot is one state");
+      }),
+    [run, writeBoxes],
+  );
+
+  const saveReframe = useCallback(
+    (box: StoryboardBox, reframe: ShotReframe | null) =>
+      run(box, "saving…", async () => {
+        // an edit of the footage, not of the scene: the box keeps its lock and its scene versions
+        const override = withReframe(box.override, reframe);
+        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: writeOf(box, { override }) }] });
+        toast.success(override?.reframe ? "Frame saved" : "Back to the whole picture");
       }),
     [run, writeBoxes],
   );
@@ -1901,6 +1916,7 @@ export function useStoryboardController(projectId: string): StoryboardController
     eventsOf,
     clock,
     saveEvents,
+    saveReframe,
     splitAtBeats,
     clipPlanOf,
     requestOf,

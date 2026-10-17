@@ -29,6 +29,7 @@ import {
 import { applyShotOverride, isEmptyOverride, type CastOverride, type ContinuityOverride, type ShotOverride } from "@/lib/treatment/overrides";
 import { fingerprint } from "@/lib/treatment/treatmentDoc";
 import { IDENTITY_MODES, type CastIdentityMode } from "@/lib/casting/cast";
+import { parseReframe, type ShotReframe } from "./reframe";
 import { storedEvent, EVENT_FACETS, eventStates, isDirected, mergeEvents, resolveEvents, sanitizeEvents, splitEvents, type EventClock, type ResolvedEvent, type ShotEvent, type ShotState } from "./events";
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,11 @@ export type BoxOverride = Omit<ShotOverride, "specId"> & {
    * written — by a per-shot rewrite or by hand. Absent on an edit made before this was kept.
    */
   treatment?: string | null;
+  /**
+   * The punch-in the edit puts on the shot's media (reframe.ts). An edit of the footage, not of the scene: it is never
+   * told to the model, and a scene edit, a rewrite or a reset keeps it. Absent or null = as filmed.
+   */
+  reframe?: ShotReframe | null;
 };
 
 export const OVERRIDE_FIELDS = ["direction", "frame", "cameraMotion", "framing", "transitionIn", "requiredElements", "notes", "shotType", "events", "continuity"] as const;
@@ -139,7 +145,14 @@ function asShotType(v: unknown): ShotTypeLiteral | null {
 /** True when the override states nothing at all (so the box reads as generated). */
 export function isEmptyBoxOverride(o: BoxOverride | null | undefined): boolean {
   if (!o) return true;
-  return isEmptyOverride({ ...o, specId: "" } as ShotOverride) && !asShotType(o.shotType);
+  return isEmptyOverride({ ...o, specId: "" } as ShotOverride) && !asShotType(o.shotType) && !parseReframe(o.reframe);
+}
+
+/** The box holds an edit of its scene — anything but a reframe of its footage, which is not a scene edit. */
+export function isSceneEdited(o: BoxOverride | null | undefined): boolean {
+  if (!o) return false;
+  const { reframe: _framed, treatment: _stamp, ...rest } = o;
+  return !isEmptyBoxOverride(rest as BoxOverride);
 }
 
 /** Who the director put in the shot, as stored: each key is kept only when it was stated (absent = not touched). */
@@ -206,6 +219,7 @@ export function parseBoxOverride(value: unknown): BoxOverride | null {
     manual: Array.isArray(v.manual) ? (v.manual.filter((f) => (OVERRIDE_FIELDS as readonly unknown[]).includes(f)) as OverrideField[]) : null,
     updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : undefined,
     ...(typeof v.treatment === "string" && v.treatment ? { treatment: v.treatment } : {}),
+    ...(parseReframe(v.reframe) ? { reframe: parseReframe(v.reframe) } : {}),
   };
   return isEmptyBoxOverride(o) ? null : o;
 }
@@ -470,7 +484,7 @@ export function applyGenerated(box: StoryboardBox, generated: ShotSpec, at: stri
 
 /** The boxes a whole-board generation may rewrite: not locked, not edited, and holding no footage. */
 export function unlockedForGeneration(boxes: readonly StoryboardBox[], boxIdsWithMedia: ReadonlySet<string>): StoryboardBox[] {
-  return boxes.filter((b) => !b.locked && !b.override && !boxIdsWithMedia.has(b.id));
+  return boxes.filter((b) => !b.locked && !isSceneEdited(b.override) && !boxIdsWithMedia.has(b.id));
 }
 
 // --- the director's edit ------------------------------------------------------
@@ -482,13 +496,27 @@ export function applyOverride(box: StoryboardBox, override: BoxOverride | null, 
   // prop, a beat) leaves the scene where it was, and with it the stamp it had.
   const sceneWritten = event === "rewrite" || (override?.direction ?? null) !== (box.override?.direction ?? null) || (override?.frame ?? null) !== (box.override?.frame ?? null);
   const stamp = (sceneWritten ? treatment : undefined) ?? box.override?.treatment ?? undefined;
-  const { treatment: _was, ...rest } = override ?? {};
-  const next = isEmptyBoxOverride(override) ? null : ({ ...rest, updatedAt: at, ...(stamp ? { treatment: stamp } : {}) } as BoxOverride);
+  // The shot's reframe is an edit of its footage, not of its scene: an override that does not speak of it (a scene
+  // edit, a rewrite, a reset) keeps the one the box has.
+  const reframe = parseReframe(override && "reframe" in override ? override.reframe : box.override?.reframe);
+  const { treatment: _was, reframe: _framed, ...rest } = override ?? {};
+  const scene = override && !isEmptyBoxOverride(rest as BoxOverride) ? rest : null;
+  const next =
+    scene || reframe ? ({ ...(scene ?? BLANK_OVERRIDE), updatedAt: at, ...(scene && stamp ? { treatment: stamp } : {}), ...(reframe ? { reframe } : {}) } as BoxOverride) : null;
   return writeOf(box, {
     override: next,
-    locked: next ? true : false,
-    history: withHistory(box.history, snapshot(box.spec, next ? event : "reset", at)),
+    // an edit of the scene locks the box; a reframe alone does not
+    locked: scene ? true : false,
+    history: withHistory(box.history, snapshot(box.spec, scene ? event : "reset", at)),
   });
+}
+
+/** The box's override with its reframe set (or cleared: null or an identity reframe). Nothing else changes. */
+export function withReframe(override: BoxOverride | null, reframe: ShotReframe | null): BoxOverride | null {
+  const kept = parseReframe(reframe);
+  const { reframe: _was, ...rest } = override ?? BLANK_OVERRIDE;
+  const next: BoxOverride = kept ? { ...rest, reframe: kept } : rest;
+  return isEmptyBoxOverride(next) ? null : next;
 }
 
 // --- which treatment a shot was written from --------------------------------------

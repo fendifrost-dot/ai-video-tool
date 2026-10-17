@@ -87,7 +87,7 @@ export const RPC_ALLOWED = new Set(["duplicate_variation", "lyric_lines_in_windo
 export const TABLE_NOTES: Record<string, string> = {
   video_projects: "a song/video project (treatment_json holds the treatment; active_variation_id the board in use)",
   video_variations: "one storyboard variation of a project (candidates live here)",
-  shots: "the board's shots: generated_json (writer's spec), override_json (director's edits), spec_json, shot_number, variation_id",
+  shots: "the board's shots: generated_json (writer's spec), override_json (director's edits; override_json.reframe = {scale 1–3, x, y 0–1} is the edit's punch-in on the shot's media, applied by Review and the render), spec_json, shot_number, variation_id",
   shot_overrides: "per-shot director overrides",
   continuity_entities: "cast (kind=character), continuity (location/prop/lighting) and outfits (kind=outfit: garment_feature_ids, version): description, approved_asset_id, reference_asset_ids",
   variation_scenes: "a video's scenes: a stretch of the song (start_seconds..end_seconds) wearing one outfit (outfit_key)",

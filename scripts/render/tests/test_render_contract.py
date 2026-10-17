@@ -176,7 +176,8 @@ def test_it_refuses_what_it_cannot_execute_and_renders_nothing(rendered, tmp_pat
         assert not out.exists()
         return str(e.value)
 
-    assert "version 2" in refused(lambda b: b.update(version=1))
+    assert "version 3" in refused(lambda b: b.update(version=1))
+    assert "out of range" in refused(lambda b: b["segments"][2].update(reframe={"scale": 0.5, "x": 0.5, "y": 0.5}))
     assert "lead + play + tail" in refused(lambda b: b["segments"][0]["media"]["frames"].update(play=5))
     assert "overlap" in refused(lambda b: b["segments"][1].update(frame_in=30))
     assert "outside the shot" in refused(lambda b: b["segments"][1]["picture_runs"][0].update(frame_out=999))
@@ -193,3 +194,72 @@ def test_the_plan_can_be_read_without_rendering(rendered, capsys):
     assert "xfade" not in graph and "blend" not in graph
     assert graph.count("tpad=") == 3 and "lutrgb" in graph      # three shots show a video file: each holds what it must
     assert cmd[cmd.index("-frames:v") + 1] == "130"
+
+
+def stretch(c, keys, song_in, frames):
+    """Some shots of the contract as their own render, frames re-counted from the first one's start (as the app writes a section)."""
+    segs = [s for s in c["segments"] if s["key"] in keys]
+    shift = segs[0]["frame_in"]
+    part = {**c, "range": {"song_in": song_in, "song_out": song_in + frames / c["fps"]}, "frames": frames, "duration_seconds": frames / c["fps"], "audio": {**c["audio"], "song_in": song_in}}
+    part["segments"] = [{**s, "frame_in": s["frame_in"] - shift, "frame_out": s["frame_out"] - shift, "picture_runs": [{**r, "frame_in": r["frame_in"] - shift, "frame_out": r["frame_out"] - shift} for r in s["picture_runs"]]} for s in segs]
+    return part
+
+
+def render_part(rendered, tmp_path, part, name, media=None):
+    p = tmp_path / f"{name}.json"
+    p.write_text(json.dumps(part))
+    m = tmp_path / f"{name}_media.json"
+    m.write_text(json.dumps(media or rendered["media"]))
+    out = str(tmp_path / f"{name}.mp4")
+    rc.render(str(p), str(m), out, scale=SCALE)
+    return out
+
+
+def test_a_shot_as_filmed_renders_exactly_as_before_reframes_existed(rendered):
+    c = rendered["contract"]
+    assert all(s["reframe"] == {"scale": 1, "x": 0.5, "y": 0.5} for s in c["segments"])
+    # the same graph, to the character, as the version-2 contract with no reframe at all
+    old = json.loads(json.dumps(c))
+    old["version"] = 2
+    for s in old["segments"]:
+        del s["reframe"]
+    graph = rc.build(c, rendered["media"], SCALE)[1]
+    assert graph == rc.build(old, rendered["media"], SCALE)[1]
+    assert "crop=" not in graph
+
+
+def test_a_reframe_pushes_in_about_its_centre_and_never_shows_past_the_source(rendered, tmp_path):
+    c = rendered["contract"]
+    # a frame-shaped still: red above, blue below (his jacket, and the pants the director wants out of the shot)
+    split = os.path.join(rendered["dir"], "split.png")
+    ff("-f", "lavfi", "-i", f"color=c=0xC82828:s={W}x{H // 2}:d=1", "-f", "lavfi", "-i", f"color=c=0x2828C8:s={W}x{H // 2}:d=1", "-filter_complex", "[0:v][1:v]vstack", "-frames:v", "1", split)
+    media = {**rendered["media"], "project-references/u/p/split.png": split}
+
+    def shot(reframe):
+        part = stretch(c, {"c003"}, 8, 20)
+        part["segments"][0] = {**part["segments"][0], "picture_runs": [], "media": {**part["segments"][0]["media"], "path": "u/p/split.png"}, "reframe": reframe}
+        return part
+
+    filmed = render_part(rendered, tmp_path, shot({"scale": 1, "x": 0.5, "y": 0.5}), "filmed", media)
+    top, bottom = frame_rgb(filmed, 5, 10, (0, 0, 90, 70)), frame_rgb(filmed, 5, 10, (0, 90, 90, 70))
+    assert top[0] > 150 and bottom[2] > 150, (top, bottom)
+    # 2× about the upper half: only the red is in the frame, top to bottom
+    up = render_part(rendered, tmp_path, shot({"scale": 2, "x": 0.5, "y": 0.25}), "up", media)
+    for box in ((0, 0, 90, 20), (0, 70, 90, 20), (0, 140, 90, 20)):
+        r, g, b = frame_rgb(up, 5, 10, box)
+        assert r > 150 and b < 90, (box, r, g, b)
+    # a centre past the edge is held inside the source: 2× about (0.5, 1) is the blue half, with no black below it
+    down = render_part(rendered, tmp_path, shot({"scale": 2, "x": 0.5, "y": 1}), "down", media)
+    for box in ((0, 0, 90, 20), (0, 140, 90, 20)):
+        r, g, b = frame_rgb(down, 5, 10, box)
+        assert b > 150 and r < 90, (box, r, g, b)
+
+
+def test_a_reframe_of_a_wider_picture_fills_the_bars_before_it_crops(rendered, tmp_path):
+    c = rendered["contract"]
+    # the 16:9 still in the 9:16 frame: fitted whole it is 51 high (black down to 55); at 1.5× it is 76 high (black to 42)
+    part = stretch(c, {"c003"}, 8, 20)
+    part["segments"][0] = {**part["segments"][0], "picture_runs": [], "reframe": {"scale": 1.5, "x": 0.5, "y": 0.5}}
+    out = render_part(rendered, tmp_path, part, "wide")
+    assert frame_rgb(out, 5, 10, (0, 46, 90, 6))[2] > 150, "the zoomed picture reaches into what was black"
+    assert max(frame_rgb(out, 5, 10, (0, 0, 90, 36))) < 25, "and is still fitted whole top to bottom: black above it"

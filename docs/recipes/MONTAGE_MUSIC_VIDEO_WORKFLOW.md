@@ -43,6 +43,24 @@ don't have to guess for the next song").
    - b-roll: the place and its people only, lines required, no close-up of anyone's shoes or feet (~$1.85 for 4 s).
    Lines: 2–4 per shot (one scene per beat or two), "HARD CUT to …", the place's unusual thing in a cutaway, him
    anchored to something in the place, never centre-front. Untimed — the tool puts the cuts on the beats.
+7b. **Clothing check before every montage** (Fendi, 17 Oct: "I only want the approved clothing"). Compare one frame
+   sheet of each dressed take with the outfit's reference pictures, piece by piece — jacket/top, cap or hat, glasses
+   strictly; trousers and jeans only need to be close ("most of the shots are waist up"). A take that fails is marked
+   `usable:false` with the reason (montage-shot never re-shoots it) and is redressed; a montage is only sent from a
+   take that passed. Lessons from the first minute:
+   - Give every garment its construction words (`character_features.dimensions_description`) in **positive terms
+     only** — naming what it is not ("not fur, not shearling") pulled the swap toward fur. A product name that reads as
+     a texture ("Bubbled Lambskin") is relabelled to what it looks like; the product name stays in the metadata.
+   - Each piece needs a picture of that piece. The SL trousers' only picture is a full-outfit shot of a track jacket,
+     so the swap invents trousers (track pants once).
+   - Genjutsu keeps what he wears in the take when a stretch of it has strong pieces of his own (cap, wraparound
+     sunglasses): after two misses on the same items, stop — make the shot b-roll or let a neighbour hold.
+   - In a scene whose cast still is full of people in one look (the lounge), the montage can render the cast's look on
+     him or put a cast member in his place. Name his clothes in his line; if it still swaps, let a neighbour hold.
+7c. **Fix in the edit before regenerating** (Fendi: "if the shot comes out good except the pants we can edit the zoom
+   or angle to get them out the frame. We don't always need to regenerate shots if we have enough good to work
+   with"). The shot's **Frame** (full-screen shot → Frame: zoom 1–2×, position) crops it in the preview and the export
+   (`override_json.reframe`); a neighbour clip can hold longer over a dropped shot (every render has spare seconds).
 8. **Review** by section: pull each clip's shot window into one silent preview (the board does this with sound), mark
    misses `usable:false` with the reason, reshoot only those shots. Filed results are always UNSELECTED; selecting is
    the director's.

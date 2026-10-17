@@ -536,12 +536,15 @@ async function dressedTakeOf(
     .order("created_at", { ascending: false })
     .limit(20);
   if (dressedErr) return fail(500, { error: "take_lookup_failed", detail: dressedErr.message });
-  const dressed = (dressedRows ?? []) as Row[];
+  // a take marked usable:false (the wrong clothes) is never re-shot, even when it is the newest
+  const dressed = ((dressedRows ?? []) as Row[]).filter(
+    (d) => ((d.metadata_json ?? {}) as Row).usable !== false,
+  );
   if (dressed.length === 0)
     return fail(422, {
       error: "no_dressed_take",
       detail:
-        "this shot has no dressed take to re-shoot — dress it first (the montage wears what the video wears)",
+        "this shot has no usable dressed take to re-shoot — dress it first (the montage wears what the video wears)",
     });
   const { data: assignments } = await user
     .from("shot_asset_assignments")
