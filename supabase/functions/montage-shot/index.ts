@@ -499,8 +499,11 @@ type Found =
   | { ok: false; status: number; body: Record<string, unknown> };
 
 /** The dressed take on the shot, the selected one first, else the newest; and its place on the song. */
+// NOTE: `ReturnType<typeof createClient>` resolves the schema param to `never` under
+// Deno check, while instantiated clients carry `<any, "public", any>` — use the bare
+// `SupabaseClient` default generics, same pattern as `_shared/jacketInpaintPipeline.ts`.
 async function dressedTakeOf(
-  user: ReturnType<typeof createClient>,
+  user: import("https://esm.sh/@supabase/supabase-js@2.45.0").SupabaseClient,
   projectId: string,
   shotId: string,
 ): Promise<Found> {
