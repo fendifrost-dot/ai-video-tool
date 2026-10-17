@@ -848,22 +848,28 @@ All four are filed on their shots as unselected alternates. E1 and E2 are `role=
   - Flag: `ok` / `extend_shot` / `needs_clip`.
 - **Export page:** `board_cut.edl` (CMX3600, record TC = song time, so put the song on A1 at 00:00:00:00) and `board_cut.csv`, with the flagged shots listed.
 
-### NOT done — the next agent does these in Lovable
-1. **Migration** `supabase/migrations/20261017210000_footage_slip.sql`. Apply it in the Lovable SQL editor (send it to the AVT Lovable agent as "apply this migration file as written"). **Do not edit it to make it run.** If it errors, the live table differs, and that is the finding to report.
-   - Verify:
-     `select column_name, data_type, column_default from information_schema.columns where table_name='shot_asset_assignments' and column_name='slip_seconds';`
-     → exactly **1 row**: `double precision`, default `0`.
-   - Also verify:
-     `select count(*) from pg_constraint where conname='shot_asset_assignments_slip_check';`
-     → **1**.
-   - And:
-     `select pg_get_functiondef('public.duplicate_variation(uuid,text)'::regprocedure) like '%a.slip_seconds%';`
-     → **true**.
-2. **Publish** the frontend (`mcp__Lovable__deploy_project`). No edge function changed in #327.
-   - Verify: the live bundle contains the string `lyric-sync-play`.
-     `curl -s https://aivideotool.lovable.app/ | grep -o 'assets/index-[^"]*\.js'`, then grep that JS for `lyric-sync-play` → found.
-3. **Live check of a slip.** Open c033 → E1 → Lyric sync, nudge +1f, and confirm the row:
-   `select slip_seconds from shot_asset_assignments where id='bf01a2cb-683e-4caf-b258-925928b5e139'` → `0.0417`.
-   Before the migration this write fails with an unknown-column error (the expected pre-migration outcome, not a bug). Put it back on the sync afterwards: `slip_seconds` → 0.
+### Deploy of #327 — done and VERIFIED (17 Oct, 20:30–20:50 UTC)
+- **Migration** `20261017210000_footage_slip.sql`: the AVT Lovable agent applied it exactly as written (recorded as `drizzle/migrations/0010_footage_slip.sql`).
+  - Checks, verbatim:
+    - a) `[map[column_default:0 column_name:slip_seconds data_type:double precision]]`
+    - b) `[map[count:1]]`
+    - c) `[map[?column?:true]]`
+  - Lovable also restored `src/integrations/supabase/types.ts` to main's version. Net diff of main vs `3f0f00e`: only the three drizzle record files.
+- **`lipsync-shot`** redeployed (source_sha256 `ca1c469c…a35b`).
+- **Frontend** published (deployment `474103d2`).
+  - Live chunk `projects._id.storyboard-DhaeZ2B7.js` contains `lyric-sync-play`.
+  - Live chunk `projects._id.export-DYFzAKYf.js` contains `board-cut-edl`.
+- **Slip round-trip** on the unusable E1 row `bf01a2cb`:
+  - Writing 0.0417 stored `0.0417`.
+  - Writing 31 was refused by `shot_asset_assignments_slip_check`.
+  - Put back to `0`.
 
-Report back: the three query results verbatim, the bundle hash, and the slip round-trip.
+### E1 re-roll (ledger 142, $3.883)
+- Asset `699a7b63`, job `d6185b9d`.
+- Made with the jacket picture (`0feb028f`) as @Image2, the glasses picture (`18b648a5`) as @Image3, and a medium-shot start.
+- OBSERVED: the jacket is right and the glasses are on from frame 1.
+- OBSERVED, minor: his hands rest at his collar, and a gold watch appears that is not in the outfit.
+- HYPOTHESIS: mouth timing is inconclusive (r 0.40). Fendi lines it up with Lyric sync.
+- The first E1 (`998f6690`) stays `usable:false`.
+
+Nothing in this section remains to be done.
