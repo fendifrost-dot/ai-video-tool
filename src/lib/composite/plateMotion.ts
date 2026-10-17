@@ -26,7 +26,7 @@ export const PLATE_MOTION_PROVIDER = "higgsfield" as const;
 export const PLATE_MOTION_MODEL = "kling-2.5-turbo-pro-i2v";
 /** Kling bills whole clips of 5 or 10 s; the windows are under 5 s, and a longer take holds the plate's last frame. */
 export const PLATE_MOTION_SECONDS = 5;
-export const PLATE_MOTION_VERSION = "plate-motion-v4-2026-10-16";
+export const PLATE_MOTION_VERSION = "plate-motion-v5-2026-10-17";
 /** The longest event the director may ask for, in characters. */
 export const PLATE_EVENT_MAX = 400;
 
@@ -50,6 +50,18 @@ const PLATE_MOTION_BASE =
 export const PLATE_MOTION_PROMPT = `${PLATE_MOTION_BASE}, no added objects.`;
 
 /**
+ * v5 (17 Oct 2026): a SCENE still — the director's own picture re-photographed with its people (worlds/scene_*) — is
+ * animated as it is: the people in it are the ones who act. The first Oak Street chase was drawn from an EMPTY plate
+ * of the store and the model made up its own boosters and guard; Fendi: "It doesn't have the same characters from the
+ * Gemini image." Nothing here is composited under him, so the camera may move like the news camera the scene is.
+ */
+const CAST_MOTION_BASE =
+  "The people in the picture are the ones who act, and they are the same people from the first frame to the last: the " +
+  "same faces, the same clothes, the same things in their hands; nobody new appears and nobody vanishes. The camera moves " +
+  "like a handheld news camera at the scene, following the action. Everything else stays the place in the picture. " +
+  "Photoreal, the same time of day, the same light and weather as the picture; no text, no captions";
+
+/**
  * The prompt for one plate: the locked-off base, plus — when the director asks for one — the EVENT: one absurd,
  * eye-catching thing that happens in the place while he performs (Fendi, 16 Oct: "we need something absurd happening
  * that catches people's attention and isn't boring"). The event is placed in the street or on the far side; the
@@ -61,8 +73,9 @@ export function normalizeEvent(event: string | null | undefined): string | null 
   return e || null;
 }
 
-export function plateMotionPrompt(event: string | null | undefined): string {
+export function plateMotionPrompt(event: string | null | undefined, cast = false): string {
   const e = normalizeEvent(event);
+  if (cast) return e ? `${e.replace(/[.!?]+$/, "")} — it plays out fully inside these five seconds. ${CAST_MOTION_BASE}.` : `${CAST_MOTION_BASE}.`;
   if (!e) return PLATE_MOTION_PROMPT;
   // The event LEADS (v3): with it last, after a base that forbade "added objects", the model made plain traffic and
   // no horse (plate 614055fc, 16 Oct 05:31 UTC). Now it is the first sentence, and the base no longer forbids it.
@@ -82,6 +95,8 @@ export type PlateMotionPlan = {
   model: string;
   /** The absurd thing asked for, or null. */
   event: string | null;
+  /** The still is a scene with its own people (worlds/scene_*): they act, the camera follows (v5). */
+  cast: boolean;
   prompt: string;
   cost: { usd: number; text: string };
 };
@@ -102,6 +117,7 @@ export function planPlateMotion(f: {
   if (!still.isImage || still.plate?.kind !== "still")
     return { ok: false, why: "only a realism plate of the scene (a still under worlds/) is animated" };
   const usd = plateMotionEstimateUsd(PLATE_MOTION_SECONDS);
+  const cast = !!still.plate.cast;
   return {
     ok: true,
     plan: {
@@ -110,7 +126,8 @@ export function planPlateMotion(f: {
       seconds: PLATE_MOTION_SECONDS,
       model: PLATE_MOTION_MODEL,
       event: normalizeEvent(f.event),
-      prompt: plateMotionPrompt(f.event),
+      cast,
+      prompt: plateMotionPrompt(f.event, cast),
       cost: {
         usd,
         text: `About $${usd.toFixed(3)} by the provider's own pricing rule (${PLATE_MOTION_SECONDS} s of ${PLATE_MOTION_MODEL} at $${PROVIDER_RATES.kling_usd_per_s}/s)`,
@@ -154,6 +171,7 @@ export function plateMotionSettings(input: { still: MediaAsset; seconds: number;
     route: PLATE_MOTION_ROUTE,
     version: PLATE_MOTION_VERSION,
     event: input.event ?? null,
+    cast: !!input.still.plate?.cast,
     batchRun: STORYBOARD_RUN,
     // a plate is the scene's, not a shot's: no box claims this job (latestBoxJobs keys by batchShotId)
     batchShotId: null,

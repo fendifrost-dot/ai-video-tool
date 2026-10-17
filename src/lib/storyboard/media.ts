@@ -78,7 +78,18 @@ export type MediaAsset = {
    * Set on a plate of a scene: a realism still (world-still-proxy, filed under worlds/plate_*) or a MOVING plate — a
    * short clip made from such a still (composite/plateMotion.ts), which names the still it came from.
    */
-  plate?: { kind: "still" | "video"; sceneTitle: string | null; shotLabel: string | null; usable: boolean; stillAssetId?: string | null } | null;
+  plate?: {
+    kind: "still" | "video";
+    sceneTitle: string | null;
+    shotLabel: string | null;
+    usable: boolean;
+    stillAssetId?: string | null;
+    /**
+     * A SCENE still (worlds/scene_*): the director's picture re-photographed WITH its people — the cast that acts when
+     * it is animated. Never a place to put him over: the composite and the montage take empty plates (worlds/plate_*) only.
+     */
+    cast?: boolean;
+  } | null;
   /**
    * Set on a take that was made FROM another take: which take, the song time of its first frame, the stretch of the
    * take it was made from (on the take's own clock), and HOW it was made. It is a version of one moment — never the
