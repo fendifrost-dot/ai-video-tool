@@ -456,3 +456,23 @@ treatment right after the lights-off beat: on 17.5–19.5 s, cut to him in the s
 (low, to the side of the couch), rapping to camera, lit only by his own ice. Saved 03:05:13 UTC; VERIFIED. This is a
 performance beat: it can come from his own footage placed into the lounge (the montage lane), not a generated
 stand-in. On the board: c010 (16.75–18.72) / c011 (18.72–20.69).
+
+03:18 UTC — Fendi: on "YSL I wear em like they white ones" (17.5–19.5 s), the ice becomes his light before he raps —
+"we can try both and see which one comes out the best": **A** a crew member holds his pendant up toward him and the
+diamonds throw a spotlight onto his face; **B** his bottom grill glows from within and lights his face. Written into
+the treatment as two versions to shoot; light only from the jewellery. Saved 03:18:34 UTC; VERIFIED. Next per Fendi:
+"Let's get the intro settled first" — the intro (0–14 s, board c001–c007) is not settled yet.
+
+### 03:21 UTC — The intro: boosters on Oak Street (Fendi's picture) — intro SETTLED
+
+Fendi: "boosters running out of the YSL store on Oak Street, being chased by security during a blizzard. And then the
+camera cut towards me, posted on the wall next to the YSL store window, looking at the events happen." Picture: the
+frosted Saint Laurent store front in a blizzard, boosters in hoodies/bandanas/leather running out with coats on
+hangers, shopping bags and a duffel, a guard in a suit behind them.
+
+DONE ($0): filed as a director's reference, `project_assets` **`78940267-6ca3-4484-a71b-875192d5d14b`**
+(`project-references/…/references/director_oak_street_boosters.jpg`, 1376×768). The treatment's intro (0–14 s)
+now: the chase down Oak Street through the whiteout, shot like news footage; then the camera turns to the window —
+Fendi posted on the wall beside it in the black leather coat, watching; a penguin among the mannequins in the window
+(my addition, the one cold animal; drop it if Fendi says so); cut to the lounge switch on his first line. Replaces the
+Red Line platform intro. Saved 03:21:37 UTC; VERIFIED. On the board: c001–c007. Not shot; no spend authorised.
