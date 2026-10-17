@@ -420,3 +420,17 @@ DONE ($0): filed as a director's reference, `project_assets` **`9d4e2253-826a-4f
 the scene on 23.4–25.1 s (replaces the car-wash line): him and the crew in the car, the models walking the sidewalk
 outside the windows the camcorders film, the penguin in the fur coat riding shotgun. Saved 02:22:32 UTC; VERIFIED.
 On the board: c012 (20.69–22.65) / c013 (22.65–25.11). Not shot; no spend authorised.
+
+### 02:39 UTC — "Need a Canada Goose": the geese in the park (Fendi's picture)
+
+Fendi's picture: a snowy Michigan Avenue park path in fog, models in long wool coats walking toward camera and on the
+benches, CTA buses and the skyline behind, Canada geese in Canada Goose parkas all around. "Use this for So much ice
+around me need a Canada goose."
+
+DONE ($0): filed as a director's reference, `project_assets` **`9ad2b670-3051-4fb2-8fb5-eac55bd24a72`**
+(`project-references/…/references/director_canada_geese_park.jpg`, 1376×768). The treatment on `c067efb9…` carries
+the scene on 25.1–27.0 s (replaces the laundromat) and the break (31–39 s) moves to the same park: a polar bear
+crosses Michigan Avenue behind the line. Saved 02:39:29 UTC; VERIFIED (all three scenes present). On the board:
+c013 (22.65–25.11) / c014 (25.11–26.59); break c018–c021. Not shot; no spend authorised.
+Note: the geese wear visible Canada Goose disc patches — Fendi's own picture and the lyric's brand; the treatment's
+"no logos" line is about the runway clothes.
