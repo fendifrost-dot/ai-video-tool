@@ -93,10 +93,18 @@ const PRESSES = {
     input: "confirm-montage-scenes",
   },
 };
+// the Swap page (src/pages/RegionSwapPage.tsx): pieces swapped inside a box of a clip, then put back over it
+const REGION = command === "region-swap" || command === "region-putback";
 const PRESS = PRESSES[command];
-if (!PRESS || !a.session || !a.project || !a.shot) {
+if (
+  !a.session ||
+  !a.project ||
+  (REGION ? !a.asset || (command === "region-swap" ? !a.box : !a.job) : !PRESS || !a.shot)
+) {
   console.error(
-    "usage: avt-press.mjs <composite|animate-plate|dress|montage> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
+    "usage: avt-press.mjs <composite|animate-plate|dress|montage> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]\n" +
+      "       avt-press.mjs region-swap --session … --project <id> --asset <clip id> --box x,y,w,h [--window a,b] [--pieces id,id] [--dry-run]\n" +
+      "       avt-press.mjs region-putback --session … --project <id> --asset <clip id> --job <provider job id>",
   );
   process.exit(2);
 }
@@ -207,6 +215,59 @@ try {
     },
     { key: s.storage_key, value: JSON.stringify(stored) },
   );
+
+  if (REGION) {
+    const q = new URLSearchParams({ asset: String(a.asset) });
+    if (a.box) q.set("box", String(a.box));
+    if (a.window) q.set("window", String(a.window));
+    if (a.pieces) q.set("pieces", String(a.pieces));
+    const swapUrl = `${APP}/projects/${a.project}/swap?${q}`;
+    log("open", swapUrl);
+    await page.goto(swapUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    const testid =
+      command === "region-putback" ? `region-swap-putback-${a.job}` : DRY ? "region-swap-dryrun" : "region-swap-submit";
+    const btn = page.locator(`[data-testid="${testid}"]`);
+    try {
+      await btn.waitFor({ state: "visible", timeout: 120_000 });
+    } catch {
+      await snap("no-button");
+      throw new Error(
+        command === "region-putback"
+          ? `no "Put it back" for job ${a.job} (not finished, or not a region swap of this clip)`
+          : "the Swap page showed no button (not signed in, or no such clip)",
+      );
+    }
+    for (let i = 0; i < 20 && (await btn.isDisabled()); i++) await page.waitForTimeout(1000);
+    await snap("swap-page");
+    await btn.click();
+    log("pressed", testid);
+    const status = page.locator('[data-testid="region-swap-status"]');
+    const started = Date.now();
+    let last = "";
+    let result = null;
+    while (Date.now() - started < TIMEOUT_MS) {
+      const now = (await status.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+      if (now && now !== last) {
+        log("stage:", now);
+        last = now;
+      }
+      if (/^(sent|dry run|filed|refused)/i.test(now)) {
+        const text = await page.locator('[data-testid="region-swap-result"]').innerText().catch(() => "");
+        let answer = null;
+        try {
+          answer = JSON.parse(text);
+        } catch {
+          answer = text || null;
+        }
+        if (answer) writeFileSync(join(OUT, "result.json"), JSON.stringify(answer, null, 2));
+        result = { ok: !/^refused/i.test(now), status: now, answer };
+        break;
+      }
+      await page.waitForTimeout(2000);
+    }
+    await snap(result?.ok ? "done" : "end");
+    await finish(result ?? { ok: false, status: last, note: "the page said nothing final in time" });
+  }
 
   const url = `${APP}/projects/${a.project}/storyboard`;
   log("open", url);

@@ -24,7 +24,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { pieceOf, planDressClip, SWAP_ENDPOINT, type ClipFacts } from "./plan.ts";
+import { pieceOf, planDressClip, SWAP_ENDPOINT, type ClipFacts, type CropFacts } from "./plan.ts";
 import { DRESS_ROUTE, scrubEnvelope, wornPieces } from "../_shared/dressWords.ts";
 import { mp4Durations } from "../_shared/mp4Retime.ts";
 
@@ -48,6 +48,12 @@ type Body = {
   assetId: string;
   /** The wardrobe pictures to put on him (character_features ids). Absent = the shoes he wears in the shot. */
   pieceIds?: string[];
+  /** Swap a region only: the browser's crop of the clip enlarged to its frame (src/lib/regionSwap), and the box. */
+  crop?: {
+    path: string;
+    rect: { x: number; y: number; w: number; h: number };
+    window?: [number, number] | null;
+  };
   /** Answer with the exact request and send nothing. */
   dryRun?: boolean;
 };
@@ -180,6 +186,54 @@ serve(async (req) => {
       detail: `the clip's length could not be read: ${e instanceof Error ? e.message : String(e)}`,
     });
   }
+  // a region only: the enlarged crop the browser cut is the source; it must be the caller's own file and whole
+  let crop: CropFacts | null = null;
+  if (body.crop) {
+    const c = body.crop;
+    const cropPath = typeof c.path === "string" ? c.path.trim() : "";
+    const rect = c.rect;
+    const nums = [rect?.x, rect?.y, rect?.w, rect?.h].map(num);
+    if (
+      !cropPath.startsWith(`${userData.user.id}/${projectId}/`) ||
+      !cropPath.endsWith(".mp4") ||
+      cropPath.includes("..")
+    )
+      return json(400, {
+        ok: false,
+        error: "bad_crop_path",
+        detail: "the crop has to be an .mp4 in this project's own folder",
+      });
+    if (nums.some((n) => n == null)) return json(400, { ok: false, error: "bad_crop_box" });
+    const window =
+      Array.isArray(c.window) &&
+      c.window.length === 2 &&
+      num(c.window[0]) != null &&
+      num(c.window[1]) != null
+        ? ([num(c.window[0])!, num(c.window[1])!] as [number, number])
+        : null;
+    const { data: cropBlob, error: cropErr } = await user.storage
+      .from("project-clips")
+      .download(cropPath);
+    if (cropErr || !cropBlob)
+      return json(422, { ok: false, error: "crop_not_found", detail: cropErr?.message });
+    let cropSeconds: number;
+    try {
+      const d = mp4Durations(new Uint8Array(await cropBlob.arrayBuffer()));
+      cropSeconds = d.videoSeconds ?? d.movieSeconds;
+    } catch (e) {
+      return json(422, {
+        ok: false,
+        error: "crop_unreadable",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    }
+    crop = {
+      path: cropPath,
+      seconds: cropSeconds,
+      rect: { x: nums[0]!, y: nums[1]!, w: nums[2]!, h: nums[3]! },
+      window,
+    };
+  }
   const derived = (clipMeta.derived_from ?? null) as Row | null;
   const clip: ClipFacts = {
     id: assetId,
@@ -269,6 +323,7 @@ serve(async (req) => {
 
   // 4. the request
   const planned = planDressClip({
+    crop,
     projectId,
     clip,
     shot,
@@ -295,6 +350,7 @@ serve(async (req) => {
     billedSeconds: plan.billedSeconds,
     estimateUsd: plan.estimateUsd,
     prompt: plan.prompt,
+    crop,
   };
   if (dryRun)
     return json(200, {
@@ -325,7 +381,9 @@ serve(async (req) => {
     });
 
   // 5. sign as the caller, record the job, then spend
-  const srcSigned = await user.storage.from(bucket).createSignedUrl(path, SIGN_TTL);
+  const srcSigned = crop
+    ? await user.storage.from("project-clips").createSignedUrl(crop.path, SIGN_TTL)
+    : await user.storage.from(bucket).createSignedUrl(path, SIGN_TTL);
   if (srcSigned.error || !srcSigned.data?.signedUrl)
     return json(500, { ok: false, error: "source_sign_failed", detail: srcSigned.error?.message });
   const refSigned = await Promise.all(

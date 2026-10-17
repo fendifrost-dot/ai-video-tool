@@ -356,6 +356,16 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
                   Hide (keep on the shot)
                 </Button>
               )}
+              {item.kind === "video" && item.role === "performance" && (
+                <a
+                  className="inline-flex h-7 items-center rounded-md px-2 text-[11px] text-foreground/70 hover:bg-muted"
+                  href={`/projects/${sb.projectId}/swap?asset=${item.asset.id}`}
+                  title="Swap a piece of his wardrobe inside a box of this clip — the rest stays the original footage"
+                  data-testid="focus-media-swap"
+                >
+                  Swap in a box…
+                </a>
+              )}
               {item.assignmentId && (
                 <>
                   <select

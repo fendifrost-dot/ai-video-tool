@@ -550,4 +550,31 @@ describe("a paid result is never stranded, and never placed unconformed", () => 
     expect(w.syncs.find((s) => s.performance_asset_id === job.result_asset_id)!.offset_seconds).toBeCloseTo(71.174, 4);
     expect(w.assignments.find((a) => a.asset_id === job.result_asset_id)).toMatchObject({ role: "performance", is_primary: false });
   });
+
+  it("a swapped REGION is saved and marked for the browser to put back — never placed on the shot or the song", async () => {
+    const planned = planDressClip({
+      projectId: APPROVED.projectId,
+      clip: { id: "montage_c044", bucket: "project-clips", path: "u/p/m/c044.mp4", seconds: 4.004, method: "montage", sync: { id: "s", offsetSeconds: 75.885, driftPpm: 0 } },
+      shot: { id: "shot_19", key: "c019", variationId: "var_1" },
+      crop: { path: "u/p/swap-crops/c044_crop.mp4", seconds: 4.004, rect: { x: 0.3, y: 0.45, w: 0.4, h: 0.4 }, window: null },
+      pieces: [{ id: "shoes", label: "Prada America's Cup Sneakers - Cream", featureType: "wardrobe_footwear", storagePath: "u/a/p.jpg", images: [{ storagePath: "u/a/p.jpg", angle: "front" }], construction: null }],
+    });
+    if (!planned.ok) throw new Error(planned.detail);
+    const job: ProgressJob = {
+      ...importedJob(),
+      id: "job_crop",
+      external_job_id: "a1b2c3d4-0000-4000-8000-000000000002",
+      request_payload_json: planned.plan.payload,
+      response_payload_json: { status: "succeeded", resultUrl: APPROVED.resultUrl, providerJobId: "a1b2c3d4-0000-4000-8000-000000000002" },
+    };
+    const w = world(job);
+    const before = w.assignments.length;
+    const report = await advanceJob(job, w.deps);
+    expect(report.state).toBe("finished");
+    const meta = w.assets.get(job.result_asset_id!)!.metadata_json;
+    expect(meta.crop_swap).toMatchObject({ path: "u/p/swap-crops/c044_crop.mp4", clip_path: "u/p/m/c044.mp4", rect: { x: 0.3, y: 0.45, w: 0.4, h: 0.4 }, of_asset_id: "montage_c044", song_start: 75.885, job_id: "job_crop" });
+    expect(meta.derived_from).toBeUndefined();
+    expect(w.assignments.length).toBe(before);
+    expect(w.syncs.find((s) => s.performance_asset_id === job.result_asset_id)).toBeUndefined();
+  });
 });

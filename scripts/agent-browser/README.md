@@ -83,3 +83,19 @@ per scene, deadpan.
 
 Every button the storyboard offers has a `data-testid` (`focus-*`, `box-*`, `confirm-*`). A new command is: open the
 shot the same way, click the testid, wait for the app's own toast. Keep the rule: the script presses, the app decides.
+
+
+## Swap in a box (region swap)
+
+A piece of his wardrobe swapped inside a box of a clip already on the board — for a piece that is small in a wide
+shot (shoes at the far end of a platform), or a frame with other people in it. The page (`/projects/<id>/swap`,
+`src/pages/RegionSwapPage.tsx`; also "Swap in a box…" on a performance clip in a shot's Media tab) cuts the box out,
+enlarged to the clip's frame, sends it to `dress-clip` as a crop, and — once the job is done — puts the swapped crop
+back into the box over the original clip. Everything outside the box stays the original footage.
+
+```
+node scripts/agent-browser/avt-press.mjs region-swap --session <s.json> --project <id> --asset <clip id> \
+     --box 0.38,0.6,0.24,0.08 [--window 3.3,4.04] [--pieces <id>,<id>] [--dry-run] --chrome <chrome>
+node scripts/agent-browser/avt-press.mjs region-putback --session <s.json> --project <id> --asset <clip id> \
+     --job <provider job id> --chrome <chrome>
+```
