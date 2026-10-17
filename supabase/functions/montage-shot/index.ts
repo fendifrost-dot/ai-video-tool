@@ -35,6 +35,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   planBrollMontage,
+  planContinuous,
   planMontage,
   type CastFacts,
   type PlateFacts,
@@ -66,6 +67,20 @@ type Body = {
   lines?: string;
   /** Answer with the exact request and send nothing. */
   dryRun?: boolean;
+  /**
+   * One continuous take instead of a montage (_shared/continuousPrompt.ts): one named camera move, no cuts, as long as
+   * the lane allows. `withHim` false = a shot of the place or a detail (no take), even on a performance shot.
+   * `images`: pictures after the place (@Image2 …) — a project asset (assetId) or a wardrobe picture (featureId) — and
+   * what each is, in words.
+   */
+  continuous?: {
+    camera: string;
+    action: string;
+    endMotion: string;
+    seconds?: number;
+    withHim?: boolean;
+    images?: { assetId?: string; featureId?: string; as: string }[];
+  };
 };
 
 type Row = Record<string, unknown>;
@@ -178,7 +193,8 @@ serve(async (req) => {
   if (start == null || end == null) return json(422, { ok: false, error: "shot_has_no_window" });
   const shotType = str(shotRow.shot_type) ?? str(spec.shotType);
   // a shot he is not in is a montage of the place and its people, with no take (plan.ts planBrollMontage)
-  const broll = !!shotType && shotType !== "performance";
+  const continuous = body.continuous && typeof body.continuous === "object" ? body.continuous : null;
+  const broll = continuous ? continuous.withHim === false || (continuous.withHim !== true && !!shotType && shotType !== "performance") : !!shotType && shotType !== "performance";
   const provenance = ((shotRow.generated_json as Row | null)?.provenance as Row | null) ?? null;
   const shot: ShotFacts = {
     id: String(shotRow.id),
@@ -301,7 +317,38 @@ serve(async (req) => {
     : [];
 
   // 4. the request
-  const planned = take
+  // a continuous take's pictures after the place: the caller's own assets or wardrobe pictures, read as the caller (RLS)
+  const contImages: { bucket: string; path: string; as: string }[] = [];
+  for (const im of continuous?.images ?? []) {
+    const as = typeof im?.as === "string" ? im.as.trim() : "";
+    if (!as) return json(400, { ok: false, error: "image_without_words", detail: "say what each picture is (as)" });
+    if (typeof im.assetId === "string" && UUID_RE.test(im.assetId)) {
+      const { data: a } = await user.from("project_assets").select("id, file_url, metadata_json").eq("id", im.assetId).eq("project_id", projectId).maybeSingle();
+      if (!a) return json(404, { ok: false, error: "image_not_found", detail: im.assetId });
+      contImages.push({ bucket: str(((a.metadata_json ?? {}) as Row).bucket) ?? "project-references", path: String(a.file_url), as });
+    } else if (typeof im.featureId === "string" && UUID_RE.test(im.featureId)) {
+      const { data: f } = await user.from("character_features").select("id, storage_path").eq("id", im.featureId).maybeSingle();
+      if (!f || !str(f.storage_path)) return json(404, { ok: false, error: "image_not_found", detail: im.featureId });
+      contImages.push({ bucket: "wardrobe-refs", path: String(f.storage_path), as });
+    } else return json(400, { ok: false, error: "bad_image", detail: "each picture is { assetId } or { featureId }, with as" });
+  }
+  if (contImages.length > 8) return json(400, { ok: false, error: "too_many_images", detail: "at most 8 pictures after the place" });
+  const planned = continuous
+    ? planContinuous({
+        projectId,
+        userId,
+        aspect: project.aspect_ratio,
+        shot,
+        take,
+        plate,
+        camera: String(continuous.camera ?? ""),
+        action: String(continuous.action ?? ""),
+        endMotion: String(continuous.endMotion ?? ""),
+        seconds: continuous.seconds,
+        images: contImages,
+        light,
+      })
+    : take
     ? planMontage({
         projectId,
         userId,
@@ -330,6 +377,8 @@ serve(async (req) => {
     return json(planned.status, { ok: false, error: planned.error, detail: planned.detail });
   const plan = planned.plan;
   const facts = {
+    mode: continuous ? "continuous" : "montage",
+    ...(continuous ? { pictures: contImages.map((i) => ({ path: i.path, as: i.as })) } : {}),
     shot: { id: shot.id, key: shot.key, start: shot.start, end: shot.end },
     take: take
       ? {

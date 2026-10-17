@@ -28,6 +28,7 @@ import {
   type MontageFootwear,
   type MontageScene,
 } from "../_shared/montagePrompt.ts";
+import { CONTINUOUS_VERSION, continuousPrompt, continuousSeconds, continuousSongStart } from "../_shared/continuousPrompt.ts";
 
 /** The run every storyboard button files under (src/lib/storyboard/generate.ts STORYBOARD_RUN). */
 export const STORYBOARD_RUN = "storyboard";
@@ -435,3 +436,99 @@ export function planBrollMontage(input: BrollInput): { ok: true; plan: MontagePl
 
 // which pieces a shot wears lives with the dress words (dress-clip uses it too)
 export { wornPieces } from "../_shared/dressWords.ts";
+
+export type ContinuousInput = {
+  projectId: string;
+  userId: string;
+  aspect: unknown;
+  shot: ShotFacts;
+  /** His dressed take, when he is in the shot (the identity and wardrobe reference, @Video1). */
+  take: TakeFacts | null;
+  plate: PlateFacts;
+  camera: string;
+  action: string;
+  endMotion: string;
+  seconds?: unknown;
+  /** The pictures after the place (@Image2 …), signed by the I/O half, and what each is. */
+  images?: { bucket: string; path: string; as: string }[];
+  light?: string | null;
+};
+
+/**
+ * One continuous take on a shot (montage-shot's `continuous` mode; _shared/continuousPrompt.ts says why): one Seedance
+ * call, as long as the lane allows, no scenes and no beat cuts. With him, his dressed take is @Video1 and the clip is
+ * filed as a take in sync (its mouth is put on the song afterwards by lipsync-shot); without him it is filed as a clip.
+ * Its first frame is placed on the song so the shot's window sits in the middle of it — handles both sides.
+ */
+export function planContinuous(input: ContinuousInput): { ok: true; plan: MontagePlan } | Refusal {
+  const { shot, take, plate } = input;
+  const withHim = !!take;
+  for (const [name, v] of [["camera", input.camera], ["action", input.action], ["endMotion", input.endMotion]] as const)
+    if (typeof v !== "string" || !v.trim()) return refuse(400, `missing_${name}`, `say the ${name === "endMotion" ? "motion it ends on" : name} in words`);
+  if (!(shot.end - shot.start > 0)) return refuse(422, "shot_has_no_length", "the shot's window on the song is empty");
+  if (take && take.seconds > RESTAGE_MAX_SECONDS)
+    return refuse(422, "take_too_long", `the dressed take is ${take.seconds.toFixed(2)} s; at most ${RESTAGE_MAX_SECONDS} s go to the model as a reference`);
+  const seconds = continuousSeconds(input.seconds);
+  const songStart = continuousSongStart(shot.start, shot.end, seconds);
+  const images = input.images ?? [];
+  const prompt = continuousPrompt({
+    seconds,
+    camera: input.camera,
+    action: input.action,
+    endMotion: input.endMotion,
+    withHim,
+    keep: take ? restageKeep({ shows: take.shows }) : undefined,
+    images: images.map((i) => ({ as: i.as })),
+    light: input.light ?? null,
+  });
+  const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds, take ? Math.round(take.seconds) : 0).toFixed(3));
+  const aspect = clipAspect(input.aspect);
+  const body = {
+    promptText: prompt,
+    mode: "reference_to_video",
+    modelVariant: SEEDANCE_MODEL,
+    duration: seconds,
+    resolution: RESTAGE_RESOLUTION,
+    aspectRatio: aspect,
+    generate_audio: false,
+    avt_user_id: input.userId,
+    avt_project_id: input.projectId,
+  };
+  const variant = {
+    version: CONTINUOUS_VERSION,
+    seconds,
+    camera: input.camera.trim(),
+    action: input.action.trim(),
+    endMotion: input.endMotion.trim(),
+    withHim,
+    images: images.map((i) => ({ path: i.path, as: i.as })),
+  };
+  const settings = {
+    batchRun: STORYBOARD_RUN,
+    batchShotId: `${shot.key}_continuous`,
+    route: "seedance_ref",
+    kind: withHim ? "angle" : "world",
+    estimateUsd,
+    lookPreset: DEFAULT_LOOK_PRESET_ID,
+    ...(take ? { sourcePath: take.path, sourceWindow: [0, r3(take.seconds)], sourceAssetId: take.id, sourceSeconds: r3(take.seconds) } : {}),
+    stillPath: plate.path,
+    ...(images.length > 0 ? { extraImages: images.map((i) => ({ bucket: i.bucket, path: i.path })) } : {}),
+    masterStart: songStart,
+    alternate: true as const,
+    variant,
+    ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
+    submittedBy: "montage-shot",
+    lead: 0,
+  };
+  const payload = {
+    promptText: prompt,
+    mode: "reference_to_video",
+    modelVariant: SEEDANCE_MODEL,
+    duration: seconds,
+    aspectRatio: aspect,
+    referenceImagePath: plate.path,
+    shotId: shot.id,
+    settings,
+  };
+  return { ok: true, plan: { seconds, songStart, lead: 0, scenes: [], thing: null, footwear: null, cast: null, prompt, estimateUsd, body, payload } };
+}
