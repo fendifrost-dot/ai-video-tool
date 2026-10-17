@@ -70,8 +70,19 @@ export function compositableTakes(items: readonly BoxMediaItem[]): MediaAsset[] 
     .map((i) => i.asset);
 }
 
-/** The plates of a scene, newest first — the realism stills filed for it under worlds/, usable ones only. */
+/**
+ * The plates of a scene, newest first — the realism stills filed for it under worlds/plate_*, usable ones only: the
+ * EMPTY places he is put in. A scene still with its own people (cast) is never one of them.
+ */
 export function platesOfScene(
+  assets: readonly MediaAsset[],
+  sceneName: string | null,
+): MediaAsset[] {
+  return stillsOfScene(assets, sceneName).filter((a) => !a.plate?.cast);
+}
+
+/** Every usable still of a scene, newest first — empty plates and cast scene stills alike (what may be animated). */
+export function stillsOfScene(
   assets: readonly MediaAsset[],
   sceneName: string | null,
 ): MediaAsset[] {

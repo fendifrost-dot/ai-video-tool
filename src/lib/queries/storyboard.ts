@@ -454,6 +454,8 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
 /**
  * A plate's facts: a world still filed under worlds/plate_* carries the scene it is the place of; a moving plate
  * (lane world_plate_video, filed by the server from a plate_motion job) carries the same and the still it was made from.
+ * A still under worlds/scene_* is the director's picture with its people (cast: true) — animated as it is, never a
+ * background to put him over.
  */
 function plateOf(path: string, meta: unknown): MediaAsset["plate"] {
   const m = meta as { lane?: unknown; scene_title?: unknown; shot_label?: unknown; usable?: unknown; plate_motion?: { still_asset_id?: unknown } | null } | null;
@@ -463,8 +465,8 @@ function plateOf(path: string, meta: unknown): MediaAsset["plate"] {
     const still = m.plate_motion?.still_asset_id;
     return { kind: "video", ...facts, stillAssetId: typeof still === "string" ? still : null };
   }
-  if (m.lane !== "world_still" || !/\/worlds\/plate_/.test(path)) return null;
-  return { kind: "still", ...facts, stillAssetId: null };
+  if (m.lane !== "world_still" || !/\/worlds\/(plate|scene)_/.test(path)) return null;
+  return { kind: "still", ...facts, stillAssetId: null, cast: /\/worlds\/scene_/.test(path) };
 }
 
 function textOf(meta: unknown, key: string): string | null {

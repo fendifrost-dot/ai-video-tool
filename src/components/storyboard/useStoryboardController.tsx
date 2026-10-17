@@ -91,7 +91,7 @@ import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import { MONTAGE_LINES_MAX, defaultMontageLines, footwearLine, montageFootwear, montagePrompt, montageRecord, planMontageScenes, thingOfLabel } from "@/lib/storyboard/montage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
-import { compositesOn, planComposite, platesOfScene, type CompositePlan } from "@/lib/composite/plan";
+import { compositesOn, planComposite, platesOfScene, stillsOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
@@ -1705,8 +1705,9 @@ export function useStoryboardController(projectId: string): StoryboardController
       const scene = outfitOf(box).scene;
       const place = continuitySource(continuityOf(box), { forPlate: true }).placeAssetId;
       const planned = planComposite({ items, assets: media.list, sceneName: scene?.name ?? null, placeAssetId: place, performance: box.spec.shotType === "performance" });
-      // the still to animate is the composite's plate — or, before there is a dressed take, the scene's newest plate
-      const still = planned.ok ? planned.plan.plate : (platesOfScene(media.list, scene?.name ?? null)[0] ?? null);
+      // the still to animate is the composite's plate — or, before there is a dressed take (or in a scene he is not in),
+      // the scene's newest still: an empty plate, or a scene still with its own people (they act, plateMotion v5)
+      const still = planned.ok ? planned.plan.plate : (stillsOfScene(media.list, scene?.name ?? null)[0] ?? null);
       const motion = planPlateMotion({ still, assets: media.list });
       const plateMotion = {
         plan: motion.ok ? motion.plan : null,
@@ -1739,14 +1740,24 @@ export function useStoryboardController(projectId: string): StoryboardController
         .catch(() => undefined)
         .then((url) =>
           setConfirm({
-            title: `Animate the plate of shot ${numberById.get(box.id) ?? ""}?`,
-            input: {
+            title: `Animate the ${plan.cast ? "scene" : "plate"} of shot ${numberById.get(box.id) ?? ""}?`,
+            input: plan.cast
+              ? {
+                  label: "What the people in the picture do (optional — they are the cast; nobody new appears)",
+                  placeholder: "e.g. they sprint out of the store and down the street, the guard right behind them",
+                  maxLength: PLATE_EVENT_MAX,
+                  testId: "confirm-animate-plate-event",
+                }
+              : {
               label: "Something absurd that happens in the place (optional — one eye-catching thing in the street or the distance; the centre stays yours)",
               placeholder: "e.g. a riderless white horse gallops down the expressway between the cars",
               maxLength: PLATE_EVENT_MAX,
               testId: "confirm-animate-plate-event",
             },
-            body:
+            body: plan.cast
+              ? `${plan.cost.text}. The scene still (${plan.still.name}) is your picture with its own people: they are the ones who act, the same faces and clothes from the first frame to the last, and the camera follows like a news camera. ` +
+                `The ${plan.seconds} s clip is filed on the scene; it lands on no shot and selects nothing. It takes a few minutes and finishes even if you close this page.`
+              :
               `${plan.cost.text}. The plate still (${plan.still.name}) is sent to the video model with a locked-off camera: the street's traffic, lights and passers-by move, the framing does not. ` +
               `The ${plan.seconds} s clip is filed as a moving plate of the scene — every composite of this scene made after it goes over it instead of the still (a take longer than the clip holds its last frame). ` +
               "It lands on no shot and selects nothing. It takes a few minutes and finishes even if you close this page." +

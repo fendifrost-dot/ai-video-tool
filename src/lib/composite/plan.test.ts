@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BoxMediaItem, MediaAsset } from "@/lib/storyboard/media";
-import { compositableTakes, compositesOn, planComposite, plateOffsetSeconds, platesOfScene } from "./plan";
+import { compositableTakes, compositesOn, planComposite, plateOffsetSeconds, platesOfScene, stillsOfScene } from "./plan";
 
 function asset(over: Partial<MediaAsset> & { id: string }): MediaAsset {
   return {
@@ -182,6 +182,17 @@ describe("planComposite", () => {
     expect(
       planComposite(facts({ items: [item(dressed("long", { durationSeconds: 61 }))] })),
     ).toMatchObject({ ok: false, why: expect.stringContaining("60 s") });
+  });
+
+  it("a scene still with its own people is animated, never a background to put him over", () => {
+    const empty = plate("empty", "Oak Street", { createdAt: "2026-10-17T03:28:00Z" });
+    const cast = plate("cast", "Oak Street", {
+      path: "worlds/scene_oak_street_cast.png",
+      createdAt: "2026-10-17T03:40:00Z",
+      plate: { kind: "still", sceneTitle: "Oak Street", shotLabel: "scene_oak_street", usable: true, cast: true },
+    });
+    expect(platesOfScene([empty, cast], "Oak Street").map((p) => p.id)).toEqual(["empty"]);
+    expect(stillsOfScene([empty, cast], "Oak Street").map((p) => p.id)).toEqual(["cast", "empty"]);
   });
 
   it("lists a scene's plates and a shot's composites", () => {

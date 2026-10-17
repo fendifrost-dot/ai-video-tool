@@ -32,6 +32,32 @@ const asset = (over: Partial<MediaAsset>): MediaAsset => ({
   ...over,
 });
 
+describe("a scene still with its own people (v5)", () => {
+  const cast = asset({
+    id: "scene-1",
+    path: "u/p/worlds/scene_oak_street_1.png",
+    plate: { kind: "still", sceneTitle: "Oak Street, the chase", shotLabel: "scene_oak_street", usable: true, stillAssetId: null, cast: true },
+  });
+  it("lets the people in the picture act, keeps them the same, and lets the camera follow", () => {
+    const r = planPlateMotion({ still: cast, assets: [cast], event: "they sprint out of the store, the guard behind them" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.plan.cast).toBe(true);
+    expect(r.plan.prompt.startsWith("they sprint out of the store, the guard behind them — it plays out fully")).toBe(true);
+    expect(r.plan.prompt).toContain("the same faces, the same clothes, the same things in their hands; nobody new appears");
+    expect(r.plan.prompt).toContain("handheld news camera");
+    expect(r.plan.prompt).not.toContain("Locked-off camera");
+    expect(r.plan.prompt).not.toContain("centre foreground");
+    expect(plateMotionSettings({ still: cast, seconds: 5, prompt: r.plan.prompt, event: r.plan.event }).cast).toBe(true);
+  });
+  it("an empty plate keeps the locked-off camera and the empty centre", () => {
+    const p = plateMotionPrompt("a horse gallops by");
+    expect(p).toContain("Locked-off camera");
+    expect(p).toContain("The centre foreground stays empty");
+    expect(plateMotionPrompt("a horse gallops by", false)).toBe(p);
+  });
+});
+
 describe("planPlateMotion", () => {
   it("animates a realism still and prices five seconds of Kling; a moving plate is not animated again", () => {
     const still = asset({ id: "still-1" });
@@ -135,7 +161,7 @@ describe("the absurd event", () => {
     expect(long.ok && long.plan.event!.length).toBe(PLATE_EVENT_MAX);
     const s = plateMotionSettings({ still, seconds: 5, prompt: r.plan.prompt, event: r.plan.event });
     expect(s.event).toBe(r.plan.event);
-    expect(s.version).toBe("plate-motion-v4-2026-10-16");
+    expect(s.version).toBe("plate-motion-v5-2026-10-17");
     // v4: the life is only what belongs to the place — v3's "cars and buses pass along the street" put a bus on a platform
     expect(r.plan.prompt).toContain("only what belongs to it");
     expect(r.plan.prompt).toContain("no vehicle where there is no road");
