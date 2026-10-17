@@ -15,7 +15,14 @@ import { pairedReader } from "@/lib/composite/render";
 import { edgeWeight, featherFor, windowWeight, type PixelRect } from "./plan";
 
 export type Clip = { read: RangeRead; track: Mp4Track };
-export type Rendered = { bytes: Uint8Array; frames: number; seconds: number; width: number; height: number; fps: number };
+export type Rendered = {
+  bytes: Uint8Array;
+  frames: number;
+  seconds: number;
+  width: number;
+  height: number;
+  fps: number;
+};
 
 type Canvas = OffscreenCanvas | HTMLCanvasElement;
 type Ctx = OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
@@ -31,11 +38,19 @@ function canvas(w: number, h: number): { c: Canvas; ctx: Ctx } {
   return { c, ctx };
 }
 
-/** The blend weights of a box: 1 inside, smoothly to 0 at its edges (plan.ts edgeWeight), one per pixel of the box. */
-export function weightMap(rect: PixelRect, feather = featherFor(rect)): Float32Array {
+/**
+ * The blend weights of a box: 1 inside, smoothly to 0 at its edges (plan.ts edgeWeight), one per pixel of the box.
+ * With `frame`, the sides on the frame's border stay at 1.
+ */
+export function weightMap(
+  rect: PixelRect,
+  feather = featherFor(rect),
+  frame?: { width: number; height: number },
+): Float32Array {
   const m = new Float32Array(rect.w * rect.h);
   for (let y = 0; y < rect.h; y++)
-    for (let x = 0; x < rect.w; x++) m[y * rect.w + x] = edgeWeight(rect.x + x, rect.y + y, rect, feather);
+    for (let x = 0; x < rect.w; x++)
+      m[y * rect.w + x] = edgeWeight(rect.x + x, rect.y + y, rect, feather, frame);
   return m;
 }
 
@@ -70,7 +85,9 @@ async function encodeClip(
   clip: Clip,
   w: number,
   h: number,
-  produce: (emit: (src: Canvas | Uint8ClampedArray, seconds: number) => Promise<void>) => Promise<void>,
+  produce: (
+    emit: (src: Canvas | Uint8ClampedArray, seconds: number) => Promise<void>,
+  ) => Promise<void>,
   onProgress?: (done: number, total: number) => void,
 ): Promise<Rendered> {
   if (typeof VideoEncoder === "undefined") throw new Error("this browser has no video encoder");
@@ -88,7 +105,12 @@ async function encodeClip(
         avcC =
           d instanceof ArrayBuffer
             ? new Uint8Array(d.slice(0))
-            : new Uint8Array((d as ArrayBufferView).buffer.slice((d as ArrayBufferView).byteOffset, (d as ArrayBufferView).byteOffset + (d as ArrayBufferView).byteLength));
+            : new Uint8Array(
+                (d as ArrayBufferView).buffer.slice(
+                  (d as ArrayBufferView).byteOffset,
+                  (d as ArrayBufferView).byteOffset + (d as ArrayBufferView).byteLength,
+                ),
+              );
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
       out.push({ data, timestamp: chunk.timestamp, key: chunk.type === "key" });
@@ -107,7 +129,13 @@ async function encodeClip(
       const timestamp = Math.max(0, Math.round(seconds * 1e6));
       const frame =
         src instanceof Uint8ClampedArray
-          ? new VideoFrame(src, { format: "RGBA", codedWidth: w, codedHeight: h, timestamp, duration: frameUs })
+          ? new VideoFrame(src, {
+              format: "RGBA",
+              codedWidth: w,
+              codedHeight: h,
+              timestamp,
+              duration: frameUs,
+            })
           : new VideoFrame(src as CanvasImageSource, { timestamp, duration: frameUs });
       try {
         encoder.encode(frame, { keyFrame: kept === 0 });
@@ -159,7 +187,11 @@ export async function renderCrop(input: {
       let t0: number | null = null;
       for await (const f of readFrames(clip.read, clip.track)) {
         if (t0 == null) t0 = f.t;
-        src.ctx.putImageData(new ImageData(f.rgba as Uint8ClampedArray<ArrayBuffer>, f.width, f.height), 0, 0);
+        src.ctx.putImageData(
+          new ImageData(f.rgba as Uint8ClampedArray<ArrayBuffer>, f.width, f.height),
+          0,
+          0,
+        );
         dst.ctx.drawImage(src.c as CanvasImageSource, rect.x, rect.y, rect.w, rect.h, 0, 0, w, h);
         await emit(dst.c, f.t - t0);
       }
@@ -183,7 +215,7 @@ export async function renderPutBack(input: {
   const reader = pairedReader(readFrames(swapped.read, swapped.track), "the swapped crop");
   const sw = canvas(w, h);
   const box = canvas(rect.w, rect.h);
-  const weights = weightMap(rect);
+  const weights = weightMap(rect, featherFor(rect), { width: w, height: h });
   try {
     const r = await encodeClip(
       original,
@@ -194,11 +226,28 @@ export async function renderPutBack(input: {
         for await (const f of readFrames(original.read, original.track)) {
           if (t0 == null) t0 = f.t;
           const seconds = f.t - t0;
-          if (f.width !== w || f.height !== h) throw new Error("the clip's frames are not the size it says");
-          const s = byIndex ? await reader.step() : await reader.at(seconds, (t) => t - reader.first);
-          sw.ctx.putImageData(new ImageData(s.rgba as Uint8ClampedArray<ArrayBuffer>, s.width, s.height), 0, 0);
+          if (f.width !== w || f.height !== h)
+            throw new Error("the clip's frames are not the size it says");
+          const s = byIndex
+            ? await reader.step()
+            : await reader.at(seconds, (t) => t - reader.first);
+          sw.ctx.putImageData(
+            new ImageData(s.rgba as Uint8ClampedArray<ArrayBuffer>, s.width, s.height),
+            0,
+            0,
+          );
           box.ctx.clearRect(0, 0, rect.w, rect.h);
-          box.ctx.drawImage(sw.c as CanvasImageSource, 0, 0, s.width, s.height, 0, 0, rect.w, rect.h);
+          box.ctx.drawImage(
+            sw.c as CanvasImageSource,
+            0,
+            0,
+            s.width,
+            s.height,
+            0,
+            0,
+            rect.w,
+            rect.h,
+          );
           const patch = box.ctx.getImageData(0, 0, rect.w, rect.h).data;
           const frame = new Uint8ClampedArray(f.rgba);
           blendBox(frame, w, patch, rect, weights, windowWeight(seconds, input.window));

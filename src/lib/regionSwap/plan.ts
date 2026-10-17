@@ -11,7 +11,7 @@
  * Pure: the box on the frame, the put-back weights, the timing. The rendering is render.ts; the filing is file.ts.
  */
 
-export const REGION_SWAP_VERSION = "region-swap-v1-2026-10-17";
+export const REGION_SWAP_VERSION = "region-swap-v2-2026-10-17";
 
 /** A box on the clip's frame, 0–1 of its width and height. */
 export type Box = { x: number; y: number; w: number; h: number };
@@ -62,15 +62,37 @@ export function cropRect(box: Box, width: number, height: number): PixelRect {
 /** The pixel rectangle back as a 0–1 box (what is recorded and sent with the swap). */
 export function boxOf(rect: PixelRect, width: number, height: number): Box {
   const r = (n: number) => Math.round(n * 1e4) / 1e4;
-  return { x: r(rect.x / width), y: r(rect.y / height), w: r(rect.w / width), h: r(rect.h / height) };
+  return {
+    x: r(rect.x / width),
+    y: r(rect.y / height),
+    w: r(rect.w / width),
+    h: r(rect.h / height),
+  };
 }
 
-/** How far the swapped picture is blended in at a point of the box: 1 inside, falling smoothly to 0 at its edges. */
-export function edgeWeight(px: number, py: number, rect: PixelRect, feather: number): number {
-  const dx = Math.min(px - rect.x, rect.x + rect.w - 1 - px);
-  const dy = Math.min(py - rect.y, rect.y + rect.h - 1 - py);
+/**
+ * How far the swapped picture is blended in at a point of the box: 1 inside, falling smoothly to 0 at its edges.
+ * A side of the box that lies on the frame's own border (given `frame`) is not faded: there is no original picture
+ * beyond it to meet, and fading it would bring the original back exactly where the piece runs out of frame.
+ */
+export function edgeWeight(
+  px: number,
+  py: number,
+  rect: PixelRect,
+  feather: number,
+  frame?: { width: number; height: number },
+): number {
+  if (px < rect.x || px > rect.x + rect.w - 1 || py < rect.y || py > rect.y + rect.h - 1) return 0;
+  const open = (onBorder: boolean, d: number) => (onBorder ? Infinity : d);
+  const dx = Math.min(
+    open(!!frame && rect.x <= 0, px - rect.x),
+    open(!!frame && rect.x + rect.w >= frame.width, rect.x + rect.w - 1 - px),
+  );
+  const dy = Math.min(
+    open(!!frame && rect.y <= 0, py - rect.y),
+    open(!!frame && rect.y + rect.h >= frame.height, rect.y + rect.h - 1 - py),
+  );
   const d = Math.min(dx, dy);
-  if (d < 0) return 0;
   if (feather <= 0 || d >= feather) return 1;
   const t = d / feather;
   return t * t * (3 - 2 * t); // smoothstep: no visible line where the blend starts
@@ -87,7 +109,7 @@ export function windowWeight(seconds: number, window: [number, number] | null): 
   const [a, b] = window;
   if (seconds < a - WINDOW_FADE_SECONDS || seconds > b + WINDOW_FADE_SECONDS) return 0;
   if (seconds < a) return (seconds - (a - WINDOW_FADE_SECONDS)) / WINDOW_FADE_SECONDS;
-  if (seconds > b) return ((b + WINDOW_FADE_SECONDS) - seconds) / WINDOW_FADE_SECONDS;
+  if (seconds > b) return (b + WINDOW_FADE_SECONDS - seconds) / WINDOW_FADE_SECONDS;
   return 1;
 }
 
@@ -105,6 +127,7 @@ export function parseBox(text: string | null | undefined): Box | null {
 export function parseWindow(text: string | null | undefined): [number, number] | null {
   if (!text) return null;
   const n = text.split(",").map((v) => Number(v.trim()));
-  if (n.length !== 2 || n.some((v) => !Number.isFinite(v)) || !(n[1] > n[0]) || n[0] < 0) return null;
+  if (n.length !== 2 || n.some((v) => !Number.isFinite(v)) || !(n[1] > n[0]) || n[0] < 0)
+    return null;
   return [n[0], n[1]];
 }
