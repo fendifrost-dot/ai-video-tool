@@ -655,7 +655,7 @@ DONE (VERIFIED from the filed assets and the review sheets):
 - Wardrobe data changed (the tool's own lane): the coat `fb82c0d2` relabelled "Glossy black leather car coat - Noir"
   with construction words (product name in metadata); the Y cap `f1dc9486` got construction words.
 - Tool: per-shot **Frame** (punch-in, `override_json.reframe`, render contract v3) and montage-shot no longer
-  re-shoots a take marked `usable:false` — PR below. CODED, not live until Publish + montage-shot redeploy.
+  re-shoots a take marked `usable:false` — PR #318, merged `943ad5c`. LIVE (VERIFIED 09:2x UTC): Lovable redeployed montage-shot + avt-mcp from 943ad5c (both 401 to unauthenticated calls; montage-shot dry run on c031 → 200, b-roll path, nothing spent); frontend Publish sent (deployment `8de820b3`). Not yet watched in a real browser: the Frame panel (full-screen shot → Frame) — check it once on device.
 
 FLAGS for Fendi (OBSERVED): c009 cap is plain black (no ivory Y); c030 glasses read tinted in profile under street
 light; c021 geese wear parkas with a red roundel that reads as Canada Goose.
