@@ -6,7 +6,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { lyricsForShot, lyricStateForShot, type ShotLyric } from "@/lib/lyrics/lyricsForShot";
+import { lyricsForShot, lyricStateForShot, type LyricLine, type ShotLyric } from "@/lib/lyrics/lyricsForShot";
 import { projectAssetsKeys } from "@/lib/queries/projectAssets";
 import { projectsKeys } from "@/lib/queries/projects";
 import { useBoxJobs, type BoxJobStatus } from "@/lib/queries/boxJobs";
@@ -95,7 +95,7 @@ import { MONTAGE_LINES_MAX, castLine, defaultMontageLines, montagePrompt, montag
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, stillsOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
-import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
+import { planFootageEdit, slippedSync, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
   imageForClip,
@@ -119,7 +119,7 @@ import { energyForWindow } from "@/lib/storyboard/rewrite";
 import { buildClipGrid, type ClipEnergy } from "@/lib/treatment/grid";
 import { DEFAULT_MOTION_TEMPLATE, regenerateShotFromLyrics, type RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
 import { directorNotes, fingerprint, hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
-import { mediaRefKey, playbackRef, useSignedRefs } from "./signedUrls";
+import { mediaRefKey, playbackRef, useSignedRefs, type MediaRef } from "./signedUrls";
 import { signedUrl } from "@/lib/storage";
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
@@ -194,6 +194,10 @@ export type StoryboardController = {
   /** The signed link to play/show an asset (undefined until signed). */
   urlFor: (asset: MediaAsset) => string | undefined;
   lyricsOf: (box: StoryboardBox) => { lines: ShotLyric[]; state: "lyrics" | "instrumental" | "unknown" };
+  /** Every timed lyric line of the song, whole (the Lyric sync panel lines a take up against them). */
+  songLines?: readonly LyricLine[];
+  /** The song itself, to play under a take while it is lined up (project-audio). Null before one is uploaded. */
+  song?: MediaRef | null;
   energyOf: (box: StoryboardBox) => ClipEnergy | null;
   jobOf: (box: StoryboardBox) => BoxJobStatus | null;
   busyOf: (boxId: string) => string | null;
@@ -378,6 +382,7 @@ export const STALE_SHOT_WARNING =
   "NOTE: this shot was written from an earlier version of the treatment and has not been rewritten since — what is generated follows the old scene, not the treatment as it stands.";
 
 const Ctx = createContext<StoryboardController | null>(null);
+const EMPTY_LINES: readonly LyricLine[] = [];
 
 export function StoryboardProvider({ value, children }: { value: StoryboardController; children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -408,6 +413,8 @@ export function useStoryboardController(projectId: string): StoryboardController
   const entityMutations = useContinuityMutations(projectId);
 
   const boxes = useMemo(() => boxesQuery.data ?? [], [boxesQuery.data]);
+  const songPath = media.song?.file_url ?? null;
+  const songRef = useMemo<MediaRef | null>(() => (songPath ? { bucket: "project-audio", path: songPath } : null), [songPath]);
   const assignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
   const syncs = useMemo(() => syncsQuery.data ?? [], [syncsQuery.data]);
   const doc = useMemo(() => parseTreatmentDoc(project?.treatment_json), [project?.treatment_json]);
@@ -865,7 +872,7 @@ export function useStoryboardController(projectId: string): StoryboardController
 
   const editFootage = useCallback(
     (box: StoryboardBox, assetId: string, action: FootageEditAction) =>
-      run(box, action.do === "exclude" ? "leaving it out…" : action.do === "trim" ? "trimming…" : "putting it back…", async () => {
+      run(box, action.do === "exclude" ? "leaving it out…" : action.do === "trim" ? "trimming…" : action.do === "slip" ? "moving it…" : "putting it back…", async () => {
         const { ops, refused } = planFootageEdit({ assignments, box, assetId, action });
         if (refused) {
           toast.error(refused);
@@ -1543,7 +1550,11 @@ export function useStoryboardController(projectId: string): StoryboardController
               record: i.asset.derivedFrom!.dress,
               box,
               outfit: now,
-              parentSync: syncs.find((s) => s.performanceAssetId === parentId) ?? null,
+              // held against the parent as THIS shot plays it: its sync, shifted by any hand slip (restageSource does the same)
+              parentSync: (() => {
+                const s = syncs.find((x) => x.performanceAssetId === parentId) ?? null;
+                return s ? slippedSync(s, items.find((x) => x.asset.id === parentId)?.edit?.slip ?? 0) : null;
+              })(),
               parentSeconds: media.byId.get(parentId)?.durationSeconds ?? null,
               now: { sourceAssetId: src.ok ? src.source.take.id : null, ...(plan ? { references: plan.references, prompt: plan.prompt } : {}) },
             }),
@@ -1894,6 +1905,8 @@ export function useStoryboardController(projectId: string): StoryboardController
       lines: lyricLines ? lyricsForShot(lyricLines, { start: box.start, end: box.end }) : [],
       state: lyricLines ? lyricStateForShot(lyricLines, { start: box.start, end: box.end }) : "unknown",
     }),
+    songLines: lyricLines ?? EMPTY_LINES,
+    song: songRef,
     energyOf: (box) => (beatGrid.length ? energyForWindow(box, beatGrid) : null),
     jobOf: (box) => jobs.byKey[box.key] ?? null,
     busyOf: (id) => busy[id] ?? null,

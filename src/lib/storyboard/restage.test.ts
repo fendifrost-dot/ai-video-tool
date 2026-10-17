@@ -40,6 +40,17 @@ describe("which take a performance shot restages", () => {
     expect(r.source.takeOut - r.source.takeIn).toBeCloseTo(3.92, 3);
   });
 
+  it("hands on the sync as this shot plays it when the take is slipped, so a clip made from it lands where it was lined up", () => {
+    const row = assign("a1", "take1", "performance", { isPrimary: true, slip: 0.5 });
+    const m = boxMedia({ box: b, assignments: [row], assets: new Map([[take.id, take]]), syncs: [sync()] });
+    const r = restageSource(m.items, [sync()]);
+    if (!r.ok) throw new Error(r.why);
+    expect(r.source.takeIn).toBeCloseTo(46.2062 - 0.5, 3);
+    expect(r.source.sync.offsetSeconds).toBeCloseTo(0.8538 + 0.5, 6);
+    // the in-point and the sync agree: the in-point plays at the shot's start
+    expect(r.source.takeIn + r.source.sync.offsetSeconds).toBeCloseTo(b.start, 3);
+  });
+
   it("says why when there is nothing to restage", () => {
     expect(restageSource([], [])).toMatchObject({ ok: false });
     // a take that only reaches part of the shot is not restaged whole

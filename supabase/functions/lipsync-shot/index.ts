@@ -301,9 +301,14 @@ serve(async (req) => {
     .eq("performance_asset_id", assetId)
     .maybeSingle();
   if (syncErr) return json(500, { ok: false, error: "sync_lookup_failed", detail: syncErr.message });
-  const songStart = num(syncRow?.offset_seconds);
-  if (songStart == null || syncRow?.status === "rejected")
+  const synced = num(syncRow?.offset_seconds);
+  if (synced == null || syncRow?.status === "rejected")
     return json(400, { ok: false, error: "clip_not_on_the_song", detail: "the clip has no usable performance sync: it has no place on the song to be lip-synced to" });
+  // a clip lined up by hand on this shot (Lyric sync: shot_asset_assignments.slip_seconds) plays that much later than
+  // its sync, so its vocals are cut from there; "*" so a database without the column reads as no slip
+  const { data: slipRows } = await user.from("shot_asset_assignments").select("*").eq("shot_id", shot.id).eq("asset_id", assetId).eq("role", "performance").limit(1);
+  const slip = num((slipRows?.[0] as Row | undefined)?.slip_seconds) ?? 0;
+  const songStart = Math.round((synced + slip) * 1e4) / 1e4;
   const window = songWindowOf(songStart, clipSeconds);
   const derived = (clipMeta.derived_from ?? {}) as Row;
   const sourceMethod = str(derived.method) ?? "take";

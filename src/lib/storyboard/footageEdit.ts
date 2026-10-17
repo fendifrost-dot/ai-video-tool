@@ -18,6 +18,13 @@
  *   sync — the one tested function, `takeRangeForBox` — makes that true by construction, and keeps the trim
  *   correct if the sync offset is later corrected or the box is moved, split or merged.
  *
+ * WHY A SLIP IS A SHIFT OF THE SYNC, NOT A SOURCE IN-POINT
+ *   The one edit that does move the footage: "on this shot, play the take s seconds later than the sync puts it" —
+ *   a hand alignment of the mouth to the lyrics (Fendi, 17 Oct 2026). It is carried on this variation's own row as
+ *   seconds of shift (`slip_seconds`) and applied to the sync inside `takeCoverage`, so the in-point is still
+ *   derived on every read and still right when the box is moved or the sync corrected. The project's sync is
+ *   never written. lyricSync.ts says what a slip lines up with.
+ *
  * WHY EXCLUSION IS A ROW AND NOT AN ABSENCE
  *   A synced take that covers a box is offered under it as the base layer whether or not anybody asked for it.
  *   So "no row" cannot mean "not used here" — it means nobody has decided. An exclusion is a row that says the
@@ -102,9 +109,13 @@ export type FootageEdit = {
   tail: number;
   /** The director decided this take is NOT used here. Distinct from never having been put on the box. */
   excluded: boolean;
+  /** Seconds the take plays LATER on this box than the sync puts it (negative: earlier). 0: as the sync says. */
+  slip: number;
 };
 
-export const NO_EDIT: FootageEdit = { head: 0, tail: 0, excluded: false };
+export const NO_EDIT: FootageEdit = { head: 0, tail: 0, excluded: false, slip: 0 };
+/** The furthest a take can be slipped (the database's check): further is another moment of the take, not an alignment. */
+export const MAX_SLIP_SECONDS = 30;
 
 /**
  * Where a range came from, so nothing has to guess and the UI can offer "back to the synced coverage":
@@ -114,8 +125,9 @@ export const NO_EDIT: FootageEdit = { head: 0, tail: 0, excluded: false };
  *   unsynced   the take is not matched to the song, so there is no coverage to have
  *   uncovered  the recording has no footage for this part of the song
  *   emptied    trimmed until nothing is left — a removal written as a trim
+ *   slipped    the synced coverage, moved by hand on this box (and maybe trimmed too)
  */
-export type CoverageFrom = "sync" | "trimmed" | "excluded" | "unsynced" | "uncovered" | "emptied";
+export type CoverageFrom = "sync" | "trimmed" | "slipped" | "excluded" | "unsynced" | "uncovered" | "emptied";
 
 export type TakeCoverage = {
   /** In/out inside the take, seconds. Null when there is nothing to play. */
@@ -126,6 +138,8 @@ export type TakeCoverage = {
   /** Seconds of the box left after this take's picture ends. */
   tailOut: number;
   from: CoverageFrom;
+  /** The slip applied, seconds (0: none). */
+  slip: number;
   /** Whether the whole box is covered, for the one case a director must be told about. */
   coverage: "full" | "partial" | "none";
   note: string | null;
@@ -142,6 +156,7 @@ const NOTHING = (
   leadIn,
   tailOut,
   from,
+  slip: 0,
   coverage: "none",
   note,
 });
@@ -154,16 +169,29 @@ export function trimSeconds(v: unknown): number {
   return Number.isFinite(n) && n > 0 ? r4(n) : 0;
 }
 
+/** A slip a director typed, or a column that may be null: seconds, either sign, inside the bound. Never NaN. */
+export function slipSeconds(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return r4(Math.max(-MAX_SLIP_SECONDS, Math.min(MAX_SLIP_SECONDS, n)));
+}
+
 /** The edit stored on an assignment row. Columns absent (an older row, or a stand-in backend) read as no edit. */
 export function editOf(
-  a: Pick<Assignment, "trimHead" | "trimTail" | "excluded"> | null | undefined,
+  a: Pick<Assignment, "trimHead" | "trimTail" | "excluded" | "slip"> | null | undefined,
 ): FootageEdit {
   if (!a) return NO_EDIT;
   return {
     head: trimSeconds(a.trimHead),
     tail: trimSeconds(a.trimTail),
     excluded: a.excluded === true,
+    slip: slipSeconds(a.slip ?? 0),
   };
+}
+
+/** The sync this box plays the take by: the project's, shifted by the box's own slip. */
+export function slippedSync<T extends Pick<PerformanceSync, "offsetSeconds">>(sync: T, slip: number): T {
+  return slip ? { ...sync, offsetSeconds: sync.offsetSeconds + slip } : sync;
 }
 
 /**
@@ -196,7 +224,7 @@ export function takeCoverage(input: {
     );
   }
 
-  const r = takeRangeForBox(trimmed, input.sync, input.takeDurationSeconds);
+  const r = takeRangeForBox(trimmed, slippedSync(input.sync, edit.slip), input.takeDurationSeconds);
   if (!r)
     return NOTHING(
       "uncovered",
@@ -218,7 +246,8 @@ export function takeCoverage(input: {
     sourceOut: r.end,
     leadIn,
     tailOut,
-    from: hasTrim ? "trimmed" : "sync",
+    from: edit.slip ? "slipped" : hasTrim ? "trimmed" : "sync",
+    slip: edit.slip,
     coverage: covered ? "full" : "partial",
     note,
   };
@@ -235,8 +264,10 @@ export type FootageEditAction =
   | { do: "exclude" }
   /** Undo an exclusion, back to whatever trim the row carries. */
   | { do: "restore" }
-  /** Back to the whole synced coverage: no trim, not excluded. */
-  | { do: "reset" };
+  /** Back to the whole synced coverage: no trim, not excluded, not slipped. */
+  | { do: "reset" }
+  /** Move the take on this box by hand: seconds LATER than the sync (negative: earlier). 0 puts it back on the sync. */
+  | { do: "slip"; seconds: number };
 
 export type FootageEditPlan = { ops: AssignmentOp[]; refused: string | null };
 
@@ -245,7 +276,7 @@ export type FootageEditPlan = { ops: AssignmentOp[]; refused: string | null };
  * trimmed or excluded — that insert is part of the plan, so a first trim is one action, not two.
  *
  * Nothing here touches `performance_syncs`, and nothing writes `source_in_seconds`: a performance take's source
- * range is derived every time from the sync and this row's trim. Storing the derived seconds would let a corrected
+ * range is derived every time from the sync and this row's trim and slip. Storing the derived seconds would let a corrected
  * sync and a stored range disagree, with no way to tell which was meant.
  */
 export function planFootageEdit(input: {
@@ -265,10 +296,13 @@ export function planFootageEdit(input: {
     switch (input.action.do) {
       case "trim":
         return {
+          ...current,
           head: trimSeconds(input.action.head),
           tail: trimSeconds(input.action.tail),
           excluded: false,
         };
+      case "slip":
+        return { ...current, slip: slipSeconds(input.action.seconds), excluded: false };
       case "exclude":
         return { ...current, excluded: true };
       case "restore":
@@ -288,14 +322,24 @@ export function planFootageEdit(input: {
     }
   }
 
+  if (input.action.do === "slip" && !Number.isFinite(Number(input.action.seconds)))
+    return { ops: [], refused: "a slip is a number of seconds" };
+  if (input.action.do === "slip" && Math.abs(Number(input.action.seconds)) > MAX_SLIP_SECONDS)
+    return {
+      ops: [],
+      refused: `a slip moves the take at most ${MAX_SLIP_SECONDS} s — further is another moment of it: put that moment on the shot instead`,
+    };
+
   const patch = {
     trim_head_seconds: next.head,
     trim_tail_seconds: next.tail,
     excluded: next.excluded,
+    // only written when it changes, so a backend without the column (before 20261017210000) still trims
+    ...(next.slip !== current.slip ? { slip_seconds: next.slip } : {}),
   };
   if (!row) {
-    // an exclusion or a trim of an offered take: the row is the record of the decision
-    if (next.head === 0 && next.tail === 0 && !next.excluded) return { ops: [], refused: null };
+    // an exclusion, a trim or a slip of an offered take: the row is the record of the decision
+    if (next.head === 0 && next.tail === 0 && !next.excluded && next.slip === 0) return { ops: [], refused: null };
     const onBox = input.assignments.filter((a) => a.shotId === input.box.id);
     return {
       ops: [
@@ -318,7 +362,8 @@ export function planFootageEdit(input: {
   if (
     current.head === next.head &&
     current.tail === next.tail &&
-    current.excluded === next.excluded
+    current.excluded === next.excluded &&
+    current.slip === next.slip
   )
     return { ops: [], refused: null };
   // excluding what the box was showing clears the selection too, or the cut would still reach for it
@@ -343,6 +388,8 @@ export function coverageLabel(c: TakeCoverage): string {
       return c.coverage === "full"
         ? "synced · covers the shot"
         : "synced · covers part of the shot";
+    case "slipped":
+      return `moved ${c.slip > 0 ? "+" : ""}${c.slip.toFixed(2)} s by hand${c.coverage === "full" ? " · covers the shot" : " · covers part of the shot"}`;
     case "trimmed":
       return `trimmed · ${c.leadIn > 0 ? `${c.leadIn.toFixed(2)} s in` : "from the cut"}${c.tailOut > 0 ? `, ${c.tailOut.toFixed(2)} s short of the out` : ""}`;
     case "excluded":

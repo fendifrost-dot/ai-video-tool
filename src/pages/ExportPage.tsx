@@ -8,6 +8,8 @@ import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } fro
 import { aspectOfProject } from "@/lib/project/aspect";
 import { buildTimeline } from "@/lib/storyboard/media";
 import { renderContract, renderReadiness } from "@/lib/storyboard/renderContract";
+import { boardCutCsv, boardCutEdl, boardCutRows } from "@/lib/export/boardCut";
+import { useLyricLines } from "@/lib/queries/lyricLines";
 import { useEventClock } from "@/lib/queries/eventClock";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -75,6 +77,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
   const songQuery = useSongAnalysis(projectId);
   // the same clock Review reads the storyboard's timed events against
   const clock = useEventClock(projectId);
+  const lyricLinesQuery = useLyricLines(projectId);
   const storyboardQuery = useProjectStoryboard(projectId);
   const [manifestId, setManifestId] = useState<string | null>(null);
   const manifestQuery = useTimelineManifest(manifestId ?? undefined);
@@ -99,6 +102,25 @@ export default function ExportPage({ projectId }: { projectId: string }) {
     });
   }, [boxesQuery.data, assignmentsQuery.data, storyboardMedia.byId, storyboardMedia.song, syncsQuery.data, clock, projectQuery.data]);
   const readiness = useMemo(() => (contract ? renderReadiness(contract) : null), [contract]);
+
+  // the board's cut for Premiere: each shot's in-point INSIDE its clip (after any hand slip) and its place on the song,
+  // and whether it holds its lyric lines (export/boardCut.ts)
+  const boardCut = useMemo(() => {
+    const boxes = boxesQuery.data ?? [];
+    if (boxes.length === 0) return null;
+    const timeline = buildTimeline({ boxes, assignments: assignmentsQuery.data ?? [], assets: storyboardMedia.byId, syncs: syncsQuery.data ?? [], clock });
+    return boardCutRows({ timeline, assets: storyboardMedia.byId, lines: lyricLinesQuery.data ?? [] });
+  }, [boxesQuery.data, assignmentsQuery.data, storyboardMedia.byId, syncsQuery.data, clock, lyricLinesQuery.data]);
+  const flagged = useMemo(() => (boardCut ?? []).filter((r) => r.fit === "extend_shot" || r.fit === "needs_clip"), [boardCut]);
+  const download = (name: string, text: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const title = projectQuery.data?.title ?? "board";
 
   const totals = useMemo(() => {
     const assets = assetsQuery.data ?? [];
@@ -293,6 +315,34 @@ export default function ExportPage({ projectId }: { projectId: string }) {
               The app does not make the finished video file yet: the renderer that executes this contract exists and is tested (scripts/render), but it needs a machine that can run ffmpeg, which this app's servers cannot. Until that worker is connected, the
               contract and the files are what leave the app.
             </p>
+          </section>
+        )}
+
+        {boardCut && (
+          <section className="rounded-md border border-border bg-card/30 p-4" data-testid="board-cut">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">The board's cut, for Premiere</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Every shot with the clip it shows, where in that clip it starts (after any lyric-sync slip) and where it sits on the song. Record timecode is song time, so the song on A1 at 00:00:00:00 lines up. Import the EDL in Premiere and relink each clip by its file name. Source timecode counts from the clip's first frame (00:00:00:00): a camera file with its own embedded timecode needs its start set to zero, or it relinks off.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => download("board_cut.edl", boardCutEdl(boardCut, { title }), "text/plain")} data-testid="board-cut-edl">
+                <Download className="mr-1 h-3 w-3" /> board_cut.edl
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => download("board_cut.csv", boardCutCsv(boardCut), "text/csv")} data-testid="board-cut-csv">
+                <Download className="mr-1 h-3 w-3" /> board_cut.csv
+              </Button>
+            </div>
+            {flagged.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-200" data-testid="board-cut-flags">
+                {flagged.map((r) => (
+                  <li key={r.key}>
+                    {r.key} ({r.index}) — {r.fit === "needs_clip" ? "needs a new clip" : "extend the shot"}: {r.note}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground" data-testid="board-cut-flags-none">Every shot with a clip holds its lyric lines.</p>
+            )}
           </section>
         )}
 

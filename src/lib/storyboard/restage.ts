@@ -21,6 +21,7 @@ import { trimVideo } from "@/lib/media/mp4Trim";
 import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { buildStoragePath, signedUrl, uploadBytesToBucket } from "@/lib/storage";
 import { performanceToSong } from "@/lib/sync/performanceSync";
+import { slippedSync } from "./footageEdit";
 import { BatchShotSchema, seedanceUsd, submitShot, type BatchShot, type ExtraImageBucket, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
@@ -61,7 +62,9 @@ export function restageSource(
   if (item.leadIn > 0.05 || (item.note ?? "").includes("only part")) return { ok: false, why: "the take covers only part of this shot — it cannot be restaged whole" };
   const sync = syncs.find((s) => s.performanceAssetId === item.asset.id);
   if (!sync) return { ok: false, why: "the take's match to the song could not be found" };
-  return { ok: true, source: { take: item.asset, sync, takeIn: item.sourceIn, takeOut: item.sourceOut } };
+  // a take lined up by hand on this shot (Lyric sync) plays that much later than its sync: the in/out are already the
+  // slipped ones, so the sync handed on must be too, or the clip made from them is placed back where the sync had it
+  return { ok: true, source: { take: item.asset, sync: slippedSync(sync, item.edit?.slip ?? 0), takeIn: item.sourceIn, takeOut: item.sourceOut } };
 }
 
 /**

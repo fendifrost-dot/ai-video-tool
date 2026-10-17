@@ -1647,6 +1647,7 @@ export type Database = {
           project_id: string
           role: string
           shot_id: string
+          slip_seconds: number
           sort_order: number
           source_in_seconds: number | null
           source_out_seconds: number | null
@@ -1666,6 +1667,7 @@ export type Database = {
           project_id: string
           role: string
           shot_id: string
+          slip_seconds?: number
           sort_order?: number
           source_in_seconds?: number | null
           source_out_seconds?: number | null
@@ -1685,6 +1687,7 @@ export type Database = {
           project_id?: string
           role?: string
           shot_id?: string
+          slip_seconds?: number
           sort_order?: number
           source_in_seconds?: number | null
           source_out_seconds?: number | null

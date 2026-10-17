@@ -221,6 +221,8 @@ type AssignmentRow = {
   trim_head_seconds?: number | null;
   trim_tail_seconds?: number | null;
   excluded?: boolean | null;
+  // this variation's hand alignment of a take (20261017210000 migration)
+  slip_seconds?: number | null;
 };
 
 function assignmentFromRow(r: AssignmentRow): Assignment {
@@ -235,6 +237,7 @@ function assignmentFromRow(r: AssignmentRow): Assignment {
     trimHead: r.trim_head_seconds ?? 0,
     trimTail: r.trim_tail_seconds ?? 0,
     excluded: r.excluded ?? false,
+    slip: r.slip_seconds ?? 0,
     isPrimary: r.is_primary,
     sortOrder: r.sort_order,
     notes: r.notes,
@@ -294,6 +297,7 @@ export async function applyAssignmentOps(projectId: string, ops: readonly Assign
           ...(o.trim_head_seconds != null ? { trim_head_seconds: o.trim_head_seconds } : {}),
           ...(o.trim_tail_seconds != null ? { trim_tail_seconds: o.trim_tail_seconds } : {}),
           ...(o.excluded != null ? { excluded: o.excluded } : {}),
+          ...(o.slip_seconds ? { slip_seconds: o.slip_seconds } : {}),
           updated_at: now,
         },
         { onConflict: "shot_id,asset_id,role" },
