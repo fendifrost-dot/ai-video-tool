@@ -434,3 +434,25 @@ crosses Michigan Avenue behind the line. Saved 02:39:29 UTC; VERIFIED (all three
 c013 (22.65–25.11) / c014 (25.11–26.59); break c018–c021. Not shot; no spend authorised.
 Note: the geese wear visible Canada Goose disc patches — Fendi's own picture and the lyric's brand; the treatment's
 "no logos" line is about the runway clothes.
+
+### 03:02 UTC — "You don't gotta cut the lights on / this ice on": lights off, ice on (Fendi's picture)
+
+Fendi's picture: a dark studio lounge, a man in a black beanie and leather on the couch, iced out (star sparkles off
+chains, rings, bracelets), two friends leaning over the couch, a penguin in a fur coat beside him, a hand flipping an
+old wall switch.
+
+DONE ($0): filed as a director's reference, `project_assets` **`0ae59bc2-cd92-460f-9878-e277db34ea2f`**
+(`project-references/…/references/director_lights_off_ice_on.jpg`, 1376×768). The treatment on `c067efb9…` carries it
+on 14.7–17.5 s (replaces the station blackout): the switch goes off, the room drops to black, his ice keeps lighting
+their faces, the models pass the doorway lit only by his chain. The fur-coat penguin is now the same one that rides
+shotgun in the camera car (one recurring animal). Saved 03:02:09 UTC; VERIFIED (all four of Fendi's scenes present).
+On the board: c008 (13.80–15.28) / c009 (15.28–16.75) / c010 (16.75–18.72). Not shot; no spend authorised.
+
+Verse 1 (14–31 s) is now four of Fendi's pictures in a row — lights off (0ae59bc2) → follow designers (f44a2c32) →
+cameras in the whip (9d4e2253) → Canada Goose (9ad2b670) — then the janitor hallway (still mine, no picture yet).
+
+03:05 UTC — Fendi: "Cut to me (in same scene different angle) rapping YSL I wear em like they white ones." Added to the
+treatment right after the lights-off beat: on 17.5–19.5 s, cut to him in the same dark lounge from a different angle
+(low, to the side of the couch), rapping to camera, lit only by his own ice. Saved 03:05:13 UTC; VERIFIED. This is a
+performance beat: it can come from his own footage placed into the lounge (the montage lane), not a generated
+stand-in. On the board: c010 (16.75–18.72) / c011 (18.72–20.69).
