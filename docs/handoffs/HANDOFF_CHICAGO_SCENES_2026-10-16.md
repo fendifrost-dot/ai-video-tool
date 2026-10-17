@@ -873,3 +873,22 @@ All four are filed on their shots as unselected alternates. E1 and E2 are `role=
 - The first E1 (`998f6690`) stays `usable:false`.
 
 Nothing in this section remains to be done.
+
+### E1 v3 and two fixes waiting on a redeploy (17 Oct, 20:50–21:20 UTC; ledger 143)
+- **E1 v2 rejected** by Fendi: "the way my hands are positioned and fists balled up, it doesn't look good". It is `699a7b63`, marked `usable:false`.
+- **E1 v3** (`ce365795`) was sent with relaxed open hands at his waist and a level head.
+  - OBSERVED: no fists; the jacket is the cleanest yet. He stands in front of the island, so the first ~3 s frame him to the thighs.
+  - Fendi lines up the mouth himself (Lyric sync).
+- **Root cause, in the tool:** `FACE_TO_CAMERA` said "his hands below his chin". It now says "hands low and relaxed, away from his face and collar". Separately, direction lines were silently cut at 600 characters; they are now refused past 1200 (#329, merged `01b9bf9`).
+- **Root cause, in the tool:** a restaged or continuous clip was filed at its SOURCE's length (4 s) instead of the 10 s it was asked for. `restagedFrom` now uses `payload.duration`.
+  - The board rows for E1 `998f6690`, E2 `ad2faff9`, E1 v2 `699a7b63` and E1 v3 `ce365795` were corrected to 10.041667 s (ffprobe; each was 4).
+
+**NOT live: Lovable workspace out of credits.** `send_message` answered "Your workspace is out of credits". Once credits are added, the next agent runs:
+1. **DEPLOY ONLY on AVT** (`bd21b544-…`): redeploy `montage-shot`, `provider-jobs-tick` and `lipsync-shot` from main.
+   - All three bundle `_shared/jobProgress.ts`, and `montage-shot` also carries #329.
+2. **Verify the hand rule:** dry-run `montage-shot` continuous on c033. The `prompt` must contain `hands low and relaxed, away from his face and collar` and must NOT contain `below his chin`.
+3. **Verify the line limit:** a dry run with an action over 1200 characters must answer `400 line_too_long`.
+4. **Verify the filed length** on the next continuous take: its asset's `metadata_json.duration_seconds` is the asked seconds (10), not 4.
+
+Until then, every continuous take generated is filed as 4 s. Correct it with the measured length, as was done above.
+
