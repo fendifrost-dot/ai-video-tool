@@ -393,3 +393,30 @@ NOT DONE (needs Fendi's read of the treatment first): the board's shots outside 
 treatment (forest, viewing room) and will show "earlier treatment". Next = rewrite those shots from this treatment on
 the copy (writer call, cents) while keeping hook 1's shots and footage; then plates per new location. Do not press
 "Release N shots to be rewritten" without checking it leaves hook 1's footage on its shots.
+
+### 02:19 UTC — "Follow designers": the cashmere goats (Fendi's picture)
+
+Fendi sent a Gemini picture (him at a sewing machine in a mountain pasture, a line of white cashmere goats watching)
+and: the fleece winds off a goat as he sews, then cut to that goat in a cashmere sweater and gold chains — "where I
+say don't follow brands follow designers".
+
+DONE ($0): the picture is filed as a director's reference, `project_assets` **`f44a2c32-4bd9-4fcf-851c-5d9f4115db3d`**
+(`project-references/…/references/director_cashmere_goats.jpg`, 1024×572 — the copy the share page serves; the chat
+upload was 512 px). The treatment on `c067efb9…` now carries the scene on "I don't follow brands, follow designers"
+(19.5–21.3 s) with the shorn goat in the sweater on "the rims 21 don't ride" (21.3–22.7 s); it replaces the
+currency-exchange line. Saved through the Treatment page 02:19:32 UTC; VERIFIED only `c067efb9` has it.
+
+NOT DONE: the shots. On the board this is c011 (18.72–20.69) and c012 (20.69–22.65). Open question for Fendi: him
+or "the man" at the machine. Not shot yet; no spend authorised for it.
+
+### 02:22 UTC — "More cameras in the whip": the camera car (Fendi's picture)
+
+Fendi's picture: inside an SUV under the L tracks, packed with men in black beanies and leather, camcorders and
+monitors mounted everywhere, two filming out of the windows, a penguin in a fur coat in the centre console. "This fits
+when I say More cameras in the whip than a camera crew."
+
+DONE ($0): filed as a director's reference, `project_assets` **`9d4e2253-826a-4f1e-aeab-9052dade08ef`**
+(`project-references/…/references/director_cameras_in_the_whip.jpg`, 1376×768). The treatment on `c067efb9…` carries
+the scene on 23.4–25.1 s (replaces the car-wash line): him and the crew in the car, the models walking the sidewalk
+outside the windows the camcorders film, the penguin in the fur coat riding shotgun. Saved 02:22:32 UTC; VERIFIED.
+On the board: c012 (20.69–22.65) / c013 (22.65–25.11). Not shot; no spend authorised.
