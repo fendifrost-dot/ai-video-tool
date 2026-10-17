@@ -17,7 +17,7 @@
  */
 import { NEVER_WIDER } from "./restage";
 
-export const MONTAGE_VERSION = "montage-v4-2026-10-17";
+export const MONTAGE_VERSION = "montage-v5-2026-10-17";
 /** The longest scene list the dialog takes. */
 export const MONTAGE_LINES_MAX = 1200;
 /** Scenes shorter than this are not asked for: the model cannot cut faster than it renders. */
@@ -40,10 +40,18 @@ export const MONTAGE_SYNC =
 /**
  * Never a shot of his shoes (Fendi, 17 Oct 2026: "no more shoe shots"). With his shoe picture beside the place, the
  * model made the shoes a subject — a cutaway to his Pradas on the Oak Street window montage. The picture stays (a
- * wide frame that shows his feet still has to show that pair); the shoes are never a scene of their own.
+ * frame that catches his feet still has to show that pair); the shoes are never a scene of their own.
  */
 export const NO_FEET =
-  "No scene is a shot of his shoes or his feet: never a close-up of them, never a cutaway or a tilt down to them; his shoes are only ever seen in passing in a wider frame.";
+  "No scene is a shot of his shoes or his feet: never a close-up of them, never a cutaway or a tilt down to them.";
+
+/**
+ * Never a full-body shot of him (Fendi, 17 Oct 2026: "Stop the full body shots"). The dress swaps his jacket, cap and
+ * glasses reliably; his trousers and shoes are where it drifts, and a wide frame shows them. Every shot of him is
+ * framed from the waist up or closer.
+ */
+export const WAIST_UP =
+  "Every shot of him is from the waist up or closer — a medium shot, a medium close-up or a close-up; never a full-body or wide shot of him, his legs and shoes out of the frame.";
 
 export type MontageScene = { from: number; to: number; text: string };
 
@@ -155,7 +163,7 @@ export function montageScript(scenes: readonly MontageScene[]): string {
  * the performer… Re-shoot the exact same performance from a second camera: <this>", the keep list and the place.
  */
 export function montagePrompt(scenes: readonly MontageScene[]): string {
-  return [`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`, montageScript(scenes), MONTAGE_SYNC, NEVER_WIDER, NO_FEET].join(" ");
+  return [`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`, montageScript(scenes), MONTAGE_SYNC, NEVER_WIDER, NO_FEET, WAIST_UP].join(" ");
 }
 
 /**
