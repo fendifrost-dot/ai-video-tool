@@ -616,6 +616,12 @@ account (higgsfield.ai web/MCP plan credits: 10 registration credits, spent 10�
 Control Center spend in its `transactions`). Plan credits and the API's dollar balance are separate wallets; buying
 plan credits or a subscription does NOT unblock the tool. Plan-vs-API assessment: `docs/recipes/MONTAGE_MUSIC_VIDEO_WORKFLOW.md`.
 
+SCOPE CHANGE (Fendi, 17 Oct): the deliverable is a **1-minute Instagram cut, not the full song** — song 0–61.0 s,
+c001–c034 (c034 ends on 61.01). VERIFIED: c009's dress succeeded (job `1bb0a129`, 06:29 UTC). Left for the minute:
+13 dresses (c010 c011 c013 c016 c017 c023 c025 c027 c028 c030 c031 c033 c034) $35.41 + 14 performance montages
+(c009–c034 above) $31.07 + 3 b-roll retries (c021 c026 c029) $5.55 = **$72.03 list** (+ $2.22 for the c010 grill
+A/B). Shots after c034 are out of scope unless Fendi asks.
+
 TO RESUME (agent, after the top-up; every step is the tool's own lane):
 1. Dry run one montage (`avt_montage` dry_run) to confirm, then shoot the 28 b-roll retries — lines in the session
    scratchpad `prod/broll_retry.json` (the three reworded: c021, c026, c029).
