@@ -77,6 +77,7 @@ describe("the Deno copy of the montage's words is the app's, word for word", () 
   it("no shots of his feet, the cast, the b-roll montage and its scenes over the shot's own seconds", () => {
     expect(edge.NO_FEET).toBe(app.NO_FEET);
     expect(edge.BROLL_PLACE).toBe(app.BROLL_PLACE);
+    expect(edge.BROLL_NO_FEET).toBe(app.BROLL_NO_FEET);
     for (const n of [1, 2, 3]) expect(edge.castLine(n)).toBe(app.castLine(n));
     for (const [lines, shot, render] of [
       ["one\ntwo\nthree", 1.48, 4],

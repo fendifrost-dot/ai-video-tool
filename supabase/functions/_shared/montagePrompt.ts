@@ -5,7 +5,7 @@
 // holds the two copies together word for word, so a montage shot from the MCP (montage-shot) is the montage the
 // storyboard's own button shoots.
 
-export const MONTAGE_VERSION = "montage-v2-2026-10-17";
+export const MONTAGE_VERSION = "montage-v3-2026-10-17";
 export const MONTAGE_LINES_MAX = 1200;
 export const MONTAGE_MIN_SCENE_SECONDS = 0.4;
 export const MONTAGE_MAX_SCENES = 8;
@@ -171,6 +171,9 @@ export function castLine(image: number): string {
 /** A montage of a shot he is not in (montage.ts brollMontagePrompt): the place, its people and the camera only. */
 export const BROLL_PLACE =
   "Everything happens in the place of @Image1, in its light and its weather; the people in it and the camera move, nothing is pasted in.";
+/** No shoe shots of anyone (Fendi, 17 Oct 2026: "no more shoe shots" — a b-roll montage opened on running boots). */
+export const BROLL_NO_FEET =
+  "No scene is a close-up of anyone's shoes or feet: never a cutaway or a tilt down to them.";
 export function brollMontagePrompt(
   scenes: readonly MontageScene[],
   castImage: number | null = null,
@@ -179,6 +182,7 @@ export function brollMontagePrompt(
     `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
     montageScript(scenes),
     BROLL_PLACE,
+    BROLL_NO_FEET,
     castImage != null ? castLine(castImage) : "",
   ]
     .filter(Boolean)
