@@ -4,6 +4,7 @@ import {
   type EditSequence,
 } from "../../../supabase/functions/edit-render/model";
 import { clipAtTime, formatTimecode, sourceTimeAt, songTimeAt } from "@/lib/editor/playback";
+import { needsSeek, seekMediaExact, snapToFrame } from "@/lib/editor/mediaSeek";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -14,13 +15,70 @@ type Props = {
   mediaByAsset: Record<string, string>;
   songUrl: string | null;
   compareUrl?: string | null;
+  /** Source time on the compare video (original take clock — not song time). */
+  compareSourceTime?: number | null;
   compareLabel?: string | null;
+  compareNote?: string | null;
   className?: string;
 };
+
+async function syncElement(
+  el: HTMLMediaElement | null,
+  url: string | null,
+  targetTime: number,
+  playing: boolean,
+  playbackRate: number,
+  fps: number,
+) {
+  if (!el || !url) return;
+  if (el.dataset.src !== url) {
+    el.dataset.src = url;
+    el.src = url;
+    // Wait briefly for metadata so the first paused seek lands.
+    await new Promise<void>((resolve) => {
+      if (el.readyState >= 1) {
+        resolve();
+        return;
+      }
+      const done = () => {
+        el.removeEventListener("loadedmetadata", done);
+        resolve();
+      };
+      el.addEventListener("loadedmetadata", done);
+      setTimeout(done, 1500);
+    });
+  }
+
+  const target = snapToFrame(Math.max(0, targetTime), fps);
+  if (
+    needsSeek({
+      currentTime: el.currentTime,
+      targetTime: target,
+      playing,
+      fps,
+    })
+  ) {
+    if (!playing) {
+      el.pause();
+      await seekMediaExact(el, target);
+    } else {
+      try {
+        el.currentTime = target;
+      } catch {
+        /* ignore mid-play seek races */
+      }
+    }
+  }
+
+  el.playbackRate = playbackRate;
+  if (playing) void el.play().catch(() => undefined);
+  else el.pause();
+}
 
 /**
  * Large monitor: active clip + locked song. Timing uses the same edit model as export
  * (source in/out, timeline placement, song offset applied once).
+ * Paused seeks are frame-accurate; playback drift correction stays separate.
  */
 export function SequencePreview({
   sequence,
@@ -30,7 +88,9 @@ export function SequencePreview({
   mediaByAsset,
   songUrl,
   compareUrl,
+  compareSourceTime,
   compareLabel,
+  compareNote,
   className,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,70 +101,29 @@ export function SequencePreview({
   const srcTime = clip ? sourceTimeAt(clip, playhead) : 0;
   const songTime = songTimeAt(sequence, playhead);
   const dur = durationSeconds(sequence);
+  const fps = sequence.fps;
 
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !url) return;
-    if (v.dataset.src !== url) {
-      v.dataset.src = url;
-      v.src = url;
-    }
-    if (Math.abs(v.currentTime - srcTime) > 0.08) {
-      try {
-        v.currentTime = Math.max(0, srcTime);
-      } catch {
-        /* seek before metadata */
-      }
-    }
-    v.playbackRate = playbackRate;
-    if (playing) void v.play().catch(() => undefined);
-    else v.pause();
-  }, [url, srcTime, playing, playbackRate, playhead]);
+    void syncElement(videoRef.current, url, srcTime, playing, playbackRate, fps);
+  }, [url, srcTime, playing, playbackRate, fps, playhead]);
 
   useEffect(() => {
-    const a = audioRef.current;
-    if (!a || !songUrl) return;
-    if (a.dataset.src !== songUrl) {
-      a.dataset.src = songUrl;
-      a.src = songUrl;
-    }
-    if (Math.abs(a.currentTime - songTime) > 0.08) {
-      try {
-        a.currentTime = Math.max(0, songTime);
-      } catch {
-        /* seek before metadata */
-      }
-    }
-    a.playbackRate = playbackRate;
-    if (playing) void a.play().catch(() => undefined);
-    else a.pause();
-  }, [songUrl, songTime, playing, playbackRate]);
+    void syncElement(audioRef.current, songUrl, songTime, playing, playbackRate, fps);
+  }, [songUrl, songTime, playing, playbackRate, fps]);
 
   useEffect(() => {
-    const c = compareRef.current;
-    if (!c || !compareUrl) return;
-    if (c.dataset.src !== compareUrl) {
-      c.dataset.src = compareUrl;
-      c.src = compareUrl;
-    }
-    if (Math.abs(c.currentTime - songTime) > 0.12) {
-      try {
-        c.currentTime = Math.max(0, songTime);
-      } catch {
-        /* ignore */
-      }
-    }
-    c.playbackRate = playbackRate;
-    if (playing) void c.play().catch(() => undefined);
-    else c.pause();
-  }, [compareUrl, songTime, playing, playbackRate]);
+    if (!compareUrl) return;
+    const t = compareSourceTime ?? null;
+    if (t == null) return;
+    void syncElement(compareRef.current, compareUrl, t, playing, playbackRate, fps);
+  }, [compareUrl, compareSourceTime, playing, playbackRate, fps, playhead]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)} data-testid="sequence-preview">
       <div
         className={cn(
           "relative overflow-hidden rounded-xl bg-black ring-1 ring-primary/20",
-          compareUrl ? "grid grid-cols-2 gap-px" : "",
+          compareUrl || compareNote ? "grid grid-cols-2 gap-px" : "",
         )}
       >
         <div className="relative mx-auto aspect-[9/16] max-h-[min(68vh,760px)] w-full max-w-[420px] bg-black sm:max-w-none">
@@ -137,16 +156,25 @@ export function SequencePreview({
             </p>
           </div>
         </div>
-        {compareUrl && (
-          <div className="relative mx-auto aspect-[9/16] max-h-[min(68vh,760px)] w-full max-w-[420px] bg-black sm:max-w-none">
-            <video
-              ref={compareRef}
-              className="h-full w-full object-contain"
-              playsInline
-              muted
-              preload="auto"
-              data-testid="compare-video"
-            />
+        {(compareUrl || compareNote) && (
+          <div className="relative mx-auto flex aspect-[9/16] max-h-[min(68vh,760px)] w-full max-w-[420px] items-center justify-center bg-black sm:max-w-none">
+            {compareUrl && compareSourceTime != null ? (
+              <video
+                ref={compareRef}
+                className="h-full w-full object-contain"
+                playsInline
+                muted
+                preload="auto"
+                data-testid="compare-video"
+              />
+            ) : (
+              <p
+                className="px-4 text-center text-xs text-muted-foreground"
+                data-testid="compare-unavailable"
+              >
+                {compareNote || "Original comparison unavailable."}
+              </p>
+            )}
             <div className="pointer-events-none absolute left-2 top-2 rounded bg-black/70 px-2 py-0.5 text-[10px] text-white">
               {compareLabel || "Original performance"}
             </div>

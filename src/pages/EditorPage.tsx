@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
+import { Link, useBlocker } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { EditorWorkspace } from "@/components/editor/EditorWorkspace";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,26 @@ import { useEditSequence, useEditSequences } from "@/lib/queries/editSequences";
 export default function EditorPage({ projectId }: { projectId: string }) {
   const list = useEditSequences(projectId);
   const [picked, setPicked] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
   const id = picked ?? list.data?.[0]?.id ?? null;
   const one = useEditSequence(id);
+
+  const confirmLeave = useCallback(() => {
+    if (!dirty) return true;
+    return window.confirm("You have unsaved edits on this cut. Leave without saving?");
+  }, [dirty]);
+
+  useBlocker({
+    shouldBlockFn: () => !confirmLeave(),
+    enableBeforeUnload: dirty,
+    disabled: !dirty,
+  });
+
+  const pickSequence = (nextId: string) => {
+    if (nextId === id) return;
+    if (!confirmLeave()) return;
+    setPicked(nextId);
+  };
 
   return (
     <div className="flex min-h-0 flex-col gap-4 p-3 sm:p-4" data-testid="editor-page">
@@ -25,7 +43,13 @@ export default function EditorPage({ projectId }: { projectId: string }) {
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/80 px-3 py-2">
         <Button asChild size="sm" variant="outline">
-          <Link to="/projects/$id/storyboard" params={{ id: projectId }}>
+          <Link
+            to="/projects/$id/storyboard"
+            params={{ id: projectId }}
+            onClick={(e) => {
+              if (!confirmLeave()) e.preventDefault();
+            }}
+          >
             Shots
           </Link>
         </Button>
@@ -53,7 +77,7 @@ export default function EditorPage({ projectId }: { projectId: string }) {
               key={row.id}
               size="sm"
               variant={row.id === id ? "default" : "outline"}
-              onClick={() => setPicked(row.id)}
+              onClick={() => pickSequence(row.id)}
             >
               {row.name}
             </Button>
@@ -69,6 +93,7 @@ export default function EditorPage({ projectId }: { projectId: string }) {
           projectId={projectId}
           sequence={one.data}
           onSequenceId={(next) => setPicked(next)}
+          onDirtyChange={setDirty}
         />
       )}
     </div>

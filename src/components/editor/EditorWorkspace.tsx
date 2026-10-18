@@ -17,7 +17,9 @@ import {
   undoEdit,
   type EditHistory,
 } from "@/lib/editor/history";
-import { phraseLoopWindow, stepFrame } from "@/lib/editor/playback";
+import { resolveCompareOriginal } from "@/lib/editor/compareOriginal";
+import { loopWindowForPhrase, phraseAtPlayhead } from "@/lib/editor/phraseAt";
+import { stepFrame } from "@/lib/editor/playback";
 import { useEditMediaUrls } from "@/lib/queries/editMediaUrls";
 import {
   downloadSequenceXml,
@@ -26,6 +28,7 @@ import {
   useSaveEditSequence,
 } from "@/lib/queries/editSequences";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
+import { useTakeSyncs } from "@/lib/queries/storyboard";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 import { Button } from "@/components/ui/button";
 import { MediaBrowser } from "./MediaBrowser";
@@ -40,7 +43,25 @@ type Props = {
   projectId: string;
   sequence: EditSequence;
   onSequenceId?: (id: string) => void;
+  /** Fired when unsaved edits appear or clear — parent uses this to guard navigation. */
+  onDirtyChange?: (dirty: boolean) => void;
 };
+
+function editFingerprint(seq: EditSequence): string {
+  return JSON.stringify({
+    clips: seq.clips.map((c) => [
+      c.id,
+      c.assetId,
+      c.sourceIn,
+      c.sourceOut,
+      c.timelineIn,
+      c.timelineOut,
+      c.enabled,
+    ]),
+    markers: seq.markers.map((m) => [m.id, m.timeIn, m.timeOut, m.kind]),
+    songOffset: seq.songOffset,
+  });
+}
 
 function assetDuration(asset: ProjectAsset): number | null {
   const meta = (asset.metadata_json ?? {}) as Record<string, unknown>;
@@ -48,9 +69,10 @@ function assetDuration(asset: ProjectAsset): number | null {
   return typeof d === "number" && d > 0 ? d : null;
 }
 
-export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: Props) {
+export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, onDirtyChange }: Props) {
   const [history, setHistory] = useState<EditHistory>(() => historyOf(initial));
   const sequence = history.present;
+  const [baselineFp, setBaselineFp] = useState(() => editFingerprint(initial));
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [rate, setRate] = useState(1);
@@ -70,8 +92,10 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
 
   const mediaQ = useEditMediaUrls(sequence);
   const assetsQ = useProjectAssets(projectId);
+  const syncsQ = useTakeSyncs(projectId);
   const saveMut = useSaveEditSequence(projectId);
   const latestRender = useLatestEditRender(sequence.id);
+  const dirty = editFingerprint(sequence) !== baselineFp;
 
   async function ensureAssetUrl(asset: ProjectAsset): Promise<string | null> {
     if (mediaQ.data?.byAssetId[asset.id]) return mediaQ.data.byAssetId[asset.id]!;
@@ -88,16 +112,38 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
   // Remount history when a different sequence is loaded from the server.
   useEffect(() => {
     setHistory(historyOf(initial));
+    setBaselineFp(editFingerprint(initial));
     setPlayhead(0);
     setPlaying(false);
     setSelectedId(null);
     setSaveState("idle");
     setSlipBaselines({});
+    setLoop(null);
+    setCompareOriginal(false);
   }, [initial.id]);
 
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
   const selected = sequence.clips.find((c) => c.id === selectedId) ?? null;
+  const activeClip = selected ?? sequence.clips.find((c) => playhead >= c.timelineIn && playhead < c.timelineOut) ?? null;
   const warnings = useMemo(() => mediaWarnings(sequence), [sequence]);
   const dur = durationSeconds(sequence);
+  const phraseMarker = useMemo(
+    () => phraseAtPlayhead({ sequence, playhead, selectedClip: selected }),
+    [sequence, playhead, selected],
+  );
 
   const commit = useCallback((next: EditSequence) => {
     setHistory((h) => pushEdit(h, next));
@@ -177,7 +223,9 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
     try {
       const id = await saveMut.mutateAsync(sequence);
       onSequenceId?.(id);
-      setHistory((h) => historyOf({ ...h.present, version: h.present.version + 1 }));
+      const next = { ...sequence, version: sequence.version + 1 };
+      setHistory(historyOf(next));
+      setBaselineFp(editFingerprint(next));
       setSaveState("saved");
     } catch (err) {
       setSaveState("error");
@@ -231,15 +279,36 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
   const songUrl = mediaQ.data?.songUrl ?? null;
   const previewUrl = previewAssetId ? mediaByAsset[previewAssetId] ?? null : null;
 
-  // Side-by-side: when compare is on, try an original-take asset from the browser.
-  const originalCompareUrl = useMemo(() => {
+  const compareResolve = useMemo(() => {
     if (!compareOriginal) return null;
-    const originals = (assetsQ.data ?? []).filter((a) => a.footage_role === "performance");
-    const first = originals[0];
-    return first ? mediaByAsset[first.id] ?? null : null;
-  }, [compareOriginal, assetsQ.data, mediaByAsset]);
+    return resolveCompareOriginal({
+      sequence,
+      clip: activeClip,
+      playhead,
+      assets: assetsQ.data ?? [],
+      syncs: syncsQ.data ?? [],
+    });
+  }, [compareOriginal, sequence, activeClip, playhead, assetsQ.data, syncsQ.data]);
 
-  const lyricMarker = sequence.markers.find((m) => m.kind === "lyric");
+  // Sign the resolved original when Compare is on.
+  useEffect(() => {
+    if (!compareResolve?.ok) return;
+    const asset = (assetsQ.data ?? []).find((a) => a.id === compareResolve.originalAssetId);
+    if (asset) void ensureAssetUrl(asset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareResolve?.ok, compareResolve && compareResolve.ok ? compareResolve.originalAssetId : null]);
+
+  const compareUrl =
+    compareResolve?.ok && mediaByAsset[compareResolve.originalAssetId]
+      ? mediaByAsset[compareResolve.originalAssetId]!
+      : null;
+  const compareSourceTime = compareResolve?.ok ? compareResolve.sourceTime : null;
+  const compareNote =
+    compareOriginal && compareResolve && !compareResolve.ok
+      ? compareResolve.reason
+      : compareOriginal && compareResolve?.ok && !compareUrl
+        ? "Loading the original take…"
+        : null;
 
   return (
     <div className="flex min-h-0 flex-col gap-3" data-testid="editor-workspace">
@@ -262,8 +331,10 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
               playbackRate={rate}
               mediaByAsset={mediaByAsset}
               songUrl={songUrl}
-              compareUrl={originalCompareUrl}
+              compareUrl={compareUrl}
+              compareSourceTime={compareSourceTime}
               compareLabel="Original performance"
+              compareNote={compareNote}
             />
           </div>
 
@@ -331,24 +402,21 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
               <Button
                 size="sm"
                 variant={loop ? "default" : "outline"}
-                disabled={!lyricMarker}
+                disabled={!phraseMarker}
+                title={
+                  phraseMarker
+                    ? `Loop “${phraseMarker.name}” with pre-roll`
+                    : "No lyric/lipsync marker at the playhead or selected clip"
+                }
                 onClick={() => {
                   if (loop) {
                     setLoop(null);
                     return;
                   }
-                  if (!lyricMarker) return;
-                  setLoop(
-                    phraseLoopWindow({
-                      timeIn: Math.max(0, lyricMarker.timeIn - sequence.songOffset),
-                      timeOut:
-                        lyricMarker.timeOut != null
-                          ? Math.max(0, lyricMarker.timeOut - sequence.songOffset)
-                          : null,
-                      preRoll: 0.35,
-                      sequenceDuration: dur,
-                    }),
-                  );
+                  if (!phraseMarker) return;
+                  const win = loopWindowForPhrase(phraseMarker, dur, 0.35);
+                  setLoop(win);
+                  setPlayhead(win.start);
                   setPlaying(true);
                 }}
               >
@@ -371,9 +439,10 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
                 data-testid="save-status"
               >
                 {saveState === "saving" && "Saving…"}
-                {saveState === "saved" && "Saved"}
+                {saveState === "saved" && "Saved to the server"}
                 {saveState === "error" && (saveError || "Save failed")}
-                {saveState === "idle" && "Unsaved changes stay on this device until you save"}
+                {saveState === "idle" && dirty && "Unsaved edits — Save to keep them on the server"}
+                {saveState === "idle" && !dirty && "All edits saved"}
               </span>
               <div className="flex-1" />
               <Button size="sm" onClick={() => void save()} disabled={saveMut.isPending}>
