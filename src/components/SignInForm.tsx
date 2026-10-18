@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -20,18 +21,13 @@ export function SignInForm() {
       const { data } = await supabase.auth.getUser();
       if (data.user?.is_anonymous) await supabase.auth.signOut();
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth`,
-          queryParams: {
-            // Prefer the existing Gmail account; do not force account picker forever.
-            prompt: "select_account",
-          },
-        },
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/auth`,
+        extraParams: { prompt: "select_account" },
       });
-      if (error) throw error;
-      setMessage("Redirecting to Google…");
+      if (result.error) throw new Error(result.error.message);
+      if (result.redirected) return;
+      setStatus("idle");
     } catch (err) {
       setStatus("error");
       const text = err instanceof Error ? err.message : "Google sign-in failed.";
@@ -84,13 +80,14 @@ export function SignInForm() {
         Uses your existing Gmail. Stays signed in on this device while the browser allows it.
       </p>
 
-      <button
+      <Button
         type="button"
+        variant="link"
         className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
         onClick={() => setShowMagic((v) => !v)}
       >
         {showMagic ? "Hide magic link" : "Use email magic link instead"}
-      </button>
+      </Button>
 
       {showMagic && (
         <form onSubmit={sendLink} className="space-y-3">

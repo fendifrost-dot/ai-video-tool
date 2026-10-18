@@ -158,3 +158,7 @@ Useful file references:
 - `@supabase/functions/grok-video-research-proxy/index.ts` — research-only `/v1/videos/edits` adapter
 - `@vite.config.ts` — build config constraints
 - `@docs/grok_api_status.md` — wired vs documented xAI capability
+
+<!-- LOVABLE:BEGIN -->
+- Google sign-in uses the generated Lovable managed-auth helper with a public same-origin callback to support preview session delivery.
+<!-- LOVABLE:END -->
