@@ -320,7 +320,7 @@ export const TOOLS = [
   {
     name: "avt_edit_render",
     description:
-      "Plan an ffmpeg proxy or final for a sequence. dry_run defaults to true and returns the plan. cost_usd is 0. Nothing is generated. dry_run false only queues an edit_renders row; ffmpeg runs in scripts/edit-render.mjs.",
+      "Plan an ffmpeg proxy or final for a sequence from the stored clip and song files. dry_run defaults to true and returns the plan, how many real picture inputs resolved, and any missing media. cost_usd is 0. Nothing is generated and no provider is called. dry_run false only queues an edit_renders row; scripts/edit-render.mjs downloads the files, probes them, and runs ffmpeg.",
     inputSchema: {
       type: "object",
       properties: {

@@ -1,8 +1,13 @@
 // AVT edge function — edit-render
 //
-// Plans an ffmpeg cut for an edit_sequences row. dryRun defaults to true and returns the plan.
-// cost is always 0. This function does not run ffmpeg and does not call a generation provider.
-// A dryRun of false only queues an edit_renders row (status queued) for scripts/edit-render.mjs.
+// Plans an ffmpeg cut for an edit_sequences row. Each picture clip and the song asset are resolved to
+// a file in this project's storage. The plan carries a short-lived signed URL for the local encoder.
+// Those URLs are never argv inputs and this function never calls a generation provider. A lip-sync
+// placeholder with no file stays a labelled slate. File duration comes from ffprobe in
+// scripts/edit-render.mjs; the 4.04 s filing default is not used as a length.
+// dryRun defaults to true and returns the plan plus how many real inputs resolved and which are missing.
+// cost is always 0. This function does not run ffmpeg. A dryRun of false only queues an edit_renders
+// row (status queued) for scripts/edit-render.mjs.
 //
 // Class C. Auth: caller JWT, anonymous refused. Writes go through the caller's RLS.
 
@@ -10,11 +15,18 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   assertPlanSafe,
-  planRender,
   sequenceFromRows,
   type RenderAspect,
   type RenderKind,
 } from "../_shared/editModel.ts";
+import {
+  SIGN_TTL_SECONDS,
+  alignSigned,
+  assertMediaUrls,
+  loadStoredAssets,
+  mediaSummary,
+  planForSequence,
+} from "../_shared/editMedia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,15 +92,37 @@ serve(async (req) => {
     (clips ?? []) as Record<string, unknown>[],
     (markers ?? []) as Record<string, unknown>[],
   );
-  const plan = planRender(seq, {
-    kind: body.kind ?? "proxy",
-    aspect: body.aspect ?? "9:16",
-    grain: body.grain,
-    captions: body.captions,
-    upscale: body.upscale,
-  });
+  let rows;
+  try {
+    rows = await loadStoredAssets(user, seq);
+  } catch (e) {
+    return json(400, {
+      ok: false,
+      error: "assets_unreadable",
+      message: e instanceof Error ? e.message : "unreadable",
+    });
+  }
+  const plan = await planForSequence(
+    seq,
+    rows,
+    async (bucket, paths) => {
+      const { data, error } = await user.storage
+        .from(bucket)
+        .createSignedUrls(paths, SIGN_TTL_SECONDS);
+      if (error || !data) return alignSigned(paths, null);
+      return alignSigned(paths, data);
+    },
+    {
+      kind: body.kind ?? "proxy",
+      aspect: body.aspect ?? "9:16",
+      grain: body.grain,
+      captions: body.captions,
+      upscale: body.upscale,
+    },
+  );
   try {
     assertPlanSafe(plan);
+    assertMediaUrls(plan);
   } catch (e) {
     return json(422, {
       ok: false,
@@ -97,7 +131,8 @@ serve(async (req) => {
     });
   }
   const dryRun = body.dryRun !== false;
-  if (dryRun) return json(200, { ok: true, dryRun: true, costUsd: 0, plan });
+  const media = mediaSummary(plan);
+  if (dryRun) return json(200, { ok: true, dryRun: true, costUsd: 0, media, plan });
 
   const { data: row, error: insErr } = await user
     .from("edit_renders")
@@ -117,7 +152,8 @@ serve(async (req) => {
     dryRun: false,
     costUsd: 0,
     renderId: row.id,
-    note: "Queued. ffmpeg runs in scripts/edit-render.mjs. This function did not encode and did not call a provider.",
+    media,
+    note: "Queued. ffmpeg runs in scripts/edit-render.mjs, which downloads the signed files and probes them. This function did not encode and did not call a provider.",
     plan,
   });
 });
