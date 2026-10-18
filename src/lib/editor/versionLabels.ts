@@ -35,6 +35,18 @@ export function versionKind(asset: ProjectAsset): VersionKind {
   return "other";
 }
 
+/** Strip provider/uuid noise so Fendi sees a take name, not a storage key. */
+function friendlyName(raw: string): string {
+  let s = raw.replace(/\.[a-z0-9]+$/i, "");
+  s = s.replace(/^(generated_|edited_|clip_|take_|asset_)/i, "");
+  s = s.replace(/^(higgsfield|seedance|kling|grok|fal|runway|veo|pika)_+/i, "");
+  s = s.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "");
+  s = s.replace(/[0-9a-f]{16,}/gi, "");
+  s = s.replace(/\b[0-9a-f]{7,}\b/gi, "");
+  s = s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return s || "untitled take";
+}
+
 export function versionLabel(asset: ProjectAsset): string {
   const kind = versionKind(asset);
   const base = KIND_LABEL[kind];
@@ -45,7 +57,8 @@ export function versionLabel(asset: ProjectAsset): string {
     (typeof meta.label === "string" && meta.label) ||
     null;
   const fromPath = asset.file_url.split("/").pop() || null;
-  const name = (asset.notes?.trim() || fromMeta || fromPath || asset.id.slice(0, 8)).slice(0, 48);
+  const raw = (asset.notes?.trim() || fromMeta || fromPath || asset.id.slice(0, 8)).slice(0, 64);
+  const name = friendlyName(raw).slice(0, 40);
   return `${base} · ${name}`;
 }
 

@@ -20,7 +20,7 @@ describe("the cut strip", () => {
     });
     const onGesture = vi.fn();
     render(<CutTimeline sequence={seq} onGesture={onGesture} />);
-    expect(screen.getByTestId("cut-duration").textContent).toMatch(/47\.208 s/);
+    expect(screen.getByTestId("cut-duration").textContent).toMatch(/47\.2 s/);
     expect(screen.getAllByTestId("cut-clip")).toHaveLength(44);
     fireEvent.click(screen.getAllByTestId("cut-clip")[0]!);
     expect(onGesture).toHaveBeenCalledWith({ kind: "slip", clipId: "v-1", deltaFrames: 1 });

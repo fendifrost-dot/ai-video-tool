@@ -278,7 +278,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
       <PageHeader
         title="Export"
         context={variation?.name ?? null}
-        subtitle="Build a zip with the manifest, the shot list, the storyboard's timeline, the prompt log and (optionally) the files, for Premiere / After Effects. A finished render is not made in the app yet."
+        subtitle="Package the cut for Premiere or After Effects — shot list, timeline, prompts, and optional media files. Open Timeline for a playable preview of your edit."
       />
       <div className="space-y-6 px-8 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -291,11 +291,12 @@ export default function ExportPage({ projectId }: { projectId: string }) {
         </div>
 
         {contract && readiness && (
-          <section className="rounded-md border border-border bg-card/30 p-4" data-testid="render-contract" data-ready={readiness.ready}>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">The cut, as a renderer is handed it</h2>
+          <section className="studio-card rounded-xl border border-border p-4" data-testid="render-contract" data-ready={readiness.ready}>
+            <h2 className="font-display text-sm font-semibold text-foreground">Cut summary</h2>
             <p className="mt-1 text-xs text-muted-foreground" data-testid="render-contract-summary">
-              {contract.segments.length} shots · {contract.duration_seconds.toFixed(2)} s · {contract.frames} frames at {contract.fps} fps · {contract.frame.width}×{contract.frame.height} ({contract.frame.aspect}). This is exactly what Review plays, written down frame by frame; it
-              goes in the package as storyboard_timeline.json.
+              {contract.segments.length} shots · {contract.duration_seconds.toFixed(2)} s · {contract.frames} frames at{" "}
+              {contract.fps} fps · {contract.frame.width}×{contract.frame.height} ({contract.frame.aspect}). Same timing
+              Review plays — frame by frame.
             </p>
             {readiness.blockers.length > 0 && (
               <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-200" data-testid="render-contract-blockers">
@@ -312,17 +313,18 @@ export default function ExportPage({ projectId }: { projectId: string }) {
               </ul>
             )}
             <p className="mt-2 text-xs text-muted-foreground" data-testid="render-contract-boundary">
-              The app does not make the finished video file yet: the renderer that executes this contract exists and is tested (scripts/render), but it needs a machine that can run ffmpeg, which this app's servers cannot. Until that worker is connected, the
-              contract and the files are what leave the app.
+              A finished MP4 still needs the export worker on a machine with ffmpeg. Until that is connected, download
+              the package and open Timeline → Export preview for the queued cut, or take the Premiere files below.
             </p>
           </section>
         )}
 
         {boardCut && (
-          <section className="rounded-md border border-border bg-card/30 p-4" data-testid="board-cut">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">The board's cut, for Premiere</h2>
+          <section className="studio-card rounded-xl border border-border p-4" data-testid="board-cut">
+            <h2 className="font-display text-sm font-semibold text-foreground">Board cut for Premiere</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Every shot with the clip it shows, where in that clip it starts (after any lyric-sync slip) and where it sits on the song. Record timecode is song time, so the song on A1 at 00:00:00:00 lines up. Import the EDL in Premiere and relink each clip by its file name. Source timecode counts from the clip's first frame (00:00:00:00): a camera file with its own embedded timecode needs its start set to zero, or it relinks off.
+              Each shot with the take it shows, where that take starts (after any lyric sync), and where it sits on the
+              song. Song time is the record clock — import the EDL and relink by file name.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => download("board_cut.edl", boardCutEdl(boardCut, { title }), "text/plain")} data-testid="board-cut-edl">

@@ -16,13 +16,14 @@ export default function EditorPage({ projectId }: { projectId: string }) {
   const one = useEditSequence(id);
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 p-3 sm:p-4">
+    <div className="flex min-h-0 flex-col gap-4 p-3 sm:p-4" data-testid="editor-page">
       <PageHeader
         title="Timeline"
         subtitle="Watch the cut with the song, arrange takes, trim and align mouth timing."
+        variant="compact"
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/80 px-3 py-2">
         <Button asChild size="sm" variant="outline">
           <Link to="/projects/$id/storyboard" params={{ id: projectId }}>
             Shots

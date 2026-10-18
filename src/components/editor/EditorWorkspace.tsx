@@ -240,148 +240,6 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
 
   return (
     <div className="flex min-h-0 flex-col gap-3" data-testid="editor-workspace">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
-        <Button size="sm" variant={playing ? "secondary" : "default"} onClick={() => setPlaying((p) => !p)}>
-          {playing ? "Pause" : "Play"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setPlayhead((t) => stepFrame(t, sequence.fps, -1))}>
-          −1f
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setPlayhead((t) => stepFrame(t, sequence.fps, 1))}>
-          +1f
-        </Button>
-        <Button
-          size="sm"
-          variant={rate < 1 ? "default" : "outline"}
-          onClick={() => setRate((r) => (r === 1 ? 0.5 : 1))}
-        >
-          {rate === 1 ? "½ speed" : "Normal speed"}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!selectedId}
-          onClick={() => selectedId && onGesture({ kind: "split", clipId: selectedId, atTimelineSeconds: playhead })}
-        >
-          Split at playhead
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!selectedId}
-          onClick={() => selectedId && onGesture({ kind: "remove", clipId: selectedId, ripple: false })}
-        >
-          Remove from edit
-        </Button>
-        <Button size="sm" variant="outline" disabled={!canUndo(history)} onClick={() => setHistory(undoEdit)}>
-          Undo
-        </Button>
-        <Button size="sm" variant="outline" disabled={!canRedo(history)} onClick={() => setHistory(redoEdit)}>
-          Redo
-        </Button>
-        <div className="mx-1 h-5 w-px bg-border" />
-        <Button size="sm" variant="outline" onClick={() => setZoom((z) => Math.max(24, z / 1.25))}>
-          Zoom −
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setZoom((z) => Math.min(200, z * 1.25))}>
-          Zoom +
-        </Button>
-        <Button
-          size="sm"
-          variant={loop ? "default" : "outline"}
-          disabled={!lyricMarker}
-          onClick={() => {
-            if (loop) {
-              setLoop(null);
-              return;
-            }
-            if (!lyricMarker) return;
-            setLoop(
-              phraseLoopWindow({
-                timeIn: Math.max(0, lyricMarker.timeIn - sequence.songOffset),
-                timeOut:
-                  lyricMarker.timeOut != null
-                    ? Math.max(0, lyricMarker.timeOut - sequence.songOffset)
-                    : null,
-                preRoll: 0.35,
-                sequenceDuration: dur,
-              }),
-            );
-            setPlaying(true);
-          }}
-        >
-          Loop phrase
-        </Button>
-        <Button
-          size="sm"
-          variant={compareOriginal ? "default" : "outline"}
-          onClick={() => setCompareOriginal((v) => !v)}
-        >
-          Compare original
-        </Button>
-        <div className="flex-1" />
-        <span
-          className={cn(
-            "text-xs",
-            saveState === "error" ? "text-destructive" : "text-muted-foreground",
-          )}
-          data-testid="save-status"
-        >
-          {saveState === "saving" && "Saving…"}
-          {saveState === "saved" && "Saved"}
-          {saveState === "error" && (saveError || "Save failed")}
-          {saveState === "idle" && "Unsaved changes stay on this device until you save"}
-        </span>
-        <Button size="sm" onClick={() => void save()} disabled={saveMut.isPending}>
-          Save
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            downloadSequenceXml(sequence);
-            setExportNote("Downloaded Premiere/FCP XML for this cut.");
-          }}
-        >
-          Download cut (XML)
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            void (async () => {
-              setExportNote("Planning export…");
-              try {
-                await saveMut.mutateAsync(sequence);
-                const dry = await requestEditRender({ sequenceId: sequence.id, dryRun: true });
-                const queued = await requestEditRender({ sequenceId: sequence.id, dryRun: false });
-                setExportNote(
-                  [
-                    dry.media
-                      ? `Resolved ${dry.media.resolved} picture file(s)${dry.media.missing?.length ? `; missing: ${dry.media.missing.join(", ")}` : ""}`
-                      : "Plan ready",
-                    queued.renderId
-                      ? `Queued render ${queued.renderId} (cost $0). MP4 encode runs via the approved edit-render worker — open the cut again after encode, or use Download cut (XML) now.`
-                      : queued.note || "Queued.",
-                  ].join(" · "),
-                );
-              } catch (err) {
-                setExportNote(err instanceof Error ? err.message : "Export failed");
-              }
-            })();
-          }}
-        >
-          Export preview
-        </Button>
-      </div>
-
-      {exportNote && (
-        <p className="text-xs text-muted-foreground" data-testid="export-note">
-          {exportNote}
-        </p>
-      )}
-
       {warnings.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100/90">
           {warnings.slice(0, 6).map((w) => (
@@ -390,18 +248,22 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
         </ul>
       )}
 
-      <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-3">
-          <SequencePreview
-            sequence={sequence}
-            playhead={playhead}
-            playing={playing}
-            playbackRate={rate}
-            mediaByAsset={mediaByAsset}
-            songUrl={songUrl}
-            compareUrl={originalCompareUrl}
-            compareLabel="Original performance"
-          />
+          {/* Dominant monitor first — CapCut / VideoLeap order */}
+          <div className="studio-card overflow-hidden rounded-2xl border border-border p-2 sm:p-3">
+            <SequencePreview
+              sequence={sequence}
+              playhead={playhead}
+              playing={playing}
+              playbackRate={rate}
+              mediaByAsset={mediaByAsset}
+              songUrl={songUrl}
+              compareUrl={originalCompareUrl}
+              compareLabel="Original performance"
+            />
+          </div>
+
           {previewUrl && previewAssetId && (
             <div className="rounded-xl border border-border bg-card p-2" data-testid="version-preview">
               <div className="mb-1 flex items-center justify-between">
@@ -413,7 +275,154 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
               <video src={previewUrl} controls playsInline className="max-h-48 w-full rounded-lg bg-black object-contain" />
             </div>
           )}
-          <div className="overflow-x-auto">
+
+          {/* Transport — grouped, primary actions gold */}
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button size="sm" variant={playing ? "secondary" : "default"} onClick={() => setPlaying((p) => !p)}>
+                {playing ? "Pause" : "Play"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPlayhead((t) => stepFrame(t, sequence.fps, -1))}>
+                −1f
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPlayhead((t) => stepFrame(t, sequence.fps, 1))}>
+                +1f
+              </Button>
+              <Button
+                size="sm"
+                variant={rate < 1 ? "default" : "outline"}
+                onClick={() => setRate((r) => (r === 1 ? 0.5 : 1))}
+              >
+                {rate === 1 ? "½ speed" : "Normal"}
+              </Button>
+              <span className="mx-0.5 hidden h-5 w-px bg-border sm:block" aria-hidden />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!selectedId}
+                onClick={() => selectedId && onGesture({ kind: "split", clipId: selectedId, atTimelineSeconds: playhead })}
+              >
+                Split
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!selectedId}
+                onClick={() => selectedId && onGesture({ kind: "remove", clipId: selectedId, ripple: false })}
+              >
+                Remove
+              </Button>
+              <Button size="sm" variant="outline" disabled={!canUndo(history)} onClick={() => setHistory(undoEdit)}>
+                Undo
+              </Button>
+              <Button size="sm" variant="outline" disabled={!canRedo(history)} onClick={() => setHistory(redoEdit)}>
+                Redo
+              </Button>
+              <span className="mx-0.5 hidden h-5 w-px bg-border sm:block" aria-hidden />
+              <Button size="sm" variant="outline" onClick={() => setZoom((z) => Math.max(24, z / 1.25))}>
+                Zoom −
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setZoom((z) => Math.min(200, z * 1.25))}>
+                Zoom +
+              </Button>
+              <Button
+                size="sm"
+                variant={loop ? "default" : "outline"}
+                disabled={!lyricMarker}
+                onClick={() => {
+                  if (loop) {
+                    setLoop(null);
+                    return;
+                  }
+                  if (!lyricMarker) return;
+                  setLoop(
+                    phraseLoopWindow({
+                      timeIn: Math.max(0, lyricMarker.timeIn - sequence.songOffset),
+                      timeOut:
+                        lyricMarker.timeOut != null
+                          ? Math.max(0, lyricMarker.timeOut - sequence.songOffset)
+                          : null,
+                      preRoll: 0.35,
+                      sequenceDuration: dur,
+                    }),
+                  );
+                  setPlaying(true);
+                }}
+              >
+                Loop phrase
+              </Button>
+              <Button
+                size="sm"
+                variant={compareOriginal ? "default" : "outline"}
+                onClick={() => setCompareOriginal((v) => !v)}
+              >
+                Compare
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
+              <span
+                className={cn(
+                  "text-xs",
+                  saveState === "error" ? "text-destructive" : "text-muted-foreground",
+                )}
+                data-testid="save-status"
+              >
+                {saveState === "saving" && "Saving…"}
+                {saveState === "saved" && "Saved"}
+                {saveState === "error" && (saveError || "Save failed")}
+                {saveState === "idle" && "Unsaved changes stay on this device until you save"}
+              </span>
+              <div className="flex-1" />
+              <Button size="sm" onClick={() => void save()} disabled={saveMut.isPending}>
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  downloadSequenceXml(sequence);
+                  setExportNote("Downloaded Premiere/FCP XML for this cut.");
+                }}
+              >
+                Download cut
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void (async () => {
+                    setExportNote("Planning export…");
+                    try {
+                      await saveMut.mutateAsync(sequence);
+                      const dry = await requestEditRender({ sequenceId: sequence.id, dryRun: true });
+                      const queued = await requestEditRender({ sequenceId: sequence.id, dryRun: false });
+                      setExportNote(
+                        [
+                          dry.media
+                            ? `Found ${dry.media.resolved} picture file(s)${dry.media.missing?.length ? `; missing: ${dry.media.missing.join(", ")}` : ""}`
+                            : "Plan ready",
+                          queued.renderId
+                            ? `Queued preview (free). Open Timeline again when the encode finishes, or use Download cut now.`
+                            : queued.note || "Queued.",
+                        ].join(" · "),
+                      );
+                    } catch (err) {
+                      setExportNote(err instanceof Error ? err.message : "Export failed");
+                    }
+                  })();
+                }}
+              >
+                Export preview
+              </Button>
+            </div>
+            {exportNote && (
+              <p className="text-xs text-muted-foreground" data-testid="export-note">
+                {exportNote}
+              </p>
+            )}
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-border bg-[#101417] p-2">
             <SongWaveform
               songUrl={songUrl}
               duration={dur}
@@ -427,20 +436,22 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
                 setPlaying(false);
               }}
             />
+            <TimelineCanvas
+              sequence={sequence}
+              playhead={playhead}
+              selectedId={selectedId}
+              pxPerSecond={zoom}
+              mediaByAsset={mediaByAsset}
+              onSelect={setSelectedId}
+              onSeek={(t) => {
+                setPlayhead(t);
+                setPlaying(false);
+              }}
+              onGesture={onGesture}
+            />
           </div>
-          <TimelineCanvas
-            sequence={sequence}
-            playhead={playhead}
-            selectedId={selectedId}
-            pxPerSecond={zoom}
-            onSelect={setSelectedId}
-            onSeek={(t) => {
-              setPlayhead(t);
-              setPlaying(false);
-            }}
-            onGesture={onGesture}
-          />
         </div>
+
         <div className="flex min-h-0 flex-col gap-3">
           <SyncPanel
             sequence={sequence}
@@ -460,7 +471,7 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
               });
             }}
           />
-          <div className="min-h-[240px] flex-1">
+          <div className="min-h-[280px] flex-1">
             <MediaBrowser
               assets={assetsQ.data ?? []}
               previewAssetId={previewAssetId}

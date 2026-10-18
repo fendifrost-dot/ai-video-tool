@@ -103,11 +103,11 @@ export function SequencePreview({
     <div className={cn("flex flex-col gap-2", className)} data-testid="sequence-preview">
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl border border-border bg-black",
+          "relative overflow-hidden rounded-xl bg-black ring-1 ring-primary/20",
           compareUrl ? "grid grid-cols-2 gap-px" : "",
         )}
       >
-        <div className="relative aspect-[9/16] max-h-[min(62vh,720px)] w-full bg-black">
+        <div className="relative mx-auto aspect-[9/16] max-h-[min(68vh,760px)] w-full max-w-[420px] bg-black sm:max-w-none">
           {url ? (
             <video
               ref={videoRef}
@@ -118,26 +118,27 @@ export function SequencePreview({
               data-testid="preview-video"
             />
           ) : (
-            <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+            <div className="flex h-full min-h-[220px] items-center justify-center px-4 text-center text-sm text-muted-foreground">
               {clip?.placeholder
-                ? "No take on this cut yet — pick a version to preview"
+                ? "No take on this cut yet — pick a version from the right"
                 : clip
-                  ? "Media still loading…"
-                  : "Playhead is between clips"}
+                  ? "Loading picture…"
+                  : "Move the playhead onto a clip"}
             </div>
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-2 pt-8">
-            <p className="font-display text-sm text-white">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-3 pb-2.5 pt-10">
+            <p className="font-display text-base font-medium text-white">
               {clip?.shotKey || clip?.name || "—"}
             </p>
             <p className="text-[11px] text-white/70">
               {formatTimecode(playhead, sequence.fps)} / {formatTimecode(dur, sequence.fps)}
               {sequence.songName ? ` · ${sequence.songName}` : ""}
+              {songUrl ? " · song locked" : ""}
             </p>
           </div>
         </div>
         {compareUrl && (
-          <div className="relative aspect-[9/16] max-h-[min(62vh,720px)] w-full bg-black">
+          <div className="relative mx-auto aspect-[9/16] max-h-[min(68vh,760px)] w-full max-w-[420px] bg-black sm:max-w-none">
             <video
               ref={compareRef}
               className="h-full w-full object-contain"
