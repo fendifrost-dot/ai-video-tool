@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
+  MOUTH_GUIDANCE,
+  SHORT_LABEL,
   durationSeconds,
   sourceHandles,
   videoClips,
@@ -26,7 +28,7 @@ function clipColor(c: EditClip): string {
   if (c.placeholder) return "#6543c880";
   if (c.labelColor === "Rose") return "#dc8e7980";
   if (c.labelColor === "Mango") return "#f2ce8e66";
-  if (c.mouth === "model") return "#a68ae966";
+  if (c.mouth === "model" || c.mouth === "lipsync") return "#a68ae966";
   return "#2c3339";
 }
 
@@ -178,11 +180,14 @@ export function TimelineCanvas({
                     <span className="block truncate text-[9px] text-white/70">
                       {handles.known
                         ? `+${handles.head.toFixed(1)}s / ${handles.tail.toFixed(1)}s unused`
-                        : c.mouth === "model"
-                          ? "Generated mouth — check offset vs articulation"
-                          : c.mouth === "camera"
-                            ? "Camera take"
-                            : "B-roll"}
+                        : "Source length unknown"}
+                    </span>
+                    <span
+                      className="block truncate text-[9px] text-white/80"
+                      data-testid="cut-clip-provenance"
+                      title={c.mouth ? MOUTH_GUIDANCE[c.mouth] : "Not a performance picture"}
+                    >
+                      {c.mouth ? SHORT_LABEL[c.mouth] : "B-roll"}
                     </span>
                   </button>
                   <button

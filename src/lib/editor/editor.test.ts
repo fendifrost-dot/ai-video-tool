@@ -54,8 +54,9 @@ describe("the YSL cold open imports as a sequence", () => {
     expect(video.filter((c) => c.placeholder)).toHaveLength(14);
     expect(seq.songOffset).toBeCloseTo(13.7917, 3);
     expect(video[0]?.mediaDuration).toBeCloseTo(97 / 24, 5);
-    expect(video.find((c) => c.placeholder)?.mouth).toBe("camera");
-    expect(video.find((c) => !c.placeholder && c.labelColor === "Mango")?.mouth).toBe("model");
+    // provenance comes from the asset's history (provenance.test.ts), never from lip-sync-pending status
+    expect(video.filter((c) => c.mouth === "camera")).toHaveLength(0);
+    expect(video.every((c) => c.mouth === "unknown")).toBe(true);
   });
 
   it("reads both XML sequences and matches the CSV frame for frame", () => {
@@ -160,11 +161,11 @@ describe("gestures stay on the frame", () => {
 });
 
 describe("the plan spends nothing", () => {
-  it("flags a generated mouth for judgment and a shot whose file runs out", () => {
+  it("flags an unlabelled performance for a timing check and a shot whose file runs out", () => {
     const seq = coldOpen();
-    const model = mediaWarnings(seq).filter((w) => /generated mouth/i.test(w.message));
-    expect(model.length).toBeGreaterThan(0);
-    expect(model[0]?.message).not.toMatch(/will not line/i);
+    const check = mediaWarnings(seq).filter((w) => /check mouth timing/i.test(w.message));
+    expect(check.length).toBeGreaterThan(0);
+    expect(check[0]?.message).not.toMatch(/will not line/i);
     const warnings = sequenceLyricWarnings(seq, [
       {
         lineIndex: 1,

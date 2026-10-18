@@ -1,9 +1,12 @@
 import {
+  MOUTH_GUIDANCE,
+  historyLine,
   sourceHandles,
   timingExplanation,
   type EditClip,
   type EditSequence,
   type Gesture,
+  type PerformanceProvenance,
 } from "../../../supabase/functions/edit-render/model";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +17,8 @@ type Props = {
   slipBaseline: { sourceIn: number; sourceOut: number } | null;
   onGesture: (g: Gesture) => void;
   onResetSlip: () => void;
+  /** How the selected clip's picture was made (asset lineage). Display only. */
+  provenance?: PerformanceProvenance | null;
   className?: string;
 };
 
@@ -34,6 +39,7 @@ export function SyncPanel({
   slipBaseline,
   onGesture,
   onResetSlip,
+  provenance = null,
   className,
 }: Props) {
   if (!clip) {
@@ -74,10 +80,19 @@ export function SyncPanel({
             ? `Available unused footage: ${handles.head.toFixed(2)}s before · ${handles.tail.toFixed(2)}s after`
             : "Source length unknown — extend only when the file has unused footage"}
         </p>
-        {clip.mouth === "model" && (
-          <p className="mt-1 text-muted-foreground">
-            Generated mouth — a constant offset can help; drift or wrong articulation need a different fix.
-            Do not treat audio alignment as visible lip-sync.
+        {clip.mouth && (
+          <p className="mt-1 text-muted-foreground" data-testid="sync-provenance" data-mouth={clip.mouth}>
+            {MOUTH_GUIDANCE[clip.mouth]}
+          </p>
+        )}
+        {!clip.mouth && clip.assetId && (
+          <p className="mt-1 text-muted-foreground" data-testid="sync-provenance" data-mouth="">
+            Not a performance picture.
+          </p>
+        )}
+        {provenance && provenance.history.length > 0 && (
+          <p className="text-[10px] text-muted-foreground/80" data-testid="sync-provenance-history">
+            History: {historyLine(provenance.history)}
           </p>
         )}
       </div>

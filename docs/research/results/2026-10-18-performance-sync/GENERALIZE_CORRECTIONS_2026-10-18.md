@@ -8,8 +8,9 @@ explainable rule, build it into the sync/render path.
 
 1. There are no corrections to generalize. `shot_asset_assignments.slip_seconds` is 0 on every row in every
    project, and no Cut clip has been moved off its sync by more than frame quantization.
-2. Every deterministic stage of the chain is already accurate to under a frame, so no offset is coming from the
-   encoder, the fps, the trim or the duration.
+2. Every deterministic stage that was measured holds to under a frame, so no offset was found coming from the
+   encoder, the fps, the trim or the duration. This is a bounded claim: see §6 for what was and was not measured
+   (11 of 21 lip-sync outputs, audio rather than picture, at frame-grid resolution, partly with box-only scripts).
 3. Whatever offset is left lives in the generated articulation. The only $0 way to measure it (mouth opening against
    the vocals) has a noise floor of about ±6–8 frames on the real take, which is known to be in sync. A ±1–2 frame
    rule cannot be measured with it, let alone justified.
@@ -46,7 +47,7 @@ its own audio track; "take" = the real take's mouth against the vocals over the 
 
 | Hypothesis | Test | Result |
 |---|---|---|
-| AAC priming (1024 samples, 21–23 ms) or an edit-list offset | Decode the lip-sync outputs' AAC with ffmpeg, which honours the edit list, and correlate with the song at the stored sync | **Ruled out:** 0.00 ms on 11/11, and video/audio `start_time` 0.000 on all. The render takes the song from the WAV, never from a clip's AAC. |
+| AAC priming (1024 samples, 21–23 ms) or an edit-list offset | Decode the lip-sync outputs' AAC with ffmpeg, which honours the edit list, and correlate with the song at the stored sync | **Not found in the 11 measured outputs:** 0.00 ms on 11/11, and video/audio `start_time` 0.000 on all. The render takes the song from the WAV, never from a clip's AAC. This is the AUDIO track's position only; it says nothing about the mouth (§6). |
 | fps rounding of the start frame | Every generated clip is 24/1 CFR (97 or 241 f). Board in-point = shot start − (sync + slip), derived on every read. Cut in-points vs sync. | Up to ½ frame by construction, where `derived` syncs are ms values off the 1/24 grid (e.g. 15.852). One spot (c033, −0.84 f) came from the box `build_v1.py` rounding the timeline-in and the in-point separately: a box-only scratch tool, not repo code. Below one frame, and no constant sign. |
 | Clip start trim / handles | Dress cut with handles vs the dressed take's sync | Holds within 20–30 ms (trace §1). |
 | Duration / clock drift | `drift_ppm`; hero vs original fit | 0 ppm everywhere; slope 0.99997, residual 1 ms. No sign of drift inside a 4–10 s clip that the data can show. |
@@ -54,7 +55,8 @@ its own audio track; "take" = the real take's mouth against the vocals over the 
 | The generated performance itself | Montages, restages | Spread per clip and per phrase (−12 … +12 f), with no constant. Matches the 17 Oct finding in `_shared/lipsync.ts` ("no single offset fits"). |
 
 **Root cause of the reported ±1–2 f: none found, because no ±1–2 f offset could be measured.** The deterministic
-chain (sync → dress → placement → render) holds to under one frame (VERIFIED). The rest is model articulation: it
+chain (sync → dress → placement → render) held to under one frame where it was measured (VERIFIED for those
+measurements; limits in §6). The rest is model articulation: it
 changes clip by clip and phrase by phrase, and at full-body framing it can't be resolved below about ±6 frames
 without a human looking.
 
@@ -71,9 +73,10 @@ without a human looking.
   five deserves a per-provider default. It belongs as a column on the route (e.g. a `mouth_offset_frames` default
   applied when a new assignment gets its `slip_seconds`), never in `performance_syncs`, which must stay the
   camera/song truth.
-- Small and separate (not done here): the EDL importer in `_shared/editModel.ts` labels `lipsync_pending` rows
-  `mouth: "camera"`. In the imported YSL Cut those rows are Seedance montages (generated mouths), so the Cut
-  under-warns on exactly the clips whose mouth is the model's. Worth a one-line review.
+- Small and separate (not done here; fixed afterwards in the provenance-label PR, see §6.4): the EDL importer in
+  `_shared/editModel.ts` labelled `lipsync_pending` rows `mouth: "camera"`. In the imported YSL Cut those rows are
+  Seedance montages (generated performances), so the Cut under-warned on exactly the clips whose mouth is the
+  model's.
 
 ## 5. Reproduce (box)
 
@@ -81,3 +84,58 @@ Clips came via `avt_signed_url`. Scripts are in `/workspace/avt_sync_gen` (`xc_a
 `lag_sd.py`), venv `/workspace/.venv-lips` (MediaPipe FaceLandmarker), vocals `htdemucs` stem of song 10–65 s, and
 the real-take mouth series `/workspace/ysl_lipsync_slip/raw_mouth_songgrid.json` (hero 59.94 fps sampled on the
 24 fps song grid at sync 0.852).
+
+## 6. Precision notes (amended 18 Oct 2026)
+
+### 6.1 Aligned audio is not aligned articulation
+
+The 0.00 ms result says where the **audio track** inside each lip-sync output sits against the song. It does not
+establish that the **visible mouth** in those clips is aligned with that audio. A clip can carry perfectly placed
+audio and still show articulation that leads, lags, drifts or has the wrong shape. Nothing in this study measured
+articulation to better than about ±6–8 frames (the mouth-opening metric's noise floor on the in-sync take, §2), so
+no statement here should be read as "the lip-sync outputs are in sync". Fendi judged all of them unusable on
+17 Oct for a separate reason (the pass alters his face).
+
+### 6.2 Which audio was measured, and how it got into those clips
+
+- **Measured:** the AAC track embedded in each Fal `sync-lipsync/v2` output MP4 (decoded by ffmpeg to mono 48 kHz,
+  edit list honoured), cross-correlated (GCC-PHAT, about ±0.54 s search) against the song at the clip's stored sync
+  position (`song_start`). The reference was the box's own `htdemucs` vocal stem of song 10–65 s for 9 clips
+  (c009 c011 c013 c016 c017 c023 c025 c027 c028), and the full album-master mix for the 2 outside that span
+  (c036, c047). Script: `/workspace/avt_sync_gen/xc_audio.py`, output `audio_xc.json` (box only).
+- **How that audio entered the clips:** `lipsync-shot` cut the project's vocal stem (Demucs via Fal, filed as a
+  project asset) at the montage's sync point plus any slip (`songWindowOf(songStart, clipSeconds)`, read as WAV
+  byte ranges, never re-encoded), stored the slice in `project-audio`, and sent it with the montage clip to Fal
+  `sync-lipsync/v2`. The output came back with that driving slice muxed in as its audio track.
+- **So the 0.00 ms is close to circular:** it confirms the slice was cut at the stored sync and that decoding the
+  output's AAC (priming, edit list, `start_time`) adds no offset. It cannot detect a provider-side offset between
+  the driving audio and the picture it drew, because the audio it checks is the audio that was fed in.
+
+### 6.3 Limits on "encoding / trim / placement ruled out"
+
+- **Sample size.** 11 of the 21 lip-sync outputs were measured (the 11 on the box); the other 10 were not
+  measured. Montages and restages carry no audio, so the audio check does not apply to them at all. The dress
+  frame map rests on two dressed takes (c033 `5a81d308`, c034 `3a31a320`); placement on the 16 lip-sync spots of
+  one Cut (`2976b498`).
+- **Audio, not picture.** The encoding check is on the audio track only. No check measured a picture offset
+  introduced by an encoder or container, and the rendered Export MP4 (edit-render worker) was not measured
+  against picture in this study.
+- **Frame-grid resolution.** fps rounding, trim and placement were checked on the 24 fps grid (one frame =
+  41.7 ms): "under one frame" means within one grid step, with up to ½ frame of quantization by construction. The
+  dress frame map was ±20–30 ms (sd 13 ms). Nothing here resolves sub-frame effects, and the mouth metric cannot
+  resolve anything under ~6 frames.
+- **Box-only scripts vs repo code.** The measurements used box scripts (`xc_audio.py`, `mouth_ls.py`, `lag_ls.py`,
+  `lag_sd.py`) and the box cut builder (`build_v1.py`, the source of the one −0.84 f c033 rounding). They are not in
+  the repo and are not the code path the app runs. The repo's own path (performance sync → board in-point →
+  Cut → edit-render) was checked by reading stored values (syncs, slips, Cut in-points), not by an end-to-end run
+  through repo code.
+
+These limits do not change the decision in §4 (no measured basis for a generalized correction); they bound how
+strongly "ruled out" can be read: **not found in what was measured**, rather than excluded in general.
+
+### 6.4 Follow-up
+
+The `lipsync_pending → "camera"` mislabel noted in §4 is fixed by the performance-provenance PR (the Cut now labels
+each clip from its asset lineage: recorded / generated / modified mouth movement / unknown). That PR does not
+change any timing and does not resolve the one-frame preview seeking, original-comparison mapping or phrase-loop
+reports, which are tracked separately.
