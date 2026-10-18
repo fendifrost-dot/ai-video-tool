@@ -3,17 +3,26 @@ import { supabase } from "@/lib/supabase";
 import { signedUrls, type StorageBucket } from "@/lib/storage";
 import type { EditSequence } from "../../../supabase/functions/edit-render/model";
 
-function bucketAndPath(fileUrl: string, meta: Record<string, unknown> | null): {
+function bucketAndPath(
+  fileUrl: string,
+  meta: Record<string, unknown> | null,
+  assetType: string | null,
+): {
   bucket: StorageBucket;
   path: string;
 } | null {
-  const bucket =
-    (typeof meta?.bucket === "string" && meta.bucket) ||
-    (fileUrl.includes("project-audio")
-      ? "project-audio"
-      : fileUrl.includes("project-references")
-        ? "project-references"
-        : "project-clips");
+  // Match supabase/functions/_shared/editMedia.ts bucketOfStoredAsset.
+  let bucket: string;
+  if (typeof meta?.bucket === "string" && meta.bucket.trim()) bucket = meta.bucket.trim();
+  else if (assetType === "audio") bucket = "project-audio";
+  else if (
+    assetType === "reference_image" ||
+    assetType === "reference_video" ||
+    assetType === "lyrics_doc"
+  )
+    bucket = "project-references";
+  else if (assetType === "ae_asset" || assetType === "premiere_export") bucket = "project-exports";
+  else bucket = "project-clips";
   const path = fileUrl.replace(/^\/+/, "");
   if (!path) return null;
   return { bucket: bucket as StorageBucket, path };
@@ -52,7 +61,11 @@ export function useEditMediaUrls(sequence: EditSequence | null) {
       const idToKey = new Map<string, { bucket: StorageBucket; path: string }>();
       for (const row of data ?? []) {
         if (!row.file_url) continue;
-        const bp = bucketAndPath(row.file_url, (row.metadata_json ?? {}) as Record<string, unknown>);
+        const bp = bucketAndPath(
+          row.file_url,
+          (row.metadata_json ?? {}) as Record<string, unknown>,
+          typeof row.asset_type === "string" ? row.asset_type : null,
+        );
         if (!bp) continue;
         idToKey.set(row.id, bp);
         const list = byBucket.get(bp.bucket) ?? [];
