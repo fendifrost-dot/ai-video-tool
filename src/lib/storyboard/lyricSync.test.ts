@@ -124,8 +124,9 @@ describe("a shot against its lyric window", () => {
     expect(linesOfShot(LINES, { start: 30, end: 31 })).toEqual([]);
   });
 
-  it("flags c033 as shorter than its lyric window — and, with a 10 s take under it, extendable", () => {
-    // E1: 10 s from 53.8 s on the song
+  it("is ok when the shot cuts between words and the clip covers the shot", () => {
+    // E1: 10 s from 53.8 s on the song. The shot ends 0.14 s before the line, with no word timings:
+    // that is a cut, not a short shot.
     const footage = footageOnSong({
       shotStart: c033.start,
       sourceIn: 4.26,
@@ -134,13 +135,13 @@ describe("a shot against its lyric window", () => {
     });
     expect(footage.start).toBeCloseTo(53.8, 3);
     const fit = lyricFit({ shot: c033, lines: LINES, footage });
-    expect(fit.status).toBe("extend_shot");
-    expect(fit.shotShortTail).toBeCloseTo(0.14, 3);
-    expect(fit.message).toMatch(/ends 0\.14 s before “what im whippin cost a home” does/);
+    expect(fit.status).toBe("ok");
+    expect(fit.shotShortTail).toBe(0);
+    expect(fit.lyricWindow).toEqual({ start: 58.02, end: 59.68 });
   });
 
-  it("needs a new clip when the footage cannot reach the end of the line", () => {
-    // a 4 s take whose last frame is at 59.6 s
+  it("does not ask for a new clip when the file covers the shot and only the rest of the line is past it", () => {
+    // a 4 s take whose last frame is at 59.6 s; the shot ends at 59.54
     const footage = footageOnSong({
       shotStart: c033.start,
       sourceIn: 2.46,
@@ -148,8 +149,8 @@ describe("a shot against its lyric window", () => {
       durationSeconds: 4,
     });
     const fit = lyricFit({ shot: c033, lines: LINES, footage });
-    expect(fit.status).toBe("needs_clip");
-    expect(fit.clipShortTail).toBeCloseTo(0.08, 3);
+    expect(fit.status).toBe("ok");
+    expect(fit.clipShortTail).toBe(0);
   });
 
   it("needs a new clip when the clip runs out inside the shot itself", () => {
@@ -168,5 +169,72 @@ describe("a shot against its lyric window", () => {
         .status,
     ).toBe("no_lyrics");
     expect(lyricFit({ shot: c033, lines: LINES, footage: null }).status).toBe("no_clip");
+  });
+
+  it("flags a word the shot cuts in half, and ignores a cut that falls between words", () => {
+    const words = [
+      { w: "what", start: 58.8, end: 59.0 },
+      { w: "home", start: 59.4, end: 59.7 },
+    ];
+    const lines = [
+      { lineIndex: 41, text: "what im whippin cost a home", start: 58.8, end: 59.68, words },
+    ];
+    const between = lyricFit({
+      shot: { start: 59.05, end: 59.35 },
+      lines,
+      footage: { start: 50, end: 70 },
+    });
+    expect(between.status).toBe("ok");
+    const bisect = lyricFit({
+      shot: { start: 58.9, end: 59.5 },
+      lines,
+      footage: { start: 50, end: 70 },
+    });
+    expect(bisect.status).toBe("extend_shot");
+    expect(bisect.message).toMatch(/word “what”/);
+    const short = lyricFit({
+      shot: { start: 58.9, end: 59.5 },
+      lines,
+      footage: { start: 58.95, end: 59.5 },
+    });
+    expect(short.status).toBe("needs_clip");
+  });
+
+  it("drops a held-note bridge and a near-zero line, and stays inside the shot's section", () => {
+    const lines = [
+      {
+        lineIndex: 16,
+        section: "verse",
+        text: "know you see it",
+        start: 41.04,
+        end: 47.6,
+        words: [],
+      },
+      { lineIndex: 37, section: "verse", text: "", start: 66.0, end: 66.01, words: [] },
+      { lineIndex: 40, section: "verse", text: "a real line", start: 42.0, end: 43.2, words: [] },
+      {
+        lineIndex: 43,
+        section: "hook",
+        text: "You don't gotta",
+        start: 60.8,
+        end: 63.16,
+        words: [],
+      },
+    ];
+    const shot = { start: 42.2, end: 44.0, section: "verse" };
+    expect(linesOfShot(lines, shot).map((l) => l.lineIndex)).toEqual([40]);
+    const fit = lyricFit({
+      shot,
+      lines,
+      footage: { start: 40, end: 48 },
+    });
+    expect(fit.status).toBe("ok");
+    expect(fit.lines.map((l) => l.lineIndex)).toEqual([40]);
+    const hook = lyricFit({
+      shot: { start: 60.5, end: 62.0, section: "verse" },
+      lines,
+      footage: { start: 60, end: 64 },
+    });
+    expect(hook.status).toBe("no_lyrics");
   });
 });

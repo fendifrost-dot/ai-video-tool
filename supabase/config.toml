@@ -172,3 +172,9 @@ verify_jwt = false
 
 [functions.dress-clip]
 verify_jwt = true
+
+[functions.edit-render]
+verify_jwt = true
+
+[functions.performance-sync]
+verify_jwt = true

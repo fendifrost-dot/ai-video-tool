@@ -93,6 +93,13 @@ describe("matching a take to the song", () => {
     expect(m.offsetSeconds).toBeCloseTo(1.5, 2);
   });
 
+  it("recovers a negative offset through the speech band-pass (camera started before the song)", () => {
+    const m = matchTakeToSong(s, takeOf(s, -1.2, 40), SR, { bandpass: true })!;
+    expect(m.offsetSeconds).toBeCloseTo(-1.2, 2);
+    expect(m.method).toBe("server_bandpass_envelope_gcc_phat");
+    expect(m.confidence.windowsTotal).toBeGreaterThan(1);
+  });
+
   it("returns null for a silent take, and for audio that is not the song", () => {
     expect(matchTakeToSong(s, new Float32Array(30 * SR), SR)).toBeNull();
     const other = matchTakeToSong(s, song(40, 1234), SR);

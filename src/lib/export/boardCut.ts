@@ -47,7 +47,7 @@ export function boardCutRows(input: {
   lines: readonly LyricLine[];
 }): BoardCutRow[] {
   return input.timeline.map((seg) => {
-    const shot = { start: seg.start, end: seg.end };
+    const shot = { start: seg.start, end: seg.end, section: seg.section };
     const m = seg.media;
     const asset = m.kind === "video" ? (input.assets.get(m.assetId) ?? null) : null;
     if (m.kind !== "video" || !asset) {

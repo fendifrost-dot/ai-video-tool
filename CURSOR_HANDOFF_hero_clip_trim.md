@@ -11,7 +11,7 @@
 - BUT the sharp hero still does not need the full master. `captureFrame.ts` grabs the hero frame at the video's native resolution — so a short 4K clip under 50 MB yields a full-4K hero frame through the existing scrub-and-capture UI, no upgrade and no code change.
 
 ## 1. Objective
-From the 4K master, produce ONE trimmed clip that is genuinely 4K (native resolution preserved) and ≤ 45 MB, centered on the hero pose. HARD REQUIREMENT: DO NOT downscale resolution — control size via duration + CRF + dropping audio only.
+From the 4K master, produce ONE trimmed clip that is genuinely 4K (native resolution preserved) and ≤ 45 MB, centered on the hero pose. HARD REQUIREMENT: DO NOT downscale resolution — control size via duration + CRF. Keep the audio track (`-c:a aac`). Dropping it (`-an`) is what left the stored hero clips with nothing to sync.
 
 ## 2. Source file
 /Users/gocrazyglobal/Library/Mobile Documents/com~apple~CloudDocs/FENDI FILES/VIDEO/MODEST Member Only shots/IMG_5508.mov
@@ -21,8 +21,8 @@ From the 4K master, produce ONE trimmed clip that is genuinely 4K (native resolu
 Look: Fendi in his room, grey cap, thin wire-frame glasses, 3/4 turned to his right, head tilted slightly up, cream/white "MODEST" varsity jacket. The old proxy captured it ~2.15s into hero_src_clip.mp4, but the master's timestamp differs. Dump thumbnails to locate: `ffmpeg -i IMG_5508.mov -vf fps=1 -q:v 3 /tmp/thumbs/frame_%04d.jpg` — pick timestamp T. If unsure, ask Fendi.
 
 ## 4. Produce the clip (≤45 MB, keep 4K)
-`ffmpeg -ss <T-4> -i IMG_5508.mov -t 10 -c:v libx265 -crf 24 -preset medium -tag:v hvc1 -an -movflags +faststart hero_clip_4k.mov`
-Tune to ≤45 MB by raising -crf (24→26→28) and/or lowering -t. H.264 fallback if HEVC decode issues: `ffmpeg -ss <T-4> -i IMG_5508.mov -t 8 -c:v libx264 -crf 26 -pix_fmt yuv420p -an -movflags +faststart hero_clip_4k.mp4`
+`ffmpeg -ss <T-4> -i IMG_5508.mov -t 10 -c:v libx265 -crf 24 -preset medium -tag:v hvc1 -c:a aac -b:a 160k -movflags +faststart hero_clip_4k.mov`
+Tune to ≤45 MB by raising -crf (24→26→28) and/or lowering -t. Keep the audio: the stored hero_clip_4k.mov / hero_clip_h264.mp4 / hero_clip_hd_1080.mp4 were made with `-an` and cannot be lined up to the song. H.264 fallback: `ffmpeg -ss <T-4> -i IMG_5508.mov -t 8 -c:v libx264 -crf 26 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart hero_clip_4k.mp4`. The same argv, without the trim, is `referenceTranscodeArgs` in src/lib/media/referenceTranscode.ts.
 
 ## 5. Verify (all three)
 - Size ≤45 MB: `ls -lh hero_clip_4k.mov`
@@ -33,7 +33,7 @@ Tune to ≤45 MB by raising -crf (24→26→28) and/or lowering -t. H.264 fallba
 Drop the verified clip in MODEST or upload it into the AVT project as a source/reference video (lands in project-clips/project-references; under 50 MB so it ingests on Pico). Tell Claude it's ready + the approx hero timestamp. Claude then: Hero Frame Studio → scrub → capture at native 4K → Grok garment-truth + identity + deterministic full-face/eyewear composite → deliver the sharp identical still for sign-off. No AVT code changes needed.
 
 ## 7. Do-not
-- Do NOT downscale resolution to hit size (CRF/duration/audio only).
+- Do NOT downscale resolution to hit size (CRF/duration only). Do NOT drop the audio.
 - Do NOT re-encode the whole 1.67 GB master — just the short trim.
 - Do NOT upload the full master (413s on the 50 MB Pico cap).
 - No AVT/Supabase code, migrations, or deploys for this task.

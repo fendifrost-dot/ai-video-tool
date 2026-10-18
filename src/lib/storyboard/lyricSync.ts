@@ -7,13 +7,15 @@
  *   puts it. The director finds the frame where he starts a line, says "this frame is that line", and the slip that
  *   puts that frame on the line's first word is `slipToLine`. The sync is never written; the in-point is derived.
  *
- * WHAT IT IS CHECKED AGAINST (Grokbot's ask, 17 Oct 2026)
- *   "Flag any shot that ends up shorter than its lyric window, so we know right away when a shot needs extending
- *   or a new clip." A shot's LYRIC WINDOW is the full span of the lines it carries — a line it cuts into still
- *   counts whole, since a mouth cut mid-line is the thing to catch. `lyricFit` says which of three it is:
- *     ok            the shot holds its lines, and the clip covers the shot
- *     extend_shot   the shot cuts a line, and the clip has the footage to extend it (handles)
- *     needs_clip    the clip runs out — inside the shot, or before the lines end: a longer clip or a new one
+ * WHAT IT IS CHECKED AGAINST
+ *   A shot is short only when it cuts through a WORD (the line carries word timings) or the source file runs out
+ *   inside the shot. Cutting between words, or into a line that has no word timings, is a cut, not a short shot.
+ *   A line longer than FIT_LINE_CAP with no words is a held note / aligner bridge and is not this shot's window.
+ *   A line shorter than a frame is ignored. When the shot names a section, a line from another section is not its.
+ *
+ *   ok            the clip covers the shot, and no word is cut in half
+ *   extend_shot   a word is cut, and the clip has the footage to hold that word
+ *   needs_clip    the clip runs out inside the shot, or it cannot cover a word the shot cuts
  *
  * Pure: no React, no Supabase. Song seconds throughout; one second of take is one second of song (drift is parts per
  * million and is carried by the sync, never here).
@@ -26,18 +28,66 @@ import { MAX_SLIP_SECONDS } from "./footageEdit";
 export const FIT_SLACK = 0.04;
 /** A line that touches a shot for less than this is the neighbour's line, not this shot's. */
 export const LINE_TOUCH = 0.1;
+/**
+ * A sung line the shot is asked to hold whole. Longer than this, with no word timings, is a bridge across a held
+ * note (the 10 s display cap still lets those through) and is not a window the shot must cover.
+ */
+export const FIT_LINE_CAP = 4;
+/** Shorter than this is an aligner stub, not a line. */
+export const MIN_LINE_SECONDS = 0.05;
+
+export type FitLine = Pick<LyricLine, "lineIndex" | "text" | "start" | "end"> & {
+  section?: string;
+  words?: readonly { start: number; end: number; w?: string }[];
+};
+
+const normSection = (s: string) =>
+  s
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+const spanOverlap = (a0: number, a1: number, b0: number, b1: number) =>
+  Math.min(a1, b1) - Math.max(a0, b0);
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
-/** The lines a shot carries, whole, in song order: every line that overlaps the shot window by more than a touch. */
+/** The lines a shot carries, in song order. A bridge, a stub, and another section's line are left out. */
 export function linesOfShot(
-  lines: readonly Pick<LyricLine, "lineIndex" | "text" | "start" | "end">[],
-  shot: { start: number; end: number },
-): Pick<LyricLine, "lineIndex" | "text" | "start" | "end">[] {
+  lines: readonly FitLine[],
+  shot: { start: number; end: number; section?: string | null },
+): FitLine[] {
+  const section = shot.section?.trim() ? normSection(shot.section) : "";
   return lines
-    .filter((l) => l.end - l.start <= MAX_LINE_SECONDS)
-    .filter((l) => Math.min(l.end, shot.end) - Math.max(l.start, shot.start) > LINE_TOUCH)
+    .filter((l) => {
+      const dur = l.end - l.start;
+      if (!(dur >= MIN_LINE_SECONDS) || dur > MAX_LINE_SECONDS) return false;
+      if (section && l.section && normSection(l.section) !== section) return false;
+      if (dur > FIT_LINE_CAP) {
+        return (l.words ?? []).some(
+          (w) =>
+            w.end - w.start >= MIN_LINE_SECONDS &&
+            spanOverlap(w.start, w.end, shot.start, shot.end) > LINE_TOUCH,
+        );
+      }
+      return spanOverlap(l.start, l.end, shot.start, shot.end) > LINE_TOUCH;
+    })
     .sort((a, b) => a.start - b.start);
+}
+
+/** Words of those lines that the shot actually sings, when the line carries timings. */
+export function wordsOfShot(
+  lines: readonly FitLine[],
+  shot: { start: number; end: number },
+): { start: number; end: number; text: string }[] {
+  const out: { start: number; end: number; text: string }[] = [];
+  for (const line of lines) {
+    for (const w of line.words ?? []) {
+      if (w.end - w.start < MIN_LINE_SECONDS) continue;
+      if (spanOverlap(w.start, w.end, shot.start, shot.end) <= LINE_TOUCH) continue;
+      out.push({ start: w.start, end: w.end, text: w.w ?? "" });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
 }
 
 /** The span of those lines (null when the shot carries none). */
@@ -90,36 +140,50 @@ export type LyricFitStatus = "ok" | "extend_shot" | "needs_clip" | "no_lyrics" |
 
 export type LyricFit = {
   status: LyricFitStatus;
-  lines: Pick<LyricLine, "lineIndex" | "text" | "start" | "end">[];
-  /** The span of the lines the shot carries. */
+  lines: FitLine[];
+  /** Span of the words the shot sings, or of the short lines it carries when there are no word timings. */
   lyricWindow: { start: number; end: number } | null;
-  /** Seconds of the lyric window before the shot starts / after it ends: what the shot cuts off. */
+  /** Seconds of a cut word before the shot starts / after it ends. Zero when the cut is between words. */
   shotShortHead: number;
   shotShortTail: number;
-  /** Seconds of what is needed (the shot and its lyric window) that the clip has no footage for, at each end. */
+  /** Seconds of the shot (and of a cut word) that the clip has no footage for. */
   clipShortHead: number;
   clipShortTail: number;
   /** One sentence for the director. */
   message: string;
 };
 
+function cutWord(
+  words: readonly { start: number; end: number; text: string }[],
+  edge: number,
+): { start: number; end: number; text: string } | null {
+  return words.find((w) => edge > w.start + FIT_SLACK && edge < w.end - FIT_SLACK) ?? null;
+}
+
 /**
  * Whether a shot holds its lines, and whether its clip can. `footage` is where the clip sits on the song
  * (footageOnSong); null when the shot shows no video.
  */
 export function lyricFit(input: {
-  shot: { start: number; end: number };
-  lines: readonly Pick<LyricLine, "lineIndex" | "text" | "start" | "end">[];
+  shot: { start: number; end: number; section?: string | null };
+  lines: readonly FitLine[];
   footage: { start: number; end: number } | null;
 }): LyricFit {
   const { shot, footage } = input;
   const lines = linesOfShot(input.lines, shot);
-  const lw = lyricWindowOf(lines);
-  const shotShortHead = lw ? r3(Math.max(0, shot.start - lw.start)) : 0;
-  const shotShortTail = lw ? r3(Math.max(0, lw.end - shot.end)) : 0;
-  const need = lw
-    ? { start: Math.min(shot.start, lw.start), end: Math.max(shot.end, lw.end) }
-    : shot;
+  const words = wordsOfShot(lines, shot);
+  const wordWindow = words.length
+    ? { start: Math.min(...words.map((w) => w.start)), end: Math.max(...words.map((w) => w.end)) }
+    : null;
+  const lw = wordWindow ?? lyricWindowOf(lines.filter((l) => l.end - l.start <= FIT_LINE_CAP));
+  const headWord = words.length ? cutWord(words, shot.start) : null;
+  const tailWord = words.length ? cutWord(words, shot.end) : null;
+  const shotShortHead = headWord ? r3(shot.start - headWord.start) : 0;
+  const shotShortTail = tailWord ? r3(tailWord.end - shot.end) : 0;
+  const need = {
+    start: headWord ? headWord.start : shot.start,
+    end: tailWord ? tailWord.end : shot.end,
+  };
   const inShot = (f: { start: number; end: number }) => ({
     head: r3(Math.max(0, f.start - shot.start)),
     tail: Number.isFinite(f.end) ? r3(Math.max(0, shot.end - f.end)) : 0,
@@ -144,7 +208,7 @@ export function lyricFit(input: {
       status: "needs_clip",
       message: `the clip runs out inside the shot${gap.head > FIT_SLACK ? ` — starts ${gap.head.toFixed(2)} s late` : ""}${gap.tail > FIT_SLACK ? ` — ends ${gap.tail.toFixed(2)} s early` : ""}: a longer clip, or a new one`,
     };
-  if (!lw) return { ...base, status: "no_lyrics", message: "no lyric line in this shot" };
+  if (!lines.length) return { ...base, status: "no_lyrics", message: "no lyric line in this shot" };
   if (shotShortHead <= FIT_SLACK && shotShortTail <= FIT_SLACK)
     return {
       ...base,
@@ -152,11 +216,11 @@ export function lyricFit(input: {
       message: `holds its ${lines.length === 1 ? "line" : `${lines.length} lines`}`,
     };
   const cut = [
-    shotShortHead > FIT_SLACK
-      ? `starts ${shotShortHead.toFixed(2)} s into “${lines[0].text}”`
+    headWord && shotShortHead > FIT_SLACK
+      ? `cuts ${shotShortHead.toFixed(2)} s into the word “${headWord.text || lines[0].text}”`
       : null,
-    shotShortTail > FIT_SLACK
-      ? `ends ${shotShortTail.toFixed(2)} s before “${lines[lines.length - 1].text}” does`
+    tailWord && shotShortTail > FIT_SLACK
+      ? `cuts off ${shotShortTail.toFixed(2)} s of the word “${tailWord.text || lines[lines.length - 1].text}”`
       : null,
   ]
     .filter(Boolean)
@@ -165,12 +229,12 @@ export function lyricFit(input: {
     return {
       ...base,
       status: "extend_shot",
-      message: `shorter than its lyric window: it ${cut} — the clip has the footage to extend it`,
+      message: `cuts a word in half: it ${cut} — the clip has the footage to hold the word`,
     };
   return {
     ...base,
     status: "needs_clip",
-    message: `shorter than its lyric window: it ${cut} — and the clip has no footage for ${[
+    message: `cuts a word in half: it ${cut} — and the clip has no footage for ${[
       clipShortHead > FIT_SLACK ? `${clipShortHead.toFixed(2)} s at the head` : null,
       clipShortTail > FIT_SLACK ? `${clipShortTail.toFixed(2)} s at the tail` : null,
     ]

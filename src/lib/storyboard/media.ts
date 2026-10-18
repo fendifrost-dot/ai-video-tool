@@ -154,6 +154,24 @@ export function isOriginalTake(a: Pick<MediaAsset, "footageRole" | "isVideo" | "
   return a.footageRole === "performance" && a.isVideo && !a.derivedFrom;
 }
 
+/**
+ * Whose mouth the picture is. `camera`: the original take, or a dress/composite retimed to it — a sync offset
+ * moves the mouth with the song. `model`: a montage or restage — the mouth is generated and an offset cannot
+ * line it up. Null for anything that is not a performance picture.
+ */
+export type MouthClock = "camera" | "model";
+
+export function mouthClock(
+  asset: Pick<MediaAsset, "footageRole" | "isVideo" | "derivedFrom">,
+): MouthClock | null {
+  if (!asset.isVideo) return null;
+  const method = asset.derivedFrom?.method;
+  if (method === "montage" || method === "restaged") return "model";
+  if (method === "dressed" || method === "composite") return "camera";
+  if (!asset.derivedFrom && asset.footageRole === "performance") return "camera";
+  return null;
+}
+
 /** A take's sync, as stored: which take, and how its clock maps to the song's. */
 export type TakeSync = PerformanceSync & { id: string; performanceAssetId: string; updatedAt?: string };
 

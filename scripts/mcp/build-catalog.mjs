@@ -16,7 +16,7 @@ const FUNCTIONS = join(ROOT, "supabase/functions");
 const OUT = join(FUNCTIONS, "avt-mcp/catalog.generated.ts");
 const TYPES = join(ROOT, "src/integrations/supabase/types.ts");
 /** Tables added by migrations the generated types have not caught up with yet. */
-const EXTRA_TABLES = [];
+const EXTRA_TABLES = ["edit_sequences", "edit_clips", "edit_markers", "edit_sequence_versions", "edit_renders"];
 const HEADER_MAX = 3000;
 const TYPE_MAX = 4000;
 
