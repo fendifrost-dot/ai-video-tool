@@ -1001,6 +1001,40 @@ export function sequenceFromRows(sequence: Row, clips: Row[], markers: Row[]): E
 export type RenderKind = "proxy" | "final";
 export type RenderAspect = "9:16" | "1:1" | "16:9";
 
+export type RenderMediaItem = {
+  role: "picture" | "song";
+  clipId: string | null;
+  name: string;
+  assetId: string;
+  bucket: string;
+  path: string;
+  /** Short-lived storage URL. Never placed on argv. Null when the file could not be signed. */
+  url: string | null;
+  sourceIn: number;
+  sourceOut: number;
+  timelineIn: number;
+  timelineOut: number;
+  /** Probed seconds, or a stored length that is not the 4.04 s filing default. Null until then. */
+  durationSeconds: number | null;
+  placeholder: boolean;
+};
+
+export type RenderMediaGap = {
+  clipId: string | null;
+  name: string;
+  assetId: string | null;
+  reason: string;
+};
+
+export type RenderMediaReport = {
+  /** Picture inputs that resolved to a stored file. The song is counted separately. */
+  realCount: number;
+  song: boolean;
+  missing: RenderMediaGap[];
+  slate: RenderMediaGap[];
+  items: RenderMediaItem[];
+};
+
 export type RenderPlan = {
   costUsd: 0;
   billable: false;
@@ -1017,6 +1051,9 @@ export type RenderPlan = {
   argv: string[];
   warnings: string[];
   upscale: { invoked: false; costUsd: 0; note: string } | null;
+  inputs: RenderMediaReport;
+  /** The sequence the plan was built from, so a local encode can re-plan after ffprobe. */
+  sequence: EditSequence;
 };
 
 const XFADE: Record<Exclude<EditTransition, "cut">, string> = {
@@ -1063,8 +1100,12 @@ function safeLocal(path: string | undefined): string | null {
 }
 
 /**
- * ffmpeg plan for a sequence. Cost is always 0. Remote URLs are never inputs. Nothing here calls a
- * generation provider; `upscale: true` only records that a later, separate lane would be explicit.
+ * ffmpeg plan for a sequence. Cost is always 0. Remote URLs are never argv inputs: a resolved file is a
+ * local path or an `avt-media/` token the local script replaces after downloading this project's storage.
+ * Nothing here calls a generation provider; `upscale: true` only records that a later lane would be explicit.
+ *
+ * `durations` are trusted seconds (an ffprobe, or a stored length that is not the 4.04 s filing default).
+ * A source out past that length is clamped. The 4.04 s default is not passed in, so it cannot clamp a cut.
  */
 export function planRender(
   seq: EditSequence,
@@ -1072,7 +1113,9 @@ export function planRender(
     kind?: RenderKind;
     aspect?: RenderAspect;
     media?: Record<string, string>;
+    durations?: Record<string, number>;
     songPath?: string | null;
+    songDurationSeconds?: number | null;
     grain?: boolean;
     lut?: string | null;
     captions?: boolean;
@@ -1094,11 +1137,21 @@ export function planRender(
   const args: string[] = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"];
   const chains: string[] = [];
   let structural = true;
+  let realCount = 0;
   clips.forEach((c, i) => {
     const local = safeLocal(options.media?.[c.assetId ?? ""] ?? options.media?.[c.fileName ?? ""]);
+    const known = c.assetId != null ? options.durations?.[c.assetId] : undefined;
+    const sourceEnd =
+      known != null && Number.isFinite(known) && known > 0
+        ? Math.min(c.sourceOut, known)
+        : c.sourceOut;
     const dur = Math.max(1 / fps, c.timelineOut - c.timelineIn);
-    if (!local) {
-      if (options.media && (c.assetId || c.fileName))
+    if (!local || !(sourceEnd > c.sourceIn)) {
+      if (local && !(sourceEnd > c.sourceIn))
+        warnings.push(
+          `${c.name}: file is shorter than the source in-point, using a colour stand-in`,
+        );
+      else if (options.media && (c.assetId || c.fileName))
         warnings.push(`${c.name}: no local file, using a colour stand-in`);
       const hex = LABEL_HEX[c.labelColor ?? ""] ?? "0x222222";
       args.push(
@@ -1114,11 +1167,16 @@ export function planRender(
       chains.push(`[${i}:v]setsar=1${burn}[v${i}]`);
     } else {
       structural = false;
+      realCount += 1;
+      if (known != null && c.sourceOut > known + 1 / fps)
+        warnings.push(
+          `${c.name}: source out ${c.sourceOut.toFixed(3)}s clamped to the file duration ${known.toFixed(3)}s`,
+        );
       args.push("-i", local);
       const speed = c.speed > 0 ? c.speed : 1;
       const pts = speed === 1 ? "" : `,setpts=PTS/${speed}`;
       chains.push(
-        `[${i}:v]trim=start=${c.sourceIn.toFixed(3)}:end=${c.sourceOut.toFixed(3)},setpts=PTS-STARTPTS${pts},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=${fps},setsar=1[v${i}]`,
+        `[${i}:v]trim=start=${c.sourceIn.toFixed(3)}:end=${sourceEnd.toFixed(3)},setpts=PTS-STARTPTS${pts},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=${fps},setsar=1[v${i}]`,
       );
     }
   });
@@ -1188,11 +1246,18 @@ export function planRender(
   const song = safeLocal(options.songPath ?? undefined);
   const audioIndex = clips.length === 0 ? 1 : clips.length;
   const dur = durationSeconds(seq);
-  if (song) {
+  const songKnown = options.songDurationSeconds;
+  const songStart = seq.songOffset;
+  let songEnd = songStart + dur;
+  const songFits = Boolean(song) && !(songKnown != null && songKnown > 0 && songStart >= songKnown);
+  if (song && !songFits)
+    warnings.push("song offset is past the end of the file; the proxy stays silent");
+  if (song && songFits) {
     structural = false;
+    if (songKnown != null && songKnown > 0) songEnd = Math.min(songEnd, songKnown);
     args.push("-i", song);
     chains.push(
-      `[${audioIndex}:a]atrim=start=${seq.songOffset.toFixed(3)}:end=${(seq.songOffset + dur).toFixed(3)},asetpts=PTS-STARTPTS[a]`,
+      `[${audioIndex}:a]atrim=start=${songStart.toFixed(3)}:end=${songEnd.toFixed(3)},asetpts=PTS-STARTPTS[a]`,
     );
   } else {
     args.push("-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo");
@@ -1248,6 +1313,14 @@ export function planRender(
           note: "Upscale is a separate existing provider lane. This plan does not call it and spends nothing. Run that lane yourself on the finished file.",
         }
       : null,
+    inputs: {
+      realCount,
+      song: Boolean(song && songFits),
+      missing: [],
+      slate: [],
+      items: [],
+    },
+    sequence: seq,
   };
 }
 
