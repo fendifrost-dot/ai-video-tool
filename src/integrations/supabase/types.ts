@@ -593,6 +593,359 @@ export type Database = {
           },
         ]
       }
+      edit_clips: {
+        Row: {
+          asset_id: string | null
+          comment: string
+          created_at: string
+          enabled: boolean
+          file_name: string | null
+          id: string
+          item_order: number
+          label_color: string | null
+          media_duration_seconds: number | null
+          mouth: string | null
+          name: string
+          placeholder: boolean
+          sequence_id: string
+          shot_id: string | null
+          shot_key: string | null
+          source_in_seconds: number
+          source_out_seconds: number
+          speed: number
+          timeline_in_seconds: number
+          timeline_out_seconds: number
+          track: string
+          transition: string
+          transition_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          comment?: string
+          created_at?: string
+          enabled?: boolean
+          file_name?: string | null
+          id?: string
+          item_order?: number
+          label_color?: string | null
+          media_duration_seconds?: number | null
+          mouth?: string | null
+          name: string
+          placeholder?: boolean
+          sequence_id: string
+          shot_id?: string | null
+          shot_key?: string | null
+          source_in_seconds: number
+          source_out_seconds: number
+          speed?: number
+          timeline_in_seconds: number
+          timeline_out_seconds: number
+          track: string
+          transition?: string
+          transition_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          comment?: string
+          created_at?: string
+          enabled?: boolean
+          file_name?: string | null
+          id?: string
+          item_order?: number
+          label_color?: string | null
+          media_duration_seconds?: number | null
+          mouth?: string | null
+          name?: string
+          placeholder?: boolean
+          sequence_id?: string
+          shot_id?: string | null
+          shot_key?: string | null
+          source_in_seconds?: number
+          source_out_seconds?: number
+          speed?: number
+          timeline_in_seconds?: number
+          timeline_out_seconds?: number
+          track?: string
+          transition?: string
+          transition_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_clips_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_markers: {
+        Row: {
+          clip_id: string | null
+          comment: string
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          sequence_id: string
+          time_in_seconds: number
+          time_out_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          clip_id?: string | null
+          comment?: string
+          created_at?: string
+          id?: string
+          kind: string
+          name?: string
+          sequence_id: string
+          time_in_seconds: number
+          time_out_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          clip_id?: string | null
+          comment?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          sequence_id?: string
+          time_in_seconds?: number
+          time_out_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_markers_clip_id_fkey"
+            columns: ["clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_markers_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_renders: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          output_asset_id: string | null
+          output_bucket: string | null
+          output_path: string | null
+          plan: Json
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          output_asset_id?: string | null
+          output_bucket?: string | null
+          output_path?: string | null
+          plan: Json
+          sequence_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          output_asset_id?: string | null
+          output_bucket?: string | null
+          output_path?: string | null
+          plan?: Json
+          sequence_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_renders_output_asset_id_fkey"
+            columns: ["output_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_renders_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_sequence_versions: {
+        Row: {
+          created_at: string
+          id: string
+          sequence_id: string
+          snapshot: Json
+          summary: string
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sequence_id: string
+          snapshot: Json
+          summary?: string
+          user_id: string
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sequence_id?: string
+          snapshot?: Json
+          summary?: string
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_sequence_versions_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_sequences: {
+        Row: {
+          created_at: string
+          fps: number
+          height: number
+          id: string
+          name: string
+          notes: string
+          parent_sequence_id: string | null
+          project_id: string
+          song_asset_id: string | null
+          song_duration_seconds: number
+          song_file: string
+          song_name: string
+          song_offset_seconds: number
+          updated_at: string
+          user_id: string
+          variation_id: string | null
+          version_number: number
+          width: number
+        }
+        Insert: {
+          created_at?: string
+          fps?: number
+          height?: number
+          id?: string
+          name: string
+          notes?: string
+          parent_sequence_id?: string | null
+          project_id: string
+          song_asset_id?: string | null
+          song_duration_seconds?: number
+          song_file?: string
+          song_name?: string
+          song_offset_seconds?: number
+          updated_at?: string
+          user_id: string
+          variation_id?: string | null
+          version_number?: number
+          width?: number
+        }
+        Update: {
+          created_at?: string
+          fps?: number
+          height?: number
+          id?: string
+          name?: string
+          notes?: string
+          parent_sequence_id?: string | null
+          project_id?: string
+          song_asset_id?: string | null
+          song_duration_seconds?: number
+          song_file?: string
+          song_name?: string
+          song_offset_seconds?: number
+          updated_at?: string
+          user_id?: string
+          variation_id?: string | null
+          version_number?: number
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_sequences_parent_sequence_id_fkey"
+            columns: ["parent_sequence_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_sequences_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_sequences_song_asset_id_fkey"
+            columns: ["song_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_sequences_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_packages: {
         Row: {
           created_at: string
