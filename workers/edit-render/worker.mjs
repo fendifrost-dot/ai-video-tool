@@ -3,15 +3,13 @@
 // uploads the MP4 to project-exports and marks the row complete (or failed with a reason). $0: no providers.
 //
 //   AVT_WORKER_SECRET=... node --experimental-strip-types workers/edit-render/worker.mjs [--once]
-// Env: AVT_WORKER_SECRET (required), AVT_WORKER_API (default: live edit-render-worker-api URL),
+// Env: AVT_WORKER_SECRET (required), AVT_WORKER_API (required: <SUPABASE_URL>/functions/v1/edit-render-worker-api),
 //      AVT_WORKER_ID (default hostname-pid), AVT_POLL_SECONDS (default 10).
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { encodePlan } from "../../scripts/edit-render/encode.mjs";
 import { verifyMp4 } from "./verify.mjs";
-
-const DEFAULT_API = "[REDACTED]qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/edit-render-worker-api";
 
 export function log(event, fields = {}) {
   console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...fields }));
@@ -94,11 +92,11 @@ export async function runOnce({
 
 async function main() {
   const secret = process.env.AVT_WORKER_SECRET ?? "";
-  if (!secret) {
-    console.error("AVT_WORKER_SECRET is required");
+  if (!secret || !process.env.AVT_WORKER_API) {
+    console.error("AVT_WORKER_SECRET and AVT_WORKER_API are required");
     process.exit(2);
   }
-  const api = makeApi({ url: process.env.AVT_WORKER_API || DEFAULT_API, secret });
+  const api = makeApi({ url: process.env.AVT_WORKER_API, secret });
   const workerId = process.env.AVT_WORKER_ID || `${hostname()}-${process.pid}`;
   const pollMs = Math.max(2, Number(process.env.AVT_POLL_SECONDS) || 10) * 1000;
   const once = process.argv.includes("--once");

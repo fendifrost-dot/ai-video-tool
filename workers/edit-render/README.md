@@ -15,7 +15,7 @@ values ('box', encode(digest('<secret>', 'sha256'), 'hex'));  -- or compute sha2
 
 Requirements: Node ≥ 22.6 (`--experimental-strip-types`), ffmpeg/ffprobe on PATH.
 
-- **Box / any Linux:** put `AVT_WORKER_SECRET=...` in `~/.secrets/avt_render_worker.env` (chmod 600), then
+- **Box / any Linux:** put `AVT_WORKER_SECRET=...` and `AVT_WORKER_API=<SUPABASE_URL>/functions/v1/edit-render-worker-api` in `~/.secrets/avt_render_worker.env` (chmod 600), then
   `nohup setsid workers/edit-render/run-supervised.sh >/dev/null 2>&1 &`. Logs: `workers/edit-render/logs/worker.log`
   (or `AVT_WORKER_LOG_DIR`). Stop: `kill $(cat <logdir>/supervisor.pid)`.
 - **Mac:** same script under a launchd agent with `KeepAlive`.

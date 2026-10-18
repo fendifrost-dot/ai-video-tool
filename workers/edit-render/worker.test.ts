@@ -67,7 +67,7 @@ function fakeApi(render: unknown) {
     if (body.action === "claim") {
       if (given) return { ok: true, render: null };
       given = true;
-      return { ok: true, render, signed: {}, upload: { signedUrl: "[REDACTED]example.invalid/up" } };
+      return { ok: true, render, signed: {}, upload: { signedUrl: "upload-target" } };
     }
     return { ok: true, path: "p", assetId: "a" };
   };
