@@ -313,8 +313,8 @@ export default function ExportPage({ projectId }: { projectId: string }) {
               </ul>
             )}
             <p className="mt-2 text-xs text-muted-foreground" data-testid="render-contract-boundary">
-              A finished MP4 still needs the export worker on a machine with ffmpeg. Until that is connected, download
-              the package and open Timeline → Export preview for the queued cut, or take the Premiere files below.
+              For a playable MP4, open Timeline → Export preview: the render worker encodes the cut (free, ffmpeg) and the
+              MP4 plays there when ready. The package and Premiere files below are unchanged.
             </p>
           </section>
         )}

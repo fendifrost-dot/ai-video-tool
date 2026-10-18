@@ -22,12 +22,14 @@ import { useEditMediaUrls } from "@/lib/queries/editMediaUrls";
 import {
   downloadSequenceXml,
   requestEditRender,
+  useLatestEditRender,
   useSaveEditSequence,
 } from "@/lib/queries/editSequences";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 import { Button } from "@/components/ui/button";
 import { MediaBrowser } from "./MediaBrowser";
+import { RenderStatus } from "./RenderStatus";
 import { SequencePreview } from "./SequencePreview";
 import { SongWaveform } from "./SongWaveform";
 import { SyncPanel } from "./SyncPanel";
@@ -69,6 +71,7 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
   const mediaQ = useEditMediaUrls(sequence);
   const assetsQ = useProjectAssets(projectId);
   const saveMut = useSaveEditSequence(projectId);
+  const latestRender = useLatestEditRender(sequence.id);
 
   async function ensureAssetUrl(asset: ProjectAsset): Promise<string | null> {
     if (mediaQ.data?.byAssetId[asset.id]) return mediaQ.data.byAssetId[asset.id]!;
@@ -402,10 +405,11 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
                             ? `Found ${dry.media.resolved} picture file(s)${dry.media.missing?.length ? `; missing: ${dry.media.missing.join(", ")}` : ""}`
                             : "Plan ready",
                           queued.renderId
-                            ? `Queued preview (free). Open Timeline again when the encode finishes, or use Download cut now.`
+                            ? `Queued preview (free). The render worker encodes it; the MP4 appears below when ready.`
                             : queued.note || "Queued.",
                         ].join(" · "),
                       );
+                      void latestRender.refetch();
                     } catch (err) {
                       setExportNote(err instanceof Error ? err.message : "Export failed");
                     }
@@ -420,6 +424,7 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId }: 
                 {exportNote}
               </p>
             )}
+            <RenderStatus row={latestRender.data?.row ?? null} url={latestRender.data?.url ?? null} />
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-border bg-[#101417] p-2">
