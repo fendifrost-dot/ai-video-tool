@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { renderIsActive, type EditRenderRow } from "@/lib/editor/renderStatus";
 import {
   exportXmeml,
   sequenceFromRows,
@@ -179,4 +180,32 @@ export function downloadSequenceXml(seq: EditSequence) {
   a.download = `${seq.name.replace(/[^\w.-]+/g, "_") || "cut"}.xml`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Latest edit_renders row for a sequence, polled every 4 s while queued/rendering, plus a signed MP4 URL. */
+export function useLatestEditRender(sequenceId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["edit-render-latest", sequenceId],
+    enabled: !!sequenceId,
+    queryFn: async (): Promise<{ row: EditRenderRow | null; url: string | null }> => {
+      const { data, error } = await db
+        .from("edit_renders")
+        .select("id,status,error,output_bucket,output_path,duration_seconds,created_at")
+        .eq("sequence_id", sequenceId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const row = (data ?? null) as EditRenderRow | null;
+      let url: string | null = null;
+      if (row?.status === "complete" && row.output_bucket && row.output_path) {
+        const { data: signed } = await supabase.storage
+          .from(row.output_bucket)
+          .createSignedUrl(row.output_path, 3600);
+        url = signed?.signedUrl ?? null;
+      }
+      return { row, url };
+    },
+    refetchInterval: (q) => (renderIsActive(q.state.data?.row ?? null) ? 4000 : false),
+  });
 }
