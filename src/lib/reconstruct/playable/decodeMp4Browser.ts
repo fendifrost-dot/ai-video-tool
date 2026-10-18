@@ -434,9 +434,12 @@ export async function decodePlayableMp4Browser(
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  // Hash the view. Passing `.buffer` includes bytes outside the view, and jsdom's
-  // SubtleCrypto rejects a Node Buffer's underlying ArrayBuffer.
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  // Copy into a Uint8Array<ArrayBuffer>. The argument's buffer may be a shared or
+  // pooled Node buffer, which is not a BufferSource, and hashing `.buffer` includes
+  // bytes outside the view. A TypedArray is what jsdom's SubtleCrypto accepts.
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", copy);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 

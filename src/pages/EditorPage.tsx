@@ -13,7 +13,7 @@ import { applyGesture, type Gesture } from "../../supabase/functions/edit-render
 export default function EditorPage({ projectId }: { projectId: string }) {
   const list = useEditSequences(projectId);
   const [picked, setPicked] = useState<string | null>(null);
-  const id = picked ?? (list.data?.[0] ? String((list.data[0] as { id: string }).id) : null);
+  const id = picked ?? list.data?.[0]?.id ?? null;
   const one = useEditSequence(id);
   const [local, setLocal] = useState<ReturnType<typeof applyGesture> | null>(null);
   const sequence = local && local.id === one.data?.id ? local : (one.data ?? null);
@@ -43,22 +43,19 @@ export default function EditorPage({ projectId }: { projectId: string }) {
       )}
       {list.data && list.data.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {list.data.map((row) => {
-            const r = row as { id: string; name: string };
-            return (
-              <Button
-                key={r.id}
-                size="sm"
-                variant={r.id === id ? "default" : "outline"}
-                onClick={() => {
-                  setPicked(r.id);
-                  setLocal(null);
-                }}
-              >
-                {r.name}
-              </Button>
-            );
-          })}
+          {list.data.map((row) => (
+            <Button
+              key={row.id}
+              size="sm"
+              variant={row.id === id ? "default" : "outline"}
+              onClick={() => {
+                setPicked(row.id);
+                setLocal(null);
+              }}
+            >
+              {row.name}
+            </Button>
+          ))}
         </div>
       )}
       {sequence && <CutTimeline sequence={sequence} onGesture={onGesture} />}

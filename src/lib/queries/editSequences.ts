@@ -16,18 +16,26 @@ export const editSequenceKeys = {
   one: (id: string) => ["edit-sequence", id] as const,
 };
 
+export type EditSequenceListRow = {
+  id: string;
+  name: string;
+  version_number: number | null;
+  fps: number | null;
+  updated_at: string | null;
+};
+
 export function useEditSequences(projectId: string) {
   return useQuery({
     queryKey: editSequenceKeys.list(projectId),
     enabled: !!projectId,
-    queryFn: async () => {
+    queryFn: async (): Promise<EditSequenceListRow[]> => {
       const { data, error } = await db
         .from("edit_sequences")
         .select("id, name, version_number, fps, updated_at")
         .eq("project_id", projectId)
         .order("updated_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return (data ?? []) as EditSequenceListRow[];
     },
   });
 }
