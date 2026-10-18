@@ -8,8 +8,8 @@
 //   complete → checks the uploaded MP4 exists, files it as a project asset, marks the row complete
 //   fail     → marks the row failed with a reason
 // No provider is ever called; cost stays 0. Auth: x-worker-secret (SHA-256 matched against edit_render_workers).
-import { serve } from "[REDACTED]deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "[REDACTED]esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   EDIT_MEDIA_BUCKETS,
   SIGN_TTL_SECONDS,
