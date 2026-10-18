@@ -6,6 +6,7 @@ import {
   matteFrames,
   matteResultUrls,
   matteSourceCheck,
+  parseFps,
 } from "./matteRequest";
 
 describe("matteRequest", () => {
@@ -22,6 +23,17 @@ describe("matteRequest", () => {
     expect(matteFrames(4.004)).toBe(96);
     expect(matteFrames(4.004, 30)).toBe(120);
     expect(matteFrames(0.01, null)).toBe(1);
+  });
+
+  it("reads a rate stored as ffprobe's rational string (c033 body-only: 240 frames, not 96)", () => {
+    expect(parseFps("60000/1001")).toBeCloseTo(59.94, 2);
+    expect(parseFps("24/1")).toBe(24);
+    expect(parseFps("29.97")).toBeCloseTo(29.97, 4);
+    expect(parseFps(25)).toBe(25);
+    for (const bad of ["0/0", "24/0", "fast", "", -24, 0, Number.NaN, null, undefined, {}])
+      expect(parseFps(bad)).toBeNull();
+    expect(matteFrames(4.004, "60000/1001")).toBe(240);
+    expect(matteFrames(4.004, "nonsense")).toBe(96);
   });
 
   it("prices the matte by the 30-frame unit, prorated and rounded up", () => {

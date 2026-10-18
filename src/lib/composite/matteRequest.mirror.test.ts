@@ -19,6 +19,8 @@ describe("matteRequest mirrors", () => {
       expect(browser.matteEstimateUsd(frames)).toEqual(edge.matteEstimateUsd(frames));
     for (const s of [4.004, 7.958, 10.961])
       expect(browser.matteFrames(s, null)).toBe(edge.matteFrames(s, null));
+    for (const r of ["60000/1001", "24/1", "29.97", 25, "x", null])
+      expect(browser.parseFps(r)).toBe(edge.parseFps(r));
     expect(browser.buildMatteInput("https://x/y.mp4")).toEqual(
       edge.buildMatteInput("https://x/y.mp4"),
     );
