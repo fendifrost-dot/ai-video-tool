@@ -1,44 +1,48 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
-import { CutTimeline } from "@/components/editor/CutTimeline";
+import { EditorWorkspace } from "@/components/editor/EditorWorkspace";
 import { Button } from "@/components/ui/button";
 import { useEditSequence, useEditSequences } from "@/lib/queries/editSequences";
-import { applyGesture, type Gesture } from "../../supabase/functions/edit-render/model";
 
 /**
- * The cut. Sequences live in edit_sequences (migration 20261018020000). Until that
- * migration is applied in the Lovable SQL editor, the list is empty and says so.
- * Slipping here changes the sequence in the page; it does not write slip_seconds.
+ * Timeline workspace — CapCut-style cut over edit_sequences.
+ * Does not write shots, assignments, or slip_seconds.
  */
 export default function EditorPage({ projectId }: { projectId: string }) {
   const list = useEditSequences(projectId);
   const [picked, setPicked] = useState<string | null>(null);
   const id = picked ?? list.data?.[0]?.id ?? null;
   const one = useEditSequence(id);
-  const [local, setLocal] = useState<ReturnType<typeof applyGesture> | null>(null);
-  const sequence = local && local.id === one.data?.id ? local : (one.data ?? null);
-
-  const onGesture = (g: Gesture) => {
-    if (!sequence) return;
-    setLocal(applyGesture(sequence, g));
-  };
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="flex min-h-0 flex-col gap-4 p-3 sm:p-4">
       <PageHeader
-        title="Cut"
-        subtitle="Assemble the song. A render plan costs nothing and does not call a provider."
+        title="Timeline"
+        subtitle="Watch the cut with the song, arrange takes, trim and align mouth timing."
       />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild size="sm" variant="outline">
+          <Link to="/projects/$id/storyboard" params={{ id: projectId }}>
+            Shots
+          </Link>
+        </Button>
+        <Button size="sm" variant="default">
+          Timeline
+        </Button>
+        <span className="text-xs text-muted-foreground">Song stays locked while you move picture</span>
+      </div>
+
       {list.error && (
-        <p className="text-sm text-amber-300" data-testid="cut-error">
-          {(list.error as Error).message}. Apply migration 20261018020000 in the Lovable SQL editor,
-          then reload.
+        <p className="text-sm text-amber-200" data-testid="cut-error">
+          Could not load sequences. Sign in again if your session expired, then reload.
         </p>
       )}
       {!list.error && list.data && list.data.length === 0 && (
-        <p className="text-sm text-foreground/60" data-testid="cut-empty">
-          No sequences on this project yet. Importing the YSL cold open is a write to the new edit
-          tables, not to the board.
+        <p className="text-sm text-muted-foreground" data-testid="cut-empty">
+          No sequences on this project yet. Import a cut or add clips from Versions once a sequence
+          exists.
         </p>
       )}
       {list.data && list.data.length > 0 && (
@@ -48,17 +52,24 @@ export default function EditorPage({ projectId }: { projectId: string }) {
               key={row.id}
               size="sm"
               variant={row.id === id ? "default" : "outline"}
-              onClick={() => {
-                setPicked(row.id);
-                setLocal(null);
-              }}
+              onClick={() => setPicked(row.id)}
             >
               {row.name}
             </Button>
           ))}
         </div>
       )}
-      {sequence && <CutTimeline sequence={sequence} onGesture={onGesture} />}
+
+      {one.isLoading && id && (
+        <p className="text-sm text-muted-foreground">Loading sequence…</p>
+      )}
+      {one.data && (
+        <EditorWorkspace
+          projectId={projectId}
+          sequence={one.data}
+          onSequenceId={(next) => setPicked(next)}
+        />
+      )}
     </div>
   );
 }

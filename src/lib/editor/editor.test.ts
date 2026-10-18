@@ -16,6 +16,7 @@ import {
   replaceTake,
   snapFrame,
   snapTargets,
+  timingExplanation,
   videoClips,
   YSL_PROJECT_ID,
   YSL_VARIATION_ID,
@@ -137,6 +138,24 @@ describe("gestures stay on the frame", () => {
     const edge = snapFrame(4, targets, 4);
     expect(edge).not.toBe(4);
     expect(snapFrame(4, targets, 0)).toBe(4);
+  });
+
+  it("splits at the playhead and removes without deleting other clips' media refs", () => {
+    const seq = coldOpen();
+    const first = videoClips(seq)[0]!;
+    const mid = (first.timelineIn + first.timelineOut) / 2;
+    const split = applyGesture(seq, { kind: "split", clipId: first.id, atTimelineSeconds: mid });
+    expect(videoClips(split).length).toBe(videoClips(seq).length + 1);
+    const left = videoClips(split).find((c) => c.id === first.id)!;
+    expect(left.timelineOut).toBeCloseTo(mid, 4);
+    const removed = applyGesture(split, { kind: "remove", clipId: left.id, ripple: false });
+    expect(videoClips(removed).some((c) => c.id === left.id)).toBe(false);
+    expect(videoClips(removed).length).toBe(videoClips(seq).length);
+  });
+
+  it("move and slip explain earlier/later in plain language", () => {
+    expect(timingExplanation("move", -5, 24).direction).toBe("earlier");
+    expect(timingExplanation("slip", 5, 24).label).toMatch(/earlier against the song/);
   });
 });
 

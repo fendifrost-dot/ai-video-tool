@@ -95,3 +95,16 @@ judged by eye.
   shared lines use the wording of the open Cut-workspace PR #337, so the two merge cleanly. #337 (Cursor) carries the full Cut editor:
   preview with song, explicit "Adjust footage timing" slip on any clip, save with versions. That PR is Class C (it includes
   auth) and is not merged by this session.
+
+## 7. Slip signs (checked after #337 merged)
+
+The word "slip" carries **opposite signs** in the two places Fendi can adjust a performance (VERIFIED from code):
+
+| Where | Stored as | `+` means |
+|---|---|---|
+| Board, Lyric sync | `shot_asset_assignments.slip_seconds` (song = take·k + offset + slip) | the picture plays **later** against the song |
+| Cut, "Adjust footage timing" | `edit_clips.source_in/out` moved by `deltaFrames` (`editModel.ts` `applyGesture`) | later source frames fill the same slot, so the mouth appears **earlier** against the song |
+
+Both UIs now name the direction on each button: the board's nudge titles, and the Cut's `timingExplanation` label. A
+number copied from one to the other must be **negated**. The suggested E1 v3 slip of +0.042 on the board is −1 frame in the Cut.
+Review's "Check the cut" now applies the board slip (`verify.ts` `takeTime`). Before this, every slipped shot was reported off the song clock.
