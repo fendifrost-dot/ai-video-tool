@@ -10,9 +10,9 @@ Theme tokens live in `src/styles.css`: background #0b0e10, card #15191c, primary
 
 ## Scope / coordination
 
-Branch `codex/cinematic-visual-refresh`, based on `fdd45ce`. No provider functions, production records, prompts, wardrobe assignments, media selections, or timeline logic changed. All five workflow stages inherit the shared theme. Existing project/variation navigation, advanced controls, cast, Looks, timed events, jobs, and review verdicts are preserved.
+Branch `codex/cinematic-visual-refresh`, based on `fdd45ce`, merged via editing-workspace work on 2026-10-18. Tokens and shared chrome (AppShell, ProjectSidebar, Card, BoxCard) apply across Setup → Treatment → Shots → **Timeline** → Review → Export. Timeline follow-up adds a dominant monitor, thumbnail clip strips, grouped transport, and filmmaking Export copy — not token-only. No provider functions, production records, prompts, wardrobe assignments, or board selections changed by the visual lane.
 
-Frontend publication must be coordinated with the active video-production agent. No edge redeploy or SQL migration is needed for this change. Do not publish an unrelated pending backend change as part of this styling work.
+Frontend publication must be coordinated with the active video-production agent. No edge redeploy or SQL migration is needed for pure styling. Do not publish an unrelated pending backend change as part of styling work.
 
 ## Verification
 

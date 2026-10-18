@@ -13,7 +13,7 @@ import { useEngineeringMode } from "@/lib/ux/engineeringMode";
 const CONTROL_ID = "avt-engineering-mode-toggle";
 
 const HELP =
-  "Reveal engineering stages (keyframe, SAM, temporal, evaluator). Off by default — the creative flow stays uncluttered.";
+  "Show specialist tools (hero frame, prompt lab, scorecards). Off by default — the main workflow stays clear.";
 
 /**
  * Toggle between the default creative experience and the full engineering
@@ -41,7 +41,7 @@ export function EngineeringModeToggle({
               type="button"
               role="switch"
               aria-checked={isEngineering}
-              aria-label="Engineering mode"
+              aria-label="Specialist tools"
               onClick={() => toggleMode()}
               className={cn(
                 "flex w-full items-center justify-center rounded-xl px-2 py-2.5 transition-all",
@@ -55,7 +55,7 @@ export function EngineeringModeToggle({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {isEngineering ? "Engineering mode: on" : "Engineering mode: off"}
+            {isEngineering ? "Specialist tools: on" : "Specialist tools: off"}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -80,13 +80,13 @@ export function EngineeringModeToggle({
         className="min-w-0 flex-1 cursor-pointer font-medium text-foreground/80"
         title={HELP}
       >
-        Engineering mode
+        Specialist tools
       </label>
       <Switch
         id={CONTROL_ID}
         checked={isEngineering}
         onCheckedChange={() => toggleMode()}
-        aria-label="Engineering mode"
+        aria-label="Specialist tools"
       />
     </div>
   );

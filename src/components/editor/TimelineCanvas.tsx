@@ -8,6 +8,7 @@ import {
   type Gesture,
 } from "../../../supabase/functions/edit-render/model";
 import { formatTimecode } from "@/lib/editor/playback";
+import { ClipThumb } from "./ClipThumb";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
   playhead: number;
   selectedId: string | null;
   pxPerSecond: number;
+  mediaByAsset?: Record<string, string>;
   onSelect: (id: string | null) => void;
   onSeek: (t: number) => void;
   onGesture: (g: Gesture) => void;
@@ -37,6 +39,7 @@ export function TimelineCanvas({
   playhead,
   selectedId,
   pxPerSecond,
+  mediaByAsset,
   onSelect,
   onSeek,
   onGesture,
@@ -106,9 +109,9 @@ export function TimelineCanvas({
             ))}
           </div>
 
-          {/* V1 track */}
-          <div className="relative h-24 px-0 py-2">
-            <p className="absolute left-2 top-1 z-10 text-[9px] uppercase tracking-wide text-muted-foreground">
+          {/* V1 track — thumbnail strips */}
+          <div className="relative h-28 px-0 py-2">
+            <p className="absolute left-2 top-1 z-10 rounded bg-[#101417]/90 px-1 text-[9px] uppercase tracking-wide text-muted-foreground">
               Picture
             </p>
             {clips.map((c) => {
@@ -116,11 +119,12 @@ export function TimelineCanvas({
               const w = Math.max(8, (c.timelineOut - c.timelineIn) * pxPerSecond);
               const handles = sourceHandles(c);
               const selected = c.id === selectedId;
+              const thumb = c.assetId ? mediaByAsset?.[c.assetId] : null;
               return (
                 <div
                   key={c.id}
                   className={cn(
-                    "absolute top-6 h-14 overflow-hidden rounded-md border text-left",
+                    "absolute top-6 h-16 overflow-hidden rounded-md border text-left",
                     selected ? "border-primary ring-1 ring-primary/60" : "border-border/70",
                   )}
                   style={{ left, width: w, background: clipColor(c) }}
@@ -134,10 +138,15 @@ export function TimelineCanvas({
                     onSeek(c.timelineIn);
                   }}
                 >
+                  {thumb && !c.placeholder && (
+                    <div className="pointer-events-none absolute inset-0 opacity-55">
+                      <ClipThumb src={thumb} sourceTime={c.sourceIn + 0.05} alt="" />
+                    </div>
+                  )}
                   <button
                     type="button"
                     aria-label="Trim in"
-                    className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-primary/40"
+                    className="absolute inset-y-0 left-0 z-10 w-2.5 cursor-ew-resize bg-primary/50"
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       e.currentTarget.setPointerCapture(e.pointerId);
@@ -151,7 +160,7 @@ export function TimelineCanvas({
                   />
                   <button
                     type="button"
-                    className="absolute inset-0 cursor-grab px-2 py-1 text-left active:cursor-grabbing"
+                    className="absolute inset-0 z-[1] cursor-grab bg-gradient-to-t from-black/75 via-black/20 to-transparent px-2.5 py-1 text-left active:cursor-grabbing"
                     onPointerDown={(e) => {
                       if ((e.target as HTMLElement).closest("[data-edge]")) return;
                       e.currentTarget.setPointerCapture(e.pointerId);
@@ -163,10 +172,10 @@ export function TimelineCanvas({
                       });
                     }}
                   >
-                    <span className="block truncate text-[11px] font-medium text-foreground">
+                    <span className="block truncate text-[11px] font-medium text-white drop-shadow">
                       {c.placeholder ? `${c.shotKey ?? c.name} · needs take` : c.shotKey || c.name}
                     </span>
-                    <span className="block truncate text-[9px] text-muted-foreground">
+                    <span className="block truncate text-[9px] text-white/70">
                       {handles.known
                         ? `+${handles.head.toFixed(1)}s / ${handles.tail.toFixed(1)}s unused`
                         : c.mouth === "model"
@@ -180,7 +189,7 @@ export function TimelineCanvas({
                     type="button"
                     aria-label="Trim out"
                     data-edge="out"
-                    className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-primary/40"
+                    className="absolute inset-y-0 right-0 z-10 w-2.5 cursor-ew-resize bg-primary/50"
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       e.currentTarget.setPointerCapture(e.pointerId);
@@ -206,8 +215,10 @@ export function TimelineCanvas({
         </div>
       </div>
       <p className="text-[10px] text-muted-foreground" data-testid="cut-duration">
-        {sequence.name} · {duration.toFixed(3)} s · {clips.length} clips · song offset{" "}
-        {sequence.songOffset.toFixed(3)} s
+        {sequence.name} · {duration.toFixed(1)} s · {clips.length} clips
+        {Math.abs(sequence.songOffset) > 0.001
+          ? ` · song starts ${sequence.songOffset > 0 ? "later" : "earlier"} by ${Math.abs(sequence.songOffset).toFixed(2)} s`
+          : ""}
       </p>
     </div>
   );

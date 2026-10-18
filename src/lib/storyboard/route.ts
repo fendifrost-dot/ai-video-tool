@@ -26,7 +26,7 @@ export type ProductionRoute = {
   /** True when the method was not said and was read from the shot type. */
   inferred: boolean;
   verdict: RouteVerdict;
-  /** The provider path, in words ("Grok still → Kling 2.5 turbo image-to-video"). */
+  /** How the shot is made, in filmmaking words ("Still image → moving clip"). */
   path: string;
   /** Where it is made when not on the storyboard. */
   where: string | null;
@@ -56,8 +56,9 @@ export const METHOD_LABEL: Record<ProductionMethod, string> = {
   multi_shot: "Made across a cut",
 };
 
-const STILL_TO_CLIP = "Grok still → Kling 2.5 turbo image-to-video";
-const RESTAGE = "his take + the place's picture → Seedance 2.5 reference-to-video";
+/** Filmmaking path labels for the board (provider names stay in engineering/diagnostics). */
+const STILL_TO_CLIP = "Still image → moving clip";
+const RESTAGE = "His take restaged in a new place";
 
 /** The methods that cut from his real take: his body and his action are the take's. */
 export const TAKE_METHODS: ReadonlySet<ProductionMethod> = new Set<ProductionMethod>(["footage", "restage", "edit_footage", "composite"]);
