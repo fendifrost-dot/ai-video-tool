@@ -25,7 +25,10 @@ describe("the cut strip", () => {
     fireEvent.click(screen.getAllByTestId("cut-clip")[0]!);
     expect(onGesture).toHaveBeenCalledWith({ kind: "slip", clipId: "v-1", deltaFrames: 1 });
     expect(
-      screen.getAllByTestId("cut-clip").some((n) => n.getAttribute("data-mouth") === "model"),
+      screen.getAllByTestId("cut-clip").some((n) => n.getAttribute("data-mouth") === "unknown"),
     ).toBe(true);
+    expect(
+      screen.getAllByTestId("cut-clip").some((n) => n.getAttribute("data-mouth") === "camera"),
+    ).toBe(false);
   });
 });

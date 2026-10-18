@@ -99,7 +99,7 @@ export const TABLE_NOTES: Record<string, string> = {
   song_analyses: "beat grid / sections",
   performance_syncs: "real takes synced to the song clock",
   edit_sequences: "an in-app cut of a project: fps, frame size, song offset. Does not write shots or slip_seconds",
-  edit_clips: "clips on a sequence: source in/out, timeline in/out, mouth camera|model, placeholder",
+  edit_clips: "clips on a sequence: source in/out, timeline in/out, mouth (performance provenance) camera=recorded|model=generated|lipsync=modified mouth|unknown, placeholder",
   edit_markers: "beat, lyric, lipsync and comment markers on a sequence",
   edit_sequence_versions: "a committed snapshot of a sequence",
   edit_renders: "a queued ffmpeg plan. cost_usd is constrained to 0",
