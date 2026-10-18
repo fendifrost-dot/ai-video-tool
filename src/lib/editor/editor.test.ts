@@ -141,10 +141,11 @@ describe("gestures stay on the frame", () => {
 });
 
 describe("the plan spends nothing", () => {
-  it("flags a model mouth and a shot whose file runs out", () => {
+  it("flags a generated mouth for judgment and a shot whose file runs out", () => {
     const seq = coldOpen();
-    const model = mediaWarnings(seq).filter((w) => w.message.includes("model"));
+    const model = mediaWarnings(seq).filter((w) => /generated mouth/i.test(w.message));
     expect(model.length).toBeGreaterThan(0);
+    expect(model[0]?.message).not.toMatch(/will not line/i);
     const warnings = sequenceLyricWarnings(seq, [
       {
         lineIndex: 1,

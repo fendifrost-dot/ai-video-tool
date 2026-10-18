@@ -15,7 +15,7 @@ The cut is a new set of tables (`edit_sequences`, `edit_clips`, `edit_markers`, 
 
 ## Mouth
 
-A montage or restage clip is `mouth = model`. A sync offset does not line that mouth up. A camera take, or a dress retimed to it, is `mouth = camera`. Placeholders in the cold open are camera (the lipsync that is still missing). Mango “sync” events in that EDL are model mouth.
+A montage or restage clip is `mouth = model` (generated articulation). A camera take, or a dress/composite retimed to it, is `mouth = camera`. A constant offset, drift, or wrong articulation need different judgments — do not claim a slip will or will not “line it up,” and do not label a clip lip-synced because audio aligns. Placeholders in the cold open are camera (missing take). Mango “sync” events in that EDL are model mouth.
 
 ## Lyric fit
 

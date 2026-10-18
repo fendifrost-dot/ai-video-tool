@@ -42,8 +42,9 @@ export type EditClip = {
   /** Length of the source file, seconds. Null when unknown. */
   mediaDuration: number | null;
   /**
-   * Whose mouth this picture is. `camera`: a real take, or a dress retimed to one — a sync offset moves the mouth.
-   * `model`: a montage or restage — the mouth is generated and an offset will not line it up.
+   * Whose mouth this picture is. `camera`: a real take, or a dress/composite retimed to one.
+   * `model`: a montage or restage — generated articulation. A constant offset, drift, or wrong
+   * mouth shape need different judgments; never treat audio alignment as visible lip-sync.
    */
   mouth: "camera" | "model" | null;
 };
@@ -829,7 +830,7 @@ export function mediaWarnings(seq: EditSequence): MediaWarning[] {
       out.push({
         clipId: c.id,
         shotKey: c.shotKey,
-        message: `${c.name}: the mouth is the model's. A sync offset will not line it up. Replace it with the camera take, or a dress retimed to that take.`,
+        message: `${c.name}: generated mouth — check whether a constant offset, drift, or wrong articulation is the issue. Keep as an alternative and flag the interval if mouth movement is unusable; cover with a cutaway or the original take.`,
       });
     }
   }

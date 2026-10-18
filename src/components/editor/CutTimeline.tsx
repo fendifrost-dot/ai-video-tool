@@ -6,8 +6,9 @@ import {
 } from "../../../supabase/functions/edit-render/model";
 
 const MOUTH: Record<string, string> = {
-  camera: "camera mouth — a slip lines it up",
-  model: "model mouth — a slip will not line it up",
+  camera: "camera mouth — his own take; judge a slip by eye",
+  model:
+    "generated mouth — judge by eye: one slip for the whole phrase (constant offset), words drifting apart (drift), or a word shaped differently (changed articulation)",
 };
 
 /** The sequence as a strip: each clip, its mouth, and a one-frame slip. */

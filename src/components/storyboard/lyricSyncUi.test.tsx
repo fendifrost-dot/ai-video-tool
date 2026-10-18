@@ -138,26 +138,29 @@ describe("Lyric sync on a performance clip", () => {
     expect(editFootage).toHaveBeenLastCalledWith(BOX, E1.id, { do: "slip", seconds: 0 });
   });
 
-  it("does not offer a slip for a montage, whose mouth is the model's", () => {
-    const montage = {
+  it("offers the same slip on a generated mouth, with guidance instead of a verdict", () => {
+    // E1 v3 as filed: a restage of the c033 dress, on its own sync (first frame at 53.8 s)
+    const restage = {
       ...E1,
-      id: "m1",
-      derivedFrom: { assetId: "take", songStart: 53.8, method: "montage" },
+      id: "r1",
+      derivedFrom: { assetId: "take", songStart: 53.8, method: "restaged" },
     } as unknown as MediaAsset;
-    const sync = { ...SYNC, performanceAssetId: montage.id } as unknown as TakeSync;
+    const sync = { ...SYNC, performanceAssetId: restage.id } as unknown as TakeSync;
+    const assignments = [{ ...row({ slip: 0.083 }), assetId: restage.id }];
     const media = boxMedia({
       box: BOX,
-      assignments: [{ ...row(), assetId: montage.id }],
-      assets: new Map([[montage.id, montage]]),
+      assignments,
+      assets: new Map([[restage.id, restage]]),
       syncs: [sync],
     });
-    const item = media.items.find((i) => i.asset.id === montage.id)!;
+    const item = media.items.find((i) => i.asset.id === restage.id)!;
+    const editFootage = vi.fn(async () => undefined);
     const c = {
       projectId: "p1",
-      editFootage: vi.fn(),
-      assignmentOf: () => row(),
+      editFootage,
+      assignmentOf: () => assignments[0],
       syncOf: () => sync,
-      urlFor: () => "blob:m",
+      urlFor: () => "blob:r",
       songLines: LINES,
       song: null,
     } as unknown as StoryboardController;
@@ -166,7 +169,29 @@ describe("Lyric sync on a performance clip", () => {
         <LyricSyncPanel item={item} box={BOX} />
       </StoryboardProvider>,
     );
-    expect(screen.getByTestId("lyric-sync-model").textContent).toMatch(/mouth is the model/);
-    expect(screen.queryByTestId("lyric-sync-line")).toBeNull();
+    const guide = screen.getByTestId("lyric-sync-guidance");
+    expect(guide.dataset.mouth).toBe("model");
+    expect(guide.textContent).toMatch(/constant offset/);
+    expect(guide.textContent).toMatch(/drifts/);
+    expect(guide.textContent).toMatch(/shaped differently/);
+    expect(guide.textContent).not.toMatch(/will not line|does not line/);
+    expect(screen.getAllByTestId("lyric-sync-line")).toHaveLength(2);
+    // a slip of +0.083 plays the picture 2 frames later: the in-point moves 0.083 s earlier in the clip
+    expect(screen.getByTestId("lyric-sync-readout").textContent).toBe(
+      "clip in 4.177 s · on the song at 58.060 s · slip 0.083 s",
+    );
+    fireEvent.click(screen.getAllByTestId("lyric-sync-nudge")[2]);
+    expect(editFootage).toHaveBeenCalledWith(BOX, restage.id, {
+      do: "slip",
+      seconds: expect.closeTo(0.083 - 1 / 24, 4),
+    });
+  });
+
+  it("says plainly which way a nudge moves the picture", () => {
+    show([row()]);
+    const titles = screen.getAllByTestId("lyric-sync-nudge").map((b) => b.getAttribute("title"));
+    expect(titles[0]).toBe("the picture plays earlier on the song");
+    expect(titles[5]).toBe("the picture plays later on the song");
+    expect(screen.getByTestId("lyric-sync-guidance").dataset.mouth).toBe("camera");
   });
 });
