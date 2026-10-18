@@ -916,3 +916,15 @@ The ending brief now stands as:
 
 Nothing in this section remains to be done.
 
+
+## Performance sync investigation (18 Oct, 03:50–04:30 UTC; ledger 144, $0)
+
+Full trace: `docs/research/results/2026-10-18-performance-sync/PERFORMANCE_SYNC_TRACE_2026-10-18.md`.
+
+- VERIFIED: the original `IMG_5633.mov` carries the song + his voice; its audio is dropped at the hero transcode (`-an`), so no reference video sent to any provider had audio. E1/E2 received a separate vocal slice matching their placement window exactly. Montages received no audio.
+- VERIFIED: timing holds from original → hero → dressed take (≤ ~1 frame). Board, export and Cut placements agree with the stored syncs within 1 frame. `edit-render` live with #336 (six-decimal trims). `performance-sync` live (422 `no_audio` on an empty body). Cut page published (`projects._id.editor-*.js`).
+- HYPOTHESIS: E1 v3 / E2 play ~1–2 frames early. The mouth metric is too noisy at full-body framing to prove it; comparisons were posted to Fendi.
+- Tool: Lyric sync now gives every synced performance video (montages and restages included) the manual slip, with neutral constant-offset / drift / changed-articulation guidance.
+
+**Not done / waiting on Fendi:** his visual verdict on the comparisons; slips to set (suggested E1 v3 on c033 +0.042, E2 on c034 0 to +0.042); the 0.8538 vs 0.7038 A/B on the original. Nothing was written to `slip_seconds` or `performance_syncs`.
+**Verify after Publish:** open c033 → E1 v3 in focus view. The Lyric sync panel shows `data-testid="lyric-sync-guidance"` with `data-mouth="model"` and the nudge buttons; it did not before.

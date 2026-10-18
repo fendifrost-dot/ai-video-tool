@@ -461,7 +461,7 @@ export type ContinuousInput = {
 /**
  * One continuous take on a shot (montage-shot's `continuous` mode; _shared/continuousPrompt.ts says why): one Seedance
  * call, as long as the lane allows, no scenes and no beat cuts. With him, his dressed take is @Video1 and the clip is
- * filed as a take in sync — he raps the lyric lines over the song's vocals (@Audio1) and the editor lines the mouth up by hand,
+ * filed as a take in sync — he raps the lyric lines over the song's vocals (@Audio1) and the editor judges and slips it by hand,
  * nothing repaints it afterwards; without him it is filed as a clip.
  * Its first frame is placed on the song so the shot's window sits in the middle of it — handles both sides.
  */

@@ -9,7 +9,7 @@
 // Fendi, 17 Oct 2026, on the lip-sync lane: "a lot of the lip sync footage alters my face and looks crazy" — so nothing
 // repaints his mouth afterwards. "Re-render the performance shots with him actually rapping the lyrics on camera … say
 // the actual lyric line in the prompt": a take with him gets the song's vocals under it as @Audio1 and the lyric lines
-// that fall in it, timed from its first frame; he raps them, and the editor lines the mouth up by hand.
+// that fall in it, timed from its first frame; he raps them, and the editor judges and slips it by hand.
 //
 // Pure: no Deno, no network. Tested under vitest.
 

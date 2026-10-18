@@ -8,6 +8,10 @@
  * whether the shot holds its lines, needs extending, or needs a new clip (lyricSync.ts lyricFit).
  *
  * What is written is this variation's own slip (footageEdit.ts); the project's sync is never touched.
+ *
+ * Every performance video with a sync gets the controls, a generated mouth (montage, restage) as much as a camera
+ * take (Fendi, 18 Oct 2026: "keep manual adjustment available for every video"). Whether a slip lines the words up
+ * is judged by eye; the panel says what to look for instead of answering it.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +51,14 @@ const FIT_LABEL: Record<LyricFitStatus, string> = {
 
 const fmt = (s: number) => `${s < 0 ? "−" : ""}${Math.abs(s).toFixed(3)} s`;
 
+/** What to look for, by whose mouth it is. Neither says whether a slip will or will not line it up. */
+const MOUTH_GUIDANCE: Record<"camera" | "model", string> = {
+  camera:
+    "His own take, or a dress of it. Play it with the song and judge by eye: one slip that fits every word is a constant offset; words that come apart along the shot are drift.",
+  model:
+    "Generated mouth (montage or restage). Judge it by eye with the song. If one slip puts every word on its syllable, keep it: that is a constant offset. If the first words land and later ones run early or late, the timing drifts: line up the words this shot shows. If a word is shaped differently from what he sings, no slip fixes that stretch: note where it starts and ends and cover it with a cutaway or the original take.",
+};
+
 export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: StoryboardBox }) {
   const sb = useStoryboard();
   const sync = sb.syncOf?.(item.asset.id) ?? null;
@@ -72,7 +84,7 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
   const clock = item.kind === "video" ? mouthClock(item.asset) : null;
   // a take left out of this shot has nothing to line up (a nudge would put it back without saying so)
   const usable =
-    clock === "camera" &&
+    clock != null &&
     item.role === "performance" &&
     item.edit?.from !== "excluded" &&
     !!sync &&
@@ -120,24 +132,6 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playing, sync, slip, box.end]);
-
-  if (clock === "model") {
-    return (
-      <div
-        className="space-y-1 rounded-md border border-border/60 bg-background/40 px-2 py-1.5"
-        data-testid="lyric-sync-model"
-        data-fit={fit.status}
-      >
-        <p className="text-[10px] text-foreground/70">
-          This clip’s mouth is the model’s. Moving it on the song does not line the mouth up. A
-          camera take, or a dress retimed to that take, is what a lyric slip can align.
-        </p>
-        <p className="text-[10px] text-foreground/50" data-testid="lyric-sync-fit-message">
-          {fit.message}
-        </p>
-      </div>
-    );
-  }
 
   if (!usable || !sync) return null;
 
@@ -189,6 +183,15 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
           {FIT_LABEL[fit.status]}
         </span>
       </div>
+      {clock && (
+        <p
+          className="text-[10px] text-foreground/60"
+          data-testid="lyric-sync-guidance"
+          data-mouth={clock}
+        >
+          {MOUTH_GUIDANCE[clock]}
+        </p>
+      )}
       {fit.status !== "ok" && (
         <p className="text-[10px] text-foreground/60" data-testid="lyric-sync-fit-message">
           {fit.message}
@@ -274,6 +277,11 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
             variant="ghost"
             className="h-6 px-1.5 font-mono text-[10px]"
             onClick={() => nudge(d)}
+            title={
+              d > 0
+                ? "the picture plays later on the song"
+                : "the picture plays earlier on the song"
+            }
             data-testid="lyric-sync-nudge"
           >
             {d < 0 ? "−" : "+"}
