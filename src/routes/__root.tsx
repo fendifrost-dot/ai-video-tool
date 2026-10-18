@@ -110,8 +110,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 /**
  * Sign-in gate: the site requires a real (non-anonymous) session. Anonymous
- * bootstrap is kept ONLY as a transient bridge while no session exists yet —
- * but the UI stays behind the sign-in screen until a durable account signs in.
+ * sign-in is disabled (2026-10-18); with no session the app shows the sign-in
+ * screen. A leftover anonymous session is still treated as signed out.
  */
 function useSessionState() {
   const [state, setState] = useState<
@@ -135,10 +135,6 @@ function useSessionState() {
           setState({ status: "signed-in", anon: true });
           return;
         }
-        // No session: create an anonymous one so the app shell works after
-        // sign-in (magic link needs a clean slate, SignInForm signs it out).
-        await supabase.auth.signInAnonymously();
-        if (cancelled) return;
         setState({ status: "signed-out" });
       } catch (err) {
         if (cancelled) return;
