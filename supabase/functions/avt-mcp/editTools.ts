@@ -16,6 +16,12 @@ import {
   mediaSummary,
   planForSequence,
 } from "../_shared/editMedia.ts";
+import {
+  PROVENANCE_VERSION,
+  applyPerformanceProvenance,
+  loadProvenance,
+  provenanceCounts,
+} from "../_shared/performanceProvenance.ts";
 
 type Row = Record<string, unknown>;
 type Result<T> = { data: T; error: { message: string } | null };
@@ -60,7 +66,7 @@ export async function editList(db: Db, projectId: string) {
   return data ?? [];
 }
 
-export async function editGet(db: Db, sequenceId: string) {
+async function readSequence(db: Db, sequenceId: string) {
   const { data: sequence, error } = await db
     .from("edit_sequences")
     .select("*")
@@ -81,10 +87,34 @@ export async function editGet(db: Db, sequenceId: string) {
   return sequenceFromRows(sequence, clips ?? [], markers ?? []);
 }
 
+/** Each picture clip's performance label from its asset lineage (changes `mouth` only). */
+async function withProvenance(db: Db, seq: EditSequence) {
+  const ids = seq.clips.filter((c) => c.track === "V1" && c.assetId).map((c) => c.assetId!);
+  const { assets, jobs } = await loadProvenance(db, ids);
+  return applyPerformanceProvenance(seq, assets, jobs);
+}
+
+export async function editGet(db: Db, sequenceId: string) {
+  const stored = await readSequence(db, sequenceId);
+  const { sequence, byClip } = await withProvenance(db, stored);
+  return {
+    ...sequence,
+    provenance: {
+      version: PROVENANCE_VERSION,
+      counts: provenanceCounts(byClip),
+      clips: Object.fromEntries(
+        Object.entries(byClip).map(([id, p]) => [id, { mouth: p.mouth, reason: p.reason, history: p.history }]),
+      ),
+    },
+  };
+}
+
 export async function editSave(db: Db, sequence: EditSequence, commit: boolean) {
   const { data } = await db.auth.getUser();
   if (!data.user) throw new Error("not signed in");
-  const rows = sequenceToRows(sequence, data.user.id);
+  // the label is read from the assets, not taken from the caller
+  const { sequence: labelled } = await withProvenance(db, sequence);
+  const rows = sequenceToRows(labelled, data.user.id);
   const { error } = await db.from("edit_sequences").upsert(rows.sequence);
   if (error) throw new Error(error.message);
   if (rows.clips.length) {
@@ -101,7 +131,7 @@ export async function editSave(db: Db, sequence: EditSequence, commit: boolean) 
       user_id: data.user.id,
       version_number: sequence.version,
       summary: "committed from avt_edit_save",
-      snapshot: sequence,
+      snapshot: labelled,
     });
     if (vErr) throw new Error(vErr.message);
   }
@@ -112,7 +142,7 @@ export async function editRender(
   db: Db,
   args: { sequenceId: string; dryRun: boolean; kind?: RenderKind; aspect?: RenderAspect },
 ) {
-  const seq = await editGet(db, args.sequenceId);
+  const seq = await readSequence(db, args.sequenceId);
   const rows = await loadStoredAssets(db, seq);
   const plan = await planForSequence(
     seq,

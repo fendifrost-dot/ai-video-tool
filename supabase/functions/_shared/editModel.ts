@@ -42,11 +42,28 @@ export type EditClip = {
   /** Length of the source file, seconds. Null when unknown. */
   mediaDuration: number | null;
   /**
-   * Whose mouth this picture is. `camera`: a real take, or a dress/composite retimed to one.
-   * `model`: a montage or restage — generated articulation. A constant offset, drift, or wrong
-   * mouth shape need different judgments; never treat audio alignment as visible lip-sync.
+   * Performance provenance, from how the picture was made (performanceProvenance.ts walks the asset chain).
+   * `camera`: recorded performance — the original take, or a face-preserving clothing/shoe edit of one.
+   * `model`: generated performance — a Seedance montage or restage, including a later clothing fix over one.
+   * `lipsync`: modified mouth movement — a generative lip-sync output. `unknown`: missing or ambiguous history.
+   * null: not a performance picture (generated b-roll with no performer source). Never set from lip-sync-pending
+   * status. Aligned audio does not establish aligned visible articulation.
    */
-  mouth: "camera" | "model" | null;
+  mouth: MouthLabel;
+};
+
+export const MOUTH_LABELS = ["camera", "model", "lipsync", "unknown"] as const;
+export type MouthLabel = (typeof MOUTH_LABELS)[number] | null;
+export function isMouthLabel(v: unknown): v is Exclude<MouthLabel, null> {
+  return typeof v === "string" && (MOUTH_LABELS as readonly string[]).includes(v);
+}
+
+/** Neutral guidance per label. None says a manual timing adjustment will or will not work. */
+export const MOUTH_GUIDANCE: Record<Exclude<MouthLabel, null>, string> = {
+  camera: "Recorded performance.",
+  model: "Generated performance — check mouth timing.",
+  lipsync: "Modified mouth movement — check mouth timing.",
+  unknown: "Provenance unknown — check mouth timing.",
 };
 
 export type EditMarker = {
@@ -290,7 +307,9 @@ export function importEdlCsv(
         placeholder: pending,
         comment,
         mediaDuration: media,
-        mouth: pending ? "camera" : mode === "sync" ? "model" : null,
+        // what the picture is comes from its asset's history (applyPerformanceProvenance), never from whether the
+        // row waits for lip-sync or is marked sync in the EDL: until resolved it is unknown, never camera
+        mouth: "unknown",
       }),
       fps,
     );
@@ -507,6 +526,8 @@ function clipFromItem(
     placeholder,
     comment,
     mediaDuration: file ? framesToSeconds(file.durationFrames, fps) : null,
+    // an imported picture's history is unknown until its asset is read (applyPerformanceProvenance)
+    mouth: track === "V1" ? "unknown" : null,
   });
   return c;
 }
@@ -873,6 +894,8 @@ export function replaceTake(
       ...c,
       assetId: next.assetId,
       fileName: next.fileName,
+      // another asset is another history: unknown until its lineage is read, never the old clip's label
+      mouth: next.assetId === c.assetId ? c.mouth : "unknown",
       mediaDuration: next.mediaDuration === undefined ? c.mediaDuration : next.mediaDuration,
       placeholder: clear ? false : c.placeholder,
       labelColor: clear && c.labelColor === "Rose" ? "Mango" : c.labelColor,
@@ -922,11 +945,11 @@ export function mediaWarnings(seq: EditSequence): MediaWarning[] {
         message: `${c.name} is shorter than its timeline window (${played.toFixed(2)} s of picture for ${slot.toFixed(2)} s) — extend or generate a new take`,
       });
     }
-    if (c.mouth === "model") {
+    if (c.mouth === "model" || c.mouth === "lipsync" || c.mouth === "unknown") {
       out.push({
         clipId: c.id,
         shotKey: c.shotKey,
-        message: `${c.name}: generated mouth — check whether a constant offset, drift, or wrong articulation is the issue. Keep as an alternative and flag the interval if mouth movement is unusable; cover with a cutaway or the original take.`,
+        message: `${c.name}: ${MOUTH_GUIDANCE[c.mouth]}`,
       });
     }
   }
@@ -1075,7 +1098,7 @@ export function sequenceFromRows(sequence: Row, clips: Row[], markers: Row[]): E
           enabled: c.enabled !== false,
           mediaDuration:
             typeof c.media_duration_seconds === "number" ? c.media_duration_seconds : null,
-          mouth: c.mouth === "camera" || c.mouth === "model" ? c.mouth : null,
+          mouth: isMouthLabel(c.mouth) ? c.mouth : null,
         }),
       )
       .sort((a, b) => a.track.localeCompare(b.track) || a.order - b.order),
