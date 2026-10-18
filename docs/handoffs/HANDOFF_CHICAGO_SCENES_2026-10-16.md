@@ -950,3 +950,17 @@ Doc: `docs/research/results/2026-10-18-performance-sync/PERFORMANCE_REVIEW_2026-
 **After he picks:**
 1. Set the board slip, or copy the candidate clip into the production Cut.
 2. Re-query that only those rows changed.
+
+### Performance review: Fendi's decisions (18 Oct, 17:10 UTC)
+
+- **E1 v3 on c033: picture 1 frame earlier ACCEPTED.**
+  - Written: board slip −0.041667 on assignment `c2418542`.
+  - Candidate sequence `44ed6145`: the c033 clip is marked ACCEPTED.
+  - Not done: E1 is not primary and is not in the production Cut `2976b498`. That is a separate selection call.
+- **E2 on c034: REJECTED** for song 59.708–60.542. The words don't read at any timing.
+  - Written: a note on assignment `ec99f7f4`.
+  - Candidate sequence `44ed6145`: the c034 slot is back to the production clip.
+- **Verified after the writes:**
+  - Only `c2418542` has a non-zero slip.
+  - Production Cut timing is unchanged. Its mouth labels were changed at 09:59 by #344's backfill, which is not this review.
+  - Original sync is still 0.8538.

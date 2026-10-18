@@ -6,6 +6,22 @@ Store candidates separately; change nothing in production. No regeneration. **Sp
 Labels follow `CLAUDE.md`. Every verdict below is **OBSERVED**: it comes from reading frames by eye, not from a metric.
 No interval is called verified because its audio or timestamps line up.
 
+## Decisions (Fendi, 18 Oct, from the decision reel)
+
+| Interval | Decision | Written |
+|---|---|---|
+| **E1 v3 on c033** (song 58.042–59.208) | **Accepted: picture 1 frame earlier** ("looks the closest") | Board slip **−0.041667** on assignment `c2418542`, with a note. Candidate sequence `44ed6145`: the c033 clip is marked ACCEPTED (Cut source in 4.291667). E1 is **not** selected as primary, and the production Cut `2976b498` still has its placeholder. Putting E1 in the production cut is a separate selection call. |
+| **E2 on c034** (song 59.708–60.542, "Got everything but the kitchen") | **Rejected for this interval.** "None of them look like they are saying the correct words": 1 f earlier, as is and 1 f later all fail. | Note on assignment `ec99f7f4` (do not slip; cover). Candidate sequence c034 is back to the production clip. The rest of E2's 10 s was not judged. |
+
+**Failing interval, documented:** E2 ad2faff9, song 59.708–60.542. This is articulation, not timing: a constant offset cannot fix it. Cover the slot with a cutaway or another take.
+
+**VERIFIED by query after the writes:**
+- Only `c2418542` has a non-zero `slip_seconds`.
+- The production Cut `2976b498` timing and in-points are unchanged. Its `mouth` labels were relabelled at 09:59 UTC by Grokbot's #344 provenance backfill; that was not this review.
+- `performance_syncs` for the original is still 0.8538.
+
+**Next test** (matched windows, no generation until asked) starts with **c034**. The current E2 took @Video1 from one song window and @Audio1 from another.
+
 ## How it was judged
 
 - **Grids.** Per-frame mouth crops at every 1/24 s of song time. The original take sits on top at the 0.8538 baseline; under it, the clip as is and at each candidate shift. Each column carries the lyric word sung at that moment.
