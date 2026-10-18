@@ -1,13 +1,21 @@
 // Cut tools for avt-mcp. They read and write edit_* only. A render plan costs 0 and does not call a provider.
+// avt_edit_render resolves each clip and the song to this project's storage and reports the real inputs.
 import {
   assertPlanSafe,
-  planRender,
   sequenceFromRows,
   sequenceToRows,
   type EditSequence,
   type RenderAspect,
   type RenderKind,
 } from "../_shared/editModel.ts";
+import {
+  SIGN_TTL_SECONDS,
+  alignSigned,
+  assertMediaUrls,
+  loadStoredAssets,
+  mediaSummary,
+  planForSequence,
+} from "../_shared/editMedia.ts";
 
 type Row = Record<string, unknown>;
 type Result<T> = { data: T; error: { message: string } | null };
@@ -20,6 +28,7 @@ interface Filter extends PromiseLike<Result<Row[] | null>> {
   limit(count: number): Filter;
   maybeSingle(): Promise<Result<Row | null>>;
   single(): Promise<Result<Row>>;
+  in(column: string, values: readonly string[]): Filter;
   upsert(values: unknown): Promise<{ error: { message: string } | null }>;
   insert(values: unknown): Filter;
 }
@@ -27,6 +36,17 @@ interface Filter extends PromiseLike<Result<Row[] | null>> {
 type Db = {
   from: (table: string) => Filter;
   auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> };
+  storage: {
+    from(bucket: string): {
+      createSignedUrls(
+        paths: string[],
+        expiresIn: number,
+      ): Promise<{
+        data: { path: string | null; signedUrl: string | null; error: string | null }[] | null;
+        error: { message: string } | null;
+      }>;
+    };
+  };
 };
 
 export async function editList(db: Db, projectId: string) {
@@ -93,9 +113,23 @@ export async function editRender(
   args: { sequenceId: string; dryRun: boolean; kind?: RenderKind; aspect?: RenderAspect },
 ) {
   const seq = await editGet(db, args.sequenceId);
-  const plan = planRender(seq, { kind: args.kind ?? "proxy", aspect: args.aspect ?? "9:16" });
+  const rows = await loadStoredAssets(db, seq);
+  const plan = await planForSequence(
+    seq,
+    rows,
+    async (bucket, paths) => {
+      const { data, error } = await db.storage
+        .from(bucket)
+        .createSignedUrls(paths, SIGN_TTL_SECONDS);
+      if (error || !data) return alignSigned(paths, null);
+      return alignSigned(paths, data);
+    },
+    { kind: args.kind ?? "proxy", aspect: args.aspect ?? "9:16" },
+  );
   assertPlanSafe(plan);
-  if (args.dryRun) return { dryRun: true, costUsd: 0, plan };
+  assertMediaUrls(plan);
+  const media = mediaSummary(plan);
+  if (args.dryRun) return { dryRun: true, costUsd: 0, media, plan };
   const { data } = await db.auth.getUser();
   if (!data.user) throw new Error("not signed in");
   const { data: row, error } = await db
@@ -111,5 +145,5 @@ export async function editRender(
     .select("id")
     .single();
   if (error) throw new Error(error.message);
-  return { dryRun: false, costUsd: 0, renderId: row.id, plan };
+  return { dryRun: false, costUsd: 0, renderId: row.id, media, plan };
 }

@@ -34,6 +34,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge; E2E $0 click PASS 9/9 (`frames=5`); **D2 unique-RGB 720×1280 PASS 15/15** | Medium | Confirmed | **In-remediation** (720×1280 unique-RGB claimed; live `76fe7438` camera / SAM-3 / MP4 not claimed) | Products (AVT) / Lane D |
 | [PLAYABLE-1](#playable-1--7201280-reconstructed-mp4-without-paid-generation) | First playable Architecture C reconstructed MP4 at 720×1280 | Medium | Confirmed | **In-remediation** | Products (AVT) / Lane H |
 | [DRESS-1](#dress-1--dress-this-shot-paid-swap-server-fetch-of-a-row-carried-url-retimed-files) | "Dress this shot": paid swap per click, server fetch of a row-carried URL, retimed files on the song clock | Medium | Confirmed (design) | Open (new, Class C review pending) | Products (AVT) |
+| [EDIT-1](#edit-1--cut-render-downloads-caller-signed-storage-urls) | Cut render downloads caller-signed storage URLs | Low | Confirmed | Open (mitigated; cost stays 0) | Products (AVT) |
 
 ---
 
@@ -472,6 +473,13 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
   - NOT verified: browser playback of a real swap output.
   - A clip that does not conform within 0.01 s is never filed in sync. A measured retime ratio outside 0.9–1.2 (the known need is ~1.08) is refused with a note — the provider did something other than run fast, and a person looks. A conform that refuses still stores the raw bytes, linked to the job with `conform_error`, so a paid result is never stranded; it is never placed on the song. A dressed take is filed unselected, so nothing the director chose is replaced.
 - **DoD:** the first import (request `71ff19f4`) filed and checked as in `docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` "How to verify"; one in-app dress billed and held against the invoice; Class C sign-offs recorded.
+
+## EDIT-1 — Cut render downloads caller-signed storage URLs
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Open (mitigated) · **Owner:** Products (AVT) · **Opened:** 2026-10-18
+- **Summary:** `edit-render` and `avt_edit_render` sign the picture and song files an `edit_sequences` row already names, and `scripts/edit-render.mjs` downloads them to run ffmpeg. Cost stays 0. No generation provider is called.
+- **Mitigations:** signing uses the caller's own client (RLS). A file must sit in `<uid>/<projectId>/…` and in `project-clips`, `project-audio`, `project-exports`, or `project-references`. The ffmpeg argv never contains a URL. The script fetches only `https://qoyxgnkvjukovkrvdaiq.supabase.co/storage/v1/object/sign/<those buckets>/…`, refuses redirects, and stops at 200 MB. A signed URL in the plan is a bearer for that one object until it expires (2 hours).
+- **DoD:** the dry run reports resolved inputs and missing media; a proxy encode spends nothing at a provider.
 
 ## AUTH-1 — Owner access token handed to a headless browser (agent presses the app)
 
