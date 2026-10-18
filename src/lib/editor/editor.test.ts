@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
@@ -25,6 +25,13 @@ import { sequenceLyricWarnings } from "./warnings";
 const csv = readFileSync(resolve("src/lib/editor/__fixtures__/edl_v1_coldopen.csv"), "utf8");
 const xml = readFileSync(resolve("src/lib/editor/__fixtures__/ysl_ice_on_v1.xml"), "utf8");
 const FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+
+function onPath(bin: string): boolean {
+  return spawnSync(bin, ["-version"], { encoding: "utf8", timeout: 5000 }).status === 0;
+}
+
+/** Encode only where the runner has ffmpeg, ffprobe, and the caption font. The plan checks do not need them. */
+const canEncode = onPath("ffmpeg") && onPath("ffprobe") && existsSync(FONT);
 
 function coldOpen() {
   return importEdlCsv(csv, {
@@ -162,14 +169,20 @@ describe("the plan spends nothing", () => {
     expect(plan.billable).toBe(false);
     expect(plan.durationSeconds).toBeCloseTo(47.208, 3);
     expect(plan.argv.join(" ")).not.toMatch(/https?:/);
+    expect(plan.argv[0]).toBe("ffmpeg");
+  });
+
+  it.skipIf(!canEncode)("encodes that proxy to about 47.2 s when ffmpeg is installed", () => {
+    const seq = coldOpen();
+    const plan = planRender(seq, { kind: "proxy", aspect: "9:16", fontFile: FONT, captions: true });
     const out = resolve("/tmp/ysl-coldopen-proxy.mp4");
     const args = plan.argv.slice(1).map((a) => (a === "OUTPUT" ? out : a));
-    const run = spawnSync(plan.argv[0]!, args, { encoding: "utf8", timeout: 90000 });
+    const run = spawnSync(plan.argv[0]!, args, { encoding: "utf8", timeout: 180000 });
     expect(run.status, run.stderr).toBe(0);
     const probe = spawnSync(
       "ffprobe",
       ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", out],
-      { encoding: "utf8" },
+      { encoding: "utf8", timeout: 15000 },
     );
     expect(Number(probe.stdout.trim())).toBeCloseTo(47.208, 1);
   });

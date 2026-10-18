@@ -49,5 +49,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The structural proxy test encodes with ffmpeg. ubuntu-latest does not ship it.
+      # Plan assertions still run when the binaries are absent (it.skipIf on the encode).
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+
       - name: Tests
         run: npm test

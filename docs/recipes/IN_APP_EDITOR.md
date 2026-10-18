@@ -10,7 +10,7 @@ The cut is a new set of tables (`edit_sequences`, `edit_clips`, `edit_markers`, 
 
 - The YSL cold-open CSV (`src/lib/editor/__fixtures__/edl_v1_coldopen.csv`) imports as 44 picture events, 1133 frames, 47.208 s, song offset 13.792 s, 14 lipsync placeholders.
 - The FCP7 XML imports both sequences (1133 and 1464 frames) and round-trips on frames and labels.
-- A structural proxy (colour bars, no YSL media) was encoded with the local ffmpeg and ffprobed to about 47.2 s. The real Seedance files were not downloaded, and nothing was written to variation `c067efb9-90af-418e-aa6d-58834f6e19de`.
+- A structural proxy (colour bars, no YSL media) encodes with ffmpeg and ffprobes to about 47.2 s. CI installs ffmpeg so that check runs in `verify`. The plan's cost stays 0 even when ffmpeg is absent. The real Seedance files were not downloaded, and nothing was written to variation `c067efb9-90af-418e-aa6d-58834f6e19de`.
 
 ## Mouth
 
