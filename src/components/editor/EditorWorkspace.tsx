@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   applyGesture,
+  applyPerformanceProvenance,
   durationSeconds,
   mediaWarnings,
   replaceTake,
@@ -28,6 +29,7 @@ import {
   useSaveEditSequence,
 } from "@/lib/queries/editSequences";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
+import { useSequenceProvenance } from "@/lib/queries/editProvenance";
 import { useTakeSyncs } from "@/lib/queries/storyboard";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 import { Button } from "@/components/ui/button";
@@ -136,9 +138,21 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
+  // Each picture clip's performance label, read from its asset lineage. Only `mouth` differs from `sequence`:
+  // timing, selection and approvals are the edit's own. Until the lineage loads, the stored label shows.
+  const provQ = useSequenceProvenance(sequence);
+  const labelled = useMemo(
+    () =>
+      provQ.data
+        ? applyPerformanceProvenance(sequence, provQ.data.assets, provQ.data.jobs)
+        : { sequence, byClip: {} as ReturnType<typeof applyPerformanceProvenance>["byClip"] },
+    [sequence, provQ.data],
+  );
+  const view = labelled.sequence;
   const selected = sequence.clips.find((c) => c.id === selectedId) ?? null;
+  const selectedView = view.clips.find((c) => c.id === selectedId) ?? null;
   const activeClip = selected ?? sequence.clips.find((c) => playhead >= c.timelineIn && playhead < c.timelineOut) ?? null;
-  const warnings = useMemo(() => mediaWarnings(sequence), [sequence]);
+  const warnings = useMemo(() => mediaWarnings(view), [view]);
   const dur = durationSeconds(sequence);
   const phraseMarker = useMemo(
     () => phraseAtPlayhead({ sequence, playhead, selectedClip: selected }),
@@ -215,13 +229,13 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sequence.fps, history]);
+  }, [sequence.fps, history, view]);
 
   async function save() {
     setSaveState("saving");
     setSaveError(null);
     try {
-      const id = await saveMut.mutateAsync(sequence);
+      const id = await saveMut.mutateAsync(view);
       onSequenceId?.(id);
       const next = { ...sequence, version: sequence.version + 1 };
       setHistory(historyOf(next));
@@ -247,7 +261,8 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
       timelineIn: start,
       timelineOut: start + len,
       mediaDuration: mediaDur,
-      mouth: null as "camera" | "model" | null,
+      // labelled from the asset's history by applyPerformanceProvenance; never assumed
+      mouth: "unknown" as const,
       track: "V1" as const,
       order: sequence.clips.length,
       shotId: null,
@@ -465,7 +480,7 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
                   void (async () => {
                     setExportNote("Planning export…");
                     try {
-                      await saveMut.mutateAsync(sequence);
+                      await saveMut.mutateAsync(view);
                       const dry = await requestEditRender({ sequenceId: sequence.id, dryRun: true });
                       const queued = await requestEditRender({ sequenceId: sequence.id, dryRun: false });
                       setExportNote(
@@ -511,7 +526,7 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
               }}
             />
             <TimelineCanvas
-              sequence={sequence}
+              sequence={view}
               playhead={playhead}
               selectedId={selectedId}
               pxPerSecond={zoom}
@@ -528,8 +543,9 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
 
         <div className="flex min-h-0 flex-col gap-3">
           <SyncPanel
-            sequence={sequence}
-            clip={selected}
+            sequence={view}
+            clip={selectedView}
+            provenance={selectedId ? labelled.byClip[selectedId] ?? null : null}
             slipBaseline={selectedId ? slipBaselines[selectedId] ?? null : null}
             onGesture={onGesture}
             onResetSlip={() => {
