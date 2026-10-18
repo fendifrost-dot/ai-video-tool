@@ -1,76 +1,25 @@
-# Async Faceswap Refactor — File-by-File Plan
+# Google sign-in: status and owner steps (answer only, no code changes)
 
-Mirrors the proven `compose-look-proxy` + `compose-look-callback` pattern (and `train-style-lora-*`). Synchronous CC call is replaced by submit + webhook callback because Fal jobs run ~270s, well beyond Supabase edge functions' idle cap.
+## (1) Enabled? — No (treat as not enabled)
+- The managed sign-in module (`src/integrations/lovable/`) and the `@lovable.dev/cloud-auth-js` package are absent from the repo, and no code calls Google sign-in. Both get created when Google is turned on through Lovable.
+- I cannot read the hosted provider toggle without changing it, so the live setting itself is unverified. With no evidence it was configured, assume it is off.
+- Important: on Lovable Cloud, the managed Google flow uses `lovable.auth.signInWithOAuth("google", { redirect_uri })`, not `supabase.auth.signInWithOAuth({ provider: 'google' })`. A direct Supabase call fails with "Unsupported provider" unless you bring your own Google credentials (option B below).
 
-## Architecture
+## (2) Owner steps
+Option A, managed Google (recommended, no Google Cloud setup):
+1. Cloud → Users → Auth Settings → Sign In Methods → Google → enable. (Or approve an agent pass that runs the Configure Social Login tool for `google`. That generates the lovable module, which counts as a code change, Class C auth.)
+2. In the same screen, keep **signups disabled** (`disable_signup = true`). New Google identities are then refused, so registration stays closed.
+3. Existing Gmail owner: Supabase links a Google identity to an existing user that has the **same verified email**. You get the same user id and the same projects, not a new empty user. To be safe, first confirm in Cloud → Users that the owner row's email exactly matches the Gmail address and is confirmed.
+4. Sign in once with Google on the live site and check that the user id matches the existing owner id (the /auth page shows it).
 
-```text
-Browser ──► faceswap-proxy (submit)  ──► CC faceswap-generate (submit-only)
-                │                                  │
-                │ insert provider_jobs             │ submit job to Fal,
-                │ status='queued', return jobId    │ register Fal webhook ->
-                ▼                                  │ AVT faceswap-callback
-        realtime subscribe to                     ▼
-        provider_jobs row             Fal finishes ─► faceswap-callback
-                ▲                                  │
-                └──── status='completed' ◄─────────┘
-                      result_asset_id set
-```
+Option B, your own Google client (needed only if you must keep `supabase.auth.signInWithOAuth` exactly):
+1. Google Cloud Console → OAuth consent screen: add authorized domain `aivideotool.lovable.app`, with scopes email, profile, openid.
+2. Credentials → OAuth Client ID (Web): set the redirect URI to the callback URL shown in Cloud → Users → Auth Settings → Google.
+3. Paste the Client ID and Secret into that Google section, then enable it. Keep signups disabled as in A.2.
+4. Make sure `https://aivideotool.lovable.app/auth` is on the auth redirect allow-list.
 
-## File-by-file changes
+## (3) Do preview origins need redirect URIs?
+- Option A: no. The managed broker handles the preview, `*.lovable.app`, and custom domains automatically, and the preview iframe uses a popup.
+- Option B: yes. Add the preview origin (`https://id-preview--bd21b544-c7b8-4780-bdde-391ac9d4bfa8.lovable.app/auth`) to the auth redirect allow-list. The Google console only needs the single Supabase callback URL, not each app origin.
 
-### 1. `supabase/functions/faceswap-proxy/index.ts` — rewrite as submit-only
-- Keep: auth (bearer JWT → getUser), input validation, face DNA resolution, signing scenePath + face refs (45 min TTL).
-- Change downstream call to CC `faceswap-generate` with new body: include `callbackUrl` pointing at `${SUPABASE_URL}/functions/v1/faceswap-callback?job_id=<providerJobRowId>` and the shared `X-Proxy-Secret`. Mode: submit-only (expect `{ ok, providerJobId }` back fast, no `imageUrl`).
-- INSERT `provider_jobs` row first (so the callback URL can reference its id):
-  - `user_id`, `project_id`, `provider='fal'`, `status='queued'`, `external_job_id=null` (filled by callback or by CC response), `request_payload_json={ capability:'identity_apply', scenePath, sceneBucket, sceneAssetId, shotId, faceFeatureId, gender, workflowType }`.
-- Return within ~5s: `{ ok:true, jobId: providerJobRowId, externalJobId: cc.providerJobId ?? null }`.
-- Drop: result download, project-references upload, project_assets insert, preview URL signing (all move to callback).
-
-### 2. `supabase/functions/faceswap-callback/index.ts` — NEW
-Modeled on `compose-look-callback/index.ts`.
-- `POST`, CORS, OPTIONS.
-- Auth via `X-Proxy-Secret` header (constant-time compare to `COMPOSE_LOOK_PROXY_SECRET`). Re-use the same secret to avoid a new env var, matching the existing helpers pattern.
-- Query param `job_id` = `provider_jobs.id`. Look up the row (service role); if not found → 404; if already completed → 200 idempotent ack.
-- Body: `{ status:'completed'|'failed', fal_image_url?, content_type?, width?, height?, model?, provider_job_id?, cost_cents?, error? }`.
-- Failure path: update `provider_jobs` → `status='failed'`, `error_text=<msg>`; return 200.
-- Success path:
-  1. Read `request_payload_json` from the row to recover `project_id`, `shot_id`, `sceneAssetId`, `sceneBucket`, `scenePath`, `faceFeatureId`, `user_id`.
-  2. Download `fal_image_url` (sniff mime, mirror compose-look-callback).
-  3. Upload to `project-clips` bucket at `${user_id}/${project_id}/faceswap/faceswap_${ts}_${rand}.${ext}` via service role.
-  4. Insert `project_assets` row: `asset_type='generated_still'`, `source_tool='fal'`, `approval_status='pending'`, `parent_asset_id=sceneAssetId`, full `metadata_json` (capability `identity_apply`, model, provider_job_id, cost_cents, face_feature_id, source_scene_path/bucket, width, height, content_type).
-  5. Update `provider_jobs` → `status='completed'`, `result_asset_id=<new asset>`, `external_job_id=body.provider_job_id ?? existing`, `response_payload_json=body`.
-- Inline `constantTimeEqual` + `sniffMime` (same as compose-look-callback — edge functions don't share modules across function dirs).
-
-### 3. `supabase/config.toml` — add public block for the callback
-```toml
-[functions.faceswap-callback]
-verify_jwt = false
-```
-(matches `compose-look-callback`; Fal/CC posts have no user JWT.)
-
-### 4. `src/lib/queries/faceswap.ts` — submit + realtime wait
-- `callApplyIdentity` (rename internally to "submit + await") changes:
-  1. POST to `faceswap-proxy` → `{ jobId }`.
-  2. Open a Supabase realtime channel filtered to `provider_jobs` where `id=eq.${jobId}`; also issue an immediate `select` to handle the race where the callback fires before the subscription is live.
-  3. Resolve on `status='completed'` (fetch `result_asset_id` → `project_assets` row, sign a preview URL for return-value compatibility). Reject on `status='failed'` with `error_text`. Hard timeout 360s as a safety net (longer than observed 274s Fal time + buffer).
-  4. Unsubscribe in `finally`.
-- Return shape stays `{ ok, asset, signed_url, cost_cents, model }` so AssetCard doesn't change.
-- `useApplyIdentity` keeps the same `onSuccess` invalidation.
-
-### 5. `src/components/assets/AssetCard.tsx` — no behavior change
-- Existing `isPending` already shows "Applying…". Confirm no edits beyond what the mutation hook already drives. (No code change expected unless verifying the button label/disabled state.)
-
-## Out of scope
-No changes to: schemas/migrations, other edge functions, other routes/pages, RLS, storage buckets (project-clips already exists).
-
-## Coordination with CC (your sibling chat — not done by this agent)
-CC's `faceswap-generate` must be switched to submit-only and accept `callbackUrl` + shared secret, register Fal's webhook to POST `{ status, fal_image_url, model, provider_job_id, cost_cents, width, height, content_type }` to that URL with `X-Proxy-Secret`. The AVT side is built to that contract.
-
-## Deploy sequence after approval
-1. Write the three files above.
-2. Deploy `faceswap-proxy` and `faceswap-callback` (Lovable auto-deploys; explicit redeploy call to be safe).
-3. Publish frontend.
-4. Report deploy status + the callback URL to hand to CC.
-
-Approve and I'll execute.
+No app code, SQL, or settings were changed.
