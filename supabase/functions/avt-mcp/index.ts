@@ -19,6 +19,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
+import { editGet, editList, editRender, editSave } from "./editTools.ts";
+import type { EditSequence, RenderAspect, RenderKind } from "../edit-render/model.ts";
 import {
   RPC,
   RPC_ALLOWED,
@@ -308,6 +310,24 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
       if (error) throw new ToolError(error.message);
       return toolText(data);
     }
+    case "avt_edit_list":
+      return toolText(await editList(ctx.user, String(args.project_id ?? "")));
+    case "avt_edit_get":
+      return toolText(await editGet(ctx.user, String(args.sequence_id ?? "")));
+    case "avt_edit_save": {
+      const sequence = args.sequence as EditSequence;
+      if (!sequence || typeof sequence !== "object" || !sequence.projectId) throw new ToolError("sequence.projectId is required");
+      return toolText(await editSave(ctx.user, sequence, args.commit === true));
+    }
+    case "avt_edit_render":
+      return toolText(
+        await editRender(ctx.user, {
+          sequenceId: String(args.sequence_id ?? ""),
+          dryRun: args.dry_run !== false,
+          kind: args.kind as RenderKind | undefined,
+          aspect: args.aspect as RenderAspect | undefined,
+        }),
+      );
   }
   throw new ToolError(`unknown tool ${name}`);
 }

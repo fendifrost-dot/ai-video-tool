@@ -34,12 +34,7 @@ import {
 } from "./videoQaPlug";
 
 export type LivePlayableDecodeFallbackReason =
-  | "none"
-  | "timeout"
-  | "oom"
-  | "abort"
-  | "decode_error"
-  | "progressive_ladder";
+  "none" | "timeout" | "oom" | "abort" | "decode_error" | "progressive_ladder";
 
 export type DecodePlayableMp4BrowserOk = {
   ok: true;
@@ -75,8 +70,7 @@ export type DecodePlayableMp4BrowserFail = {
 };
 
 export type DecodePlayableMp4BrowserResult =
-  | DecodePlayableMp4BrowserOk
-  | DecodePlayableMp4BrowserFail;
+  DecodePlayableMp4BrowserOk | DecodePlayableMp4BrowserFail;
 
 export type DecodePlayableMp4BrowserInput = {
   mp4Bytes?: Uint8Array;
@@ -221,9 +215,7 @@ function rgbaFromCanvas(
   height: number,
 ): Uint8Array {
   const ctx = canvas.getContext("2d") as
-    | CanvasRenderingContext2D
-    | OffscreenCanvasRenderingContext2D
-    | null;
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
   if (!ctx || typeof ctx.getImageData !== "function") {
     throw new Error("decodeMp4Browser: canvas getImageData unavailable");
   }
@@ -442,7 +434,12 @@ export async function decodePlayableMp4Browser(
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes.buffer as ArrayBuffer);
+  // Copy into a Uint8Array<ArrayBuffer>. The argument's buffer may be a shared or
+  // pooled Node buffer, which is not a BufferSource, and hashing `.buffer` includes
+  // bytes outside the view. A TypedArray is what jsdom's SubtleCrypto accepts.
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", copy);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 

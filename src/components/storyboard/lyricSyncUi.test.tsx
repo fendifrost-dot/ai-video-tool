@@ -28,7 +28,7 @@ const E1 = {
   sourceTool: "higgsfield",
   providerJobId: null,
   createdAt: AT,
-  derivedFrom: { assetId: "take", songStart: 53.8, method: "restaged" },
+  derivedFrom: { assetId: "take", songStart: 53.8, method: "dressed" },
 } as unknown as MediaAsset;
 const SYNC = {
   id: "s1",
@@ -105,16 +105,14 @@ function show(assignments: Assignment[]) {
 }
 
 describe("Lyric sync on a performance clip", () => {
-  it("lists the lines the shot carries, whole, and flags it shorter than its lyric window", () => {
+  it("lists the lines the shot carries, and holds them when the cut is not through a word", () => {
     show([row()]);
     expect(screen.getAllByTestId("lyric-sync-line").map((b) => b.textContent)).toEqual([
       "58.02 Laugh cause we did it",
       "58.80 what im whippin cost a home",
     ]);
-    expect(screen.getByTestId("lyric-sync").dataset.fit).toBe("extend_shot");
-    expect(screen.getByTestId("lyric-sync-fit-message").textContent).toMatch(
-      /the clip has the footage to extend it/,
-    );
+    expect(screen.getByTestId("lyric-sync").dataset.fit).toBe("ok");
+    expect(screen.getByTestId("lyric-sync-fit").textContent).toMatch(/holds its lines/);
   });
 
   it("puts the frame he starts a line on onto that line", () => {
@@ -138,5 +136,37 @@ describe("Lyric sync on a performance clip", () => {
     );
     fireEvent.click(screen.getByTestId("lyric-sync-reset"));
     expect(editFootage).toHaveBeenLastCalledWith(BOX, E1.id, { do: "slip", seconds: 0 });
+  });
+
+  it("does not offer a slip for a montage, whose mouth is the model's", () => {
+    const montage = {
+      ...E1,
+      id: "m1",
+      derivedFrom: { assetId: "take", songStart: 53.8, method: "montage" },
+    } as unknown as MediaAsset;
+    const sync = { ...SYNC, performanceAssetId: montage.id } as unknown as TakeSync;
+    const media = boxMedia({
+      box: BOX,
+      assignments: [{ ...row(), assetId: montage.id }],
+      assets: new Map([[montage.id, montage]]),
+      syncs: [sync],
+    });
+    const item = media.items.find((i) => i.asset.id === montage.id)!;
+    const c = {
+      projectId: "p1",
+      editFootage: vi.fn(),
+      assignmentOf: () => row(),
+      syncOf: () => sync,
+      urlFor: () => "blob:m",
+      songLines: LINES,
+      song: null,
+    } as unknown as StoryboardController;
+    render(
+      <StoryboardProvider value={c}>
+        <LyricSyncPanel item={item} box={BOX} />
+      </StoryboardProvider>,
+    );
+    expect(screen.getByTestId("lyric-sync-model").textContent).toMatch(/mouth is the model/);
+    expect(screen.queryByTestId("lyric-sync-line")).toBeNull();
   });
 });

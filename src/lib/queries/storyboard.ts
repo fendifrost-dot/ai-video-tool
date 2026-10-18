@@ -20,6 +20,7 @@ import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { measuredBeatMap, planConformToBeats } from "@/lib/storyboard/conform";
 import { dressRecordOf } from "@/lib/storyboard/dress";
+import { filedSeedanceSeconds } from "@/lib/storyboard/seedanceDuration";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
   isImagePath,
@@ -425,7 +426,13 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
   const isVideo = a.asset_type !== "audio" && isVideoPath(a.file_url, mime);
   const isImage = isImagePath(a.file_url, mime);
   const scrub = isVideo ? resolveScrubSource(bucket, a.file_url, a.metadata_json) : null;
-  const duration = Number(meta.duration_seconds);
+  const derivedFrom = derivedOf(a.metadata_json);
+  const rawDuration = Number(meta.duration_seconds);
+  const duration = filedSeedanceSeconds({
+    asked: null,
+    method: derivedFrom?.method ?? null,
+    stored: Number.isFinite(rawDuration) ? rawDuration : null,
+  });
   const footageRole = (a as { footage_role?: string | null }).footage_role ?? null;
   return {
     id: a.id,
@@ -438,14 +445,14 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     mime,
     isVideo,
     isImage,
-    durationSeconds: Number.isFinite(duration) && duration > 0 ? duration : null,
+    durationSeconds: duration != null && duration > 0 ? duration : null,
     shotId: a.shot_id,
     sourceTool: a.source_tool,
     providerJobId: meta.provider_job_id ?? null,
     createdAt: a.created_at,
     approvalStatus: (a as { approval_status?: string | null }).approval_status ?? null,
     plate: plateOf(a.file_url, a.metadata_json),
-    derivedFrom: derivedOf(a.metadata_json),
+    derivedFrom,
     shows: textOf(a.metadata_json, "shows"),
     filmedIn: textOf(a.metadata_json, "filmed_in"),
     beatCheck: parseBeatCheck((a.metadata_json as { beat_check?: unknown } | null)?.beat_check),

@@ -201,19 +201,77 @@ const median = (v: number[]) => {
  * Where the take sits on the song clock. Both signals are mono at the same sample rate. Null when the take has no
  * usable audio (silence, or a file with no audio track decoded to zeros) or nothing in it lines up with the song.
  */
+/**
+ * Speech-band filter: a high-pass at `lo` Hz then a low-pass at `hi` Hz (RBJ biquads). Room rumble and
+ * hiss move the onset envelope off the vocal; the band the mouth and the master share is about 150–4000 Hz.
+ */
+export function bandpassSpeech(
+  x: ArrayLike<number>,
+  sampleRate: number,
+  lo = 150,
+  hi = 4000,
+): Float64Array {
+  const hp = biquadHighpass(x, sampleRate, lo);
+  const cut = Math.min(hi, sampleRate / 2 - 1);
+  return biquadLowpass(hp, sampleRate, cut);
+}
+
+function biquad(x: ArrayLike<number>, b0: number, b1: number, b2: number, a1: number, a2: number): Float64Array {
+  const y = new Float64Array(x.length);
+  let x1 = 0;
+  let x2 = 0;
+  let y1 = 0;
+  let y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const xn = x[i];
+    const yn = b0 * xn + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1;
+    x1 = xn;
+    y2 = y1;
+    y1 = yn;
+    y[i] = yn;
+  }
+  return y;
+}
+
+function rbj(sampleRate: number, freq: number, highpass: boolean): [number, number, number, number, number] {
+  const w0 = (2 * Math.PI * Math.min(freq, sampleRate / 2 - 1)) / sampleRate;
+  const cos = Math.cos(w0);
+  const alpha = Math.sin(w0) / (2 * 0.707);
+  const b0 = highpass ? (1 + cos) / 2 : (1 - cos) / 2;
+  const b1 = highpass ? -(1 + cos) : 1 - cos;
+  const b2 = b0;
+  const a0 = 1 + alpha;
+  const a1 = -2 * cos;
+  const a2 = 1 - alpha;
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+
+function biquadHighpass(x: ArrayLike<number>, sampleRate: number, freq: number): Float64Array {
+  const [b0, b1, b2, a1, a2] = rbj(sampleRate, freq, true);
+  return biquad(x, b0, b1, b2, a1, a2);
+}
+
+function biquadLowpass(x: ArrayLike<number>, sampleRate: number, freq: number): Float64Array {
+  const [b0, b1, b2, a1, a2] = rbj(sampleRate, freq, false);
+  return biquad(x, b0, b1, b2, a1, a2);
+}
+
 export function matchTakeToSong(
   song: Float32Array | Float64Array,
   take: Float32Array | Float64Array,
   sampleRate: number,
-  opts: { windowSeconds?: number; windows?: number; searchSeconds?: number } = {},
+  opts: { windowSeconds?: number; windows?: number; searchSeconds?: number; bandpass?: boolean } = {},
 ): MatchResult | null {
-  if (song.length < sampleRate * 2 || take.length < sampleRate * 2) return null;
-  if (rms(take) < 1e-4 || rms(song) < 1e-4) return null;
+  const songIn = opts.bandpass ? bandpassSpeech(song, sampleRate) : song;
+  const takeIn = opts.bandpass ? bandpassSpeech(take, sampleRate) : take;
+  if (songIn.length < sampleRate * 2 || takeIn.length < sampleRate * 2) return null;
+  if (rms(takeIn) < 1e-4 || rms(songIn) < 1e-4) return null;
 
   // 1. coarse, on envelopes at 100 Hz. lag (frames) maximises Σ take[n]·song[n + lag] → song_time = take_time + lag.
   const envRate = 100;
-  const eSong = onsetEnvelope(song, sampleRate, envRate);
-  const eTake = onsetEnvelope(take, sampleRate, envRate);
+  const eSong = onsetEnvelope(songIn, sampleRate, envRate);
+  const eTake = onsetEnvelope(takeIn, sampleRate, envRate);
   const coarse = bestLag(eTake, eSong, Math.max(eSong.length, eTake.length) - 1);
   if (!coarse || coarse.sharpness < 4) return null;
   const coarseSeconds = coarse.lag / envRate;
@@ -241,8 +299,8 @@ export function matchTakeToSong(
     const b1 = b0 + (a1 - a0) + 2 * pad;
     if (b0 < 0 || b1 > song.length || a1 - a0 < sampleRate) continue; // the window falls outside the song
     total++;
-    if (rms(take, a0, a1) < 1e-4) continue; // a silent stretch of the take cannot vote
-    const r = bestLag(take.subarray(a0, a1), song.subarray(b0, b1), 2 * pad, { phat: true, minLag: 0 });
+    if (rms(takeIn, a0, a1) < 1e-4) continue; // a silent stretch of the take cannot vote
+    const r = bestLag(takeIn.subarray(a0, a1), songIn.subarray(b0, b1), 2 * pad, { phat: true, minLag: 0 });
     if (!r || r.sharpness < 6) continue;
     // take[a0 + n] ↔ song[b0 + n + lag]  →  offset = (b0 + lag − a0) / sr
     offsets.push((b0 + r.lag - a0) / sampleRate);
@@ -266,7 +324,7 @@ export function matchTakeToSong(
   return {
     offsetSeconds: Math.round(offset0 * 1e4) / 1e4,
     driftPpm: Math.round(driftPpm * 10) / 10,
-    method: MATCH_METHOD,
+    method: opts.bandpass ? "server_bandpass_envelope_gcc_phat" : MATCH_METHOD,
     confidence: {
       windowsTotal: total,
       windowsConsistent: keep.length,

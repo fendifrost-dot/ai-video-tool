@@ -12,6 +12,7 @@
 // Pure: no Deno, no network, no project knowledge.
 
 import { CONFORM_TOLERANCE, retimeRatioPlausible } from "./dressConform.ts";
+import { seedanceFileSeconds } from "./seedanceDuration.ts";
 
 export type ProgressJob = {
   id: string;
@@ -471,7 +472,13 @@ export async function fileRestagedClip(job: ProgressJob, restaged: NonNullable<R
     ? (lipsync.sourceMethod === "montage" ? "montage" : "restaged")
     : typeof variant?.version === "string" && variant.version.startsWith("montage") ? "montage" : "restaged";
   const next: Record<string, unknown> = { ...meta, derived_from: { asset_id: restaged.sourceAssetId, source_window: restaged.sourceWindow, song_start: restaged.songStart, method, ...(lipsync && typeof lipsync === "object" ? { lipsync } : {}) } };
-  if (!(Number(next.duration_seconds) > 0) && restaged.seconds) next.duration_seconds = restaged.seconds;
+  // Seedance's "4 s" file is 97 frames. Store that length; a whole-second placeholder is the request, not the file.
+  const filedSeconds =
+    settingsOf(job).route === "seedance_ref" && restaged.seconds ? seedanceFileSeconds(restaged.seconds) : restaged.seconds;
+  const stored = Number(next.duration_seconds);
+  if (!(stored > 0) && filedSeconds) next.duration_seconds = filedSeconds;
+  else if (settingsOf(job).route === "seedance_ref" && filedSeconds && stored === restaged.seconds && filedSeconds !== stored)
+    next.duration_seconds = filedSeconds;
   await deps.updateAsset(assetId, { footage_role: "performance", metadata_json: next });
   if (await deps.syncOf(job.project_id, assetId)) return;
   const source = await deps.syncOf(job.project_id, restaged.sourceAssetId);

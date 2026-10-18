@@ -33,7 +33,7 @@ describe("classification", () => {
 
   it("treats core creative-funnel destinations as not advanced", () => {
     // The primary rail — everything the sidebar shows without engineering mode.
-    for (const key of ["setup", "treatment", "storyboard", "review", "export"]) {
+    for (const key of ["setup", "treatment", "storyboard", "editor", "review", "export"]) {
       expect(isAdvancedDestination(key)).toBe(false);
     }
   });

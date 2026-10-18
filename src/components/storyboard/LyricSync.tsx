@@ -20,7 +20,7 @@ import {
   slipToLine,
   type LyricFitStatus,
 } from "@/lib/storyboard/lyricSync";
-import type { BoxMediaItem } from "@/lib/storyboard/media";
+import { mouthClock, type BoxMediaItem } from "@/lib/storyboard/media";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import { mediaRefKey, useSignedRefs } from "./signedUrls";
 import { useStoryboard } from "./useStoryboardController";
@@ -69,9 +69,10 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
   const songUrl = sb.song ? signed[mediaRefKey(sb.song)] : undefined;
   const clipUrl = sb.urlFor(item.asset);
 
+  const clock = item.kind === "video" ? mouthClock(item.asset) : null;
   // a take left out of this shot has nothing to line up (a nudge would put it back without saying so)
   const usable =
-    item.kind === "video" &&
+    clock === "camera" &&
     item.role === "performance" &&
     item.edit?.from !== "excluded" &&
     !!sync &&
@@ -119,6 +120,24 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playing, sync, slip, box.end]);
+
+  if (clock === "model") {
+    return (
+      <div
+        className="space-y-1 rounded-md border border-border/60 bg-background/40 px-2 py-1.5"
+        data-testid="lyric-sync-model"
+        data-fit={fit.status}
+      >
+        <p className="text-[10px] text-foreground/70">
+          This clip’s mouth is the model’s. Moving it on the song does not line the mouth up. A
+          camera take, or a dress retimed to that take, is what a lyric slip can align.
+        </p>
+        <p className="text-[10px] text-foreground/50" data-testid="lyric-sync-fit-message">
+          {fit.message}
+        </p>
+      </div>
+    );
+  }
 
   if (!usable || !sync) return null;
 

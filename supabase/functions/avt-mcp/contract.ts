@@ -3,7 +3,7 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.2.0";
+export const SERVER_VERSION = "1.3.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -98,6 +98,11 @@ export const TABLE_NOTES: Record<string, string> = {
   lyric_lines: "the song's lyric lines on the song clock",
   song_analyses: "beat grid / sections",
   performance_syncs: "real takes synced to the song clock",
+  edit_sequences: "an in-app cut of a project: fps, frame size, song offset. Does not write shots or slip_seconds",
+  edit_clips: "clips on a sequence: source in/out, timeline in/out, mouth camera|model, placeholder",
+  edit_markers: "beat, lyric, lipsync and comment markers on a sequence",
+  edit_sequence_versions: "a committed snapshot of a sequence",
+  edit_renders: "a queued ffmpeg plan. cost_usd is constrained to 0",
   timeline_items: "edit timeline",
   artists: "artist records",
   artist_assets: "artist pictures (faces, looks)",
@@ -287,6 +292,44 @@ export const TOOLS = [
       type: "object",
       properties: { bucket: { type: "string" }, prefix: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 1000 } },
       required: ["bucket"],
+    },
+  },
+  {
+    name: "avt_edit_list",
+    description: "List in-app cut sequences for a project. Reads edit_sequences only.",
+    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"] },
+  },
+  {
+    name: "avt_edit_get",
+    description: "One cut sequence with its clips and markers.",
+    inputSchema: { type: "object", properties: { sequence_id: { type: "string" } }, required: ["sequence_id"] },
+  },
+  {
+    name: "avt_edit_save",
+    description:
+      "Insert or replace a cut sequence, its clips and its markers. Does not write shots, assignments, slip_seconds, or performance_syncs. commit: true also stores a snapshot in edit_sequence_versions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sequence: { type: "object" },
+        commit: { type: "boolean" },
+      },
+      required: ["sequence"],
+    },
+  },
+  {
+    name: "avt_edit_render",
+    description:
+      "Plan an ffmpeg proxy or final for a sequence. dry_run defaults to true and returns the plan. cost_usd is 0. Nothing is generated. dry_run false only queues an edit_renders row; ffmpeg runs in scripts/edit-render.mjs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sequence_id: { type: "string" },
+        dry_run: { type: "boolean", description: "default true" },
+        kind: { type: "string", enum: ["proxy", "final"] },
+        aspect: { type: "string", enum: ["9:16", "1:1", "16:9"] },
+      },
+      required: ["sequence_id"],
     },
   },
 ] as const;

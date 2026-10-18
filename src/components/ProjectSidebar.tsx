@@ -49,6 +49,7 @@ export const primaryItems: readonly NavItem[] = [
   { to: "/projects/$id/setup", label: "Setup", icon: Upload, key: "setup" },
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
   { to: "/projects/$id/storyboard", label: "Storyboard", icon: LayoutGrid, key: "storyboard" },
+  { to: "/projects/$id/editor", label: "Cut", icon: Film, key: "editor" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
   { to: "/projects/$id/export", label: "Export", icon: Download, key: "export" },
 ] as const;

@@ -84,7 +84,7 @@ describe("the board's cut for Premiere", () => {
       recordIn: 58.06,
       recordOut: 59.54,
       slip: -0.125,
-      fit: "extend_shot",
+      fit: "ok",
       lyricWindow: { start: 58.02, end: 59.68 },
     });
     expect(rows[1]).toMatchObject({ key: "c034", clip: null, note: "a still, not in the EDL" });
@@ -100,9 +100,7 @@ describe("the board's cut for Premiere", () => {
       "001  AX       V     C        00:00:04:03 00:00:05:15 00:00:58:01 00:00:59:13",
     );
     expect(edl).toContain("* FROM CLIP NAME: E1_continuous.mp4");
-    expect(edl).toMatch(
-      /\* SHOT c033 \(33\) SONG 00:00:58:01-00:00:59:13 SLIP -0\.125S LYRIC EXTEND_SHOT/,
-    );
+    expect(edl).toMatch(/\* SHOT c033 \(33\) SONG 00:00:58:01-00:00:59:13 SLIP -0\.125S LYRIC OK/);
     expect(edl).not.toContain("still.png");
   });
 
@@ -112,7 +110,7 @@ describe("the board's cut for Premiere", () => {
       "shot,number,song_in,song_out,clip_file,source_in_s,source_out_s,source_in_tc,source_out_tc,record_in_tc,record_out_tc,slip_s,lyric_window,lyric_fit,note",
     );
     expect(csv[1]).toMatch(
-      /^c033,33,58\.06,59\.54,E1_continuous\.mp4,4\.135,5\.615,00:00:04:03,00:00:05:15,00:00:58:01,00:00:59:13,-0\.125,58\.02-59\.68,extend_shot,/,
+      /^c033,33,58\.06,59\.54,E1_continuous\.mp4,4\.135,5\.615,00:00:04:03,00:00:05:15,00:00:58:01,00:00:59:13,-0\.125,58\.02-59\.68,ok,holds its 2 lines/,
     );
     expect(csv[2]).toMatch(/^c034,34,59\.54,61\.01,,,,,,,,0,/);
   });

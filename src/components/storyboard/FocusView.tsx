@@ -340,7 +340,7 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
                 project's and are inherited by every variation; what is edited here reaches no other one. */}
             {isSyncedTake(item) && <FootageEditPanel item={item} box={box} />}
             {/* and lined up to the words by hand: the take slipped on this shot, the project's sync untouched */}
-            {item.kind === "video" && item.role === "performance" && <LyricSyncPanel item={item} box={box} />}
+            {item.kind === "video" && <LyricSyncPanel item={item} box={box} />}
             {/* a generated clip held against what it was asked for: where the picture changed, and where it was asked to */}
             {item.kind === "video" && <BeatCheckPanel item={item} />}
             {/* a restaged clip held against the take it was made from: his lips on the take's moments, no more of him in frame */}

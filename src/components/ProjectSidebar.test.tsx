@@ -74,13 +74,14 @@ describe("ProjectSidebar rail composition", () => {
     render(<ProjectSidebar projectId={PROJECT_ID} />);
 
     // Primary funnel is always present.
-    for (const label of ["Setup", "Treatment", "Storyboard", "Review", "Export"]) {
+    for (const label of ["Setup", "Treatment", "Storyboard", "Cut", "Review", "Export"]) {
       expect(labelCount(label)).toBeGreaterThanOrEqual(1);
     }
     expect(primaryItems.map((i) => i.key)).toEqual([
       "setup",
       "treatment",
       "storyboard",
+      "editor",
       "review",
       "export",
     ]);

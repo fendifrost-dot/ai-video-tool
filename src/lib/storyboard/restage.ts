@@ -22,6 +22,7 @@ import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "
 import { buildStoragePath, signedUrl, uploadBytesToBucket } from "@/lib/storage";
 import { performanceToSong } from "@/lib/sync/performanceSync";
 import { slippedSync } from "./footageEdit";
+import { filedSeedanceSeconds } from "./seedanceDuration";
 import { BatchShotSchema, seedanceUsd, submitShot, type BatchShot, type ExtraImageBucket, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
@@ -326,8 +327,14 @@ export async function fileRestagedClip(input: {
   const { data: asset, error } = await supabase.from("project_assets").select("id, metadata_json").eq("id", input.assetId).single();
   if (error || !asset) throw new Error(`could not read the restaged clip: ${error?.message ?? "not found"}`);
   const meta = { ...((asset.metadata_json ?? {}) as Record<string, unknown>) };
-  meta.derived_from = { asset_id: input.sourceAssetId, source_window: input.sourceWindow, song_start: input.songStart, method: input.method ?? "restaged" };
-  if (!(Number(meta.duration_seconds) > 0) && input.seconds) meta.duration_seconds = input.seconds;
+  const method = input.method ?? "restaged";
+  meta.derived_from = { asset_id: input.sourceAssetId, source_window: input.sourceWindow, song_start: input.songStart, method };
+  const filed = filedSeedanceSeconds({
+    asked: input.seconds,
+    method,
+    stored: Number(meta.duration_seconds) > 0 ? Number(meta.duration_seconds) : null,
+  });
+  if (filed) meta.duration_seconds = filed;
   const { error: upErr } = await supabase
     .from("project_assets")
     .update({ footage_role: "performance", metadata_json: meta as unknown as Json } as never)
