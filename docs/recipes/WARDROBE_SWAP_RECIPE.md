@@ -1,5 +1,11 @@
 # Wardrobe swap on a performance take: the recipe (living record, started 15 Oct 2026)
 
+> **SUPERSEDED IN PART (18 Oct 2026):** the canonical method is [`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md).
+> - Genjutsu (this page's run C) is still the swap engine.
+> - Its whole-frame output is now an **intermediate**. The final picture is the body-only put-back: the garment goes over the original frames, and his face, mouth and hands stay the take's own pixels.
+> - Step 4 below ("face check on fast motion") is resolved by that method.
+> - The rest of this page stays as the record of what was tested.
+
 Any agent or person putting Fendi into a garment on real performance footage starts **here**. The page records what
 was run, on what, with which inputs, and what came out. It is updated after every test.
 
@@ -58,7 +64,7 @@ Fendi passed C. The recipe is:
 1. Higgsfield Genjutsu object-swap, 720p, the product photo only, a prompt naming the construction points above, his own cap.
 2. Correct the speed: retime the output to the source length. It runs ≈7 % fast every time, so it lands at 3.71 s against 4.00 s.
 3. Run the deterministic brand layer on the logo if it reads wrong.
-4. Face check on fast motion. The last 0.5 s smeared here.
+4. ~~Face check on fast motion. The last 0.5 s smeared here.~~ **Superseded 18 Oct:** keep the original face with [`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md).
 
 Test at 1080p ($1.632 per source second) before scaling, to see whether the softness is the model or the resolution.
 

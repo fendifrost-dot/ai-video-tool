@@ -127,11 +127,24 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 2. No AI-regeneration of garment imagery; pixel preservation is mandatory.
 3. Fix the tool, not workarounds. Minimize scope.
 
+## CANONICAL: clothing swaps on Fendi's real footage keep his real face (approved 18 Oct 2026)
+
+**Read [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md) before any wardrobe change on a performance take.**
+- Genjutsu dresses the whole frame, which redraws his face.
+- The canonical method then composites only the garment and cap back over the original frames. The face from the brows down, beard, hands and mouth stay the take's own pixels (proof printed: 0 difference).
+- Approved by Fendi on c033 (final asset `5482b35b`).
+
+**Integration gap:** AVT's Dress and Region swap do **not** run this yet. It is the offline script `scripts/edit/body_only_swap.py`. Until it is in the app, a whole-frame Dress output is an intermediate, never the final picture.
+
+Never use generated lip-sync or a face-altering pass on Fendi.
+
 ---
 
 ## LOCKED: Video garment-swap architecture — keyframe + propagation (do not drift)
 
 **Canonical doc:** [`docs/VIDEO_SWAP_ARCHITECTURE.md`](docs/VIDEO_SWAP_ARCHITECTURE.md) — read it before touching any video-swap code. This section is the short form; the doc is authoritative.
+
+**For Fendi's real performance takes (18 Oct 2026):** the swap engine is Genjutsu object-swap, and the final picture is the face-preserving put-back in [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md). On real footage that canonical method takes precedence over the keyframe/propagation lane below.
 
 **Provenance:** Confirmed **unanimously** by Grok + Gemini + ChatGPT (2026-07-27). Matches the repo's own earlier pivot handoff [`CURSOR_HANDOFF_video_clothing_swap_pivot.md`](CURSOR_HANDOFF_video_clothing_swap_pivot.md) (**2026-06-21**, commit `228226f`) — the decision Phase 2b drifted from. This re-lock exists so that drift does not recur.
 
