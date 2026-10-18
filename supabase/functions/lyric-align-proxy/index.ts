@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
   const userClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", { global: { headers: { Authorization: authHeader } } });
   const { data: userData, error: userError } = await userClient.auth.getUser();
   if (userError || !userData.user) return json(req, 401, { ok: false, errorMessage: "Invalid bearer token" });
-  // a guest session is a valid token too (the app signs every visitor in anonymously): it does not get to spend
+  // anonymous sign-in is disabled as of 2026-10-18; a leftover guest token is still refused: it does not get to spend
   if ((userData.user as { is_anonymous?: boolean }).is_anonymous === true) return json(req, 403, { ok: false, errorMessage: "Sign in to time lyrics" });
 
   let body: Record<string, unknown>;
