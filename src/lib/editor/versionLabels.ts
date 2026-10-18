@@ -42,8 +42,9 @@ function friendlyName(raw: string): string {
   s = s.replace(/^(higgsfield|seedance|kling|grok|fal|runway|veo|pika)_+/i, "");
   s = s.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "");
   s = s.replace(/[0-9a-f]{16,}/gi, "");
+  s = s.replace(/\b[0-9a-f]{7,}\b/gi, "");
   s = s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-  return s || raw.slice(0, 32);
+  return s || "untitled take";
 }
 
 export function versionLabel(asset: ProjectAsset): string {
