@@ -178,3 +178,6 @@ verify_jwt = true
 
 [functions.performance-sync]
 verify_jwt = true
+
+[functions.edit-render-worker-api]
+verify_jwt = false
