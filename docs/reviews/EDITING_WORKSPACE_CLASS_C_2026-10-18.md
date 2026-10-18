@@ -21,8 +21,8 @@
 
 ## Security
 
-- Google OAuth client: `signInWithOAuth({ provider: "google" })` with `shouldCreateUser: false` on magic-link fallback. Session: existing `persistSession` + `autoRefreshToken` + brokered preview storage.
-- **Owner-only:** Enabling the Google provider in Lovable Cloud / auth settings (if not already on) cannot be completed from this agent without the Google Cloud consent screen. Client UI is ready.
+- Google OAuth client UI: `supabase.auth.signInWithOAuth({ provider: "google" })` with magic-link fallback (`shouldCreateUser: false`). Session: existing `persistSession` + `autoRefreshToken` + brokered preview storage.
+- **Owner-only (VERIFIED research via Lovable plan_mode 2026-10-18):** Google Sign-In Methods are not enabled on this Lovable Cloud project yet. Enable under Cloud → Users → Auth Settings → Google with **signups disabled**. Managed Lovable Google may later require `lovable.auth.signInWithOAuth` + generated module; do not open public registration.
 - RLS on edit_* tables unchanged (owner via `user_id`). `edit-render` still refuses anonymous JWT.
 - No public registration opened.
 

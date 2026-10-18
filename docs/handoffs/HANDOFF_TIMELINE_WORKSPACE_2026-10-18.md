@@ -13,13 +13,14 @@
 2. Lovable **Publish** (frontend)
 3. Lovable Edge Functions → redeploy **`edit-render`**, **`avt-mcp`** (shared `editModel` gestures)
 4. No new SQL migration (tables already live from `20261018020000`)
-5. If Google sign-in errors with “provider not enabled”: owner enables Google in Lovable Cloud auth and adds `https://aivideotool.lovable.app/auth` (+ preview origin) to OAuth redirect URIs
+5. **Google sign-in (owner-only):** Lovable research (2026-10-18) — Google is **not** enabled yet. In Lovable: **Cloud → Users → Auth Settings → Sign In Methods → Google → enable**, and keep **signups disabled** so registration stays closed. Existing verified Gmail should link to the same user id (not a new empty account). Managed Lovable Google may use `lovable.auth.signInWithOAuth("google")` after that toggle generates the managed module; today’s UI calls `supabase.auth.signInWithOAuth({ provider: "google" })` and will show a clear fallback message until the provider is on. Preview origins: managed path handles them; BYO Google client needs redirect allow-list for live + preview `/auth`.
 
 ## Next concrete task
 
-1. Confirm Google provider is enabled on Lovable Cloud for project `bd21b544-c7b8-4780-bdde-391ac9d4bfa8` and complete any Google Cloud OAuth consent (owner-only).
-2. Run `scripts/edit-render.mjs` against a queued `edit_renders` row (or wire a durable worker) so **Export preview** yields a playable MP4 in `project-exports` without a local agent laptop.
-3. Disposable smoke on sequence `2976b498-…` (or a copy): move, slip, split, save, reload, compare preview timing to XML/plan.
+1. **Owner:** Enable Google in Lovable Cloud Auth Settings (signups stay disabled). Sign in once and confirm user id `3ca10935-8c3d-4479-9a0c-8bfe8050840c` is unchanged.
+2. If managed Google requires the Lovable-generated `cloud-auth` module, wire SignInForm to that API without opening registration.
+3. Run `scripts/edit-render.mjs` against a queued `edit_renders` row (or wire a durable worker) so **Export preview** yields a playable MP4 in `project-exports`.
+4. Re-smoke disposable sequence `0e2d077c-…` after Publish: move, slip, split, save, reload, song audible, XML download.
 
 ## Do not
 
