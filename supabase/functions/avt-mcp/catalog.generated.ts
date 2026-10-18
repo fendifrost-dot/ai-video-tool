@@ -143,7 +143,7 @@ export const FUNCTION_DOCS: readonly { name: string; notes: string; request: str
  },
  {
   "name": "performance-sync",
-  "notes": "AVT edge function — performance-sync\n\nMeasures where a performance file's audio sits on the song master:\nmono, 16 kHz, band-pass 150–4000 Hz, onset envelope + FFT cross-correlation,\nsecond-window drift (src/lib/storyboard/syncMatch.ts via performanceAlign.ts).\n\nThe edge runtime has no ffmpeg, so the body carries mono float32 PCM (base64).\nscripts/performance-sync.mjs extracts that PCM from the files and can post it here.\nSilence is refused. dryRun defaults to true. A write is refused for the live YSL\nproject and is refused unless write is explicitly true. Nothing here is billed.\n\nAuth: caller JWT, anonymous refused.",
+  "notes": "AVT edge function — performance-sync\n\nMeasures where a performance file's audio sits on the song master:\nmono, 16 kHz, band-pass 150–4000 Hz, onset envelope + FFT cross-correlation,\nsecond-window drift (supabase/functions/_shared/syncMatch.ts via performanceAlign.ts).\n\nThe edge runtime has no ffmpeg, so the body carries mono float32 PCM (base64).\nscripts/performance-sync.mjs extracts that PCM from the files and can post it here.\nSilence is refused. dryRun defaults to true. A write is refused for the live YSL\nproject and is refused unless write is explicitly true. Nothing here is billed.\n\nAuth: caller JWT, anonymous refused.",
   "request": "type Body = {\n  songPcm?: string;\n  takePcm?: string;\n  sampleRate?: number;\n  projectId?: string;\n  performanceAssetId?: string;\n  songAssetId?: string;\n  dryRun?: boolean;\n  write?: boolean;\n}"
  },
  {

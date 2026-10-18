@@ -14,7 +14,7 @@ import {
   sequenceFromRows,
   type RenderAspect,
   type RenderKind,
-} from "./model.ts";
+} from "../_shared/editModel.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

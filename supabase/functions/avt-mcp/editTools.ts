@@ -7,7 +7,7 @@ import {
   type EditSequence,
   type RenderAspect,
   type RenderKind,
-} from "../edit-render/model.ts";
+} from "../_shared/editModel.ts";
 
 type Row = Record<string, unknown>;
 type Result<T> = { data: T; error: { message: string } | null };
