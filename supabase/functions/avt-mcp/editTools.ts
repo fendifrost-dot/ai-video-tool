@@ -19,8 +19,9 @@ interface Filter extends PromiseLike<Result<Row[] | null>> {
   order(column: string, options: { ascending: boolean }): Filter;
   limit(count: number): Filter;
   maybeSingle(): Promise<Result<Row | null>>;
+  single(): Promise<Result<Row>>;
   upsert(values: unknown): Promise<{ error: { message: string } | null }>;
-  insert(values: unknown): Promise<{ error: { message: string } | null }>;
+  insert(values: unknown): Filter;
 }
 
 type Db = {
