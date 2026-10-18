@@ -929,3 +929,24 @@ Full trace: `docs/research/results/2026-10-18-performance-sync/PERFORMANCE_SYNC_
 **Not done / waiting on Fendi:** his visual verdict on the comparisons; slips to set (suggested E1 v3 on c033 +0.042, E2 on c034 0 to +0.042); the 0.8538 vs 0.7038 A/B on the original. Nothing was written to `slip_seconds` or `performance_syncs`.
 **Deploy (18 Oct, 04:40 UTC):** #338 merged as `ce4f576`. Lovable redeployed `edit-render` (source_sha256 `f04ec688…`) and `avt-mcp` (`301466d3…`) from that commit: no build errors, unsigned probes refused (401 / missing credential). Published (deployment `a32b95a2`): VERIFIED — live `projects._id.storyboard-DwcxC1nr.js` carries "Generated mouth (montage or restage)"; no live chunk (82 scanned) still says "does not line the mouth up".
 **Verify after Publish:** open c033 → E1 v3 in focus view. The Lyric sync panel shows `data-testid="lyric-sync-guidance"` with `data-mouth="model"` and the nudge buttons; it did not before.
+
+## Performance review: E1 / E2 intervals (18 Oct, 09:40–10:30 UTC; ledger 145, $0)
+
+Doc: `docs/research/results/2026-10-18-performance-sync/PERFORMANCE_REVIEW_2026-10-18.md`.
+
+- **Verdicts:** OBSERVED from frame grids, not the metric.
+  - E1 v3 on c033: one offset holds, either as is or picture 1 f earlier. The proposed delays are worse.
+  - E2 on c034: song 59.92–60.04 ("everything") may articulate differently. Otherwise as is or 1 f earlier.
+  - Montage c033: not readable. Montage c034: compatible where visible.
+- **Earlier suggestion withdrawn:** "+0.042 later" for E1/E2.
+- **Candidate sequence `44ed6145`:** E1 / E2 at picture 1 f earlier (Cut +1 f; board slip −0.041667). Not accepted.
+- **Not written:** production Cut `2976b498`, board, `slip_seconds`, `performance_syncs` (0.8538 kept).
+- **Review media:** 11 unselected `edited_clip` assets in `project-exports/<owner>/764a63d2…/review/perf_sync_2026-10-18/`. The decision reel is `a8af018a`.
+
+**Waiting on Fendi:** watch the reel.
+- Choice A: E1 as is vs 1 f earlier.
+- Choice B: E2 as is vs 1 f earlier, and whether "everything" (59.92–60.04) reads wrong.
+
+**After he picks:**
+1. Set the board slip, or copy the candidate clip into the production Cut.
+2. Re-query that only those rows changed.
