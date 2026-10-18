@@ -40,12 +40,27 @@ export function buildMatteInput(videoUrl: string): MatteInput {
   };
 }
 
+/**
+ * A frame rate as an asset row may store it: a number (24), or ffprobe's rational string ("60000/1001", "24/1").
+ * Anything else, or a rate that is not positive and finite, is unknown (null).
+ */
+export function parseFps(v: unknown): number | null {
+  let rate: number;
+  if (typeof v === "number") rate = v;
+  else if (typeof v === "string") {
+    const m = /^\s*(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+(?:\.\d+)?))?\s*$/.exec(v);
+    if (!m) return null;
+    rate = m[2] === undefined ? Number(m[1]) : Number(m[1]) / Number(m[2]);
+  } else return null;
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
 /** How many frames the source has, from what is known of it. */
 export function matteFrames(
   seconds: number,
-  fps: number | null | undefined = MATTE_DEFAULT_FPS,
+  fps: number | string | null | undefined = MATTE_DEFAULT_FPS,
 ): number {
-  const rate = fps && fps > 0 ? fps : MATTE_DEFAULT_FPS;
+  const rate = parseFps(fps) ?? MATTE_DEFAULT_FPS;
   return Math.max(1, Math.round(seconds * rate));
 }
 

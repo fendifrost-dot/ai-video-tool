@@ -964,3 +964,31 @@ Doc: `docs/research/results/2026-10-18-performance-sync/PERFORMANCE_REVIEW_2026-
   - Only `c2418542` has a non-zero slip.
   - Production Cut timing is unchanged. Its mouth labels were changed at 09:59 by #344's backfill, which is not this review.
   - Original sync is still 0.8538.
+
+## Face-preserving clothing swap and moving environment (18 Oct, 22:00–23:50 UTC; ledger 146–147, $0.53)
+
+**Canonical method:** [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PRESERVING_CLOTHING_SWAP.md) (#347, #348).
+- Fendi APPROVED c033 BODY-ONLY (asset `5482b35b`).
+- Do not reopen that approval.
+
+**Moving environment, first pass (this PR):**
+- The approved file over a moving showroom plate. The plate is Kling job `31d3113c`, asset `21d1bc9c`.
+- The matte is job `c107ccc4`, alpha `b162d95d`.
+- The composite is asset `8a527bab` and the review clip is `e96bb0bc`. Both are unassigned.
+- The composite was made with `scripts/edit/composite_over_plate.py`. Reproduce it at $0 with `scripts/edit/reproduce_c033_showroom.sh`.
+- The matte provider job had no browser to finish it, so the agent marked it `succeeded` with a note.
+
+**Fix in this PR:** `matte-video-proxy` priced the matte from 96 frames.
+- The asset row stores fps as `"60000/1001"`, and the proxy accepted only a number. The real count is 240 frames.
+- The fix is `parseFps` in both `matteRequest.ts` mirrors, with tests.
+
+**Not done (needs Lovable or Fendi):**
+1. **Redeploy `matte-video-proxy`** (Lovable → Edge Functions). Until then the live proxy still under-quotes sources whose fps is stored as a rational.
+   - The proxy has no dry run, so a paid matte is the only full check. Don't buy one just to verify.
+   - Cheap check: a POST without a sign-in returns 401 if the function is deployed and 404 if it is not. This does not show which version is live.
+   - Real check, on the next matte that is needed anyway: its `provider_jobs.request_payload_json.source.frames` must match the source's real frame count. A 59.94 fps 4 s source must read 240, not 96.
+2. **Fendi's eye** on `e96bb0bc`: placement, exposure, and the plate's light shifts that his light does not follow.
+   - Nothing goes on the board or into the Cut until he accepts it.
+3. **Integration gap:** Dress and Composite in the app do not run body-only (see the recipe). Tomorrow's takes go through it by hand.
+
+**Don't:** re-matte or re-animate to reproduce. Every input is in storage, and the reproduce script checks their hashes.

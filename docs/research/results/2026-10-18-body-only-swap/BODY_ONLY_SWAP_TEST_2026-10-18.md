@@ -41,5 +41,5 @@ Context: Claudia's pipeline handoff (18 Oct) names face integrity as pain point 
 ## Next (not done)
 
 1. **Fendi's eye** on the three-way comparison (shared in the session, not in this public repo): cap fringe, and sleeve judder at 1×.
-2. **Then the moving environment** on this same output: matte (composite lane), a moving plate (the existing "Animate the plate" press, a paid image-to-video, dry-run first) and a grade. This is the handoff's pain point 2.
+2. **Done as a first pass, 18 Oct:** composite `8a527bab` over the moving showroom plate. See "Moving environment" in `docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`. It awaits Fendi's eye. The original plan was the moving environment on this same output: matte (composite lane), a moving plate (the existing "Animate the plate" press, a paid image-to-video, dry-run first) and a grade. This is the handoff's pain point 2.
 3. **Tomorrow's new takes** (tripod, plain background) go through the same three steps: Genjutsu, then body-only, then composite.

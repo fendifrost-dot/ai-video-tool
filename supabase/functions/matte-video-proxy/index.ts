@@ -25,6 +25,7 @@ import {
   MATTE_MODEL,
   matteEstimateUsd,
   matteFrames,
+  parseFps,
   matteSourceCheck,
 } from "../_shared/matteRequest.ts";
 
@@ -162,7 +163,7 @@ serve(async (req) => {
       error: signed.error === "storage_object_not_found" ? "source_sign_failed" : signed.error,
     });
 
-  const frames = matteFrames(seconds, typeof meta.fps === "number" ? meta.fps : null);
+  const frames = matteFrames(seconds, parseFps(meta.fps)); // a row may carry ffprobe's "60000/1001"
   const estimate = matteEstimateUsd(frames);
   const input = buildMatteInput(signed.url);
 

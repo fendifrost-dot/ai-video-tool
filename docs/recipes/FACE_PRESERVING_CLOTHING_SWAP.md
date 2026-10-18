@@ -105,6 +105,45 @@ None of these is assigned to a shot. The board and the Cut are unchanged.
   - file the result as the dressed take, with the face proof recorded on the asset;
   - until then, run `scripts/edit/body_only_swap.py` by hand on each dressed take.
 
+## Moving environment on the approved result (18 Oct 2026, first pass)
+
+The approved body-only file is put into a moving AI location **without another generative pass over him**.
+
+1. **Matte:** `matte-video-proxy` (Fal `veed/video-background-removal`, separate H.264 alpha) on the approved final, job `c107ccc4`.
+2. **Moving plate:** "Animate the plate" (Kling 2.5 turbo pro i2v, 5 s, locked-off prompt `plate-motion-v5-2026-10-17`) from the showroom still `d4da62ba`, job `31d3113c`. Penguin, snow and a passing train; nobody in the centre foreground.
+3. **Composite:** `scripts/edit/composite_over_plate.py`, an offline port of the app's composite recipe (`src/lib/composite/pixels.ts`, `plate-composite-v3-2026-10-16`). Settings: scale 0.9, bottom-anchored, matte centre at x 620, exposure 0.85, shared push-in 2 % on the finished frame, plate from 1.0 s, grain seed 33.
+
+**Reproduce from existing assets, $0:**
+
+```
+IN=<folder with fg.mp4, alpha.mp4, plate.mp4 [and song.wav]>  OUT=<folder>  PY=<python with numpy/opencv> \
+  scripts/edit/reproduce_c033_showroom.sh
+```
+
+It refuses any input whose sha256 differs and compares the decoded frames with the filed composite (`3143ac1fb70ce5c49c1f4796bbecc962`).
+
+| Role | Asset | Storage | sha256 |
+|---|---|---|---|
+| Foreground = approved final | `5482b35b-a4e6-4ad6-90a2-852afa01d87c` | project-exports `…/canonical/body_only_swap_c033_2026-10-18/` | `636cb1f9…4e789d2b` |
+| Matte alpha (job `c107ccc4`) | `b162d95d-c1da-4246-9098-283073e564a2` | same folder, `environment_showroom/` | `77d7cdb7…b224e375` |
+| Matte colour (not used) | `4bd4674b-f4fd-4b3d-8aa7-31e85e54b4d4` | same | `8f7ad738…7a217eae` |
+| Moving plate (job `31d3113c`, from still `d4da62ba`) | `21d1bc9c-0e0c-4ab5-a4a6-8cf4763d0c38` | project-clips `…/31d3113c…/generated_higgsfield_a2ef72a2-498.mp4` | `c17b3e8e…d1bfdc7f` |
+| **Composite** (1080×1920, 59.94, 240 frames, silent) | **`8a527bab-8090-4347-af03-2f7a31127436`** | project-exports `…/environment_showroom/` | `a637e73f…d1ee672a` |
+| Review: approved body-only \| composite, song at 56.9098 | `e96bb0bc-35ec-48be-98fc-77f8e675566e` | same | `2838029f…6cc420fa` |
+
+None of these is assigned to a shot. The composite awaits Fendi's eye; the c033 BODY-ONLY approval is unchanged.
+
+**What holds and what does not:**
+
+- **VERIFIED:** the composite reproduces bit for bit (decoded MD5) in two renders, the second by the reproduce script starting from fresh downloads of the AVT copies.
+- **DECISION:** his pixels come from the approved file. The recipe changes their **colour** (key gradient, grade, exposure 0.85, edge wrap, grain) and their **placement** (scale 0.9 and the shared push-in, for him and the plate together). It never redraws them, so mouth timing and identity are the approved take's. It is no longer pixel-identical to the approved file: the zero-difference face proof belongs to the body-only file, not to the composite.
+- **OBSERVED:**
+  - edges clean on the frames checked;
+  - Kling's plate brightens and shifts hue during the shot (blue, then red from the car and the train); his light stays fixed, so he does not react to it;
+  - he stands in front of the island, with no contact shadow on the floor;
+  - his feet are out of frame, so there is no floor contact to judge.
+- **Not in the app:** the app's "Composite over plate" press takes the shot's dressed take as its foreground. A body-only file that is not on a shot cannot be pressed there yet. It is the same integration gap as above.
+
 ## Superseded guidance
 
 - **Any instruction that files or uses a whole-frame Dress output as the final performance picture.** That covers `WARDROBE_SWAP_RECIPE.md` ("The recipe" / "How to run it") and `DRESS_AND_INSERT_WORKFLOW.md` step 5. Dress output is now an **intermediate**; the final is its body-only put-back.
