@@ -43,7 +43,7 @@ export const FUNCTION_DOCS: readonly { name: string; notes: string; request: str
  },
  {
   "name": "edit-render",
-  "notes": "AVT edge function — edit-render\n\nPlans an ffmpeg cut for an edit_sequences row. dryRun defaults to true and returns the plan.\ncost is always 0. This function does not run ffmpeg and does not call a generation provider.\nA dryRun of false only queues an edit_renders row (status queued) for scripts/edit-render.mjs.\n\nClass C. Auth: caller JWT, anonymous refused. Writes go through the caller's RLS.",
+  "notes": "AVT edge function — edit-render\n\nPlans an ffmpeg cut for an edit_sequences row. Each picture clip and the song asset are resolved to\na file in this project's storage. The plan carries a short-lived signed URL for the local encoder.\nThose URLs are never argv inputs and this function never calls a generation provider. A lip-sync\nplaceholder with no file stays a labelled slate. File duration comes from ffprobe in\nscripts/edit-render.mjs; the 4.04 s filing default is not used as a length.\ndryRun defaults to true and returns the plan plus how many real inputs resolved and which are missing.\ncost is always 0. This function does not run ffmpeg. A dryRun of false only queues an edit_renders\nrow (status queued) for scripts/edit-render.mjs.\n\nClass C. Auth: caller JWT, anonymous refused. Writes go through the caller's RLS.",
   "request": "type Body = {\n  sequenceId?: string;\n  dryRun?: boolean;\n  kind?: RenderKind;\n  aspect?: RenderAspect;\n  grain?: boolean;\n  captions?: boolean;\n  upscale?: boolean;\n}"
  },
  {
