@@ -38,6 +38,10 @@ jobs:
           node-version: '22'
           cache: npm
 
+      # Lovable bundles a function folder plus _shared only. This does not need node_modules.
+      - name: Edge imports stay in the function folder or _shared
+        run: node scripts/check-edge-imports.mjs
+
       # The gate. A package.json change merged without regenerating the lockfile fails HERE, with npm naming
       # every package that is missing or out of range.
       - name: Clean install from the lockfile (reproducibility gate)

@@ -90,7 +90,10 @@ const takePath = join(dir, "take.f32");
 writeFileSync(songPath, Buffer.from(songPcm.buffer, songPcm.byteOffset, songPcm.byteLength));
 writeFileSync(takePath, Buffer.from(takePcm.buffer, takePcm.byteOffset, takePcm.byteLength));
 const alignMod = pathToFileURL(
-  join(new URL("..", import.meta.url).pathname, "src/lib/storyboard/performanceAlign.ts"),
+  join(
+    new URL("..", import.meta.url).pathname,
+    "supabase/functions/_shared/performanceAlign.ts",
+  ),
 ).href;
 const runner = `
 import { readFileSync } from "node:fs";

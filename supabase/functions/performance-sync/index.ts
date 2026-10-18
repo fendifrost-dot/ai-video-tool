@@ -2,7 +2,7 @@
 //
 // Measures where a performance file's audio sits on the song master:
 // mono, 16 kHz, band-pass 150–4000 Hz, onset envelope + FFT cross-correlation,
-// second-window drift (src/lib/storyboard/syncMatch.ts via performanceAlign.ts).
+// second-window drift (supabase/functions/_shared/syncMatch.ts via performanceAlign.ts).
 //
 // The edge runtime has no ffmpeg, so the body carries mono float32 PCM (base64).
 // scripts/performance-sync.mjs extracts that PCM from the files and can post it here.
@@ -18,7 +18,7 @@ import {
   pcmFromBase64,
   syncWriteAllowed,
   ALIGN_SAMPLE_RATE,
-} from "../../../src/lib/storyboard/performanceAlign.ts";
+} from "../_shared/performanceAlign.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -33,7 +33,7 @@ Seedance's “4 s” file is 97 frames (4.041667 s). New filings store that. A s
 ## What Fendi runs
 
 1. Lovable SQL editor: `supabase/migrations/20261018020000_edit_sequences.sql`. Do not use the Supabase CLI.
-2. Lovable → Edge Functions → redeploy `edit-render`, `performance-sync`, and `avt-mcp`.
+2. Lovable → Edge Functions → redeploy `edit-render`, `performance-sync`, and `avt-mcp`. Those functions import only their own folder and `supabase/functions/_shared/` (the cut model, the aligner, and the matcher). Lovable does not bundle `src/` or a sibling function.
 3. Lovable Publish for the Cut page (`/projects/$id/editor`).
 4. Do not run this against the live YSL board's shots. Importing a sequence writes only the new tables.
 
