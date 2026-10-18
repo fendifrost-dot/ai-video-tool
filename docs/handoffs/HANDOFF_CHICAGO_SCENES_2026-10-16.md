@@ -927,4 +927,5 @@ Full trace: `docs/research/results/2026-10-18-performance-sync/PERFORMANCE_SYNC_
 - Tool: Lyric sync now gives every synced performance video (montages and restages included) the manual slip, with neutral constant-offset / drift / changed-articulation guidance.
 
 **Not done / waiting on Fendi:** his visual verdict on the comparisons; slips to set (suggested E1 v3 on c033 +0.042, E2 on c034 0 to +0.042); the 0.8538 vs 0.7038 A/B on the original. Nothing was written to `slip_seconds` or `performance_syncs`.
+**Deploy (18 Oct, 04:40 UTC):** #338 merged as `ce4f576`. Lovable redeployed `edit-render` (source_sha256 `f04ec688…`) and `avt-mcp` (`301466d3…`) from that commit: no build errors, unsigned probes refused (401 / missing credential). Published (deployment `a32b95a2`): VERIFIED — live `projects._id.storyboard-DwcxC1nr.js` carries "Generated mouth (montage or restage)"; no live chunk (82 scanned) still says "does not line the mouth up".
 **Verify after Publish:** open c033 → E1 v3 in focus view. The Lyric sync panel shows `data-testid="lyric-sync-guidance"` with `data-mouth="model"` and the nudge buttons; it did not before.
