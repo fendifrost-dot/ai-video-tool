@@ -53,7 +53,8 @@ const fmt = (s: number) => `${s < 0 ? "−" : ""}${Math.abs(s).toFixed(3)} s`;
 
 /** What to look for, by whose mouth it is. Neither says whether a slip will or will not line it up. */
 const MOUTH_GUIDANCE: Record<"camera" | "model", string> = {
-  camera: "His own take. Play it with the song and nudge until the mouth sits on the words.",
+  camera:
+    "His own take, or a dress of it. Play it with the song and judge by eye: one slip that fits every word is a constant offset; words that come apart along the shot are drift.",
   model:
     "Generated mouth (montage or restage). Judge it by eye with the song. If one slip puts every word on its syllable, keep it: that is a constant offset. If the first words land and later ones run early or late, the timing drifts: line up the words this shot shows. If a word is shaped differently from what he sings, no slip fixes that stretch: note where it starts and ends and cover it with a cutaway or the original take.",
 };

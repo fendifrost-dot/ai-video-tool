@@ -81,6 +81,17 @@ describe("checking a cut without playing it", () => {
     expect(check(r, "cuts").ok).toBe(true);
   });
 
+  it("passes a take slipped by hand on its shot: the slip is the song clock that shot plays by", () => {
+    // c005 shows the take with a +2 frame slip (the picture plays 0.083 s later), as Lyric sync saves it
+    const slipped = [...assignments, assign("a5", "r5", "take", "performance", { slip: 0.083 } as Partial<Assignment>)];
+    const t = buildTimeline({ boxes, assignments: slipped, assets, syncs: [sync] });
+    expect(video(t[4]).slip).toBe(0.083);
+    expect(video(t[4]).sourceIn).toBeCloseTo(16 - OFFSET - 0.083, 3);
+    const r = run(t, { assignments: slipped });
+    expect(check(r, "sync").failures).toEqual([]);
+    expect(check(r, "resume").failures).toEqual([]);
+  });
+
   it("catches a take started at the top of its shot instead of holding until the recording begins", () => {
     const t = build();
     t[0] = { ...t[0], media: { ...video(t[0]), leadIn: 0 } };

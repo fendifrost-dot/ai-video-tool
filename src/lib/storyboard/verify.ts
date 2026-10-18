@@ -68,9 +68,10 @@ export function verifyCut(input: VerifyInput): CutVerification {
   const boxes = [...input.boxes].sort((a, b) => a.start - b.start);
   const syncByAsset = new Map(input.syncs.filter(isUsableSync).map((s) => [s.performanceAssetId, s]));
   const lengthOf = (assetId: string): number | null => input.fileSeconds.get(assetId) ?? input.assets.get(assetId)?.durationSeconds ?? null;
-  const takeTime = (assetId: string, t: number): number | null => {
+  // a shot's own slip moves its take on the song (song = take·k + offset + slip), as the player and the export do
+  const takeTime = (assetId: string, t: number, slip = 0): number | null => {
     const sync = syncByAsset.get(assetId);
-    return sync ? (t - sync.offsetSeconds) / (1 + (sync.driftPpm ?? 0) / 1e6) : null;
+    return sync ? (t - sync.offsetSeconds - slip) / (1 + (sync.driftPpm ?? 0) / 1e6) : null;
   };
   const end = timeline.length ? timeline[timeline.length - 1].end : 0;
   const songSeconds = input.songSeconds ?? end;
@@ -193,7 +194,7 @@ export function verifyCut(input: VerifyInput): CutVerification {
     if (state.hold === "ran_out") holdLast.set(seg.shotId, (holdLast.get(seg.shotId) ?? 0) + step);
 
     if (seg.media.role === "performance") {
-      const want = takeTime(assetId, t);
+      const want = takeTime(assetId, t, seg.media.slip ?? 0);
       if (want === null) {
         syncFailures.push(`${seg.key}: plays a take that has no confirmed sync`);
         continue;
@@ -231,7 +232,7 @@ export function verifyCut(input: VerifyInput): CutVerification {
     if (seg.media.kind !== "video" || seg.media.role !== "performance") continue;
     if (before.media.kind !== "none" && before.media.role === "performance" && before.media.assetId === seg.media.assetId) continue;
     const t = seg.start + 0.05;
-    const want = takeTime(seg.media.assetId, t);
+    const want = takeTime(seg.media.assetId, t, seg.media.slip ?? 0);
     const length = lengthOf(seg.media.assetId);
     if (want === null || want < 0 || (length !== null && want >= length - 0.04)) continue;
     resumes += 1;
