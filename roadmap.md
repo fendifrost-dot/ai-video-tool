@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Connect and verify managed Google sign-in without profiles or public registration.
+- [x] Connect managed Google sign-in without profiles or public registration; focused tests and hosted settings checked.
+- [ ] Verify completed Google sign-in and existing projects read-back — blocked on an interactive Google account session.
 
 ## Prior tasks outside this request
 
