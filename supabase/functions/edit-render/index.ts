@@ -11,8 +11,8 @@
 //
 // Class C. Auth: caller JWT, anonymous refused. Writes go through the caller's RLS.
 
-import { serve } from "[REDACTED]deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "[REDACTED]esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   assertPlanSafe,
   sequenceFromRows,
