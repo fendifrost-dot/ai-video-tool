@@ -1099,6 +1099,21 @@ function safeLocal(path: string | undefined): string | null {
   return path;
 }
 
+/** Seconds for an ffmpeg filter, truncated so a value is never rounded onto the next microsecond. */
+function filterSeconds(seconds: number): string {
+  return (Math.floor(seconds * 1e6 + 1e-4) / 1e6).toFixed(6);
+}
+
+/**
+ * A cut time on the sequence frame grid. `0.166667` is frame 4 at 24 fps (4/24). Printing that
+ * with three decimals makes `0.167`, which drops the frame. Truncating the snapped frame time
+ * keeps the frame and still excludes the next one.
+ */
+function gridSeconds(seconds: number, fps: number): string {
+  const frame = Math.round(seconds * fps);
+  return filterSeconds(frame / fps);
+}
+
 /**
  * ffmpeg plan for a sequence. Cost is always 0. Remote URLs are never argv inputs: a resolved file is a
  * local path or an `avt-media/` token the local script replaces after downloading this project's storage.
@@ -1176,7 +1191,7 @@ export function planRender(
       const speed = c.speed > 0 ? c.speed : 1;
       const pts = speed === 1 ? "" : `,setpts=PTS/${speed}`;
       chains.push(
-        `[${i}:v]trim=start=${c.sourceIn.toFixed(3)}:end=${sourceEnd.toFixed(3)},setpts=PTS-STARTPTS${pts},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=${fps},setsar=1[v${i}]`,
+        `[${i}:v]trim=start=${gridSeconds(c.sourceIn, fps)}:end=${gridSeconds(sourceEnd, fps)},setpts=PTS-STARTPTS${pts},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=${fps},setsar=1[v${i}]`,
       );
     }
   });
@@ -1257,11 +1272,13 @@ export function planRender(
     if (songKnown != null && songKnown > 0) songEnd = Math.min(songEnd, songKnown);
     args.push("-i", song);
     chains.push(
-      `[${audioIndex}:a]atrim=start=${songStart.toFixed(3)}:end=${songEnd.toFixed(3)},asetpts=PTS-STARTPTS[a]`,
+      `[${audioIndex}:a]atrim=start=${filterSeconds(songStart)}:end=${filterSeconds(songEnd)},asetpts=PTS-STARTPTS[a]`,
     );
   } else {
     args.push("-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo");
-    chains.push(`[${audioIndex}:a]atrim=start=0:end=${dur.toFixed(3)},asetpts=PTS-STARTPTS[a]`);
+    chains.push(
+      `[${audioIndex}:a]atrim=start=0.000000:end=${filterSeconds(dur)},asetpts=PTS-STARTPTS[a]`,
+    );
   }
 
   const filterComplex = chains.join(";");
@@ -1273,7 +1290,7 @@ export function planRender(
     "-map",
     "[a]",
     "-t",
-    dur.toFixed(3),
+    filterSeconds(dur),
     "-c:v",
     "libx264",
     "-preset",

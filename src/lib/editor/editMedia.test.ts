@@ -173,11 +173,32 @@ describe("edit media resolution", () => {
     expect(argv).not.toMatch(/https?:/);
     expect(argv).toContain(`avt-media/${PICTURE}.bin`);
     expect(argv).toContain(`avt-song/${SONG}.bin`);
-    expect(argv).toContain("trim=start=0.000:end=1.250");
-    expect(argv).toContain("trim=start=0.000:end=4.500");
-    expect(argv).toContain("atrim=start=13.792:end=");
+    expect(argv).toContain("trim=start=0.000000:end=1.250000");
+    expect(argv).toContain("trim=start=0.000000:end=4.500000");
+    expect(argv).toContain("atrim=start=13.791667:end=");
     expect(argv).toContain("color=");
     expect(plan.inputs.items.find((item) => item.assetId === PICTURE)?.url).toBe(urls[PICTURE]);
+  });
+
+  it("keeps a 24 fps frame that three-decimal rounding would drop", () => {
+    const seq = sequence();
+    const clip = seq.clips[0]!;
+    seq.clips[0] = {
+      ...clip,
+      sourceIn: 0.166667,
+      sourceOut: 1.375,
+      timelineOut: clip.timelineIn + (1.375 - 0.166667),
+    };
+    const resolved = resolveSequenceMedia(seq, rows());
+    const urls = {
+      [PICTURE]: sign("project-clips", resolved.pictures[0]!.path),
+      [PENDING]: sign("project-clips", resolved.pictures[1]!.path),
+      [SONG]: sign("project-audio", resolved.song!.path),
+    };
+    const plan = renderPlanFor(seq, resolved, urls, { kind: "proxy", aspect: "9:16" });
+    const argv = plan.argv.join(" ");
+    expect(argv).toContain("trim=start=0.166666:end=1.375000");
+    expect(argv).not.toContain("trim=start=0.167");
   });
 
   it("clamps a source out to an ffprobe duration and ignores the 4.04 s default", () => {
@@ -189,11 +210,11 @@ describe("edit media resolution", () => {
       [SONG]: sign("project-audio", `${UID}/${PROJECT}/song.wav`),
     };
     const unclamped = renderPlanFor(seq, resolved, urls);
-    expect(unclamped.argv.join(" ")).toContain("trim=start=0.000:end=4.500");
+    expect(unclamped.argv.join(" ")).toContain("trim=start=0.000000:end=4.500000");
     const probed = applyProbes(resolved, { [PENDING]: 4 });
     expect(probed.pictures.find((item) => item.assetId === PENDING)?.durationSeconds).toBe(4);
     const plan = renderPlanFor(seq, resolved, urls, { probes: { [PENDING]: 4 } });
-    expect(plan.argv.join(" ")).toContain("trim=start=0.000:end=4.000");
+    expect(plan.argv.join(" ")).toContain("trim=start=0.000000:end=4.000000");
     expect(plan.warnings.some((warning) => warning.includes("clamped"))).toBe(true);
   });
 
