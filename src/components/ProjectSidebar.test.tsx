@@ -74,7 +74,7 @@ describe("ProjectSidebar rail composition", () => {
     render(<ProjectSidebar projectId={PROJECT_ID} />);
 
     // Primary funnel is always present.
-    for (const label of ["Setup", "Treatment", "Storyboard", "Cut", "Review", "Export"]) {
+    for (const label of ["Setup", "Treatment", "Shots", "Timeline", "Review", "Export"]) {
       expect(labelCount(label)).toBeGreaterThanOrEqual(1);
     }
     expect(primaryItems.map((i) => i.key)).toEqual([
@@ -169,9 +169,9 @@ describe("the phone row is the only project navigation under md", () => {
   // that the cap which makes the name clip instead of the navigation is still on the wrapper. The second is a
   // class assertion and would not catch the cap being defeated by some other rule — only a device or a
   // real-browser screenshot shows that.
-  it("renders every one of the five steps, not just the first", () => {
+  it("renders every workflow step, not just the first", () => {
     render(<ProjectSidebar projectId={PROJECT_ID} />);
-    for (const label of ["Setup", "Treatment", "Storyboard", "Review", "Export"]) {
+    for (const label of ["Setup", "Treatment", "Shots", "Timeline", "Review", "Export"]) {
       expect(
         labelCount(label),
         `${label} should be in the phone row as well as the rail`,
