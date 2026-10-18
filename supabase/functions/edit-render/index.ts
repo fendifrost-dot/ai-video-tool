@@ -11,8 +11,8 @@
 //
 // Class C. Auth: caller JWT, anonymous refused. Writes go through the caller's RLS.
 
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "[REDACTED]deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "[REDACTED]esm.sh/@supabase/supabase-js@2.45.0";
 import {
   assertPlanSafe,
   sequenceFromRows,
@@ -27,6 +27,12 @@ import {
   mediaSummary,
   planForSequence,
 } from "../_shared/editMedia.ts";
+import {
+  PROVENANCE_VERSION,
+  applyPerformanceProvenance,
+  loadProvenance,
+  provenanceCounts,
+} from "../_shared/performanceProvenance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,7 +138,16 @@ serve(async (req) => {
   }
   const dryRun = body.dryRun !== false;
   const media = mediaSummary(plan);
-  if (dryRun) return json(200, { ok: true, dryRun: true, costUsd: 0, media, plan });
+  // what each picture's performance is, from its asset lineage (reported only; the plan does not use it)
+  let provenance: { version: string; counts: Record<string, number> } | { version: string; error: string };
+  try {
+    const ids = seq.clips.filter((c) => c.track === "V1" && c.assetId).map((c) => c.assetId!);
+    const { assets, jobs } = await loadProvenance(user, ids);
+    provenance = { version: PROVENANCE_VERSION, counts: provenanceCounts(applyPerformanceProvenance(seq, assets, jobs).byClip) };
+  } catch (e) {
+    provenance = { version: PROVENANCE_VERSION, error: e instanceof Error ? e.message : "unreadable" };
+  }
+  if (dryRun) return json(200, { ok: true, dryRun: true, costUsd: 0, media, provenance, plan });
 
   const { data: row, error: insErr } = await user
     .from("edit_renders")
@@ -153,6 +168,7 @@ serve(async (req) => {
     costUsd: 0,
     renderId: row.id,
     media,
+    provenance,
     note: "Queued. ffmpeg runs in scripts/edit-render.mjs, which downloads the signed files and probes them. This function did not encode and did not call a provider.",
     plan,
   });
