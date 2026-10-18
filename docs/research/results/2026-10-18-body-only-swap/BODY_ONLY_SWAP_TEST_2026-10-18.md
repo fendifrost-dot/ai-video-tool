@@ -1,5 +1,7 @@
 # Body-only clothing swap: the face stays original pixels (18 Oct 2026)
 
+**APPROVED by Fendi, 18 Oct 2026.** This is now the canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../../../recipes/FACE_PRESERVING_CLOTHING_SWAP.md). Approved final asset `5482b35b`.
+
 Context: Claudia's pipeline handoff (18 Oct) names face integrity as pain point 1. Every generative step that touches Fendi's face changes it, and that includes the Genjutsu clothing swap: it re-renders the whole frame, with a ~15 px shift and a redrawn face. Fendi pointed to the c044 dressed take as the bar ("clothing swap perfect and mouth movement untouched").
 
 **Spend: $0.** Existing files only (the c033 source cut and its existing Genjutsu output). No provider call.

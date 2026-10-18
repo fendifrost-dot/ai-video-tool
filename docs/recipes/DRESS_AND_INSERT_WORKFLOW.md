@@ -59,6 +59,10 @@ exact matte request and sends nothing.
 
 ## Step 5: what "Dress this shot" does
 
+> **SUPERSEDED AS FINAL (18 Oct 2026):** what this step files is the whole-frame Genjutsu output, and its face is a redraw.
+> - The canonical final is the body-only put-back in [`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md).
+> - That put-back is **not wired into this step yet** (integration gap recorded there). Run `scripts/edit/body_only_swap.py` on the conformed output until it is.
+
 The button appears in a shot's full-screen view when all of these hold:
 
 - the shot is a **performance** shot;
