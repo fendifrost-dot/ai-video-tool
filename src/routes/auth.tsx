@@ -7,15 +7,15 @@ import { SignInForm } from "@/components/SignInForm";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — AI Music Video OS" },
+      { title: "Sign in — AVT" },
       {
         name: "description",
-        content: "Sign in to your AI Music Video OS production workspace with a magic link.",
+        content: "Sign in to your music-video workspace with Google or a magic link.",
       },
-      { property: "og:title", content: "Sign in — AI Music Video OS" },
+      { property: "og:title", content: "Sign in — AVT" },
       {
         property: "og:description",
-        content: "Sign in to your AI Music Video OS production workspace with a magic link.",
+        content: "Sign in to your music-video workspace with Google or a magic link.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -28,24 +28,31 @@ function AuthPage() {
   const [current, setCurrent] = useState<{ id: string; email: string | null; anon: boolean } | null>(
     null,
   );
+  const [expiredNote, setExpiredNote] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const read = async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data, error } = await supabase.auth.getSession();
       if (cancelled) return;
+      if (error) {
+        setExpiredNote("Session could not be refreshed. Sign in again.");
+      }
+      const user = data.session?.user;
       setCurrent(
-        data.user
+        user
           ? {
-              id: data.user.id,
-              email: data.user.email ?? null,
-              anon: Boolean(data.user.is_anonymous),
+              id: user.id,
+              email: user.email ?? null,
+              anon: Boolean(user.is_anonymous),
             }
           : null,
       );
     };
     read();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "TOKEN_REFRESHED") setExpiredNote(null);
+      if (event === "SIGNED_OUT") setExpiredNote("Signed out.");
       read();
     });
     return () => {
@@ -62,34 +69,41 @@ function AuthPage() {
   const signedIn = current && !current.anon;
 
   return (
-    <div className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col justify-center px-6 py-12">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Email magic link for the owner account. No new accounts are created here.
-      </p>
-
-      <div className="glass-float mt-6 rounded-2xl p-5">
-        <p className="text-xs text-muted-foreground">Current session</p>
-        <p className="mt-1 break-all text-sm">
-          {current
-            ? signedIn
-              ? `${current.email ?? "signed in"} · ${current.id}`
-              : `anonymous · ${current.id}`
-            : "no session"}
-        </p>
-      </div>
-
-      {!signedIn && (
-        <div className="mt-6">
-          <SignInForm />
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-6 py-12">
+      <div className="studio-card rounded-2xl border border-border p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary font-display text-lg font-semibold text-primary-foreground">
+            A
+          </div>
+          <div>
+            <h1 className="font-display text-xl font-semibold tracking-tight text-foreground">
+              Sign in to AVT
+            </h1>
+            <p className="text-sm text-muted-foreground">Private workspace · existing owner account</p>
+          </div>
         </div>
-      )}
 
-      {signedIn && (
-        <Button variant="outline" className="mt-6" onClick={signOut}>
-          Sign out
-        </Button>
-      )}
+        {expiredNote && <p className="mb-3 text-sm text-amber-200">{expiredNote}</p>}
+
+        <div className="mb-5 rounded-xl border border-border bg-background/50 p-3">
+          <p className="text-xs text-muted-foreground">Current session</p>
+          <p className="mt-1 break-all text-sm text-foreground">
+            {current
+              ? signedIn
+                ? `${current.email ?? "signed in"}`
+                : `Guest session — sign in to open your projects`
+              : "Not signed in"}
+          </p>
+        </div>
+
+        {!signedIn && <SignInForm />}
+
+        {signedIn && (
+          <Button variant="outline" className="mt-2 w-full" onClick={signOut}>
+            Sign out
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

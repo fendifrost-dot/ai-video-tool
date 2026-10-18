@@ -155,9 +155,9 @@ export function isOriginalTake(a: Pick<MediaAsset, "footageRole" | "isVideo" | "
 }
 
 /**
- * Whose mouth the picture is. `camera`: the original take, or a dress/composite retimed to it — a sync offset
- * moves the mouth with the song. `model`: a montage or restage — the mouth is generated and an offset cannot
- * line it up. Null for anything that is not a performance picture.
+ * Whose mouth the picture is. `camera`: the original take, or a dress/composite retimed to it.
+ * `model`: a montage or restage — generated articulation. A constant offset, drift, or wrong mouth shape
+ * need different judgments; audio alignment is not visible lip-sync. Null when not a performance picture.
  */
 export type MouthClock = "camera" | "model";
 

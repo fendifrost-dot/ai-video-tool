@@ -42,8 +42,9 @@ export type EditClip = {
   /** Length of the source file, seconds. Null when unknown. */
   mediaDuration: number | null;
   /**
-   * Whose mouth this picture is. `camera`: a real take, or a dress retimed to one — a sync offset moves the mouth.
-   * `model`: a montage or restage — the mouth is generated and an offset will not line it up.
+   * Whose mouth this picture is. `camera`: a real take, or a dress/composite retimed to one.
+   * `model`: a montage or restage — generated articulation. A constant offset, drift, or wrong
+   * mouth shape need different judgments; never treat audio alignment as visible lip-sync.
    */
   mouth: "camera" | "model" | null;
 };
@@ -632,7 +633,9 @@ function exportSequence(seq: EditSequence): string {
 export type Gesture =
   | { kind: "slip"; clipId: string; deltaFrames: number }
   | { kind: "move"; clipId: string; deltaFrames: number; ripple: boolean }
-  | { kind: "trim"; clipId: string; edge: "in" | "out"; deltaFrames: number; ripple: boolean };
+  | { kind: "trim"; clipId: string; edge: "in" | "out"; deltaFrames: number; ripple: boolean }
+  | { kind: "split"; clipId: string; atTimelineSeconds: number }
+  | { kind: "remove"; clipId: string; ripple: boolean };
 
 const MIN_FRAMES = 1;
 
@@ -661,9 +664,10 @@ function shiftFrom(
 }
 
 /**
- * Slip moves the source window and leaves the cut on the song.
+ * Slip (adjust footage timing) moves the source window and leaves the cut on the song.
  * Trim-in with ripple keeps the timeline start, drops or extends the head, and pulls later clips with the tail.
  * Trim-out changes the tail. Move slides the clip on the song; ripple carries everything after it.
+ * Split cuts one clip into two at a timeline time. Remove drops the clip from the edit (source media stays).
  */
 export function applyGesture(seq: EditSequence, g: Gesture): EditSequence {
   const target = seq.clips.find((c) => c.id === g.clipId);
@@ -675,9 +679,47 @@ export function applyGesture(seq: EditSequence, g: Gesture): EditSequence {
   const sin = secondsToFrames(target.sourceIn, fps);
   const sout = secondsToFrames(target.sourceOut, fps);
   const speed = target.speed > 0 ? target.speed : 1;
+
+  if (g.kind === "remove") {
+    const next: EditSequence = {
+      ...seq,
+      clips: seq.clips.filter((c) => c.id !== target.id),
+    };
+    if (!g.ripple) return next;
+    const span = tout - tin;
+    return shiftFrom(next, target.track, target.id, target.timelineIn, -span);
+  }
+
+  if (g.kind === "split") {
+    const splitFrame = secondsToFrames(g.atTimelineSeconds, fps);
+    if (splitFrame <= tin || splitFrame >= tout) return seq;
+    const leftDur = splitFrame - tin;
+    const sourceSplit = sin + Math.round(leftDur * speed);
+    if (sourceSplit <= sin || sourceSplit >= sout) return seq;
+    const left: EditClip = {
+      ...target,
+      sourceOut: at(sourceSplit),
+      timelineOut: at(splitFrame),
+    };
+    const right: EditClip = {
+      ...target,
+      id: crypto.randomUUID(),
+      order: target.order + 1,
+      sourceIn: at(sourceSplit),
+      timelineIn: at(splitFrame),
+      name: target.shotKey ? `${target.shotKey} (b)` : `${target.name} (b)`,
+    };
+    return {
+      ...seq,
+      clips: seq.clips.flatMap((c) => (c.id === target.id ? [left, right] : [c])),
+    };
+  }
+
   if (g.kind === "slip") {
     let d = g.deltaFrames;
+    const maxMedia = target.mediaDuration != null ? secondsToFrames(target.mediaDuration, fps) : null;
     if (sin + d < 0) d = -sin;
+    if (maxMedia != null && sout + d > maxMedia) d = maxMedia - sout;
     if (sout + d - (sin + d) < MIN_FRAMES) return seq;
     return mapClip(seq, target.id, (c) => ({
       ...c,
@@ -711,6 +753,8 @@ export function applyGesture(seq: EditSequence, g: Gesture): EditSequence {
     if (tin + d < 0) d = -tin;
     if (tout - (tin + d) < MIN_FRAMES) d = tout - tin - MIN_FRAMES;
     if (sin + Math.round(d * speed) < 0) d = -Math.floor(sin / speed);
+    // Extending the head uses unused footage before sourceIn when available.
+    if (d < 0 && sin + Math.round(d * speed) < 0) d = -Math.floor(sin / speed);
     return mapClip(seq, target.id, (c) => ({
       ...c,
       timelineIn: at(tin + d),
@@ -719,12 +763,65 @@ export function applyGesture(seq: EditSequence, g: Gesture): EditSequence {
   }
   let d = g.deltaFrames;
   if (tout + d - tin < MIN_FRAMES) d = tin + MIN_FRAMES - tout;
+  const maxMedia = target.mediaDuration != null ? secondsToFrames(target.mediaDuration, fps) : null;
+  if (d > 0 && maxMedia != null && sout + Math.round(d * speed) > maxMedia) {
+    d = Math.floor((maxMedia - sout) / speed);
+    if (d <= 0) return seq;
+  }
   const next = mapClip(seq, target.id, (c) => ({
     ...c,
     timelineOut: at(tout + d),
     sourceOut: at(Math.max(sin + MIN_FRAMES, sout + Math.round(d * speed))),
   }));
   return g.ripple ? shiftFrom(next, target.track, target.id, target.timelineOut, d) : next;
+}
+
+/** Unused footage before/after the current source window (seconds). Never invents media. */
+export function sourceHandles(clip: EditClip): { head: number; tail: number; known: boolean } {
+  if (clip.mediaDuration == null || !(clip.mediaDuration > 0)) {
+    return { head: clip.sourceIn, tail: 0, known: false };
+  }
+  return {
+    head: Math.max(0, clip.sourceIn),
+    tail: Math.max(0, clip.mediaDuration - clip.sourceOut),
+    known: true,
+  };
+}
+
+/** Human copy for a slip (footage timing) or move (placement on the song). */
+export function timingExplanation(
+  kind: "slip" | "move",
+  deltaFrames: number,
+  fps: number,
+): { direction: "earlier" | "later" | "unchanged"; frames: number; seconds: number; label: string } {
+  if (deltaFrames === 0) {
+    return { direction: "unchanged", frames: 0, seconds: 0, label: "No change" };
+  }
+  const frames = Math.abs(deltaFrames);
+  const seconds = frames / (fps > 0 ? fps : 24);
+  if (kind === "slip") {
+    // Positive slip: later source frames play in the same song slot → mouth appears earlier vs the lyric.
+    const direction = deltaFrames > 0 ? "earlier" : "later";
+    return {
+      direction,
+      frames,
+      seconds,
+      label:
+        deltaFrames > 0
+          ? `Footage timing: use later source frames (${frames}f / ${seconds.toFixed(2)}s) — mouth appears earlier against the song`
+          : `Footage timing: use earlier source frames (${frames}f / ${seconds.toFixed(2)}s) — mouth appears later against the song`,
+    };
+  }
+  const direction = deltaFrames > 0 ? "later" : "earlier";
+  return {
+    direction,
+    frames,
+    seconds,
+    label:
+      deltaFrames > 0
+        ? `Move clip later on the song by ${frames}f / ${seconds.toFixed(2)}s`
+        : `Move clip earlier on the song by ${frames}f / ${seconds.toFixed(2)}s`,
+  };
 }
 
 /** Nearest target, in frames, within the threshold. Timeline edges snap; a slip does not (the cut stays on the beat). */
@@ -829,7 +926,7 @@ export function mediaWarnings(seq: EditSequence): MediaWarning[] {
       out.push({
         clipId: c.id,
         shotKey: c.shotKey,
-        message: `${c.name}: the mouth is the model's. A sync offset will not line it up. Replace it with the camera take, or a dress retimed to that take.`,
+        message: `${c.name}: generated mouth — check whether a constant offset, drift, or wrong articulation is the issue. Keep as an alternative and flag the interval if mouth movement is unusable; cover with a cutaway or the original take.`,
       });
     }
   }

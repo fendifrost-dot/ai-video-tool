@@ -42,14 +42,14 @@ type NavItem = {
 };
 
 /**
- * The creative workflow — always visible: Setup → Treatment → Storyboard → Review → Export.
- * The storyboard is the production workspace; everything a shot needs is reached from its box.
+ * The creative workflow — always visible: Setup → Treatment → Storyboard (Shots) → Timeline → Review → Export.
+ * The storyboard is the production workspace; Timeline is the CapCut-style cut.
  */
 export const primaryItems: readonly NavItem[] = [
   { to: "/projects/$id/setup", label: "Setup", icon: Upload, key: "setup" },
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
-  { to: "/projects/$id/storyboard", label: "Storyboard", icon: LayoutGrid, key: "storyboard" },
-  { to: "/projects/$id/editor", label: "Cut", icon: Film, key: "editor" },
+  { to: "/projects/$id/storyboard", label: "Shots", icon: LayoutGrid, key: "storyboard" },
+  { to: "/projects/$id/editor", label: "Timeline", icon: Film, key: "editor" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
   { to: "/projects/$id/export", label: "Export", icon: Download, key: "export" },
 ] as const;
@@ -255,7 +255,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
-          {/* Keep the variation separate so all five workflow steps fit on a phone. */}
+          {/* Variation on its own row so Setup → Export (incl. Timeline) stay reachable on a phone. */}
           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
             <div className="min-w-0 max-w-[38vw] shrink-0 sm:max-w-[16rem] md:max-w-none">
               <VariationSwitcher projectId={projectId} compact />
@@ -279,7 +279,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
               <EngineeringModeToggle collapsed />
             </div>
           </div>
-          <div className="grid grid-cols-5 gap-0.5 pt-1" data-testid="mobile-workflow-steps">
+          <div className="grid grid-cols-3 gap-0.5 pt-1 sm:grid-cols-6" data-testid="mobile-workflow-steps">
             {primaryItems.map((item) => renderLink(item, "chip"))}
           </div>
           {showAdvanced && (
