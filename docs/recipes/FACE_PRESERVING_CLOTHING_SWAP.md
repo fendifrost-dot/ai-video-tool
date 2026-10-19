@@ -158,6 +158,11 @@ Fendi approved the 18 Oct showroom composite as the working baseline and asked f
   - Scale: his stated height (6 ft 3 in) and a room scaled 0.95 (his direction; island 0.865 m, penguin 1.21 m).
 - **His pixels** are the approved file's: rolled 1.23° level, scaled, colour-graded from measured light. Never redrawn.
 - **Scripts:** `scripts/edit/blender/` (scene file `showroom_c033.json`); `scripts/edit/reproduce_c033_showroom_blender.sh` rebuilds any version from stored assets at $0.
+- **The room moves without generative video (room v5, Fendi 19 Oct: the Kling room motion "looks AI generated and antithetical to our whole approach").**
+  - The room is a frozen still split into layers.
+  - Blender renders the snow; fixed, seeded curves move the branches, the penguin (its own pixels) and the LED light (a rolling-shutter band).
+  - Objects are refitted by measurement. The Ferrari was shrunk to its spec height on the same spot.
+  - Do not animate a room plate with an image-to-video model for this lane.
 - **Versions:** `static` (the plate's matched camera), `dolly` (0.20 m push-in), `tight` (the same camera on a 1.6× lens).
 - **Asset IDs:** the write-up's asset table. All are unassigned and await Fendi's eye.
 
