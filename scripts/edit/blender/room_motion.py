@@ -1,5 +1,9 @@
 """The showroom plate without generative video: the still's layers moved by fixed curves, $0 and deterministic.
 usage: room_motion.py <params.json> <layers_dir> <snow_dir> <out_dir> [--only FRAME] [--mp4 out.mp4]
+                      [--led-depth D] [--no-led 1]
+  --led-depth D  overrides room_v5.led.depth (0 = the LED lamps lit steadily, no rolling band: bleed test 2)
+  --no-led 1     the Ferrari with its LED light taken out (the lamps dark, the rest of the car as is). Not a shot:
+                 it feeds the edge wrap's blurred room (comp_scene.py --wide-env) so the lamps cannot halo him
   layers_dir  from room_layers.py (bg, car, penguin, glass, led, layers.json)
   snow_dir    from snow.py (snow_0001.png ...)
 Writes out_dir/plate_0001.png ... (1080x1920, 8-bit RGB), the plate build_scene.py projects. Per frame, back to front:
@@ -17,7 +21,9 @@ import cv2, numpy as np
 argv = sys.argv[1:]
 pp, ld, sd, od = argv[:4]
 opt = dict(zip(argv[4::2], argv[5::2]))
-P = json.load(open(pp)); V = P["room_v5"]; WD = V["wind"]; TR = V["trees"]; LD = V["led"]; PG = V["penguin_motion"]
+P = json.load(open(pp)); V = P["room_v5"]; WD = V["wind"]; TR = V["trees"]; LD = dict(V["led"]); PG = V["penguin_motion"]
+if "--led-depth" in opt: LD["depth"] = float(opt["--led-depth"])
+NO_LED = opt.get("--no-led", "0") == "1"
 NFR = P["frames"]; FPS = 60000 / 1001
 L = json.load(open(f"{ld}/layers.json"))
 r16 = lambda p: cv2.imread(p, cv2.IMREAD_UNCHANGED).astype(np.float32) / 65535
@@ -48,6 +54,7 @@ led_frac = np.clip(led / np.maximum(lum, 1e-4), 0, 1)[..., None]       # share o
 def band(f):
     ph = yy[:, :1] / LD["period_rows"] + f * LD["drift_cycles_per_frame"]
     pulse = (0.5 - 0.5 * np.cos(2 * math.pi * ph)) ** LD["sharpness"]
+    if NO_LED: return np.zeros_like(pulse)                                # every LED pixel's light removed
     return 1 - LD["depth"] * pulse                                       # 1 = full light, per row
 
 # ---- penguin: inverse map about its feet (weight shift, breathing) and its neck (one head turn) ----

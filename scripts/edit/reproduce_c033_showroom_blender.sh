@@ -16,9 +16,13 @@
 # usage: IN=dir OUT=dir BLENDER=/path/to/blender PY=python [MOVE=static|dolly|tight] scripts/edit/reproduce_c033_showroom_blender.sh
 # Needs: Blender 4.5 LTS (tested 4.5.9, CPU Cycles), ffmpeg, Python with numpy, scipy, opencv-python (and mediapipe +
 # face_landmarker.task in $MODELS for the verification). Scene: scripts/edit/blender/showroom_c033.json.
+# No Blender binary (a container that cannot reach download.blender.org): BLENDER=scripts/edit/blender/bpy_blender.sh
+# with PYBPY pointing at a Python 3.11 that has `bpy==4.5.*` from PyPI (see that file; compare the plate MD5 first).
+# TAG (default v5) names the outputs, so a fixed render never takes a filed version's file name.
+# The headlight-bleed tests (handoff item 0) run on this script's $OUT: scripts/edit/blender/bleed_tests.sh.
 set -euo pipefail
 : "${IN:?set IN}" "${OUT:?set OUT}" "${BLENDER:?set BLENDER to the blender binary}"
-PY=${PY:-python3}; MOVE=${MOVE:-static}
+PY=${PY:-python3}; MOVE=${MOVE:-static}; TAG=${TAG:-v5}
 here=$(cd "$(dirname "$0")" && pwd); bl="$here/blender"
 
 check() { got=$(sha256sum "$1" | cut -d' ' -f1); [ "$got" = "$2" ] || { echo "MISMATCH $1: $got (expected $2)"; exit 1; }; echo "ok $1"; }
@@ -44,14 +48,21 @@ for p in depth env refl fg save; do
   "$BLENDER" -b --factory-startup -P "$bl/build_scene.py" -- "$bl/showroom_c033.json" "$OUT/plate_seq" "$OUT/perf_seq" "$OUT/passes" \
     --pass "$p" --move "$MOVE" 2>&1 | grep -E "^SCENE|^rendered|^saved|rror" || true
 done
-"$PY" -I "$bl/comp_scene.py" "$bl/showroom_c033.json" "$OUT/passes" "$MOVE" "$OUT/plate_light.npy" "$OUT/c033_showroom_blender_v5_$MOVE.mp4"
-md5=$(ffmpeg -loglevel error -i "$OUT/c033_showroom_blender_v5_$MOVE.mp4" -map 0:v -f md5 - | cut -d= -f2)
+# the edge wrap's room without the LED light, only when the scene file asks for it (comp.wide_env, bleed fix a)
+wide=$("$PY" -I -c "import json,sys; print(json.load(open(sys.argv[1])).get('comp', {}).get('wide_env', ''))" "$bl/showroom_c033.json")
+if [ -n "$wide" ]; then
+  "$PY" -I "$bl/room_motion.py" "$bl/showroom_c033.json" "$OUT/layers" "$OUT/snow" "$OUT/plate_seq_noled" --no-led 1
+  "$BLENDER" -b --factory-startup -P "$bl/build_scene.py" -- "$bl/showroom_c033.json" "$OUT/plate_seq_noled" "$OUT/perf_seq" \
+    "$OUT/passes/${wide%%/*}" --pass env --move "$MOVE" 2>&1 | grep -E "^rendered|rror" || true
+fi
+"$PY" -I "$bl/comp_scene.py" "$bl/showroom_c033.json" "$OUT/passes" "$MOVE" "$OUT/plate_light.npy" "$OUT/c033_showroom_blender_${TAG}_$MOVE.mp4"
+md5=$(ffmpeg -loglevel error -i "$OUT/c033_showroom_blender_${TAG}_$MOVE.mp4" -map 0:v -f md5 - | cut -d= -f2)
 echo "decoded MD5 $md5  (filed: see docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md, 'Blender placement')"
 if [ -n "${MODELS:-}" ]; then
-  "$PY" -I "$bl/verify_scene.py" "$IN/fg.mp4" "$OUT/c033_showroom_blender_v5_$MOVE.mp4" "$OUT/passes/scene_$MOVE.json" \
+  "$PY" -I "$bl/verify_scene.py" "$IN/fg.mp4" "$OUT/c033_showroom_blender_${TAG}_$MOVE.mp4" "$OUT/passes/scene_$MOVE.json" \
     "$bl/showroom_c033.json" "$MODELS/face_landmarker.task" "$OUT/verify_$MOVE.json" --every 2
 fi
 if [ -f "$IN/song.wav" ]; then
-  ffmpeg -loglevel error -y -i "$OUT/c033_showroom_blender_v5_$MOVE.mp4" -ss 56.9098 -t 4.0 -i "$IN/song.wav" -map 0:v -map 1:a -t 4 \
-    -c:v copy -c:a aac -b:a 160k -movflags +faststart "$OUT/c033_showroom_blender_v5_${MOVE}_with_song.mp4"
+  ffmpeg -loglevel error -y -i "$OUT/c033_showroom_blender_${TAG}_$MOVE.mp4" -ss 56.9098 -t 4.0 -i "$IN/song.wav" -map 0:v -map 1:a -t 4 \
+    -c:v copy -c:a aac -b:a 160k -movflags +faststart "$OUT/c033_showroom_blender_${TAG}_${MOVE}_with_song.mp4"
 fi
