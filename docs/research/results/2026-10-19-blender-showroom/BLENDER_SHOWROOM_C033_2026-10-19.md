@@ -6,10 +6,10 @@ the approved BODY-ONLY wardrobe result unchanged. Mid-task: "look at how I can f
 object spacing, distance", and "reconstructing or altering placement of objects is fine to naturally place me behind
 the kitchen island if it can be realistically done".
 
-**Spend: $1.33** (ledger 149–153), all on the room, never on him.
+**Spend: $1.68** (ledger 149–154), all on the room, never on him.
 - **His inputs** are existing files: approved final `5482b35b` and its matte `b162d95d`.
-- **The final plate (v3, below)** cost two still edits ($0.14 each) and one Kling animation ($0.35).
-- **Two earlier animations** ($0.35 each: penguin only, then the black Ferrari) were superseded.
+- **The rendered versions use plate v3** (two still edits at $0.14 each and one Kling animation at $0.35).
+- **Four animations** ($0.35 each) are superseded or rejected: penguin only, the black Ferrari, v3 and v4.
 
 ## The key finding: where he can stand
 
@@ -90,6 +90,33 @@ the kitchen island if it can be realistically done".
   - Kling also added a passing bus and warm light washes (allowed: the room "comes alive").
 - **MEASURED:** the plate stays within 0.75 px of the measured still.
 
+### Plate v4, rejected (19 Oct, Fendi on v3: "that looks terrible", the UFO / Tesla / bus)
+
+- **What went wrong in v3:** the UFO and the Roadster were painted into the still, large, sharp and close to the glass. They read as stickers, and Kling added a bus and colour washes on top.
+- **Still `20fcf483`:** the blue Ferrari only (the vehicle region of `eeec2a6e`, 7.1 % of the picture), with the original snowy sky.
+- **Plate `cb77eddf`** (Kling job `e8a76113`). The event asked for:
+  - the chase far beyond the trees, small and half hidden by the snow;
+  - no bus or traffic, and steady room light;
+  - the penguin shifting in place;
+  - the LED strips flickering softly.
+- **OBSERVED:**
+  - The flying Roadster is small and distant, with its tail lights on, and a UFO searchlight beam sweeps after it from above.
+  - The saucer itself stays mostly above the frame.
+  - A little distant street traffic still appeared.
+  - The penguin shifts in place. The LEDs flicker.
+- **MEASURED:** the plate stays within 0.6 px of the measured still.
+- **Fendi's verdict:** "Scrap the UFO and Tesla, it looks too bad." He also said the room motion "looks AI generated and antithetical to our whole approach". The v4 render was stopped before any version finished.
+
+### DECISION: no more generative room motion (19 Oct)
+
+- **Why:** a Kling plate redraws the whole room every frame. It wobbles, morphs and adds unrequested things (a bus, traffic). Nothing makes it obey the prompt, the same reason the canonical method never redraws him.
+- **RECOMMENDATION (awaiting Fendi):** keep the measured still `20fcf483` frozen and make every motion deterministic in Blender or the comp. Each one is a seeded parameter in the scene file:
+  - snow particles in the wind, behind the glass;
+  - a masked branch sway;
+  - an LED brightness curve on the Ferrari's strips;
+  - small rigid keyframed moves for the penguin, never redrawn.
+- **No UFO, Tesla or traffic.**
+
 ## How the shot is built (scripts/edit/blender/)
 
 1. **`prep_performer.py`.** From the approved final and its matte:
@@ -147,7 +174,7 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 |---|---|---|---|
 | matched camera (static) | 36.2 / 34.1 dB | 111 / 111 | 7.2 / 2.0 dB |
 | tight (1.6× lens) | 38.1 / 35.5 dB, mask 10 px off the outline (37.9 / 28.2 at 5 px: the light wrap from the bus passing behind his head, 2.8–3.8 s) | 111 / 111 | 10.0 / 3.6 dB |
-| DOLLY_ROW
+| dolly (0.20 m push) | not rendered: stopped when the plate changed | — | — |
 
 - **VERIFIED:** his face in the shot is the approved file's pixels, resampled and graded.
   - What remains is lens softness, anti-aliasing, grain and the top-light gradient (~36 dB).
@@ -196,16 +223,17 @@ Project YSL `764a63d2`. All are unassigned (no shot, no Cut). Folder `canonical/
 | Its matte (input) | `b162d95d` |
 | Showroom still, measured (original) | `d4da62ba` |
 | Still with the black Ferrari (paste) | `28757bef` (raw edits `95506ae8`, `981b0a5b`, unusable) |
-| **Still v3: blue Ferrari, UFO + flying Tesla (paste)** | **`d939cb61`** (raw edits `8b7498ae`, `eeec2a6e`, unusable) |
-| **Plate v3, Kling** | **`256ca1bb`** (job `7ddc509c`) |
-| Plate v3 interpolated to 59.94 | `67159b15` |
+| Still v3, rejected (painted UFO + Tesla) | `d939cb61` (raw edits `8b7498ae`, `eeec2a6e`) |
+| Plate v3, rejected (the rendered versions use it) | `256ca1bb` (job `7ddc509c`), interpolated `67159b15` |
+| Still v4: blue Ferrari only (the frozen-plate candidate) | `20fcf483` |
+| Plate v4, rejected (Kling) | `cb77eddf` (job `e8a76113`) |
 | Superseded plates | `21d1bc9c` (black SUV), `275a16c9` (penguin only), `36f10093` (black Ferrari) |
 | **Shot, matched camera** | **`98d1d04e`** (decoded MD5 `aecb5dbcaadb4e5186e596ac685b2a94`) |
 | Review: approved \| 2D \| Blender, song | `e60299ed` |
 | Review: face pair, song | `6572ac8c` |
 | Review: 2 s edit, song | `e37d5516` |
 | **Shot, tight (1.6× lens)** | **`63a101f1`** (decoded MD5 `f119056faf3e1ff16ab83ef02184f475`); with song `cea0eb6a`, face pair `2ce07795` |
-| DOLLY_ASSET
+| Shot, dolly (0.20 m push) | not rendered (stopped when the plate changed) |
 | Superseded first pass (1.80 m, black SUV) | `41511208` |
 | `.blend` files and the floor plan | storage only, same folder |
 
