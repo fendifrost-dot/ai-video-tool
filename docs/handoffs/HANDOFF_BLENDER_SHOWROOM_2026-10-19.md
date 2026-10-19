@@ -1,6 +1,7 @@
 # Handoff: c033 BODY-ONLY placed in the showroom with Blender (19 Oct 2026)
 
-**Status:** CODED + RENDERED offline. Nothing is on the board or in the Cut. Fendi has not yet judged these versions.
+**Status:** CODED + RENDERED offline (room v5, merged in #351, squash `8277701`). Nothing is on the board or in the Cut.
+**Fendi's last note (19 Oct, after room v5), OPEN:** "there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment." This is not fixed; see item 0 below. He then asked to continue the build in a new chat from this handoff.
 **Spend: $1.82** (ledger rows 148–155), all on the room (stills and plates), none on him.
 
 Write-up: [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)
@@ -38,25 +39,40 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## Not done: what needs a person or a later session
 
-0. **Room v5 is built and awaits Fendi's eye.** Ask:
+0. **OPEN, first: the headlight bleed on his outline.**
+   - **OBSERVED geometry:** in the matched camera he stands in front of the Ferrari's front-left corner. The left LED strip and left lower lamp (`room_v5.lamp_boxes_1080` boxes 2 and 4, x ≈ 410–456, y ≈ 910–992) sit just behind his body, on the side toward the car.
+   - **HYPOTHESIS (cause):** `comp_scene.py` (lines ~98–104) gives him the composite lane's edge band with a 0.5 *screen* wrap of `wide = blur(room, 30)`.
+     - Behind him the room now holds bright LED lamps, so the screen wrap lifts his outline toward lamp-white.
+     - The rolling LED band then makes that glow pulse.
+     - Together that reads as him "coming out of" the room, a halo, not a lit edge.
+   - **Test that separates the causes ($0, `--only` frames, `--stills DIR`):**
+     1. Re-comp a few frames with the wrap off (`wrap = him`). If the halo goes, it is the wrap.
+     2. Re-comp with `room_motion.py`'s LED band off (`led.depth` 0). If only the pulsing goes, the band is driving the wrap.
+     3. Compare a crop of his car-side edge at 2× against the plate-v3 render `98d1d04e`, which had dark car paint behind him.
+   - **Fix options, in order of preference (DECISION for the next agent, show Fendi before/after crops):**
+     - (a) build `wide` from the room **without** the LED layer, or clip it, so lamps cannot feed the wrap;
+     - (b) lower the wrap to a normal light wrap (e.g. 0.15–0.25, multiply-darkened where the background is brighter than him);
+     - (c) move the car a little along its row (`room_v5.car_anchor_x_px`, and `car_proxy` with it) so no lamp sits right behind him. Fendi allowed moving objects.
+   - **Do not** touch his pixels' grade to hide it, re-matte, or regenerate. Re-run `verify_scene.py` after the fix: the face PSNR must not drop (static ≥ 34 min, 36 median).
+1. **Room v5 awaits Fendi's eye** after the bleed fix. Ask:
    - whether the LED bands read as the camera phenomenon he means;
    - whether the Ferrari's size and the penguin's moves read right;
    - whether the snow density is right.
    Every one of these is a value in `showroom_c033.json` (`room_v5`). Retune there and rerun; no generation is needed.
-1. **Fendi's eye** on the three versions. Ask in this order:
+2. **Fendi's eye** on the three versions. Ask in this order:
    - Does he read as standing behind the island?
    - His height against the penguin and the counter.
    - His exposure (+0.8 stop over the measured match).
    - Which framing: wide, dolly or tight.
    - Nothing goes on the board until he picks.
-2. **Placing the pick on c033.**
+3. **Placing the pick on c033.**
    - It would be a new version on the shot, through the board's own versioning, never by replacing the production clip.
    - Verify by re-querying that only that row changed.
-3. **Integration into AVT (not built):**
+4. **Integration into AVT (not built):**
    - The app has no Blender worker, so this lane runs offline only.
    - The camera measurement (vanishing points) and the performer spot are manual.
    - The body-only put-back is still not in Dress.
-4. **Tomorrow's takes:** shoot to the guidance in the write-up (eye-height phone, 3–4 m, tripod, one full-body take).
+5. **Tomorrow's takes:** shoot to the guidance in the write-up (eye-height phone, 3–4 m, tripod, one full-body take).
    - Then run Genjutsu → body-only → this Blender lane per take.
    - A full-body take can stand in open floor with real floor contact.
 
@@ -82,24 +98,34 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## Continuation prompt (copy-ready)
 
-> Continue the c033 showroom work in `fendifrost-dot/ai-video-tool` (Lovable-managed AVT; no standalone Supabase).
-> First read `docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md`, then the write-up it links and
-> `docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`.
+> Continue the c033 showroom Blender build in `fendifrost-dot/ai-video-tool` (Lovable-managed AVT; no standalone
+> Supabase, no supabase CLI). Read first, in order:
+> 1. `CLAUDE.md`;
+> 2. `docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md` (this file);
+> 3. the write-up it links (`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`);
+> 4. `docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`.
 >
-> - **Do not reopen** the approved c033 BODY-ONLY result (`5482b35b`) or the showroom baseline (`8a527bab`).
-> - Fendi's verdict on the Blender versions is in chat; apply exactly what he picked:
->   - add the chosen version as a new version on shot c033 through the board's versioning;
->   - leave the production Cut untouched unless he says so;
->   - re-query that only that row changed.
-> - **For each new take from the shoot:**
->   1. Genjutsu swap.
->   2. `scripts/edit/body_only_swap.py` (face proof must print 0).
->   3. A matte via `matte-video-proxy`.
->   4. A scene file like `showroom_c033.json`, measured from that take and that plate. Label every value MEASURED/ESTIMATE/DECISION.
->   5. The Blender lane, then `verify_scene.py`.
-> - Post every clip to chat. Dry-run any paid step first, report its cost, and log it in `docs/LEDGER_YSL_TESTING_BUDGET.md`.
-> - Never redraw his face, never add lip-sync, never change a production selection without his acceptance.
-> - Finish with a verification-first handoff in `docs/handoffs/`.
+> **State:** room v5 is merged. The room is a frozen still split into layers; the only motion is Blender particle snow,
+> a branch sway, a rolling-shutter LED band on the Ferrari's lamps and small rigid moves of the penguin's own pixels.
+> The Ferrari is shrunk to its 1.589 m spec. Three versions (matched `30f71856`, tight `7adff8e9`, dolly `a74c3c90`)
+> are filed in AVT, unassigned. Fendi has not picked one.
+>
+> **First task: the open bleed.** Fendi: "there is bleed I believe from the headlight effect, it looks like I'm coming
+> out of the environment."
+> - Work item 0 of the handoff: run its three $0 tests on a few frames (`comp_scene.py --only N --stills DIR`), find the cause, and apply the smallest fix.
+> - Show Fendi before/after crops of his car-side edge, then re-render static, tight and dolly.
+> - Re-run `verify_scene.py` (face PSNR must not drop; timing lag-0 must stay 111/111), and file the new versions in AVT as new assets. Never overwrite the old ones.
+>
+> **Rules:**
+> - No image-to-video on the room. Every motion stays Blender or a seeded curve in `showroom_c033.json` (`room_v5`).
+> - Never redraw his face, never add lip-sync, and do not reopen the approved BODY-ONLY result (`5482b35b`) or the baseline (`8a527bab`).
+> - Nothing goes on the board or in the Cut until Fendi picks a version. Then add it as a new version on c033 and re-query that only that row changed.
+> - Post every clip and still to chat as it exists.
+> - Dry-run any paid step, report its cost, log it in `docs/LEDGER_YSL_TESTING_BUDGET.md` (last row 155, total $449.12), and ask before spending over $50.
+> - Never commit media of Fendi or the song (the repo is public), and never paste a token or a signed URL.
+> - Label every claim VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
+> - Reproduce with `scripts/edit/reproduce_c033_showroom_blender.sh`. The plate MD5 `ee623d0a…` is VERIFIED bit-identical from storage.
+> - Finish with a verification-first update of this handoff.
 
 ## Review request for Grokbot / ChatGPT (optional, paste as is)
 
