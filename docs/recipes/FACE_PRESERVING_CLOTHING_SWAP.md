@@ -144,6 +144,23 @@ None of these is assigned to a shot. The composite awaits Fendi's eye; the c033 
   - his feet are out of frame, so there is no floor contact to judge.
 - **Not in the app:** the app's "Composite over plate" press takes the shot's dressed take as its foreground. A body-only file that is not on a shot cannot be pressed there yet. It is the same integration gap as above.
 
+## Physical placement in Blender (19 Oct 2026): the next step on the approved result
+
+Fendi approved the 18 Oct showroom composite as the working baseline and asked for Blender placement.
+
+**Full write-up:** [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)
+
+- **The take is framed thighs-up.** So in a room shot something must hide him below the hips: here, the island.
+- **Placement:**
+  - He stands behind its far edge, about 0.2 m from the stone.
+  - That is 4.42 m from the plate camera, which is measured from the picture: 29 mm equivalent, level, 1.65 m high.
+  - The penguin is 1.5 m behind-left of him.
+  - Scale: his stated height (6 ft 3 in) and a room scaled 0.95 (his direction; island 0.865 m, penguin 1.21 m).
+- **His pixels** are the approved file's: rolled 1.23° level, scaled, colour-graded from measured light. Never redrawn.
+- **Scripts:** `scripts/edit/blender/` (scene file `showroom_c033.json`); `scripts/edit/reproduce_c033_showroom_blender.sh` rebuilds any version from stored assets at $0.
+- **Versions:** `static` (the plate's matched camera), `dolly` (0.20 m push-in), `tight` (the same camera on a 1.6× lens).
+- **Asset IDs:** the write-up's asset table. All are unassigned and await Fendi's eye.
+
 ## Superseded guidance
 
 - **Any instruction that files or uses a whole-frame Dress output as the final performance picture.** That covers `WARDROBE_SWAP_RECIPE.md` ("The recipe" / "How to run it") and `DRESS_AND_INSERT_WORKFLOW.md` step 5. Dress output is now an **intermediate**; the final is its body-only put-back.

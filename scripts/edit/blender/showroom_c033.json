@@ -1,0 +1,66 @@
+{
+  "_doc": "c033 BODY-ONLY in the moving showroom: the measured scene. Units: metres, pixels at 1080x1920. Camera frame: X right, depth forward, height up from the floor. Every value is labelled MEASURED (from the files), SPEC (manufacturer figure), ESTIMATE (assumption, with what it rests on) or DECISION.",
+  "frames": 240,
+  "room_scale": 0.95,
+  "_room_scale": "DECISION (Fendi, 19 Oct: 'scale the penguin and objects down or scale me up in a natural manner'): the room is 5 % smaller than the standard-counter reading, so the island top is 0.865 m (34 in), the penguin 1.21 m (a large emperor) and the camera 1.65 m high. The plate's picture is unchanged; only his size against it moves",
+  "fps": "60000/1001",
+  "song_start": 56.9098,
+  "plate": {
+    "fps": 59.94006,
+    "native_fps": 24,
+    "_fps": "DECISION: the 24 fps Kling plate is motion-interpolated to the shot's 59.94 (ffmpeg minterpolate mci/aobmc/bidir, filed in AVT) so snow, penguin and train do not judder against his 59.94 frames",
+    "start_seconds": 0.95,
+    "_start": "DECISION: plate 0.95-4.94 s, so the train and the light sweep land in the shot's last 2 s",
+    "focal_px": 1565,
+    "_focal": "MEASURED from the island top's two vanishing points (1626,792) and (-1716,792), orthogonal",
+    "horizon_y": 792,
+    "_horizon": "MEASURED: island and kitchen-wall vanishing lines; every vertical in the still is within 0.2 deg of vertical, so pitch 0 and roll 0 (MEASURED) and the horizon sits above centre (lens shift)",
+    "camera_height": 1.74,
+    "_height": "ESTIMATE: from a 0.91 m island top (standard counter, ASSUMED) and the island's floor line; cross-checked by the penguin reading 1.27 m tall at 5.76 m",
+    "motion": "MEASURED locked-off: under 0.3 px drift at 540 px wide over 121 frames"
+  },
+  "island": {
+    "corner_far": [-0.65, 3.53],
+    "corner_near": [0.70, 2.60],
+    "long_axis": [0.571, 0.821],
+    "length": 3.5,
+    "top": 0.91,
+    "_": "corners MEASURED in the image (252,1160) and (959,1292) and lifted with the camera above; length ESTIMATE (it leaves the frame)"
+  },
+  "penguin": {"position": [-1.32, 5.76], "height": 1.27, "_": "MEASURED in the image, lifted with the camera"},
+  "source": {
+    "camera": "SPEC iPhone 14, 4K 59.94, main lens; locked-off (MEASURED, under 0.3 px drift)",
+    "roll_deg": 1.23,
+    "_roll": "MEASURED: four door/frame verticals lean -0.96..-1.56 deg the same way; corrected by rotating the take +1.23 deg (geometry only)",
+    "px_per_metre_at_face": 1160,
+    "_ppm": "ESTIMATE, anchored on Fendi's stated height 6 ft 3 in (1.905 m, 19 Oct): outer eye corners 110.6 px (MEASURED median of 28 frames) over 0.095 m, and eyes-to-waistband 809 px (MEASURED) over ~0.70 m, agree within 1 %. First pass used 1229 (a 0.090 m assumption, 1.80 m man): he read short",
+    "horizon_y": 960,
+    "_shorizon": "MEASURED level phone (verticals parallel), no lens shift",
+    "eye_y": 676,
+    "eye_x": 595,
+    "eye_height": 1.78,
+    "_eye": "From Fendi's stated height 1.905 m (eyes ~0.125 m below the top of the head); sets how far his head rises above the counter",
+    "_below": "the take's camera sat (horizon_y - eye_y) / px_per_metre = 0.245 m below his eyes (MEASURED ratio)"
+  },
+  "performer": {
+    "along_edge": 1.2,
+    "behind_edge": 0.22,
+    "_": "DECISION: he stands behind the island's far long edge, 0.22 m from it (body centre; his front ~0.1 m off the stone), 1.2 m along it from the far-left corner, so the counter runs across his whole width and the penguin keeps ~1.6 m of floor between them. The take is framed thighs-up, so the island must hide him below the hips."
+  },
+  "light": {
+    "white_plate_srgb": [0.490, 0.392, 0.285],
+    "_wp": "MEASURED: the penguin's white belly, median over the plate",
+    "white_source_srgb": [0.803, 0.777, 0.724],
+    "_ws": "MEASURED: the white door beside him in the take",
+    "exposure_stops": 0.8,
+    "_exposure": "DECISION (checked on the face close-up at 0 / 0.5 / 0.8 / 1.1): the penguin is the white reference but stands away from the downlights, while he stands ~1 m from one; at 0 his face did not read. +0.8 makes eyes, glasses and mouth readable and keeps the jacket at the lit marble's brightness, so he does not glow",
+    "top_light_stops": [0.15, -0.35],
+    "_top": "DECISION: the nearest downlight is ~1 m in front of him and ~1.2 m above his head, so his head is lit more than his waist: +0.15 stop at the head, -0.35 stop at the counter",
+    "flash_follow": 0.8,
+    "_flash": "DECISION: he takes 80 % of the room's light changes, measured frame by frame on the lit marble backsplash (a fixed surface; the penguin walks in the Ferrari plate). The white balance above stays the penguin belly on the still",
+    "flash_reference": "marble"
+  },
+  "tight": {"lens_factor": 1.6, "centre_px": [470, 950], "_": "DECISION: the matched camera with a 1.6x lens (47 mm equivalent), framed on him: an exact crop of the wide, so placement and perspective are unchanged and his face reads ~1.6x larger"},
+  "lens": {"f_stop": 2.0, "performer_softness_px": 0.5, "_soft": "DECISION: his 4K-derived pixels are crisper than the 1080 AI plate; a 0.5 px lens softness puts him in the same camera (optics, not a redraw)", "_": "DECISION: depth of field from the scene depth, focused on him; 1-4 px of blur on the island and the room"},
+  "reflection": {"strength": 0.12, "roughness": 0.12, "_": "DECISION: polished stone at a ~12 deg grazing view"}
+}
