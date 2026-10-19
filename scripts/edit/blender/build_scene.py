@@ -153,7 +153,8 @@ room.append(mesh_obj("kitchen_wall", [tuple(k0 - ax * 6), tuple(k1), tuple(k1 + 
 # far window wall (ESTIMATE ~12 m, behind the car) and the car as a box (ESTIMATE ~10.6 m, MEASURED wheel line)
 room.append(mesh_obj("window_wall", [(-30, 13, 0), (30, 13, 0), (30, 13, 3.3), (-30, 13, 3.3)], [(0, 1, 2, 3)], room_mat))
 cz = 10.6                                           # spans x 335-965 px in the plate (MEASURED)
-room.append(mesh_obj("car", [(-1.4, cz, 0), (2.8, cz, 0), (2.8, cz, 1.9), (-1.4, cz, 1.9)], [(0, 1, 2, 3)], room_mat))
+cx0, cx1, chh = P.get("room_v5", {}).get("car_proxy", [-1.4, 2.8, 1.9])   # the v5 room's car is shrunk to its spec size
+room.append(mesh_obj("car", [(cx0, cz, 0), (cx1, cz, 0), (cx1, cz, chh), (cx0, cz, chh)], [(0, 1, 2, 3)], room_mat))
 # penguin card at its measured depth so a camera move moves it correctly against the kitchen
 pg = P["penguin"]; px_, pz_ = pg["position"]
 room.append(mesh_obj("penguin", [(px_ - 0.45, pz_, 0), (px_ + 0.45, pz_, 0), (px_ + 0.45, pz_, 1.4), (px_ - 0.45, pz_, 1.4)],

@@ -6,10 +6,11 @@ the approved BODY-ONLY wardrobe result unchanged. Mid-task: "look at how I can f
 object spacing, distance", and "reconstructing or altering placement of objects is fine to naturally place me behind
 the kitchen island if it can be realistically done".
 
-**Spend: $1.68** (ledger 149–154), all on the room, never on him.
+**Spend: $1.82** (ledger 149–155), all on the room, never on him.
 - **His inputs** are existing files: approved final `5482b35b` and its matte `b162d95d`.
-- **The rendered versions use plate v3** (two still edits at $0.14 each and one Kling animation at $0.35).
-- **Four animations** ($0.35 each) are superseded or rejected: penguin only, the black Ferrari, v3 and v4.
+- **The current versions use room v5** (below): the room moves without generative video.
+  - The only spend was one $0.14 still edit, a clean picture of the room for the places the car and the penguin leave uncovered.
+- **Four Kling animations** ($0.35 each) are superseded or rejected: penguin only, the black Ferrari, v3 and v4. So are two still edits of $0.14.
 
 ## The key finding: where he can stand
 
@@ -110,15 +111,61 @@ the kitchen island if it can be realistically done".
 ### DECISION: no more generative room motion (19 Oct)
 
 - **Why:** a Kling plate redraws the whole room every frame. It wobbles, morphs and adds unrequested things (a bus, traffic). Nothing makes it obey the prompt, the same reason the canonical method never redraws him.
-- **RECOMMENDATION (awaiting Fendi):** keep the measured still `20fcf483` frozen and make every motion deterministic in Blender or the comp. Each one is a seeded parameter in the scene file:
-  - snow particles in the wind, behind the glass;
-  - a masked branch sway;
-  - an LED brightness curve on the Ferrari's strips;
-  - small rigid keyframed moves for the penguin, never redrawn.
+- **Fendi:** "That's what we were supposed to be doing anyway: creating movement and refitting the room to fit me in it perfectly with Blender."
+- **His LED note:** "I don't want flashing lights from the Ferrari. I'm asking for the natural rolling flicker phenomenon that happens when you record LED lights."
+- **His car note:** "the dimensions of the Ferrari appear to be larger than the other truck."
 - **No UFO, Tesla or traffic.**
+
+## Room v5: the room refitted and moved in Blender, no generative video (19 Oct)
+
+**The Ferrari was too big, and the measurement says by how much.**
+- The edit painted it over the SUV at the SUV's size.
+- At the car's measured depth (10.6 m, the SUV's wheel line) and in the room's metric (room scale 0.95):
+  - the pasted Ferrari stands **1.92 m** tall (MEASURED);
+  - the SUV it replaced stood 1.97 m (MEASURED; right for a large SUV);
+  - a Purosangue is **1.589 m** (SPEC).
+- **DECISION:** shrink it **×0.828** about its front wheel's ground point. It stays parked on the same spot and the same floor line, and now reads its true size against his 1.905 m and the 0.865 m counter.
+- The scene's car proxy shrinks with it (`room_v5.car_proxy`).
+
+**What it took (`room_layers.py`).**
+- **A clean room behind the car and the penguin.** One xAI still edit of the measured still (`b30bd9e2`, $0.14) with the vehicle and the penguin removed.
+  - It is aligned to the measured still: ECC affine; the median difference on unchanged areas is 0.007.
+  - It is used **only** where the car and the penguin stood.
+  - The original island stays in front everywhere: its far edge is projected from the measured camera, then snapped per column to the stone's edge in the picture.
+- **The car and the penguin as their own layers.**
+  - Each was cut from its still with a matte: the car traced by eye and snapped to its edge by GrabCut, the penguin by difference against the clean room, refined by GrabCut.
+  - Both masks are in the repo (`scripts/edit/blender/masks/`, silhouettes only).
+- **The still's painted snowflakes are removed** (3,791 small dots over dark sky, filled from the sky around them), so the only snow that moves is Blender's.
+
+**What moves, and how (every curve is a value in `showroom_c033.json`, `room_v5`).**
+- **Snow (`snow.py`, Blender particles).**
+  - 45,000 flakes (~2.4 cm) fall between the glass and the far trees (15.8–34 m). The glass is at 15.5 m, MEASURED from the window's floor line.
+  - They render through the plate's measured camera with a half-frame shutter, and are laid only into the glass panes: the mullions and frames hide them, and the car stands in front of them.
+  - **MEASURED with `--probe`:** they fall at 1.11 m/s and drift downwind at 1.11 m/s (medians), with a swirl from a turbulence field.
+  - A 16 s preroll fills the yard before frame 1.
+- **Wind.** One gust curve for the whole yard: its strength runs 0.38–1.12 of the mean, with a slow gust every ~3 s and a quicker flutter. The snow's wind field and the branches both follow it.
+- **Branches (`room_motion.py`).**
+  - A smooth sway of up to 1.4 px (the trees are 25 m or more away), with seeded phase fields so neighbouring branches do not move in lockstep.
+  - It grows toward the crowns, is zero at the snowy ground, and fades to zero at every frame and mullion.
+- **The Ferrari's LEDs: the rolling-shutter band, not a flash.**
+  - A phone reads its sensor rows one after another (~13 ms per frame). An LED driven by pulse-width modulation is on and off within that time, so the off part lands as dark bands across the rows.
+  - The bands crawl because the PWM rate is not a whole multiple of the frame rate.
+  - Model: ~1.62 kHz PWM, ~90 rows per band at 1080×1920, crawling 2.7 rows a frame, at most 55 % of the lamp's own light taken out (ESTIMATE/DECISION).
+  - It acts only on the two LED strips and the two lower lamps, on the light above the paint underneath. The badge and the paint's highlights stay steady.
+  - **OBSERVED:** a soft dark band moves across a strip while the lamp below stays lit, then the reverse. The lamps never go dark at once.
+- **The penguin**: small rigid turns of its own pixels, never redrawn:
+  - a 0.8° weight shift about its feet every ~3.4 s;
+  - a 0.4 % breath;
+  - one 3.5° head tilt (0.9–1.4 s in, held, back by 3.5 s).
+- **Plate:** `room_motion.py` writes the 240 frames at 59.94 directly. It needs no interpolation and no plate offset. Filed as `0fc2cf8c`.
+
 
 ## How the shot is built (scripts/edit/blender/)
 
+0. **The room (v5)**, before any of the steps below:
+   - `room_layers.py` splits the stills into layers (room, car, penguin, glass, LED light).
+   - `snow.py` renders the snow in Blender.
+   - `room_motion.py` writes the plate frames (see "Room v5").
 1. **`prep_performer.py`.** From the approved final and its matte:
    - The composite lane's matte erode/feather and edge decontamination (`pixels.ts` steps 1 and 2b).
    - The 1.23° roll fix.
@@ -158,11 +205,14 @@ the kitchen island if it can be realistically done".
 
 ## Environment activity (independent of him)
 
-- The penguin turns its body (plate ~1.5–2.5 s and 3.5–4.5 s).
-- Snow falls throughout. A train passes behind the windows near the end.
-- Red and blue light washes the room at ~2.0, 3.0, 3.5 and 4.5 s of the plate; he takes these at 80 %.
-- With the plate from 0.95 s, the train and the light sweep land in the shot's last 2 s. That is the 1.5–2 s edit window (DECISION).
-- The 24 fps plate is motion-interpolated to 59.94 (ffmpeg `minterpolate` mci), so the room does not judder against his 59.94 frames. Spot-checked: no tearing on the car, the train or the snow.
+- **Room v5 (current):**
+  - Snow in a gusting wind throughout, with the branches swaying to the same gusts.
+  - The penguin's weight shift and breath throughout, and its head tilt at ~1 s and back by 3.5 s.
+  - The rolling LED bands on the Ferrari's lamps throughout.
+  - The room's own light is steady (no washes), so his 80 % light follow has nothing to follow.
+- **The earlier Kling plates (v1–v4, rejected or superseded):**
+  - a penguin turning, a passing train and red/blue light washes;
+  - those plates were 24 fps, interpolated to 59.94.
 
 ## Verification
 
@@ -172,15 +222,25 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 
 | Version | Face PSNR, median / min | Mouth timing: best match at lag 0 | Timing margin, median / min |
 |---|---|---|---|
-| matched camera (static) | 36.2 / 34.1 dB | 111 / 111 | 7.2 / 2.0 dB |
-| tight (1.6× lens) | 38.1 / 35.5 dB, mask 10 px off the outline (37.9 / 28.2 at 5 px: the light wrap from the bus passing behind his head, 2.8–3.8 s) | 111 / 111 | 10.0 / 3.6 dB |
-| dolly (0.20 m push) | not rendered: stopped when the plate changed | — | — |
+| **room v5, matched camera (static)** | **36.3 / 34.1 dB** | **111 / 111** | **7.3 / 2.0 dB** |
+| **room v5, tight (1.6× lens)** | **38.2 / 35.9 dB**, mask 10 px off the outline (38.0 / 29.8 at 5 px) | **111 / 111** | **10.0 / 3.4 dB** |
+| **room v5, dolly (0.20 m push)** | **36.6 / 33.6 dB** | **111 / 111** | **7.3 / 1.5 dB** |
+| matched camera (static), plate v3 | 36.2 / 34.1 dB | 111 / 111 | 7.2 / 2.0 dB |
+| tight (1.6× lens), plate v3 | 38.1 / 35.5 dB, mask 10 px off the outline (37.9 / 28.2 at 5 px) | 111 / 111 | 10.0 / 3.6 dB |
+| dolly (0.20 m push), plate v3 | not rendered: stopped when the plate changed | — | — |
 
+- **Correction (19 Oct, room v5):** the 5 px dips are not the bus behind his head, as first written for v3.
+  - OBSERVED: the same frames dip on v3 and on v5 (184, 228 and 166, at 2.8–3.8 s), and v5's background behind him is still.
+  - HYPOTHESIS: the edge band and wrap at his own moving outline reach into a 5 px mask in those frames. Test: mask the outline band by its alpha, not by distance.
+  - The face's interior (10 px in) is clean on both versions.
 - **VERIFIED:** his face in the shot is the approved file's pixels, resampled and graded.
   - What remains is lens softness, anti-aliasing, grain and the top-light gradient (~36 dB).
   - A redrawn or warped face would fall far below 30 dB.
 - **VERIFIED:** his mouth is on the take's own frames. Every checked frame matches its own approved frame better than its neighbours ±3.
 - **VERIFIED:** Blender's passes are deterministic. Re-rendered frames are pixel-identical.
+- **VERIFIED (room v5):** the plate reproduces bit for bit.
+  - Rebuilt from scratch (the stills downloaded from storage, the masks from the repo) with `room_layers.py`, a fresh Blender snow render and `room_motion.py`.
+  - Every layer is byte-identical, and the plate's decoded MD5 is `ee623d0a5906d76ba41bdf572d5a8484` both times.
 - **OBSERVED:** a landmark-based mouth-opening correlation is ~0.3. It is not used as evidence: at a ~45 px face the landmarks are too noisy. The same check on the 2D baseline (a pure scale/shift) gave 0.66 with a 5 px landmark residual.
 - **Edges, scale, occlusion:** OBSERVED on frame grids and the side-by-side.
   - The island cuts him at the counter line, with the island's own lens blur.
@@ -202,8 +262,13 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
   - The window light is too weak to cast one onto the counter.
   - DECISION: none added rather than a fake one.
 - **Reflection:** a thin, physically small strip on the stone just in front of him. Mostly his jeans and hands.
-- **The plate is an AI picture.** Its geometry is consistent to a few percent, not exactly (see the camera move).
-- **The plate interpolation** may soften very fast motion (the passing train) slightly.
+- **The room is an AI picture.** Its geometry is consistent to a few percent, not exactly (see the camera move).
+- **Room v5's motions are 2D where the room is 2D.**
+  - The branches sway as a smooth displacement of the picture's own pixels, not as simulated trees.
+  - The penguin moves rigidly (a turn and a tilt), not as an animated body. These are kept small for that reason.
+  - The snow is real 3D particles, but it sits in the plate: in the dolly it moves with the window proxy, with no parallax of its own.
+- **The LED band is a model** (PWM rate, row time and depth are estimates), not a measurement of a real Purosangue.
+- **The clean room under the car and the penguin is a still edit.** It is used only where they stood. A dark-floor patch under the shrunk car's front is that edit's floor.
 
 ## For tomorrow's takes: shoot to match this room
 
@@ -222,18 +287,23 @@ Project YSL `764a63d2`. All are unassigned (no shot, no Cut). Folder `canonical/
 | Approved performance (input) | `5482b35b` |
 | Its matte (input) | `b162d95d` |
 | Showroom still, measured (original) | `d4da62ba` |
+| **Clean still, vehicle and penguin removed (room v5 input; unusable as a plate)** | **`b30bd9e2`** (second variant `42a21490`) |
+| **Plate, room v5 (Blender snow, sway, LED bands, penguin; Ferrari at spec size)** | **`0fc2cf8c`** |
+| **Shot, room v5, matched camera** | **`30f71856`** (decoded MD5 `f0cd5952b6931e122624ca1daadc6aad`); with song `2df713e3`, side-by-side `8883b4d2`, face pair `a6d442b5`, 2 s edit `af17951b` |
+| **Shot, room v5, tight (1.6× lens)** | **`7adff8e9`**; with song `9254ba24`, face pair `7a9ad53f` (decoded MD5 `9fdbad43ce0a658558124e2a104fb152`) |
+| **Shot, room v5, dolly (0.20 m push)** | **`a74c3c90`** (decoded MD5 `111486d18afd9ecc506c20b800b7a162`); with song `f46ba962`, side-by-side `afb9ed1e`, face pair `6c257bdb` |
 | Still with the black Ferrari (paste) | `28757bef` (raw edits `95506ae8`, `981b0a5b`, unusable) |
 | Still v3, rejected (painted UFO + Tesla) | `d939cb61` (raw edits `8b7498ae`, `eeec2a6e`) |
 | Plate v3, rejected (the rendered versions use it) | `256ca1bb` (job `7ddc509c`), interpolated `67159b15` |
-| Still v4: blue Ferrari only (the frozen-plate candidate) | `20fcf483` |
+| Still v4: blue Ferrari only (the car's layer in room v5) | `20fcf483` |
 | Plate v4, rejected (Kling) | `cb77eddf` (job `e8a76113`) |
 | Superseded plates | `21d1bc9c` (black SUV), `275a16c9` (penguin only), `36f10093` (black Ferrari) |
-| **Shot, matched camera** | **`98d1d04e`** (decoded MD5 `aecb5dbcaadb4e5186e596ac685b2a94`) |
+| Shot, plate v3, matched camera (superseded) | `98d1d04e` (decoded MD5 `aecb5dbcaadb4e5186e596ac685b2a94`) |
 | Review: approved \| 2D \| Blender, song | `e60299ed` |
 | Review: face pair, song | `6572ac8c` |
 | Review: 2 s edit, song | `e37d5516` |
-| **Shot, tight (1.6× lens)** | **`63a101f1`** (decoded MD5 `f119056faf3e1ff16ab83ef02184f475`); with song `cea0eb6a`, face pair `2ce07795` |
-| Shot, dolly (0.20 m push) | not rendered (stopped when the plate changed) |
+| Shot, plate v3, tight (superseded) | `63a101f1` (decoded MD5 `f119056faf3e1ff16ab83ef02184f475`); with song `cea0eb6a`, face pair `2ce07795` |
+| Shot, plate v3, dolly | not rendered (stopped when the plate changed) |
 | Superseded first pass (1.80 m, black SUV) | `41511208` |
 | `.blend` files and the floor plan | storage only, same folder |
 

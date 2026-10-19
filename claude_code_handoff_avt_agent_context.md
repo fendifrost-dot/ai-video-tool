@@ -78,7 +78,7 @@ Browser → AVT jacket-inpaint-proxy (user JWT)
 | Hard rules (no sandbox processing, no AI garment regen) | `AVT_MEMORY_HANDOFF.md` |
 | Agent build/test commands, edge function list | `AGENTS.md` |
 | **Clothing swap on real footage — CANONICAL (18 Oct 2026, face stays real)** | `docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md` |
-| **Placing a real take in an AI location with Blender (19 Oct 2026: camera from the plate, occlusion, scale, light)** | `docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`, `scripts/edit/blender/` |
+| **Placing a real take in an AI location with Blender (19 Oct 2026: camera from the plate, occlusion, scale, light; room motion by Blender particles and fixed curves, never image-to-video)** | `docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`, `scripts/edit/blender/` |
 | Video wardrobe pivot (hero still → approve → propagate) | `CURSOR_HANDOFF_video_clothing_swap_pivot.md` |
 | Hero Frame Phase 1 (capture, candidates, approve) | `claude_code_handoff_avt_hero_frame_phase1.md` |
 | Phase 1 sign-off + Phase 2 kill-gate (strict assignment) | `claude_code_handoff_avt_hero_frame_phase2_gate.md` |
