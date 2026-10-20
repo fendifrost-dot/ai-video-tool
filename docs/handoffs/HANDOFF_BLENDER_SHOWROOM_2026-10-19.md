@@ -4,7 +4,8 @@
 **Fendi's note (19 Oct, after room v5):** "there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment."
 **Fixed on 20 Oct as v6.** The comp's edge wrap was lowered from 0.5 to 0.15 (`lens.wrap`). See item 0. Fendi: "That one is solid."
 **v7 (20 Oct):** a livelier penguin in place. Fendi: "not enough movement still … it can walk away from me".
-**v8 (20 Oct, rendering):** the penguin waddles away from him and out of frame left, keyed in `room_v5.penguin_motion.walk`. See the write-up's v8 section.
+**v8 (20 Oct):** the penguin walked away. Fendi: "That looks terrible … Remove the penguin from the scene altogether … It looks AI generated and cheesy."
+**v9 (20 Oct, rendering):** no penguin. The clean still shows the cabinets and floor where it stood. Do not bring back a cut-out animal (see the write-up's v9 section).
 **Spend: $1.82** (ledger rows 148–155), all on the room (stills and plates), none on him.
 
 Write-up: [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)

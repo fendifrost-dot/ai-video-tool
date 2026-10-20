@@ -197,6 +197,14 @@ the kitchen island if it can be realistically done".
 - **The room behind it** is the clean still (`b30bd9e2`), so nothing is invented where it has been.
 - **Limitation:** in the dolly, the walking penguin is carried by the room projection (its proxy card stays at 5.76 m). The 0.2 m push gives it no parallax error of note.
 
+### v9: no penguin (20 Oct, Fendi on the walking penguin: "That looks terrible … Remove the penguin from the scene altogether … It looks AI generated and cheesy")
+
+- **DECISION:** the penguin is out of the shot: `penguin_motion.enabled` false, and the scene's penguin card is off (`penguin.in_scene` false).
+- **Where it stood:** the clean still (`b30bd9e2`) shows the cabinets and the floor.
+  - With the penguin gone, its whole box plus 40 px is taken from the clean still. A thin dark edge of the penguin's outline had survived outside its matte.
+- **What the lesson rules out (DECISION):** puppeting a 2D animal from one picture (rigid turns, a mirrored walk) reads as fake. An animal that moves needs real footage or a real 3D model; never a cut-out.
+- **What still moves in the room:** the snow, the branches and the Ferrari's LED bands.
+
 ## How the shot is built (scripts/edit/blender/)
 
 0. **The room (v5)**, before any of the steps below:

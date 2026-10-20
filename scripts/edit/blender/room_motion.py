@@ -131,7 +131,7 @@ def frame(f):
         out = out * (1 - sa) + s[..., :3] * sa
     lit = c_rgb * (1 - (1 - band(f))[..., None] * led_frac)
     out = out * (1 - c_a) + lit
-    place_penguin(t, out)
+    if PG.get("enabled", True): place_penguin(t, out)          # off: the clean still shows where it stood
     return out
 
 os.makedirs(od, exist_ok=True)

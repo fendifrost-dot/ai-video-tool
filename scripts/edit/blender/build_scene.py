@@ -157,7 +157,7 @@ cx0, cx1, chh = P.get("room_v5", {}).get("car_proxy", [-1.4, 2.8, 1.9])   # the 
 room.append(mesh_obj("car", [(cx0, cz, 0), (cx1, cz, 0), (cx1, cz, chh), (cx0, cz, chh)], [(0, 1, 2, 3)], room_mat))
 # penguin card at its measured depth so a camera move moves it correctly against the kitchen
 pg = P["penguin"]; px_, pz_ = pg["position"]
-room.append(mesh_obj("penguin", [(px_ - 0.45, pz_, 0), (px_ + 0.45, pz_, 0), (px_ + 0.45, pz_, 1.4), (px_ - 0.45, pz_, 1.4)],
+if pg.get("in_scene", True): room.append(mesh_obj("penguin", [(px_ - 0.45, pz_, 0), (px_ + 0.45, pz_, 0), (px_ + 0.45, pz_, 1.4), (px_ - 0.45, pz_, 1.4)],
                      [(0, 1, 2, 3)], room_mat))
 
 for ob in room: ob.scale = (RS, RS, RS)              # the room, built in measured units, scaled about the camera's foot
