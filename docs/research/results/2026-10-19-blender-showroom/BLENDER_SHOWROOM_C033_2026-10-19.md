@@ -186,6 +186,17 @@ the kitchen island if it can be realistically done".
 - **Neck, flipper box and shoulder:** MEASURED on the still at 1080×1920.
 - **Only the room pass and the comp re-render.** His card, reflection and depth passes are unchanged. The edge wrap stays 0.15.
 
+### v8: the penguin walks away (20 Oct, Fendi on v7: "Not enough movement still, the penguin doesn't have to stand still, it can walk away from me in a natural movement")
+
+- **Still its own pixels, never redrawn.** The penguin is mirrored (`penguin_motion.mirror`) so it faces where it goes. Mirroring is a flip of the still's own pixels.
+- **The path.** It glances back for 0.7 s, then waddles away from him to the left, along the floor in front of the cabinets.
+  - It stays at its measured depth (5.76 m) and leaves the frame at about 3.3 s.
+  - Its ground point is projected through the measured camera, so its size and floor line follow the perspective.
+  - Pace: 0.3 m/s in 0.5 s steps (a brisk emperor-penguin walk; ESTIMATE).
+- **The waddle.** Each step it rocks 8° about the stance foot, with a 2 px bob, and holds the clear flipper out 16° for balance. The feet are MEASURED on the still.
+- **The room behind it** is the clean still (`b30bd9e2`), so nothing is invented where it has been.
+- **Limitation:** in the dolly, the walking penguin is carried by the room projection (its proxy card stays at 5.76 m). The 0.2 m push gives it no parallax error of note.
+
 ## How the shot is built (scripts/edit/blender/)
 
 0. **The room (v5)**, before any of the steps below:

@@ -10,7 +10,7 @@ Writes out_dir/plate_0001.png ... (1080x1920, 8-bit RGB), the plate build_scene.
      each sensor row is read a little later, so the lamp's on/off cycle lands as soft dark bands that crawl slowly
      across the lamp (the beat between the PWM rate and the frame rate). It is not a flash: the whole lamp never
      goes dark at once
-  4. the penguin, moved by keyframed turns of its own pixels about its feet, neck and flipper (never redrawn)"""
+  4. the penguin, its own pixels moved by keyframed tracks: it waddles away along the floor (never redrawn)"""
 import json, math, os, sys, subprocess
 import cv2, numpy as np
 
@@ -51,45 +51,71 @@ def band(f):
     return 1 - LD["depth"] * pulse                                       # 1 = full light, per row
 
 # ---- penguin: its own pixels moved by keyframed tracks, never redrawn (inverse maps, back to the still) ----
-# body: a weight shift (a turn about its feet), a small bob and its breath; head: tilts about the neck and a short
-# turn toward the camera (the head narrows a little); flipper: the flipper that stands clear of the body flaps
-# about its shoulder over the room behind it (the clean still shows there, so nothing is invented)
+# It stands a beat, then waddles away along the floor: its ground point follows a path in the room (MEASURED camera,
+# so it scales with perspective), its body rocks about the stance foot each step and bobs, its head tilts about the
+# neck, and the flipper that stands clear of its body is held out for balance. `mirror` turns it to face its path
+# (the still's own pixels, flipped). The clean still shows wherever it has been.
 fx, fy = L["penguin_feet_px_1080"]
-ys_, xs_ = np.nonzero(pen[..., 3] > 0.01)
-box = (max(xs_.min() - 40, 0), max(ys_.min() - 40, 0), min(xs_.max() + 41, W), min(ys_.max() + 41, H))
-neck_y = PG["neck_y_1080"]; nx = float(np.median(xs_[(ys_ > neck_y - 3) & (ys_ < neck_y + 3)]))
+F_ = P["plate"]["focal_px"]; HOR_ = P["plate"]["horizon_y"]; CH_ = P["plate"]["camera_height"]
+WK = PG["walk"]; X0, Z0 = P["penguin"]["position"]
+def ground_px(X, Z): return 540 + F_ * X / Z, HOR_ + F_ * CH_ / Z
+g0 = ground_px(X0, Z0)
+neck_y = PG["neck_y_1080"]
 FL = PG["flipper"]
 flip = np.zeros((H, W), np.float32); fx0, fy0, fx1, fy1 = FL["box_1080"]; flip[fy0:fy1, fx0:fx1] = 1
 flip = cv2.GaussianBlur(flip, (0, 0), 1.0)[..., None]
 pen_body, pen_flip = pen * (1 - flip), pen * flip          # premultiplied, so the split adds back to the penguin
+piv_flip = list(FL["pivot_1080"]); feet_piv = [list(q) for q in WK["feet_1080"]]; flap_sign = 1
+if PG["mirror"]:                                          # about the vertical through its feet
+    mx = (2 * fx - xx).astype(np.float32)
+    pen_body = cv2.remap(pen_body, mx, yy, cv2.INTER_LINEAR); pen_flip = cv2.remap(pen_flip, mx, yy, cv2.INTER_LINEAR)
+    piv_flip[0] = 2 * fx - piv_flip[0]; feet_piv = [[2 * fx - q[0], q[1]] for q in feet_piv]; flap_sign = -1
+ys_, xs_ = np.nonzero(pen_body[..., 3] > 0.01)
+nx = float(np.median(xs_[(ys_ > neck_y - 3) & (ys_ < neck_y + 3)]))
 def track(keys, t):
     """Smooth (cosine) interpolation through [t, value] keys; held outside them."""
     if t <= keys[0][0]: return keys[0][1]
     for (t0, v0), (t1, v1) in zip(keys, keys[1:]):
         if t <= t1: u = (t - t0) / (t1 - t0); return v0 + (v1 - v0) * (0.5 - 0.5 * math.cos(math.pi * u))
     return keys[-1][1]
-def penguin_pose(t):
-    ph = 2 * math.pi * t / PG["sway_period_s"] + PG["sway_phase"]
-    return dict(body=PG["sway_deg"] * math.sin(ph), bob=PG["bob_px"] * abs(math.sin(ph)),
-                breath=1 + PG["breath"] * math.sin(2 * math.pi * t / PG["breath_period_s"]),
-                head=track(PG["head_keys"], t), turn=track(PG["head_turn_keys"], t), flap=track(FL["keys"], t))
+def walked(t):
+    """Metres walked by t: still until start_s, then up to speed over ramp_s (integral of a smooth ramp)."""
+    t0, r, v = WK["start_s"], WK["ramp_s"], WK["speed_mps"]
+    if t <= t0: return 0.0
+    u = t - t0
+    if u <= r: return v * (u / 2 - r / (2 * math.pi) * math.sin(math.pi * u / r))
+    return v * (r / 2 + (u - r))
 def rot(px, py, cx, cy, deg):
     a = math.radians(deg); c, s_ = math.cos(a), math.sin(a)
     return cx + c * (px - cx) - s_ * (py - cy), cy + s_ * (px - cx) + c * (py - cy)
 def place_penguin(t, out):
-    x0, y0, x1, y1 = box
+    d = walked(t); dx, dz = WK["direction"]
+    X, Z = X0 + dx * d, Z0 + dz * d
+    gx_t, gy_t = ground_px(X, Z)
+    ox, oy = fx + gx_t - g0[0], fy + gy_t - g0[1]                     # its feet in this frame (from the measured ones)
+    k = Z0 / Z                                                         # perspective scale
+    on = min(1.0, d / max(WK["speed_mps"] * WK["step_s"], 1e-6))      # the waddle builds over the first step
+    ph = max(t - WK["start_s"], 0) / WK["step_s"]; stance = int(ph) % 2; u = ph - int(ph)
+    roll = on * WK["roll_deg"] * math.sin(math.pi * u) * (1 if stance == 0 else -1)
+    bob = on * WK["bob_px"] * math.sin(math.pi * u) + PG["bob_px"] * math.sin(2 * math.pi * t / PG["sway_period_s"])
+    sway = (1 - on) * PG["sway_deg"] * math.sin(2 * math.pi * t / PG["sway_period_s"] + PG["sway_phase"])
+    breath = 1 + PG["breath"] * math.sin(2 * math.pi * t / PG["breath_period_s"])
+    pvx, pvy = feet_piv[stance] if on > 0 else (fx, fy)
+    x0, y0 = max(int(ox - 220 * k), 0), max(int(oy - 460 * k), 0)
+    x1, y1 = min(int(ox + 220 * k), W), min(int(oy + 40 * k), H)
+    if x1 <= x0 or y1 <= y0: return                                   # walked out of frame
     gx, gy = xx[y0:y1, x0:x1], yy[y0:y1, x0:x1]
-    q = penguin_pose(t)
-    bx, by = rot(gx, gy + q["bob"], fx, fy, -q["body"])             # undo the body: bob, turn about the feet
-    by = fy + (by - fy) / q["breath"]
-    w = np.clip((neck_y + 12 - by) / 24, 0, 1)                         # the head, above the neck, moves more
-    hx, hy = rot(bx, by, nx, neck_y, -q["head"])
-    hx = nx + (hx - nx) / (1 - PG["head_turn_squash"] * q["turn"])
+    rx, ry = (gx - ox) / k + fx, (gy - oy) / k + fy + bob             # undo the path and the bob: the still's frame
+    bx, by = rot(rx, ry, pvx, pvy, -(roll + sway))                    # undo the rock about the stance foot
+    by = fy + (by - fy) / breath
+    w = np.clip((neck_y + 12 - by) / 24, 0, 1)
+    hx, hy = rot(bx, by, nx, neck_y, -track(PG["head_keys"], t))
+    hx = nx + (hx - nx) / (1 - PG["head_turn_squash"] * track(PG["head_turn_keys"], t))
     sx = (bx + w * (hx - bx)).astype(np.float32); sy = (by + w * (hy - by)).astype(np.float32)
     o = out[y0:y1, x0:x1]
     p = cv2.remap(pen_body, sx, sy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
     o = o * (1 - p[..., 3:]) + p[..., :3]
-    fxp, fyp = rot(bx, by, *FL["pivot_1080"], -q["flap"])            # the flipper rides the body, then flaps
+    fxp, fyp = rot(bx, by, *piv_flip, -flap_sign * track(FL["keys"], t))
     p = cv2.remap(pen_flip, fxp.astype(np.float32), fyp.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
     out[y0:y1, x0:x1] = o * (1 - p[..., 3:]) + p[..., :3]
 

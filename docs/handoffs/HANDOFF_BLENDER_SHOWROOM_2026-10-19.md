@@ -3,7 +3,8 @@
 **Status:** CODED + RENDERED offline (room v5, merged in #351, squash `8277701`). Nothing is on the board or in the Cut.
 **Fendi's note (19 Oct, after room v5):** "there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment."
 **Fixed on 20 Oct as v6.** The comp's edge wrap was lowered from 0.5 to 0.15 (`lens.wrap`). See item 0. Fendi: "That one is solid."
-**v7 (20 Oct, in progress):** a livelier penguin (Fendi: "the penguin still doesn't have much movement"), with the body, head and flipper keyed in `room_v5.penguin_motion`. See the write-up's v7 section.
+**v7 (20 Oct):** a livelier penguin in place. Fendi: "not enough movement still … it can walk away from me".
+**v8 (20 Oct, rendering):** the penguin waddles away from him and out of frame left, keyed in `room_v5.penguin_motion.walk`. See the write-up's v8 section.
 **Spend: $1.82** (ledger rows 148–155), all on the room (stills and plates), none on him.
 
 Write-up: [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)
