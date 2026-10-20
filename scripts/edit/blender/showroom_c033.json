@@ -55,9 +55,13 @@
               "_": "DECISION: the branches move up to 1.4 px (at 1080 wide; the trees are 25 m or more away) with the wind's gusts, more toward the crowns, none at the snowy ground (y 968 at 1080, MEASURED floor line of the glass), the frames or the mullions"},
     "led": {"period_rows": 90, "drift_cycles_per_frame": 0.03, "sharpness": 2.5, "depth": 0.55,
             "_": "ESTIMATE/DECISION: a phone reads its sensor rows over ~13 ms per frame (~6.8 us a row at 1920 rows); LED lamps driven at ~1.62 kHz PWM span ~90 rows per on/off cycle, so a lamp 40-60 rows tall carries about half a dark band. 1.62 kHz is 27.03 cycles per 59.94 fps frame, so the bands crawl 0.03 cycle (2.7 rows) a frame. Depth 0.55 is the share of light the band takes out at its darkest (an exposure longer than the PWM period softens it)"},
-    "penguin_motion": {"sway_deg": 0.8, "sway_period_s": 3.4, "sway_phase": 0.4, "breath": 0.004, "breath_period_s": 2.1,
-                       "neck_y_1080": 972, "head_deg": 3.5, "head_turn_s": [0.9, 1.4, 2.9, 3.5],
-                       "_": "DECISION: small moves of the penguin's own pixels: a 0.8 deg weight shift about its feet every ~3.4 s, a 0.4 % breath, and one head tilt of 3.5 deg (0.9-1.4 s in, held, back by 3.5 s). Neck height MEASURED on the still"},
+    "penguin_motion": {"sway_deg": 1.8, "sway_period_s": 2.3, "sway_phase": 0.4, "bob_px": 1.2, "breath": 0.008, "breath_period_s": 1.9,
+                       "neck_y_1080": 972,
+                       "head_keys": [[0, 0], [0.35, 7], [1.0, 7], [1.35, -5], [2.0, -5], [2.3, 2], [2.8, 9], [3.4, 9], [3.9, 0]],
+                       "head_turn_keys": [[0, 0], [1.3, 0], [1.6, 1], [2.1, 1], [2.4, 0]], "head_turn_squash": 0.10,
+                       "flipper": {"box_1080": [252, 1062, 278, 1150], "pivot_1080": [254, 1072],
+                                   "keys": [[0, 0], [1.5, 0], [1.75, 14], [2.0, 0], [2.9, 0], [3.1, 10], [3.3, 0], [3.45, 8], [3.65, 0]]},
+                       "_": "DECISION (Fendi, 20 Oct: 'the penguin still doesn't have much movement'): its own pixels, more alive: a 1.8 deg weight shift about its feet every ~2.3 s with a 1.2 px bob, a 0.8 % breath, the head looking around (tilts of +7, -5, +9 deg and a short turn toward the camera that narrows the head 10 %), and three flaps of the flipper that stands clear of its body (14, 10, 8 deg about the shoulder). Neck, flipper box and shoulder MEASURED on the still at 1080x1920. Was (v5): 0.8 deg sway, 0.4 % breath, one 3.5 deg head tilt"},
     "_glass": "MEASURED on a pixel grid of the clean still: the window wall, the two clerestory panes above the kitchen, the mullions (dark columns) and the transom (dark rows)"
   },
   "island": {

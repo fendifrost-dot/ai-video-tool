@@ -10,7 +10,7 @@ Writes out_dir/plate_0001.png ... (1080x1920, 8-bit RGB), the plate build_scene.
      each sensor row is read a little later, so the lamp's on/off cycle lands as soft dark bands that crawl slowly
      across the lamp (the beat between the PWM rate and the frame rate). It is not a flash: the whole lamp never
      goes dark at once
-  4. the penguin, moved by small rigid turns of its own pixels about its feet and its neck (never redrawn)"""
+  4. the penguin, moved by keyframed turns of its own pixels about its feet, neck and flipper (never redrawn)"""
 import json, math, os, sys, subprocess
 import cv2, numpy as np
 
@@ -50,32 +50,48 @@ def band(f):
     pulse = (0.5 - 0.5 * np.cos(2 * math.pi * ph)) ** LD["sharpness"]
     return 1 - LD["depth"] * pulse                                       # 1 = full light, per row
 
-# ---- penguin: inverse map about its feet (weight shift, breathing) and its neck (one head turn) ----
+# ---- penguin: its own pixels moved by keyframed tracks, never redrawn (inverse maps, back to the still) ----
+# body: a weight shift (a turn about its feet), a small bob and its breath; head: tilts about the neck and a short
+# turn toward the camera (the head narrows a little); flipper: the flipper that stands clear of the body flaps
+# about its shoulder over the room behind it (the clean still shows there, so nothing is invented)
 fx, fy = L["penguin_feet_px_1080"]
 ys_, xs_ = np.nonzero(pen[..., 3] > 0.01)
-box = (max(xs_.min() - 30, 0), max(ys_.min() - 30, 0), min(xs_.max() + 31, W), min(ys_.max() + 31, H))
+box = (max(xs_.min() - 40, 0), max(ys_.min() - 40, 0), min(xs_.max() + 41, W), min(ys_.max() + 41, H))
 neck_y = PG["neck_y_1080"]; nx = float(np.median(xs_[(ys_ > neck_y - 3) & (ys_ < neck_y + 3)]))
-def ease(u): u = min(max(u, 0.0), 1.0); return u * u * (3 - 2 * u)
+FL = PG["flipper"]
+flip = np.zeros((H, W), np.float32); fx0, fy0, fx1, fy1 = FL["box_1080"]; flip[fy0:fy1, fx0:fx1] = 1
+flip = cv2.GaussianBlur(flip, (0, 0), 1.0)[..., None]
+pen_body, pen_flip = pen * (1 - flip), pen * flip          # premultiplied, so the split adds back to the penguin
+def track(keys, t):
+    """Smooth (cosine) interpolation through [t, value] keys; held outside them."""
+    if t <= keys[0][0]: return keys[0][1]
+    for (t0, v0), (t1, v1) in zip(keys, keys[1:]):
+        if t <= t1: u = (t - t0) / (t1 - t0); return v0 + (v1 - v0) * (0.5 - 0.5 * math.cos(math.pi * u))
+    return keys[-1][1]
 def penguin_pose(t):
-    body = PG["sway_deg"] * math.sin(2 * math.pi * t / PG["sway_period_s"] + PG["sway_phase"])
-    breath = 1 + PG["breath"] * math.sin(2 * math.pi * t / PG["breath_period_s"])
-    t0, t1, t2, t3 = PG["head_turn_s"]
-    head = PG["head_deg"] * (ease((t - t0) / (t1 - t0)) - ease((t - t2) / (t3 - t2)))
-    return body, breath, head
+    ph = 2 * math.pi * t / PG["sway_period_s"] + PG["sway_phase"]
+    return dict(body=PG["sway_deg"] * math.sin(ph), bob=PG["bob_px"] * abs(math.sin(ph)),
+                breath=1 + PG["breath"] * math.sin(2 * math.pi * t / PG["breath_period_s"]),
+                head=track(PG["head_keys"], t), turn=track(PG["head_turn_keys"], t), flap=track(FL["keys"], t))
+def rot(px, py, cx, cy, deg):
+    a = math.radians(deg); c, s_ = math.cos(a), math.sin(a)
+    return cx + c * (px - cx) - s_ * (py - cy), cy + s_ * (px - cx) + c * (py - cy)
 def place_penguin(t, out):
     x0, y0, x1, y1 = box
     gx, gy = xx[y0:y1, x0:x1], yy[y0:y1, x0:x1]
-    body, breath, head = penguin_pose(t)
-    a = math.radians(-body); ca, sa = math.cos(a), math.sin(a)
-    ux, uy = gx - fx, gy - fy                                             # undo the body turn about the feet
-    bx = fx + ca * ux - sa * uy; by = fy + (sa * ux + ca * uy) / breath
-    w = np.clip((neck_y + 12 - by) / 24, 0, 1)                            # the head, above the neck, turns more
-    h = math.radians(-head); ch, shh = math.cos(h), math.sin(h)
-    vx, vy = bx - nx, by - neck_y
-    hx = nx + ch * vx - shh * vy; hy = neck_y + shh * vx + ch * vy
+    q = penguin_pose(t)
+    bx, by = rot(gx, gy + q["bob"], fx, fy, -q["body"])             # undo the body: bob, turn about the feet
+    by = fy + (by - fy) / q["breath"]
+    w = np.clip((neck_y + 12 - by) / 24, 0, 1)                         # the head, above the neck, moves more
+    hx, hy = rot(bx, by, nx, neck_y, -q["head"])
+    hx = nx + (hx - nx) / (1 - PG["head_turn_squash"] * q["turn"])
     sx = (bx + w * (hx - bx)).astype(np.float32); sy = (by + w * (hy - by)).astype(np.float32)
-    p = cv2.remap(pen, sx, sy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    o = out[y0:y1, x0:x1]; out[y0:y1, x0:x1] = o * (1 - p[..., 3:]) + p[..., :3]
+    o = out[y0:y1, x0:x1]
+    p = cv2.remap(pen_body, sx, sy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    o = o * (1 - p[..., 3:]) + p[..., :3]
+    fxp, fyp = rot(bx, by, *FL["pivot_1080"], -q["flap"])            # the flipper rides the body, then flaps
+    p = cv2.remap(pen_flip, fxp.astype(np.float32), fyp.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    out[y0:y1, x0:x1] = o * (1 - p[..., 3:]) + p[..., :3]
 
 def frame(f):
     t = (f - 1) / FPS; g = gust(t)

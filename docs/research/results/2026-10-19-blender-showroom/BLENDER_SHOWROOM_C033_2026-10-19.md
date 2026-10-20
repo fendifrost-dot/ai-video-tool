@@ -156,7 +156,7 @@ the kitchen island if it can be realistically done".
 - **The penguin**: small rigid turns of its own pixels, never redrawn:
   - a 0.8° weight shift about its feet every ~3.4 s;
   - a 0.4 % breath;
-  - one 3.5° head tilt (0.9–1.4 s in, held, back by 3.5 s).
+  - one 3.5° head tilt (0.9–1.4 s in, held, back by 3.5 s). v7 replaces this with the livelier tracks below.
 - **Plate:** `room_motion.py` writes the 240 frames at 59.94 directly. It needs no interpolation and no plate offset. Filed as `0fc2cf8c`.
 
 
@@ -174,6 +174,17 @@ the kitchen island if it can be realistically done".
   - tight `7c341552` (MD5 `b9ba7caee4ee58430a93fc6c40fe2456`; with song `37f0f4f2`);
   - dolly `49bdba39` (MD5 `ef590cb5e90748e3a4a19490692b19a7`; with song `1fe9a7f4`).
   - The v5 files (wrap 0.5) are superseded.
+
+### v7: a livelier penguin (20 Oct, Fendi on v6: "That one is solid but the penguin still doesn't have much movement")
+
+- **Still its own pixels, never redrawn.** `room_motion.py` now drives the penguin with keyframed tracks (`room_v5.penguin_motion`):
+  - **Body:** a 1.8° weight shift about its feet every ~2.3 s with a 1.2 px bob, and a 0.8 % breath (was 0.8° and 0.4 %).
+  - **Head:** it looks around. Tilts of +7°, −5° and +9° about the neck, and a short turn toward the camera (1.3–2.4 s) that narrows the head 10 %. Was: one 3.5° tilt.
+  - **Flipper:** three flaps (14°, 10°, 8°) of the flipper that stands clear of its body, about the shoulder.
+    - The flipper is split from the body layer, so as it lifts, the clean room behind it shows. Nothing is invented.
+    - The far flipper lies against the body and stays put.
+- **Neck, flipper box and shoulder:** MEASURED on the still at 1080×1920.
+- **Only the room pass and the comp re-render.** His card, reflection and depth passes are unchanged. The edge wrap stays 0.15.
 
 ## How the shot is built (scripts/edit/blender/)
 
