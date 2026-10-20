@@ -102,6 +102,6 @@
     "flash_reference": "marble"
   },
   "tight": {"lens_factor": 1.6, "centre_px": [470, 950], "_": "DECISION: the matched camera with a 1.6x lens (47 mm equivalent), framed on him: an exact crop of the wide, so placement and perspective are unchanged and his face reads ~1.6x larger"},
-  "lens": {"f_stop": 2.0, "performer_softness_px": 0.5, "_soft": "DECISION: his 4K-derived pixels are crisper than the 1080 AI plate; a 0.5 px lens softness puts him in the same camera (optics, not a redraw)", "_": "DECISION: depth of field from the scene depth, focused on him; 1-4 px of blur on the island and the room"},
+  "lens": {"f_stop": 2.0, "performer_softness_px": 0.5, "wrap": 0.15, "_wrap": "DECISION (Fendi, 20 Oct: 'there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment'): the composite lane's 0.5 screen wrap of the blurred room left a pale rim on his outline against the snowy window and carried the Ferrari lamps' rolling band onto his car-side edge; 0.15 keeps the edge in the room's light without the halo (checked at 0.5 / 0.15 / 0 on frames 60, 120, 180)", "_soft": "DECISION: his 4K-derived pixels are crisper than the 1080 AI plate; a 0.5 px lens softness puts him in the same camera (optics, not a redraw)", "_": "DECISION: depth of field from the scene depth, focused on him; 1-4 px of blur on the island and the room"},
   "reflection": {"strength": 0.12, "roughness": 0.12, "_": "DECISION: polished stone at a ~12 deg grazing view"}
 }

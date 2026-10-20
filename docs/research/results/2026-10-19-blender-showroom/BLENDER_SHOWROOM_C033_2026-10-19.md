@@ -160,6 +160,17 @@ the kitchen island if it can be realistically done".
 - **Plate:** `room_motion.py` writes the 240 frames at 59.94 directly. It needs no interpolation and no plate offset. Filed as `0fc2cf8c`.
 
 
+### v6: the headlight bleed (20 Oct, Fendi: "there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment")
+
+- **Test ($0, frames 60/120/180, `comp_scene.py --only N --stills`):** the comp with its edge wrap at 0.5, at 0.15 and off.
+- **OBSERVED:** at 0.5, the wrap (a screen of the room blurred 30 px onto his inner edge band) lifts his outline by up to 16–18 levels.
+  - It leaves a pale rim around his cap, jaw and shoulders against the snowy window.
+  - On the car side the rim follows the Ferrari's lamps, including their rolling band.
+  - Off, his edge looks cut out. At 0.15 the rim is gone and the edge still takes the room's light.
+- **DECISION:** `lens.wrap` 0.15 (a scene value now; the composite lane's 0.5 stays the default in code).
+  - Only `comp_scene.py` re-runs: the Blender passes and the plate are unchanged.
+- **Files:** the static v6 is `81989353` (decoded MD5 `4eacb289a52e028a4eaf51663db8e9db`); with song `356e8b8a`, face pair `7356a109`, side-by-side `2999dd4b`.
+
 ## How the shot is built (scripts/edit/blender/)
 
 0. **The room (v5)**, before any of the steps below:
@@ -222,7 +233,8 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 
 | Version | Face PSNR, median / min | Mouth timing: best match at lag 0 | Timing margin, median / min |
 |---|---|---|---|
-| **room v5, matched camera (static)** | **36.3 / 34.1 dB** | **111 / 111** | **7.3 / 2.0 dB** |
+| **v6 = room v5 + edge wrap 0.15, matched camera (static)** | **36.4 / 34.2 dB** | **111 / 111** | **7.2 / 2.0 dB** |
+| room v5, matched camera (static), wrap 0.5 | **36.3 / 34.1 dB** | **111 / 111** | **7.3 / 2.0 dB** |
 | **room v5, tight (1.6× lens)** | **38.2 / 35.9 dB**, mask 10 px off the outline (38.0 / 29.8 at 5 px) | **111 / 111** | **10.0 / 3.4 dB** |
 | **room v5, dolly (0.20 m push)** | **36.6 / 33.6 dB** | **111 / 111** | **7.3 / 1.5 dB** |
 | matched camera (static), plate v3 | 36.2 / 34.1 dB | 111 / 111 | 7.2 / 2.0 dB |
