@@ -8,8 +8,8 @@ His light, all from params.json:
   - top light: +/- stops from his head to the counter (the downlight is in front of and above him);
   - the room's light changes: a reference surface's colour per plate frame over its median (measure_plate_light.py),
     followed at `flash_follow`.
-Then, as the composite lane does (src/lib/composite/pixels.ts): an inner edge band with a 0.5 screen wrap of the
-blurred room, and grain 7 on the finished frame. The room in front of him (depth < his depth) occludes him; that
+Then, as the composite lane does (src/lib/composite/pixels.ts): an inner edge band with a screen wrap of the
+blurred room (lens.wrap, 0.5 in the lane), and grain 7 on the finished frame. The room in front of him (depth < his depth) occludes him; that
 edge gets the island's own lens blur. Depth of field: thin lens, focused on him. His pixels are graded, never redrawn."""
 import argparse, json, os, subprocess
 import numpy as np, cv2
@@ -99,7 +99,8 @@ for i in frames:
     s = px_m / ppm
     inner = blur(erode(a, max(1, round(4 * s))), max(0.6, 5 * s)); edge = blur(np.clip(a - inner, 0, 1), 0.6) * a
     wide = blur(room, 30.0)
-    wrap = him * 0.5 + (1 - (1 - him) * (1 - wide)) * 0.5
+    k = P["lens"].get("wrap", 0.5)                 # share of the blurred room screened onto his outline
+    wrap = him * (1 - k) + (1 - (1 - him) * (1 - wide)) * k
     v = room * (1 - a[..., None]) + him * a[..., None]
     v = v * (1 - edge[..., None]) + wrap * edge[..., None]
     v = v + (rng.random((H, W, 1)) - 0.5) * 7 / 255
