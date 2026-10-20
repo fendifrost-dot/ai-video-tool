@@ -45,8 +45,8 @@ References: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PR
 
 - Its web app names no model; a third-party source says Kling. OBSERVED.
 - The MCP exposes no "recast" model or app. Its tool described as recast is **Kling 3.0 Motion Control** (character still plus driving video), a fully generated frame. VERIFIED.
-- The connected Higgsfield MCP account is on the free plan with 0.68 credits. VERIFIED.
-- Whether AVT's own Higgsfield provider route is the same account: UNKNOWN.
+- **Access:** Fendi uses Higgsfield through the **API** (AVT / Control Center), so the MCP connector's plan does not matter (Fendi, 20 Oct). Do not cite the connector's plan or credits.
+  - Whether the API account can call Higgsfield's Recast app or Kling 3.0 Motion Control: UNKNOWN. Check it through the API's own model list, not the connector.
 - **The same name does not mean the same engine.**
 
 ### The two uses Fendi asked about
@@ -84,16 +84,24 @@ References: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PR
   - prompt timestamps "guide pacing rather than mark frame-accurate edit points".
 - **Correction:** in Edit mode, duration and aspect ratio follow the input, and there is no resolution setting.
 - **Price:** web 68 credits/s at 1080p (+34 per input-video second). On the API that is $0.68/s (+$0.34/s input). VERIFIED.
-- **This account:** the MCP-connected workspace is on the free plan with no video models. VERIFIED.
-  - AVT already has its own Seedance 2.5 routes: `runway-video-edit-proxy`, and reference-to-video through Control Center / Higgsfield `montage-shot`.
+- **Access:** AVT reaches Seedance 2.5 through its own API routes: `runway-video-edit-proxy`, and reference-to-video through Control Center / Higgsfield `montage-shot`. The MCP connector's workspace plan does not describe that access.
 - **DECISION for planning:** evaluate it for reference-rich B-roll and coherent sequences that we cut into 1.5–2 s shots.
   - More references and longer output are capabilities, **not proof** of identity, wardrobe or lip-sync fidelity.
   - Any shot of Fendi still goes through the baseline above.
 
 ### The "50% off" ad: USER-REPORTED, NOT VERIFIED
 
-- Fendi reported seeing a 50%-off advertisement. Vendor and terms: UNKNOWN.
-- **The only current official 50% offer found:** ElevenLabs' Creator plan, first month only ($22 → $11). It is a web subscription discount, below the Pro plan the Template API needs, with no expiry or eligibility terms shown. OBSERVED.
-- **Higgsfield and Runway** show only 20–23% annual discounts. Earlier 50% Seedance 2.5 promotions from resellers have ended. OBSERVED.
-- **Before budgeting:** confirm the ad itself, its eligibility, its expiration, and whether it covers the web account, the API, a subscription or generation credits.
+- **Source:** Fendi reports it was a **Runway ML** ad for **Seedance 2.5** (20 Oct). USER-REPORTED. The ad itself is not seen.
+- **What Runway's own posts show (OBSERVED, search 20 Oct):**
+  - **Seedance 2.0 launch (April 2026):** the code `SEEDANCE` gave **50% off 3 months of paid plans**, for new customers only (https://x.com/runwayml/status/2042336701557703020).
+  - **Seedance 2.5 launch:** 7 days of unlimited access at launch for a **new Max plan** sign-up (https://x.com/runwayml/status/2085009500474343689).
+  - No current official 50% Seedance 2.5 offer was found on Runway's pages. Reseller and coupon-site 50% codes are unverified or expired.
+- **What it would and would not cover:**
+  - Each Runway offer found is a **web subscription** discount, mostly for new customers.
+  - AVT's Seedance 2.5 runs bill **API credits** at $0.01 per credit ($0.68/s at 1080p). HYPOTHESIS: a web-plan discount does not lower API spend.
+- **Before budgeting:** confirm against the ad itself:
+  - the code or link;
+  - eligibility (new customer only?);
+  - the expiration date;
+  - whether it applies to the web plan, "unlimited" web generation, the API, or credit packs.
 - **No purchase.**
