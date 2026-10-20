@@ -156,7 +156,7 @@ the kitchen island if it can be realistically done".
 - **The penguin**: small rigid turns of its own pixels, never redrawn:
   - a 0.8° weight shift about its feet every ~3.4 s;
   - a 0.4 % breath;
-  - one 3.5° head tilt (0.9–1.4 s in, held, back by 3.5 s).
+  - one 3.5° head tilt (0.9–1.4 s in, held, back by 3.5 s). v7 replaces this with the livelier tracks below.
 - **Plate:** `room_motion.py` writes the 240 frames at 59.94 directly. It needs no interpolation and no plate offset. Filed as `0fc2cf8c`.
 
 
@@ -174,6 +174,42 @@ the kitchen island if it can be realistically done".
   - tight `7c341552` (MD5 `b9ba7caee4ee58430a93fc6c40fe2456`; with song `37f0f4f2`);
   - dolly `49bdba39` (MD5 `ef590cb5e90748e3a4a19490692b19a7`; with song `1fe9a7f4`).
   - The v5 files (wrap 0.5) are superseded.
+
+### v7: a livelier penguin (20 Oct, Fendi on v6: "That one is solid but the penguin still doesn't have much movement")
+
+- **Still its own pixels, never redrawn.** `room_motion.py` now drives the penguin with keyframed tracks (`room_v5.penguin_motion`):
+  - **Body:** a 1.8° weight shift about its feet every ~2.3 s with a 1.2 px bob, and a 0.8 % breath (was 0.8° and 0.4 %).
+  - **Head:** it looks around. Tilts of +7°, −5° and +9° about the neck, and a short turn toward the camera (1.3–2.4 s) that narrows the head 10 %. Was: one 3.5° tilt.
+  - **Flipper:** three flaps (14°, 10°, 8°) of the flipper that stands clear of its body, about the shoulder.
+    - The flipper is split from the body layer, so as it lifts, the clean room behind it shows. Nothing is invented.
+    - The far flipper lies against the body and stays put.
+- **Neck, flipper box and shoulder:** MEASURED on the still at 1080×1920.
+- **Only the room pass and the comp re-render.** His card, reflection and depth passes are unchanged. The edge wrap stays 0.15.
+
+### v8: the penguin walks away (20 Oct, Fendi on v7: "Not enough movement still, the penguin doesn't have to stand still, it can walk away from me in a natural movement")
+
+- **Still its own pixels, never redrawn.** The penguin is mirrored (`penguin_motion.mirror`) so it faces where it goes. Mirroring is a flip of the still's own pixels.
+- **The path.** It glances back for 0.7 s, then waddles away from him to the left, along the floor in front of the cabinets.
+  - It stays at its measured depth (5.76 m) and leaves the frame at about 3.3 s.
+  - Its ground point is projected through the measured camera, so its size and floor line follow the perspective.
+  - Pace: 0.3 m/s in 0.5 s steps (a brisk emperor-penguin walk; ESTIMATE).
+- **The waddle.** Each step it rocks 8° about the stance foot, with a 2 px bob, and holds the clear flipper out 16° for balance. The feet are MEASURED on the still.
+- **The room behind it** is the clean still (`b30bd9e2`), so nothing is invented where it has been.
+- **Limitation:** in the dolly, the walking penguin is carried by the room projection (its proxy card stays at 5.76 m). The 0.2 m push gives it no parallax error of note.
+
+### v9: no penguin (20 Oct, Fendi on the walking penguin: "That looks terrible … Remove the penguin from the scene altogether … It looks AI generated and cheesy")
+
+- **DECISION:** the penguin is out of the shot: `penguin_motion.enabled` false, and the scene's penguin card is off (`penguin.in_scene` false).
+- **Where it stood:** the clean still (`b30bd9e2`) shows the cabinets and the floor.
+  - With the penguin gone, its whole box plus 40 px is taken from the clean still. A thin dark edge of the penguin's outline had survived outside its matte.
+- **What the lesson rules out (DECISION):** puppeting a 2D animal from one picture (rigid turns, a mirrored walk) reads as fake. An animal that moves needs real footage or a real 3D model; never a cut-out.
+- **What still moves in the room:** the snow, the branches and the Ferrari's LED bands.
+- **Files (v9, current):**
+  - plate `b7a72ddd`;
+  - static `436ffebe` (MD5 `22401387639530934a3e5ac3d6c658e5`; with song `8baa20aa`);
+  - tight `835a050b` (MD5 `f27057454327c0763204bc0177c8d538`; with song `81fbeddb`);
+  - dolly `567e8ff7` (MD5 `61b922fb0788a92941c08e48e951bb4e`; with song `0b0381be`).
+  - v6–v8 are superseded. v7 and v8 were not filed (rejected while rendering).
 
 ## How the shot is built (scripts/edit/blender/)
 
@@ -237,7 +273,10 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 
 | Version | Face PSNR, median / min | Mouth timing: best match at lag 0 | Timing margin, median / min |
 |---|---|---|---|
-| **v6 = room v5 + edge wrap 0.15, matched camera (static)** | **36.4 / 34.2 dB** | **111 / 111** | **7.2 / 2.0 dB** |
+| **v9 (current) = no penguin, edge wrap 0.15, matched camera (static)** | **36.3 / 34.3 dB** | **111 / 111** | **7.2 / 2.0 dB** |
+| **v9, tight** | **38.3 / 36.0 dB**, 10 px in | **111 / 111** | **10.0 / 3.5 dB** |
+| **v9, dolly** | **36.5 / 33.8 dB** | **111 / 111** | **7.2 / 1.6 dB** |
+| v6 = room v5 + edge wrap 0.15, matched camera (static) | **36.4 / 34.2 dB** | **111 / 111** | **7.2 / 2.0 dB** |
 | **v6, tight** | **38.2 / 35.9 dB**, 10 px in (38.0 / 29.9 at 5 px) | **111 / 111** | **9.9 / 3.6 dB** |
 | **v6, dolly** | **36.5 / 33.6 dB** | **111 / 111** | **7.4 / 1.6 dB** |
 | room v5, matched camera (static), wrap 0.5 | **36.3 / 34.1 dB** | **111 / 111** | **7.3 / 2.0 dB** |

@@ -56,7 +56,11 @@ car_m = cv2.imread(p_cm, 0) > 127; pen_m = cv2.imread(p_pm, 0) > 127
 dz = np.abs(orig - clean).max(2) > 0.07
 suv = np.zeros_like(dz); x0, y0, x1, y1 = V["vehicle_box"]; suv[y0:y1, x0:x1] = dz[y0:y1, x0:x1]
 suv = ndi.binary_closing(suv, np.ones((21, 21))); suv = ndi.binary_fill_holes(suv)
-take = ndi.binary_dilation(suv | car_m | pen_m, iterations=30).astype(np.float32)
+gone = pen_m
+if not P["room_v5"]["penguin_motion"].get("enabled", True):   # no penguin: its whole box plus a margin, so no edge sliver stays
+    pys0, pxs0 = np.nonzero(pen_m); gone = np.zeros_like(pen_m)
+    gone[max(pys0.min() - 40, 0):pys0.max() + 40, max(pxs0.min() - 40, 0):pxs0.max() + 40] = True
+take = ndi.binary_dilation(suv | car_m | gone, iterations=30).astype(np.float32)
 take = cv2.GaussianBlur(take, (0, 0), 8) * (1 - island_soft)
 bg = orig * (1 - take[..., None]) + clean * take[..., None]
 
