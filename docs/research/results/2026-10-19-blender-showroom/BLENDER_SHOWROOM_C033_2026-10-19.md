@@ -169,7 +169,11 @@ the kitchen island if it can be realistically done".
   - Off, his edge looks cut out. At 0.15 the rim is gone and the edge still takes the room's light.
 - **DECISION:** `lens.wrap` 0.15 (a scene value now; the composite lane's 0.5 stays the default in code).
   - Only `comp_scene.py` re-runs: the Blender passes and the plate are unchanged.
-- **Files:** the static v6 is `81989353` (decoded MD5 `4eacb289a52e028a4eaf51663db8e9db`); with song `356e8b8a`, face pair `7356a109`, side-by-side `2999dd4b`.
+- **Files (v6, current):**
+  - static `81989353` (MD5 `4eacb289a52e028a4eaf51663db8e9db`; with song `356e8b8a`, face pair `7356a109`, side-by-side `2999dd4b`);
+  - tight `7c341552` (MD5 `b9ba7caee4ee58430a93fc6c40fe2456`; with song `37f0f4f2`);
+  - dolly `49bdba39` (MD5 `ef590cb5e90748e3a4a19490692b19a7`; with song `1fe9a7f4`).
+  - The v5 files (wrap 0.5) are superseded.
 
 ## How the shot is built (scripts/edit/blender/)
 
@@ -234,6 +238,8 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 | Version | Face PSNR, median / min | Mouth timing: best match at lag 0 | Timing margin, median / min |
 |---|---|---|---|
 | **v6 = room v5 + edge wrap 0.15, matched camera (static)** | **36.4 / 34.2 dB** | **111 / 111** | **7.2 / 2.0 dB** |
+| **v6, tight** | **38.2 / 35.9 dB**, 10 px in (38.0 / 29.9 at 5 px) | **111 / 111** | **9.9 / 3.6 dB** |
+| **v6, dolly** | **36.5 / 33.6 dB** | **111 / 111** | **7.4 / 1.6 dB** |
 | room v5, matched camera (static), wrap 0.5 | **36.3 / 34.1 dB** | **111 / 111** | **7.3 / 2.0 dB** |
 | **room v5, tight (1.6× lens)** | **38.2 / 35.9 dB**, mask 10 px off the outline (38.0 / 29.8 at 5 px) | **111 / 111** | **10.0 / 3.4 dB** |
 | **room v5, dolly (0.20 m push)** | **36.6 / 33.6 dB** | **111 / 111** | **7.3 / 1.5 dB** |
@@ -243,7 +249,8 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 
 - **Correction (19 Oct, room v5):** the 5 px dips are not the bus behind his head, as first written for v3.
   - OBSERVED: the same frames dip on v3 and on v5 (184, 228 and 166, at 2.8–3.8 s), and v5's background behind him is still.
-  - HYPOTHESIS: the edge band and wrap at his own moving outline reach into a 5 px mask in those frames. Test: mask the outline band by its alpha, not by distance.
+  - HYPOTHESIS rejected (20 Oct): it is not the wrap. With the wrap at 0.15 the tight 5 px minimum is still 29.9 dB on frame 184.
+  - Remaining HYPOTHESIS: the inner edge band itself (the erode/feather of the matte at his moving outline) reaches a 5 px mask. Test: mask the outline by its alpha instead of by distance.
   - The face's interior (10 px in) is clean on both versions.
 - **VERIFIED:** his face in the shot is the approved file's pixels, resampled and graded.
   - What remains is lens softness, anti-aliasing, grain and the top-light gradient (~36 dB).

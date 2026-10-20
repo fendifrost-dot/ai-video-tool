@@ -1,7 +1,8 @@
 # Handoff: c033 BODY-ONLY placed in the showroom with Blender (19 Oct 2026)
 
 **Status:** CODED + RENDERED offline (room v5, merged in #351, squash `8277701`). Nothing is on the board or in the Cut.
-**Fendi's last note (19 Oct, after room v5), OPEN:** "there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment." This is not fixed; see item 0 below. He then asked to continue the build in a new chat from this handoff.
+**Fendi's note (19 Oct, after room v5):** "there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment."
+**Fixed on 20 Oct as v6 (CODED + RENDERED; Fendi has not judged it).** The comp's edge wrap was lowered from 0.5 to 0.15 (`lens.wrap`). See item 0.
 **Spend: $1.82** (ledger rows 148–155), all on the room (stills and plates), none on him.
 
 Write-up: [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)
@@ -39,21 +40,16 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## Not done: what needs a person or a later session
 
-0. **OPEN, first: the headlight bleed on his outline.**
-   - **OBSERVED geometry:** in the matched camera he stands in front of the Ferrari's front-left corner. The left LED strip and left lower lamp (`room_v5.lamp_boxes_1080` boxes 2 and 4, x ≈ 410–456, y ≈ 910–992) sit just behind his body, on the side toward the car.
-   - **HYPOTHESIS (cause):** `comp_scene.py` (lines ~98–104) gives him the composite lane's edge band with a 0.5 *screen* wrap of `wide = blur(room, 30)`.
-     - Behind him the room now holds bright LED lamps, so the screen wrap lifts his outline toward lamp-white.
-     - The rolling LED band then makes that glow pulse.
-     - Together that reads as him "coming out of" the room, a halo, not a lit edge.
-   - **Test that separates the causes ($0, `--only` frames, `--stills DIR`):**
-     1. Re-comp a few frames with the wrap off (`wrap = him`). If the halo goes, it is the wrap.
-     2. Re-comp with `room_motion.py`'s LED band off (`led.depth` 0). If only the pulsing goes, the band is driving the wrap.
-     3. Compare a crop of his car-side edge at 2× against the plate-v3 render `98d1d04e`, which had dark car paint behind him.
-   - **Fix options, in order of preference (DECISION for the next agent, show Fendi before/after crops):**
-     - (a) build `wide` from the room **without** the LED layer, or clip it, so lamps cannot feed the wrap;
-     - (b) lower the wrap to a normal light wrap (e.g. 0.15–0.25, multiply-darkened where the background is brighter than him);
-     - (c) move the car a little along its row (`room_v5.car_anchor_x_px`, and `car_proxy` with it) so no lamp sits right behind him. Fendi allowed moving objects.
-   - **Do not** touch his pixels' grade to hide it, re-matte, or regenerate. Re-run `verify_scene.py` after the fix: the face PSNR must not drop (static ≥ 34 min, 36 median).
+0. **The headlight bleed: fixed in v6, awaiting Fendi's eye.**
+   - **Test run ($0, frames 60/120/180):** the comp with the wrap at 0.5, at 0.15 and off.
+   - **OBSERVED:** at 0.5 the wrap lifted his outline by up to 16–18 levels.
+     - It left a pale rim around his cap, jaw and shoulders against the snowy window.
+     - On the car side the rim followed the Ferrari's lamps and their rolling band.
+   - **DECISION:** wrap 0.15 (`showroom_c033.json`, `lens.wrap`). Only `comp_scene.py` re-ran.
+   - **VERIFIED after the fix:** static 36.4 / 34.2 dB, tight 38.2 / 35.9 (10 px in), dolly 36.5 / 33.6; mouth timing lag 0 on 111 / 111 for all three.
+   - **v6 files:** static `81989353`, tight `7c341552`, dolly `49bdba39` (with-song reviews in the write-up). The v5 files are superseded.
+   - **Still open (low priority):** the tight shot's 5 px outline dip (29.9 dB on frame 184) is not the wrap. See the write-up's correction.
+   - **Ask Fendi:** is the halo gone, and does his edge still sit in the room? Lower or raise `lens.wrap` (0–0.5) and re-run `comp_scene.py` only.
 1. **Room v5 awaits Fendi's eye** after the bleed fix. Ask:
    - whether the LED bands read as the camera phenomenon he means;
    - whether the Ferrari's size and the penguin's moves read right;
@@ -79,7 +75,8 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 ## How to verify (cheap, distinguishes outcomes)
 
 - **Reproduce one version.** `MOVE=static scripts/edit/reproduce_c033_showroom_blender.sh` with the stored inputs (room v5).
-  - Expected decoded MD5 **f0cd5952b6931e122624ca1daadc6aad** (static). Tight: `9fdbad43ce0a658558124e2a104fb152`. Dolly: `111486d18afd9ecc506c20b800b7a162`.
+  - Expected decoded MD5 (v6, wrap 0.15) **4eacb289a52e028a4eaf51663db8e9db** (static). Tight: `b9ba7caee4ee58430a93fc6c40fe2456`. Dolly: `ef590cb5e90748e3a4a19490692b19a7`.
+  - v5 (wrap 0.5): static `f0cd5952…`, tight `9fdbad43…`, dolly `111486d1…`.
   - The plate on its own: MD5 `ee623d0a5906d76ba41bdf572d5a8484` (`$OUT/plate.mp4`). Compare it first: a different plate means a different Blender particle build or OpenCV.
   - Plate v3 versions: the script at commit `75c1279` (MD5 `aecb5dbc…` static).
   - A different MD5 with identical input hashes means a different Blender/ffmpeg/numpy build. Compare the versions before trusting it.
@@ -107,14 +104,15 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 >
 > **State:** room v5 is merged. The room is a frozen still split into layers; the only motion is Blender particle snow,
 > a branch sway, a rolling-shutter LED band on the Ferrari's lamps and small rigid moves of the penguin's own pixels.
-> The Ferrari is shrunk to its 1.589 m spec. Three versions (matched `30f71856`, tight `7adff8e9`, dolly `a74c3c90`)
-> are filed in AVT, unassigned. Fendi has not picked one.
+> The Ferrari is shrunk to its 1.589 m spec. Fendi's headlight-bleed note is fixed in v6 (edge wrap 0.15).
+> The v6 versions (matched `81989353`, tight `7c341552`, dolly `49bdba39`) are filed in AVT, unassigned.
+> Fendi has not picked one.
 >
-> **First task: the open bleed.** Fendi: "there is bleed I believe from the headlight effect, it looks like I'm coming
-> out of the environment."
-> - Work item 0 of the handoff: run its three $0 tests on a few frames (`comp_scene.py --only N --stills DIR`), find the cause, and apply the smallest fix.
-> - Show Fendi before/after crops of his car-side edge, then re-render static, tight and dolly.
-> - Re-run `verify_scene.py` (face PSNR must not drop; timing lag-0 must stay 111/111), and file the new versions in AVT as new assets. Never overwrite the old ones.
+> **First task:** get Fendi's eye on v6.
+> - Is the halo gone?
+> - LED bands, Ferrari size, penguin, snow, framing.
+> - Retune values in `showroom_c033.json` (no generation needed) and re-render what changed.
+> - Re-verify with `verify_scene.py` and file new versions as new assets.
 >
 > **Rules:**
 > - No image-to-video on the room. Every motion stays Blender or a seeded curve in `showroom_c033.json` (`room_v5`).
