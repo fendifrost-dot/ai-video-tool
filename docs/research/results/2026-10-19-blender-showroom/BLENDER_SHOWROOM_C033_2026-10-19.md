@@ -204,6 +204,12 @@ the kitchen island if it can be realistically done".
   - With the penguin gone, its whole box plus 40 px is taken from the clean still. A thin dark edge of the penguin's outline had survived outside its matte.
 - **What the lesson rules out (DECISION):** puppeting a 2D animal from one picture (rigid turns, a mirrored walk) reads as fake. An animal that moves needs real footage or a real 3D model; never a cut-out.
 - **What still moves in the room:** the snow, the branches and the Ferrari's LED bands.
+- **Files (v9, current):**
+  - plate `b7a72ddd`;
+  - static `436ffebe` (MD5 `22401387639530934a3e5ac3d6c658e5`; with song `8baa20aa`);
+  - tight `835a050b` (MD5 `f27057454327c0763204bc0177c8d538`; with song `81fbeddb`);
+  - dolly `567e8ff7` (MD5 `61b922fb0788a92941c08e48e951bb4e`; with song `0b0381be`).
+  - v6–v8 are superseded. v7 and v8 were not filed (rejected while rendering).
 
 ## How the shot is built (scripts/edit/blender/)
 
@@ -267,7 +273,10 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 
 | Version | Face PSNR, median / min | Mouth timing: best match at lag 0 | Timing margin, median / min |
 |---|---|---|---|
-| **v6 = room v5 + edge wrap 0.15, matched camera (static)** | **36.4 / 34.2 dB** | **111 / 111** | **7.2 / 2.0 dB** |
+| **v9 (current) = no penguin, edge wrap 0.15, matched camera (static)** | **36.3 / 34.3 dB** | **111 / 111** | **7.2 / 2.0 dB** |
+| **v9, tight** | **38.3 / 36.0 dB**, 10 px in | **111 / 111** | **10.0 / 3.5 dB** |
+| **v9, dolly** | **36.5 / 33.8 dB** | **111 / 111** | **7.2 / 1.6 dB** |
+| v6 = room v5 + edge wrap 0.15, matched camera (static) | **36.4 / 34.2 dB** | **111 / 111** | **7.2 / 2.0 dB** |
 | **v6, tight** | **38.2 / 35.9 dB**, 10 px in (38.0 / 29.9 at 5 px) | **111 / 111** | **9.9 / 3.6 dB** |
 | **v6, dolly** | **36.5 / 33.6 dB** | **111 / 111** | **7.4 / 1.6 dB** |
 | room v5, matched camera (static), wrap 0.5 | **36.3 / 34.1 dB** | **111 / 111** | **7.3 / 2.0 dB** |

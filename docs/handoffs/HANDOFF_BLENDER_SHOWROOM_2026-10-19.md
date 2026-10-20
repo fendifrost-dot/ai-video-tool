@@ -5,7 +5,7 @@
 **Fixed on 20 Oct as v6.** The comp's edge wrap was lowered from 0.5 to 0.15 (`lens.wrap`). See item 0. Fendi: "That one is solid."
 **v7 (20 Oct):** a livelier penguin in place. Fendi: "not enough movement still … it can walk away from me".
 **v8 (20 Oct):** the penguin walked away. Fendi: "That looks terrible … Remove the penguin from the scene altogether … It looks AI generated and cheesy."
-**v9 (20 Oct, rendering):** no penguin. The clean still shows the cabinets and floor where it stood. Do not bring back a cut-out animal (see the write-up's v9 section).
+**v9 (20 Oct, CODED + RENDERED, current; Fendi has not judged it):** no penguin; the clean still shows the cabinets and floor where it stood. Static `436ffebe`, tight `835a050b`, dolly `567e8ff7` (VERIFIED: face 36.3 / 38.3 / 36.5 dB median, timing 111/111 each). Do not bring back a cut-out animal (see the write-up's v9 section).
 **Spend: $1.82** (ledger rows 148–155), all on the room (stills and plates), none on him.
 
 Write-up: [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)
@@ -78,9 +78,10 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 ## How to verify (cheap, distinguishes outcomes)
 
 - **Reproduce one version.** `MOVE=static scripts/edit/reproduce_c033_showroom_blender.sh` with the stored inputs (room v5).
-  - Expected decoded MD5 (v6, wrap 0.15) **4eacb289a52e028a4eaf51663db8e9db** (static). Tight: `b9ba7caee4ee58430a93fc6c40fe2456`. Dolly: `ef590cb5e90748e3a4a19490692b19a7`.
+  - Expected decoded MD5 (v9, current) **22401387639530934a3e5ac3d6c658e5** (static). Tight: `f27057454327c0763204bc0177c8d538`. Dolly: `61b922fb0788a92941c08e48e951bb4e`.
+  - v6 (with the penguin, wrap 0.15): static `4eacb289…`, tight `b9ba7cae…`, dolly `ef590cb5…`.
   - v5 (wrap 0.5): static `f0cd5952…`, tight `9fdbad43…`, dolly `111486d1…`.
-  - The plate on its own: MD5 `ee623d0a5906d76ba41bdf572d5a8484` (`$OUT/plate.mp4`). Compare it first: a different plate means a different Blender particle build or OpenCV.
+  - The plate on its own: the v5 plate was MD5 `ee623d0a5906d76ba41bdf572d5a8484`. The v9 plate (no penguin) is not yet reproduced from scratch: run the script and record its MD5 (`$OUT/plate.mp4`). Compare it first: a different plate means a different Blender particle build or OpenCV.
   - Plate v3 versions: the script at commit `75c1279` (MD5 `aecb5dbc…` static).
   - A different MD5 with identical input hashes means a different Blender/ffmpeg/numpy build. Compare the versions before trusting it.
   - A MISMATCH on an input means the wrong file. Do not edit the hashes.
@@ -108,12 +109,13 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 > **State:** room v5 is merged. The room is a frozen still split into layers; the only motion is Blender particle snow,
 > a branch sway, a rolling-shutter LED band on the Ferrari's lamps and small rigid moves of the penguin's own pixels.
 > The Ferrari is shrunk to its 1.589 m spec. Fendi's headlight-bleed note is fixed in v6 (edge wrap 0.15).
-> The v6 versions (matched `81989353`, tight `7c341552`, dolly `49bdba39`) are filed in AVT, unassigned.
+> Fendi had the penguin removed ("AI generated and cheesy"). The v9 versions, with no penguin (matched `436ffebe`, tight `835a050b`, dolly `567e8ff7`), are filed in AVT, unassigned.
 > Fendi has not picked one.
 >
 > **First task:** get Fendi's eye on v6.
 > - Is the halo gone?
-> - LED bands, Ferrari size, penguin, snow, framing.
+> - LED bands, Ferrari size, snow, framing.
+> - Never bring back a cut-out or puppeted animal.
 > - Retune values in `showroom_c033.json` (no generation needed) and re-render what changed.
 > - Re-verify with `verify_scene.py` and file new versions as new assets.
 >
