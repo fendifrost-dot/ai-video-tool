@@ -160,6 +160,10 @@ Source: https://help.runwayml.com/hc/en-us/articles/53542207042323-Creating-with
 
 ## D. The "50% off" ad: USER-REPORTED, NOT VERIFIED
 
+**Update (20 Oct, Fendi):** the ad was a **Runway ML ad for Seedance 2.5**. Runway's own posts show a 50% offer only for Seedance 2.0 (code `SEEDANCE`, 50% off 3 months of paid plans, new customers; https://x.com/runwayml/status/2042336701557703020) and, for Seedance 2.5, 7 days of unlimited access with a new Max plan. Both are web-plan offers, not API credits. See the planning notes.
+
+**Correction (20 Oct, Fendi):** he uses Higgsfield (and AVT uses Runway) through the API, so the MCP connectors' plan and credit figures below do not describe his access. They are kept only as what the connectors reported.
+
 Fendi's report of a 50% off ad is recorded as USER-REPORTED. Which vendor and which offer: UNKNOWN. What the official sources show today:
 
 - **ElevenLabs:** the official pricing page shows **"Creator $22 — First month 50% off — $11 per month"**. The FAQ says "Creator $22 (121,000 credits, $11 for the first month)" (https://elevenlabs.io/pricing). VERIFIED, read 20 Oct.
