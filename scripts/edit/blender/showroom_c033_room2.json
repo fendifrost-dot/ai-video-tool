@@ -533,5 +533,14 @@
   "_": "DECISION: polished stone at a ~12 deg grazing view"
  },
  "dolly_m": 0.12,
- "_dolly": "DECISION: the dolly pushes 0.12 m straight in (v9: 0.20 m). This island starts ~0.9 m from the lens, so 0.20 m read as a zoom (checked on frame 240); 0.12 m keeps the move gentle and the proxies' depth errors small"
+ "_dolly": "DECISION: the dolly pushes 0.12 m straight in (v9: 0.20 m). This island starts ~0.9 m from the lens, so 0.20 m read as a zoom (checked on frame 240); 0.12 m keeps the move gentle and the proxies' depth errors small",
+ "performer_prep": {
+  "texture_scale": 0.25,
+  "texture_scale_tight": 0.5,
+  "matte_hold": [
+   8,
+   20
+  ],
+  "_": "DECISION (Fendi, 21 Oct, on the first room-2 render: 'pixelation blur and flashing around my edges'): the approved take repeats most frames (24p content in 59.94: a new picture every 2-3 frames, MEASURED) but its matte was cut on every frame, so on a repeat his picture holds while the matte's edge jumps (VERIFIED: ~32,000 edge pixels change by >0.1 on a repeat). prep_performer.py --matte-hold 8,20 keeps the previous matte wherever his picture changed by under 8 levels and follows the frame's own matte over 20. MEASURED at 1080: edge matte change on repeated frames 0.20 -> 0.055; 12,30 cut it to 0.035 but lagged the edge on real motion. Only the cut-out edge changes, never his pixels"
+ }
 }
