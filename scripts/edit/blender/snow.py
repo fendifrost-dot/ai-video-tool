@@ -46,6 +46,7 @@ world.node_tree.nodes["Background"].inputs[1].default_value = 0.0; sc.world = wo
 # ---- the plate's camera (MEASURED), locked off ----
 cd = bpy.data.cameras.new("PlateCam"); cd.sensor_fit = "VERTICAL"; cd.sensor_height = 36.0
 cd.lens = F * 36.0 / H; cd.shift_y = -(H / 2 - HOR) / H; cd.clip_start, cd.clip_end = 0.05, 300
+cd.shift_x = (W / 2 - P["plate"].get("principal_x", W / 2)) / H     # optical axis off centre (MEASURED), yaw 0
 cam = bpy.data.objects.new("PlateCam", cd); sc.collection.objects.link(cam)
 cam.location = (0, 0, CH); cam.rotation_euler = (math.pi / 2, 0, 0); sc.camera = cam
 

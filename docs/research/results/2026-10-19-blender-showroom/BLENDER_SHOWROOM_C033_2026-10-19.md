@@ -211,6 +211,109 @@ the kitchen island if it can be realistically done".
   - dolly `567e8ff7` (MD5 `61b922fb0788a92941c08e48e951bb4e`; with song `0b0381be`).
   - v6–v8 are superseded. v7 and v8 were not filed (rejected while rendering).
 
+## Room 2: the Gemini room (20–21 Oct, Fendi: "I hate the environment now … regenerate a better more photo realistic environment inside Gemini"; then "Room 2")
+
+**What it is.** Gemini candidate 2 (`49041b07`, job `524fbb29`, ledger 157), one 1536×2752 still.
+- The layout: a kitchen down the left, an island running away from the camera on the right, a blue Purosangue parked in front of a full-height window wall, and snow outside.
+- Nothing in it is generative video. The same lane as v9 moves it: Blender snow, the branches swayed inside the glass, and the rolling LED band on the car's lit DRLs.
+- No penguin. The edge wrap stays at 0.15.
+
+### Where he stands (DECISION)
+
+- The island runs toward the camera here, so the only place it can hide his hip cut is its **far end**.
+- He stands **0.25 m beyond the far end** (body centre; his front ~0.1 m off the stone), **0.59 m in from its left corner**, with the Ferrari behind him.
+- The stone's top edge crosses his whole width at the upper thigh:
+  - the take's bottom edge is 0.71 m up on his plane;
+  - the edge of the stone is at 0.90 m.
+- The car's DRLs land at his waist, either side of him.
+
+### The camera, measured
+
+| Value | How | Label |
+|---|---|---|
+| Horizon 1273.4 (full px), optical axis column 895.8 | the room's single vanishing point, RANSAC over line segments; verticals within 0.4° (median) | MEASURED |
+| Focal 1800 full px (1266 at 1080 wide), ±10 % | the Ferrari's side line meets the horizon at x ≈ −90 and its front lines at ≈ 4200; for orthogonal directions that gives 1730–1880 | MEASURED |
+| Camera height 1.55 m | the car's roof (SPEC 1.589 m) sits 5 px above the horizon at ~9.5 m, so 1.56 m | ESTIMATE |
+| Counter top 0.927 m | both counters read top / camera height = 0.598: the island's far end (top 1525, floor 1900, full px) and the left counter (top and toe line at one column) | MEASURED ratio |
+| Island far end 4.46 m; car wheels at 8.1 and 10.5 m; window 13.5 m; ceiling 4.95 m at the window | lifted with the camera above | MEASURED |
+
+- The room is one-point (every room line meets one vanishing point), so the room alone cannot give the focal length. The car can.
+- The focal barely changes his size. His size on screen is set by the counter (the stone's edge row and its 0.927 m height), so a 10 % focal error moves his scale by about 1 %.
+- **Two cross-checks, both OBSERVED:**
+  - The car's drawn wheelbase reads 2.73 m against a 3.02 m SPEC. Gemini drew the car ~10 % short in length, not in height.
+  - The car's far front corner lands within ~30 px of where its width predicts.
+
+### What changed in the tools (all $0)
+
+- `room_layers_still.py` (new): the layers from one still that already holds the car.
+  - It scales the still to 1080 wide and crops 7 rows top / 8 bottom, so nothing is stretched.
+  - The glass mask is the panes minus mullions, transom and the car (traced on a 1:1 grid and snapped by GrabCut: `masks/room2_car_matte.png`).
+  - 1,680 painted snowflakes are removed from the glass.
+- `build_scene.py`:
+  - `plate.principal_x` (the optical axis off centre, as lens shift);
+  - a `proxies` list of quads for the room (kitchen run, counter, backsplash, upper cabinets, left wall, window wall, ceiling, the car's side and front);
+  - `performer.position`;
+  - `dolly_m`.
+- `snow.py`: `principal_x`. `room_motion.py`: no penguin set-up when it is disabled. `measure_plate_light.py`: any box as the reference surface.
+- **VERIFIED:** v9 is untouched by these changes.
+  - A v9 room frame renders bit-identical with the old and the new code (max difference 0).
+  - The v9 plate frame 120 is byte-identical.
+
+### Decisions for this room
+
+- **White reference:** the white wall beside the window (`light.white_plate_srgb` 0.686 / 0.647 / 0.590, MEASURED).
+- **Exposure +0.3 stop**, chosen on his face at +0 / +0.3 / +0.6. At +0 his face is dim against the lit window; +0.3 reads his eyes, glasses and mouth.
+- **Top light +0.1 / −0.25 stop.** The downlights are behind him here (5–11 m).
+- **Dolly 0.12 m** (v9: 0.20). The island starts ~0.9 m from the lens; on frame 240, 0.20 m read as a zoom.
+- **Tight 2.0× lens** (v9: 1.6×). He stands ~4.7 m away, 0.76× his v9 size, so 2.0× gives his face about the v9 tight size.
+- **VERIFIED:** the plate's light reference (an island-top box) is flat: ratio 0.9999–1.0002 over 240 frames. Nothing flickers on him.
+
+### Files (room 2)
+
+Project YSL `764a63d2`, folder `canonical/body_only_swap_c033_2026-10-18/blender_showroom/`. All of them are unassigned: no shot and no Cut (VERIFIED by re-query).
+
+| Role | Asset | Decoded MD5 |
+|---|---|---|
+| Plate (not for the cut) | `9addb550` | `29126c0cd09f3a20d221f01f30b3ef94` |
+| **Static** | **`18a6ad54`**; with song `928bc471`, side-by-side `d1d50150` | `b39ecd1fb18a6554ce15e2c8fa2b1baa` |
+| **Tight (2.0× lens)** | **`65df207f`**; with song `7acc1866`, face pair `d478fb22` | `c886e6e84e1d5e7b1f40f290dfa10595` |
+| **Dolly (0.12 m push)** | **`e8dff105`**; with song `e1d1ef34` | `b158fd69f6394ecd02c879dcfa3ff625` |
+
+### Verification (room 2)
+
+| Version | Face PSNR, median / min | Mouth timing: best match at lag 0 | Timing margin, median / min |
+|---|---|---|---|
+| **Room 2, static** | **35.7 / 34.2 dB** | **111 / 111** | **7.7 / 1.5 dB** |
+| **Room 2, tight** | **38.4 / 36.3 dB**, 10 px in | **111 / 111** | **12.1 / 5.7 dB** |
+| **Room 2, dolly** | **35.8 / 34.2 dB** | **111 / 111** | **7.7 / 1.8 dB** |
+
+- **VERIFIED:** the static was rendered twice from scratch, hours apart (the second time after the matte trials below were undone), and the decoded MD5 is `b39ecd1f…` both times.
+- **VERIFIED:** his face is the approved file's pixels, resampled and graded. His mouth is on the take's own frames.
+- **OBSERVED:** no stray matte outside his body on any checked frame (largest separate piece: 50 px, on the tight).
+
+### Edge flashing (Fendi, 21 Oct, on the first static: "There's some pixelation blur and flashing around my edges"): OPEN
+
+- **Three matte fixes were tried in `prep_performer.py` and all were rejected.** The code is back to `main`; nothing of them ships.
+  1. **A per-pixel hold** (keep the previous matte where the picture changed by under 8–20 levels).
+     - This was based on a first reading, later shown wrong: that the take repeats frames while its matte does not.
+     - It left partial edges held over still background, and they piled up into **ghost trails** beside him (seen on the tight, frame 120). Rejected.
+  2. **A whole-frame hold** (reuse the matte when the whole picture changed by under 74 levels).
+     - That number came from the whole frame, where repeats (≤ 66) and new pictures (≥ 82) separate cleanly.
+     - Around his outline there is **no such gap**: the picture changes on almost every frame (23–190 levels).
+     - So a "repeat" can still move his head, and the held matte lagged it: a pale strip of the take's background beside his face on frames 160–161 (face PSNR min 25.5 dB). Rejected.
+  3. **A matte carried along his motion** (optical flow) and mixed with the frame's own.
+     - MEASURED: the edge's change beyond his motion went only from 0.076 to 0.073. No real gain, so not kept.
+- **VERIFIED:** Blender's matte equals the exact warp of the texture within 1–4 %. Cycles adds no edge noise.
+- **OBSERVED:** about two-thirds of the matte's change at his edge is real motion (0.258 raw against 0.091 after optical flow). The take's matte boils a little, but not enough to explain a visible flash.
+- **Not yet located.** The remaining candidates are compositing-only, each a few minutes with no re-render:
+  - the edge wrap (0.15);
+  - the grain;
+  - snowflakes seen through his soft edge;
+  - the Ferrari's LED band reaching his outline.
+  The take's 24p cadence (new pictures every 2–3 frames, against 59.94 snow) is another, and it can only be changed by generating frames of him, which is ruled out.
+- **Asked Fendi:** where (cap, face, shoulders, hands), against what (window, headlights, car) and when in the 4 s.
+- **The "blur":** on the wide he is ~0.21× the take's size on screen (face ~745 px). That is the take's detail at that size. The tight (0.445×) is sharper.
+
 ## How the shot is built (scripts/edit/blender/)
 
 0. **The room (v5)**, before any of the steps below:

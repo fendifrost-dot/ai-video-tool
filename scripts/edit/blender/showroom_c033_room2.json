@@ -1,0 +1,542 @@
+{
+ "_doc": "c033 BODY-ONLY in Gemini room 2 (still 49041b07; Fendi, 20 Oct: 'Room 2'): the measured scene. Units: metres, pixels at 1080x1920 unless named _full (the still's 1536x2752). Camera frame: X right, depth forward, height up from the floor. Every value is labelled MEASURED (from the files), SPEC, ESTIMATE (assumption, with what it rests on) or DECISION.",
+ "frames": 240,
+ "room_scale": 1.0,
+ "_room_scale": "DECISION: 1.0; this room's size is set by the camera height and the counter (below)",
+ "fps": "60000/1001",
+ "song_start": 56.9098,
+ "plate": {
+  "fps": 59.94006,
+  "start_seconds": 0.0,
+  "_fps": "built at the shot's 59.94 from one still; nothing generative moves",
+  "crop_top_px": 7,
+  "_crop": "DECISION: the 1536x2752 still is scaled to 1080 wide (1935 rows) and rows 7..1926 kept, so nothing is stretched",
+  "focal_px": 1265.62,
+  "_focal": "MEASURED +/-10 %: the room is one-point (its lines meet one vanishing point), so the focal comes from the Ferrari: its side line (sill, wheel contacts) meets the horizon at x ~-90 full and its front lines at ~4200; orthogonal directions give ~1800 full px (1730-1880). It barely moves him: his size on screen is set by the counter (island.top)",
+  "horizon_y": 888.36,
+  "_horizon": "MEASURED: the room's vanishing point (895.8, 1273.4) full, RANSAC over line segments; verticals within 0.4 deg (median), so pitch 0 and roll 0",
+  "principal_x": 629.86,
+  "_principal": "MEASURED: the vanishing point's column; the room's depth axis is the camera's, so the optical axis sits right of centre (lens shift, yaw 0)",
+  "camera_height": 1.55,
+  "_height": "ESTIMATE: the Purosangue's roof (SPEC 1.589 m) sits 5 px above the horizon at ~9.5 m (1.56 m); both counters read top/camera 0.598 (MEASURED: the island's far-end top 1525 and floor 1900 full; the left counter's top and toe line at one column), a 0.927 m counter. 1.52-1.58 m fits all three",
+  "motion": "locked-off (one still)"
+ },
+ "room_v5": {
+  "_doc": "The layered-still lane: room_layers_still.py splits the still, snow.py renders the snow, room_motion.py sways the branches inside the glass and runs the LED band on the car's lamps. Pixels on the still are _full (1536x2752); boxes named _1080 are on the plate.",
+  "led_min_value": 0.75,
+  "lamp_boxes_1080": [
+   [
+    650,
+    1004,
+    747,
+    1041
+   ],
+   [
+    877,
+    999,
+    908,
+    1034
+   ]
+  ],
+  "_lamps": "MEASURED on the still: the two lit DRL strips (left, right), each with ~8 px for its glow",
+  "flake_tophat": 40,
+  "flake_dark_ring": 90,
+  "_flakes": "DECISION: the still's painted snowflakes over dark sky are removed so the only snow that moves is Blender's",
+  "glass_polys": [
+   [
+    [
+     567,
+     830
+    ],
+    [
+     1500,
+     816
+    ],
+    [
+     1500,
+     1473
+    ],
+    [
+     567,
+     1473
+    ]
+   ]
+  ],
+  "mullions_x": [
+   [
+    835,
+    864
+   ],
+   [
+    1163,
+    1187
+   ]
+  ],
+  "transoms": [
+   [
+    [
+     567,
+     1037
+    ],
+    [
+     1500,
+     1032
+    ],
+    11
+   ]
+  ],
+  "_glass": "MEASURED on a pixel grid of the still (full px): the window wall's panes, its two mullions and transom; the car (masks/room2_car_matte.png, traced on a 1:1 grid and snapped by GrabCut) is cut out",
+  "wind": {
+   "base": 0.75,
+   "gusts": [
+    [
+     0.25,
+     3.1,
+     0.0
+    ],
+    [
+     0.12,
+     1.3,
+     1.1
+    ]
+   ],
+   "_": "DECISION: one wind for the whole yard, strength 0.38-1.12 of its mean over the shot (a slow gust every ~3 s and a quicker flutter); the snow and the branches both follow it"
+  },
+  "snow": {
+   "seed": 19,
+   "count": 45000,
+   "preroll_s": 16,
+   "depth_m": [
+    14.0,
+    32.0
+   ],
+   "x_m": [
+    -12.0,
+    20.0
+   ],
+   "top_m": 16.0,
+   "fall_mps": 1.1,
+   "fall_jitter_mps": 0.3,
+   "damping": 0.0,
+   "gravity": 0.047,
+   "wind_strength": 0.5,
+   "wind_flow": 1.0,
+   "turbulence_strength": 0.08,
+   "turbulence_size_m": 1.5,
+   "flake_radius_m": 0.02,
+   "size_random": 0.6,
+   "colour_linear": [
+    0.8,
+    0.84,
+    0.92
+   ],
+   "strength": 2.1,
+   "haze_m": 45.0,
+   "samples": 16,
+   "shutter": 0.5,
+   "render_box_1080": [
+    390,
+    560,
+    1062,
+    1036
+   ],
+   "_probe": "MEASURED with --probe (5000 flakes): fall 1.11 m/s and drift 1.11 m/s (medians); the wind field is a flow (drag toward the wind), so gravity 0.047 balances it at the fall speed",
+   "_": "the v9 snow (same physics, seed and density: 45000 flakes over 32 m x 18 m), from just beyond the glass (13.5 m, MEASURED from the window's floor line) to 32 m, across the window"
+  },
+  "trees": {
+   "seed": 7,
+   "amplitude_px": 1.4,
+   "period_s": 2.6,
+   "flutter_period_s": 0.9,
+   "sway_mix": 0.7,
+   "lean": 0.25,
+   "phase_sigma_px": 60,
+   "edge_taper_px": 6,
+   "ground_y_1080": 928,
+   "full_sway_y_1080": 577,
+   "_": "as v9: up to 1.4 px with the gusts, none at the snowy lawn's far edge (y 928, MEASURED), full at the top of the glass"
+  },
+  "led": {
+   "period_rows": 90,
+   "drift_cycles_per_frame": 0.03,
+   "sharpness": 2.5,
+   "depth": 0.55,
+   "_": "ESTIMATE/DECISION: a phone reads its sensor rows over ~13 ms per frame (~6.8 us a row at 1920 rows); LED lamps driven at ~1.62 kHz PWM span ~90 rows per on/off cycle, so a lamp 40-60 rows tall carries about half a dark band. 1.62 kHz is 27.03 cycles per 59.94 fps frame, so the bands crawl 0.03 cycle (2.7 rows) a frame. Depth 0.55 is the share of light the band takes out at its darkest (an exposure longer than the PWM period softens it)"
+  },
+  "penguin_motion": {
+   "enabled": false,
+   "_": "this room has no penguin"
+  }
+ },
+ "island": {
+  "corner_far": [
+   0.21,
+   4.46
+  ],
+  "corner_near": [
+   1.66,
+   4.46
+  ],
+  "long_axis": [
+   0.0,
+   -1.0
+  ],
+  "length": 4.2,
+  "top": 0.927,
+  "_": "the island runs toward the camera; its far end's top edge (y 1525 full) and its left corner (x 980 full) MEASURED and lifted with the camera above; its right corner is out of frame (width ESTIMATE 1.45 m, at least 1.38 seen); it runs past the bottom of the frame (length ESTIMATE)"
+ },
+ "penguin": {
+  "in_scene": false
+ },
+ "proxies": [
+  {
+   "name": "floor",
+   "quad": [
+    [
+     -30,
+     0.3,
+     0
+    ],
+    [
+     30,
+     0.3,
+     0
+    ],
+    [
+     30,
+     60,
+     0
+    ],
+    [
+     -30,
+     60,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "ceiling",
+   "quad": [
+    [
+     -30,
+     0.3,
+     4.95
+    ],
+    [
+     -30,
+     60,
+     4.95
+    ],
+    [
+     30,
+     60,
+     4.95
+    ],
+    [
+     30,
+     0.3,
+     4.95
+    ]
+   ]
+  },
+  {
+   "name": "window_wall",
+   "quad": [
+    [
+     -30,
+     13.5,
+     0
+    ],
+    [
+     30,
+     13.5,
+     0
+    ],
+    [
+     30,
+     13.5,
+     4.95
+    ],
+    [
+     -30,
+     13.5,
+     4.95
+    ]
+   ]
+  },
+  {
+   "name": "kitchen_base",
+   "quad": [
+    [
+     -1.167,
+     0.3,
+     0
+    ],
+    [
+     -1.167,
+     5.39,
+     0
+    ],
+    [
+     -1.167,
+     5.39,
+     0.927
+    ],
+    [
+     -1.167,
+     0.3,
+     0.927
+    ]
+   ]
+  },
+  {
+   "name": "counter_top",
+   "quad": [
+    [
+     -1.77,
+     0.3,
+     0.927
+    ],
+    [
+     -1.167,
+     0.3,
+     0.927
+    ],
+    [
+     -1.167,
+     4.09,
+     0.927
+    ],
+    [
+     -1.77,
+     4.09,
+     0.927
+    ]
+   ]
+  },
+  {
+   "name": "backsplash",
+   "quad": [
+    [
+     -1.77,
+     0.3,
+     0.927
+    ],
+    [
+     -1.77,
+     4.09,
+     0.927
+    ],
+    [
+     -1.77,
+     4.09,
+     2.3
+    ],
+    [
+     -1.77,
+     0.3,
+     2.3
+    ]
+   ]
+  },
+  {
+   "name": "tall_column",
+   "quad": [
+    [
+     -1.167,
+     4.09,
+     0.927
+    ],
+    [
+     -1.167,
+     5.39,
+     0.927
+    ],
+    [
+     -1.167,
+     5.39,
+     2.3
+    ],
+    [
+     -1.167,
+     4.09,
+     2.3
+    ]
+   ]
+  },
+  {
+   "name": "upper_cabinets",
+   "quad": [
+    [
+     -1.4,
+     0.3,
+     2.3
+    ],
+    [
+     -1.4,
+     5.39,
+     2.3
+    ],
+    [
+     -1.4,
+     5.39,
+     4.95
+    ],
+    [
+     -1.4,
+     0.3,
+     4.95
+    ]
+   ]
+  },
+  {
+   "name": "left_wall",
+   "quad": [
+    [
+     -1.167,
+     5.39,
+     0
+    ],
+    [
+     -2.54,
+     13.5,
+     0
+    ],
+    [
+     -2.54,
+     13.5,
+     4.95
+    ],
+    [
+     -1.167,
+     5.39,
+     4.95
+    ]
+   ]
+  },
+  {
+   "name": "car_side",
+   "quad": [
+    [
+     -1.69,
+     11.29,
+     0
+    ],
+    [
+     0.32,
+     7.28,
+     0
+    ],
+    [
+     0.32,
+     7.28,
+     1.58
+    ],
+    [
+     -1.69,
+     11.29,
+     1.58
+    ]
+   ]
+  },
+  {
+   "name": "car_front",
+   "quad": [
+    [
+     0.32,
+     7.28,
+     0
+    ],
+    [
+     1.96,
+     8.1,
+     0
+    ],
+    [
+     1.96,
+     8.1,
+     1.58
+    ],
+    [
+     0.32,
+     7.28,
+     1.58
+    ]
+   ]
+  }
+ ],
+ "_proxies": "the surfaces the plate is projected onto, so the dolly gets parallax. MEASURED with the camera above: the kitchen's base and counter front at X -1.167 (its toe line and counter edge through the vanishing point), the run ending at 5.39 m, the window's floor line at 13.5 m, the ceiling 4.95 m at the window; the car's near wheels at (-1.31, 10.52) and (-0.08, 8.08), heading 26.6 deg (its side vanishing point), roof 1.58 m. ESTIMATE: counter depth 0.6 m, the upper cabinets' face, the column, the car's overhangs and width (Purosangue SPEC, scaled 0.9 like its drawn wheelbase)",
+ "source": {
+  "camera": "SPEC iPhone 14, 4K 59.94, main lens; locked-off (MEASURED, under 0.3 px drift)",
+  "roll_deg": 1.23,
+  "_roll": "MEASURED: four door/frame verticals lean -0.96..-1.56 deg the same way; corrected by rotating the take +1.23 deg (geometry only)",
+  "px_per_metre_at_face": 1160,
+  "_ppm": "ESTIMATE, anchored on Fendi's stated height 6 ft 3 in (1.905 m, 19 Oct): outer eye corners 110.6 px (MEASURED median of 28 frames) over 0.095 m, and eyes-to-waistband 809 px (MEASURED) over ~0.70 m, agree within 1 %. First pass used 1229 (a 0.090 m assumption, 1.80 m man): he read short",
+  "horizon_y": 960,
+  "_shorizon": "MEASURED level phone (verticals parallel), no lens shift",
+  "eye_y": 676,
+  "eye_x": 595,
+  "eye_height": 1.78,
+  "_eye": "From Fendi's stated height 1.905 m (eyes ~0.125 m below the top of the head); sets how far his head rises above the counter",
+  "_below": "the take's camera sat (horizon_y - eye_y) / px_per_metre = 0.245 m below his eyes (MEASURED ratio)"
+ },
+ "performer": {
+  "position": [
+   0.8,
+   4.71
+  ],
+  "_": "DECISION (Fendi chose room 2, 20 Oct): he stands just beyond the island's far end, 0.25 m off it (body centre; his front ~0.1 m off the stone), 0.59 m in from its left corner, so the counter's top edge crosses his whole width at the upper thigh (the take is framed thighs-up; its bottom is 0.71 m on his plane, the stone's edge 0.90 m) and the Ferrari stands behind him, its DRLs at his waist"
+ },
+ "light": {
+  "white_plate_srgb": [
+   0.686,
+   0.647,
+   0.59
+  ],
+  "_wp": "MEASURED: the white wall beside the window (x 366-384, y 600-1200 on the plate), median; a white vertical surface in the room's own light, as the penguin belly was in v9",
+  "white_source_srgb": [
+   0.803,
+   0.777,
+   0.724
+  ],
+  "_ws": "MEASURED: the white door beside him in the take",
+  "exposure_stops": 0.3,
+  "_exposure": "DECISION (checked on his face at +0 / +0.3 / +0.6, frame 1): at +0 his face is dim against the lit window; +0.3 reads eyes, glasses and mouth and keeps the jacket just under the lit marble's brightness",
+  "top_light_stops": [
+   0.1,
+   -0.25
+  ],
+  "_top": "DECISION: this room's downlights are behind him (5-11 m, MEASURED on the ceiling), so a softer gradient than v9's: +0.1 stop at the head, -0.25 at the counter",
+  "flash_follow": 0.8,
+  "_flash": "kept from v9; the plate is one still, so the reference ratio is 1 on every frame (MEASURED by measure_plate_light.py on the island-top box) and nothing flickers on him",
+  "flash_reference": "700,1068,900,1085"
+ },
+ "tight": {
+  "lens_factor": 2.0,
+  "centre_px": [
+   810,
+   900
+  ],
+  "_": "DECISION: the matched camera with a 2.0x lens, framed on him (an exact crop of the wide, so placement and perspective are unchanged). In this room he stands ~4.7 m from the camera, 0.76x the size he had in the v9 room, so 2.0x (not 1.6x) gives his face about the v9 tight size; the frame stops at the plate's right edge"
+ },
+ "lens": {
+  "f_stop": 2.0,
+  "performer_softness_px": 0.5,
+  "wrap": 0.15,
+  "_wrap": "DECISION (Fendi, 20 Oct: 'there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment'): the composite lane's 0.5 screen wrap of the blurred room left a pale rim on his outline against the snowy window and carried the Ferrari lamps' rolling band onto his car-side edge; 0.15 keeps the edge in the room's light without the halo (checked at 0.5 / 0.15 / 0 on frames 60, 120, 180)",
+  "_soft": "DECISION: his 4K-derived pixels are crisper than the 1080 AI plate; a 0.5 px lens softness puts him in the same camera (optics, not a redraw)",
+  "_": "DECISION: depth of field from the scene depth, focused on him; 1-4 px of blur on the island and the room"
+ },
+ "reflection": {
+  "strength": 0.12,
+  "roughness": 0.12,
+  "_": "DECISION: polished stone at a ~12 deg grazing view"
+ },
+ "dolly_m": 0.12,
+ "_dolly": "DECISION: the dolly pushes 0.12 m straight in (v9: 0.20 m). This island starts ~0.9 m from the lens, so 0.20 m read as a zoom (checked on frame 240); 0.12 m keeps the move gentle and the proxies' depth errors small",
+ "performer_prep": {
+  "texture_scale": 0.25,
+  "texture_scale_tight": 0.5,
+  "_": "DECISION: the take's texture at 0.25 (static, dolly) and 0.5 (tight) of 1080, so Blender minifies it by no more than ~10 %. No matte change: on Fendi's note (21 Oct, 'pixelation blur and flashing around my edges') three matte fixes were tried and rejected, see the write-up (Room 2, 'Edge flashing')"
+ }
+}

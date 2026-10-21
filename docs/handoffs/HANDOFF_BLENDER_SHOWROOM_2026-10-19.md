@@ -6,7 +6,8 @@
 **v7 (20 Oct):** a livelier penguin in place. Fendi: "not enough movement still … it can walk away from me".
 **v8 (20 Oct):** the penguin walked away. Fendi: "That looks terrible … Remove the penguin from the scene altogether … It looks AI generated and cheesy."
 **v9 (20 Oct, CODED + RENDERED, current; Fendi has not judged it):** no penguin; the clean still shows the cabinets and floor where it stood. Static `436ffebe`, tight `835a050b`, dolly `567e8ff7` (VERIFIED: face 36.3 / 38.3 / 36.5 dB median, timing 111/111 each). Do not bring back a cut-out animal (see the write-up's v9 section).
-**Spend: $1.82** (ledger rows 148–155), all on the room (stills and plates), none on him.
+**Room 2 (21 Oct, CODED + RENDERED, current; Fendi's pick of the Gemini rooms):** he stands just beyond the island's far end of Gemini still `49041b07`, the blue Ferrari behind him. Static `18a6ad54`, tight `65df207f`, dolly `e8dff105`, plate `9addb550` (VERIFIED: face 35.7 / 38.4 / 35.8 dB median, timing 111/111 each). **Open:** Fendi's note on the first static, "pixelation blur and flashing around my edges". Three matte fixes were tried and rejected (write-up, Room 2, "Edge flashing"). He was asked where and when he sees it.
+**Spend: $2.36** (ledger rows 148–157), all on the room (stills and plates), none on him. Room 2 itself added $0 beyond its Gemini still (row 157).
 
 Write-up: [`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`](../research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md)
 Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PRESERVING_CLOTHING_SWAP.md)
@@ -43,6 +44,13 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## Not done: what needs a person or a later session
 
+R. **Room 2: the edge flashing (open, highest priority).**
+   - **Get Fendi's answer:** where (cap / face / shoulders / hands), against what (window / headlights / car), when in the 4 s.
+   - **Then test the candidates in `comp_scene.py` only** (each ~5 min; the passes are not re-rendered): `lens.wrap` 0.15 → 0; grain off; snow kept off his soft edge; LED band kept off his outline.
+   - Measure each the same way: on frames where his face is still, the change at his edge against the room just beside it.
+   - **Do not** hold, freeze or carry the matte across frames. Three such fixes failed: ghost trails, an edge lagging his head, and no measurable gain.
+   - The take is 24p in a 59.94 file. Its cadence can only change by generating frames of him: ruled out.
+R2. **Room 2: Fendi's eye** on placement (behind the island's far end), size against the counter (0.927 m), the +0.3 stop exposure, the tight 2.0× and the 0.12 m dolly. Every value is in `scripts/edit/blender/showroom_c033_room2.json`.
 0. **The headlight bleed: fixed in v6, awaiting Fendi's eye.**
    - **Test run ($0, frames 60/120/180):** the comp with the wrap at 0.5, at 0.15 and off.
    - **OBSERVED:** at 0.5 the wrap lifted his outline by up to 16–18 levels.
@@ -77,7 +85,12 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## How to verify (cheap, distinguishes outcomes)
 
-- **Reproduce one version.** `MOVE=static scripts/edit/reproduce_c033_showroom_blender.sh` with the stored inputs (room v5).
+- **Reproduce room 2.** `MOVE=static scripts/edit/reproduce_c033_showroom_room2.sh` with the stored inputs.
+  - Expected decoded MD5: static **b39ecd1fb18a6554ce15e2c8fa2b1baa**, tight `c886e6e84e1d5e7b1f40f290dfa10595`, dolly `b158fd69f6394ecd02c879dcfa3ff625`, plate `29126c0cd09f3a20d221f01f30b3ef94`.
+  - VERIFIED: the static was rendered twice from scratch to the same MD5 (21 Oct).
+  - It snow-renders 240 frames (~1 h CPU) and each move ~1 h. Run each move as its own job; a 2 h background limit stopped one run (it resumes: frames on disk are kept).
+- **Reproduce v9.** `MOVE=static scripts/edit/reproduce_c033_showroom_blender.sh` with the stored inputs (room v5).
+  - VERIFIED: the room-2 code changes leave v9 bit-identical (an env frame rendered with the old and new code, max difference 0).
   - Expected decoded MD5 (v9, current) **22401387639530934a3e5ac3d6c658e5** (static). Tight: `f27057454327c0763204bc0177c8d538`. Dolly: `61b922fb0788a92941c08e48e951bb4e`.
   - v6 (with the penguin, wrap 0.15): static `4eacb289…`, tight `b9ba7cae…`, dolly `ef590cb5…`.
   - v5 (wrap 0.5): static `f0cd5952…`, tight `9fdbad43…`, dolly `111486d1…`.
@@ -112,7 +125,13 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 > Fendi had the penguin removed ("AI generated and cheesy"). The v9 versions, with no penguin (matched `436ffebe`, tight `835a050b`, dolly `567e8ff7`), are filed in AVT, unassigned.
 > Fendi has not picked one.
 >
-> **First task:** get Fendi's eye on v6.
+> **Current: room 2** (Gemini still `49041b07`; static `18a6ad54`, tight `65df207f`, dolly `e8dff105`; scene `scripts/edit/blender/showroom_c033_room2.json`; reproduce `scripts/edit/reproduce_c033_showroom_room2.sh`).
+> **First task:** Fendi's note on room 2, "pixelation blur and flashing around my edges".
+> - Read the write-up's Room 2 "Edge flashing" section first.
+> - Never hold, freeze or carry the matte across frames: three such fixes failed.
+> - Get from him where and when; test the comp-only candidates in `comp_scene.py`; measure before you show him.
+>
+> **Earlier (v9 room):** get Fendi's eye on v6.
 > - Is the halo gone?
 > - LED bands, Ferrari size, snow, framing.
 > - Never bring back a cut-out or puppeted animal.
@@ -124,7 +143,7 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 > - Never redraw his face, never add lip-sync, and do not reopen the approved BODY-ONLY result (`5482b35b`) or the baseline (`8a527bab`).
 > - Nothing goes on the board or in the Cut until Fendi picks a version. Then add it as a new version on c033 and re-query that only that row changed.
 > - Post every clip and still to chat as it exists.
-> - Dry-run any paid step, report its cost, log it in `docs/LEDGER_YSL_TESTING_BUDGET.md` (last row 155, total $449.12), and ask before spending over $50.
+> - Dry-run any paid step, report its cost, log it in `docs/LEDGER_YSL_TESTING_BUDGET.md` (last row 157, total $449.66), and ask before spending over $50.
 > - Never commit media of Fendi or the song (the repo is public), and never paste a token or a signed URL.
 > - Label every claim VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 > - Reproduce with `scripts/edit/reproduce_c033_showroom_blender.sh`. The plate MD5 `ee623d0a…` is VERIFIED bit-identical from storage.
