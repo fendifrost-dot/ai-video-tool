@@ -32,7 +32,7 @@ mkdir -p "$OUT/layers"
 roll=$("$PY" -I -c "import json,sys; print(json.load(open(sys.argv[1]))['source']['roll_deg'])" "$J")
 key=texture_scale; [ "$MOVE" = tight ] && key=texture_scale_tight     # Blender minifies it by no more than ~10 %
 scale=$("$PY" -I -c "import json,sys; print(json.load(open(sys.argv[1]))['performer_prep'][sys.argv[2]])" "$J" "$key")
-hold=$("$PY" -I -c "import json,sys; print(','.join(str(v) for v in json.load(open(sys.argv[1]))['performer_prep']['matte_hold']))" "$J")
+hold=$("$PY" -I -c "import json,sys; print(json.load(open(sys.argv[1]))['performer_prep']['matte_hold'])" "$J")
 "$PY" -I "$bl/prep_performer.py" "$IN/fg.mp4" "$IN/alpha.mp4" "$OUT/perf_seq" --roll "$roll" --scale "$scale" --matte-hold "$hold"
 ref=$("$PY" -I -c "import json,sys; print(json.load(open(sys.argv[1]))['light']['flash_reference'])" "$J")
 "$PY" -I "$bl/measure_plate_light.py" "$OUT/plate.mp4" "$IN/fg.mp4" "$OUT/plate_light.npy" "$ref"

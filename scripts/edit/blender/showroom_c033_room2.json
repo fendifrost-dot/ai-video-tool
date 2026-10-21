@@ -537,10 +537,7 @@
  "performer_prep": {
   "texture_scale": 0.25,
   "texture_scale_tight": 0.5,
-  "matte_hold": [
-   8,
-   20
-  ],
-  "_": "DECISION (Fendi, 21 Oct, on the first room-2 render: 'pixelation blur and flashing around my edges'): the approved take repeats most frames (24p content in 59.94: a new picture every 2-3 frames, MEASURED) but its matte was cut on every frame, so on a repeat his picture holds while the matte's edge jumps (VERIFIED: ~32,000 edge pixels change by >0.1 on a repeat). prep_performer.py --matte-hold 8,20 keeps the previous matte wherever his picture changed by under 8 levels and follows the frame's own matte over 20. MEASURED at 1080: edge matte change on repeated frames 0.20 -> 0.055; 12,30 cut it to 0.035 but lagged the edge on real motion. Only the cut-out edge changes, never his pixels"
+  "matte_hold": 74,
+  "_": "DECISION (Fendi, 21 Oct, on the first room-2 render: 'pixelation blur and flashing around my edges'): the approved take repeats most frames (24p content in 59.94, a new picture every 2-3 frames, MEASURED) but its matte was cut on every frame, so on a repeat his picture holds while the matte's edge jumps (VERIFIED: ~32,000 edge pixels change by >0.1 on a repeat). prep_performer.py --matte-hold 74 reuses the previous matte exactly on a repeated frame. MEASURED: frame-to-frame change (99.5th percentile, 540x960, 1 px blur) is at most 66 levels on the 152 repeats and at least 82 on the new pictures, a clean gap; 74 sits in it. After: the matte's edge changes by 0.000 on repeats. A first per-pixel blend (8,20) was rejected: it held partial edges over still background and piled them into ghost trails beside him (seen on the tight frame 120). Only the cut-out edge changes, never his pixels"
  }
 }
