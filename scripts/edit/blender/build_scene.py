@@ -29,6 +29,7 @@ NFR = P["frames"]
 
 pl = P["plate"]; src = P["source"]; isl = P["island"]; perf = P["performer"]
 F = pl["focal_px"]; HOR = pl["horizon_y"]
+CX = pl.get("principal_x", W / 2)                  # the optical axis column (MEASURED vanishing point; centre if absent)
 # The plate fixes the room only up to scale (one picture). room_scale sets it: the measured room and the camera
 # height scale together about the camera's foot, so the plate's image is unchanged and only his size relative to
 # the room moves (DECISION, params.json).
@@ -59,6 +60,7 @@ def make_cam(name):
     cd.sensor_fit = "VERTICAL"; cd.sensor_height = 36.0
     cd.lens = F * 36.0 / H
     cd.shift_y = -(H / 2 - HOR) / H             # horizon above centre (measured), pitch 0
+    cd.shift_x = (W / 2 - CX) / H                # optical axis off centre (measured), yaw 0
     cd.clip_start, cd.clip_end = 0.05, 200
     ob = bpy.data.objects.new(name, cd); sc.collection.objects.link(ob)
     ob.location = (0, 0, CH); ob.rotation_euler = (math.pi / 2, 0, 0)
@@ -70,12 +72,12 @@ if MOVE == "tight":
     # on him. Lens shift keeps the camera level; the frame centre lands on the wide frame's point TIGHT_CENTRE.
     k = P["tight"]["lens_factor"]; cxw, cyw = P["tight"]["centre_px"]
     cam.data.lens *= k
-    cam.data.shift_x = k * (cxw - W / 2) / H
+    cam.data.shift_x = k * (cxw - CX) / H
     cam.data.shift_y = k * (HOR - cyw) / H
 if MOVE == "dolly":
-    # restrained: 0.20 m straight in over the shot, eased; the path is keyed here and rendered from here.
+    # restrained: dolly_m (default 0.20 m) straight in over the shot, eased; the path is keyed here and rendered from here.
     # 0.20 m keeps the proxies' depth errors under ~2 px of parallax (the plate's AI geometry is not exact)
-    for f, y in ((1, 0.0), (NFR, 0.20)):
+    for f, y in ((1, 0.0), (NFR, P.get("dolly_m", 0.20))):
         cam.location = (0, y, CH); cam.keyframe_insert("location", frame=f)
     for fc in cam.animation_data.action.fcurves:
         for k in fc.keyframe_points: k.interpolation = "BEZIER"; k.easing = "AUTO"
@@ -106,7 +108,7 @@ def projection_material(name, gloss=0.0, rough=0.1):
             else: nt.links.new(v, n.inputs[i])
         return n.outputs[0]
     negz = math_("MULTIPLY", sep.outputs["Z"], -1.0)
-    u = math_("ADD", math_("MULTIPLY", math_("DIVIDE", sep.outputs["X"], negz), F / W), 0.5)
+    u = math_("ADD", math_("MULTIPLY", math_("DIVIDE", sep.outputs["X"], negz), F / W), CX / W)
     v = math_("ADD", math_("MULTIPLY", math_("DIVIDE", sep.outputs["Y"], negz), F / H), 1 - HOR / H)
     comb = nt.nodes.new("ShaderNodeCombineXYZ"); nt.links.new(u, comb.inputs[0]); nt.links.new(v, comb.inputs[1])
     tex = seq_node(nt, plate_img); nt.links.new(comb.outputs[0], tex.inputs[0])
@@ -133,39 +135,53 @@ def mesh_obj(name, verts, faces, mat):
     return ob
 
 room = []
-# floor and ceiling (ceiling height ESTIMATE 3.3 m)
-room.append(mesh_obj("floor", [(-30, 0.3, 0), (30, 0.3, 0), (30, 60, 0), (-30, 60, 0)], [(0, 1, 2, 3)], room_mat))
-room.append(mesh_obj("ceiling", [(-30, 0.3, 3.3), (-30, 60, 3.3), (30, 60, 3.3), (30, 0.3, 3.3)], [(0, 1, 2, 3)], room_mat))
-# island: measured footprint, standard counter height (ESTIMATE 0.91)
-ax = Vector((isl["long_axis"][0], isl["long_axis"][1], 0)).normalized()
-A_ = Vector((isl["corner_far"][0], isl["corner_far"][1], 0)); B_ = Vector((isl["corner_near"][0], isl["corner_near"][1], 0))
-L = isl["length"]; T = isl["top"]
-fp = [A_, B_, B_ + ax * L, A_ + ax * L]
-body_v = [tuple(p) for p in fp] + [tuple(p + Vector((0, 0, T - 0.001))) for p in fp]
-room.append(mesh_obj("island_body", body_v, [(0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)], room_mat))
-room.append(mesh_obj("island_top", [tuple(p + Vector((0, 0, T))) for p in fp], [(0, 1, 2, 3)], top_mat))
-# kitchen run behind the penguin, parallel to the island (its lines share the island's vanishing point, MEASURED)
-k0 = Vector((-2.1, 6.84, 0))
-# it ends where the plate's kitchen ends (the tall column at x ~490 px): beyond that the car and windows take over
-k1 = k0 + ax * 3.15
-room.append(mesh_obj("kitchen_wall", [tuple(k0 - ax * 6), tuple(k1), tuple(k1 + Vector((0, 0, 3.3))),
-                                      tuple(k0 - ax * 6 + Vector((0, 0, 3.3)))], [(0, 1, 2, 3)], room_mat))
-# far window wall (ESTIMATE ~12 m, behind the car) and the car as a box (ESTIMATE ~10.6 m, MEASURED wheel line)
-room.append(mesh_obj("window_wall", [(-30, 13, 0), (30, 13, 0), (30, 13, 3.3), (-30, 13, 3.3)], [(0, 1, 2, 3)], room_mat))
-cz = 10.6                                           # spans x 335-965 px in the plate (MEASURED)
-cx0, cx1, chh = P.get("room_v5", {}).get("car_proxy", [-1.4, 2.8, 1.9])   # the v5 room's car is shrunk to its spec size
-room.append(mesh_obj("car", [(cx0, cz, 0), (cx1, cz, 0), (cx1, cz, chh), (cx0, cz, chh)], [(0, 1, 2, 3)], room_mat))
+def box_island():
+    # island: measured footprint, its top MEASURED or ESTIMATE (params.json)
+    ax = Vector((isl["long_axis"][0], isl["long_axis"][1], 0)).normalized()
+    A_ = Vector((isl["corner_far"][0], isl["corner_far"][1], 0)); B_ = Vector((isl["corner_near"][0], isl["corner_near"][1], 0))
+    L = isl["length"]; T = isl["top"]
+    fp = [A_, B_, B_ + ax * L, A_ + ax * L]
+    body_v = [tuple(p) for p in fp] + [tuple(p + Vector((0, 0, T - 0.001))) for p in fp]
+    room.append(mesh_obj("island_body", body_v, [(0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)], room_mat))
+    room.append(mesh_obj("island_top", [tuple(p + Vector((0, 0, T))) for p in fp], [(0, 1, 2, 3)], top_mat))
+    return ax, A_, B_, T
+if "proxies" in P:
+    # the room's surfaces as quads [x, depth, height] (metres), each MEASURED or ESTIMATE in params.json
+    for q in P["proxies"]:
+        room.append(mesh_obj(q["name"], [tuple(v) for v in q["quad"]], [(0, 1, 2, 3)], room_mat))
+    ax, A_, B_, T = box_island()
+else:
+    # floor and ceiling (ceiling height ESTIMATE 3.3 m)
+    room.append(mesh_obj("floor", [(-30, 0.3, 0), (30, 0.3, 0), (30, 60, 0), (-30, 60, 0)], [(0, 1, 2, 3)], room_mat))
+    room.append(mesh_obj("ceiling", [(-30, 0.3, 3.3), (-30, 60, 3.3), (30, 60, 3.3), (30, 0.3, 3.3)], [(0, 1, 2, 3)], room_mat))
+    ax, A_, B_, T = box_island()
+    # kitchen run behind the penguin, parallel to the island (its lines share the island's vanishing point, MEASURED)
+    k0 = Vector((-2.1, 6.84, 0))
+    # it ends where the plate's kitchen ends (the tall column at x ~490 px): beyond that the car and windows take over
+    k1 = k0 + ax * 3.15
+    room.append(mesh_obj("kitchen_wall", [tuple(k0 - ax * 6), tuple(k1), tuple(k1 + Vector((0, 0, 3.3))),
+                                          tuple(k0 - ax * 6 + Vector((0, 0, 3.3)))], [(0, 1, 2, 3)], room_mat))
+    # far window wall (ESTIMATE ~12 m, behind the car) and the car as a box (ESTIMATE ~10.6 m, MEASURED wheel line)
+    room.append(mesh_obj("window_wall", [(-30, 13, 0), (30, 13, 0), (30, 13, 3.3), (-30, 13, 3.3)], [(0, 1, 2, 3)], room_mat))
+    cz = 10.6                                           # spans x 335-965 px in the plate (MEASURED)
+    cx0, cx1, chh = P.get("room_v5", {}).get("car_proxy", [-1.4, 2.8, 1.9])   # the v5 room's car is shrunk to its spec size
+    room.append(mesh_obj("car", [(cx0, cz, 0), (cx1, cz, 0), (cx1, cz, chh), (cx0, cz, chh)], [(0, 1, 2, 3)], room_mat))
 # penguin card at its measured depth so a camera move moves it correctly against the kitchen
-pg = P["penguin"]; px_, pz_ = pg["position"]
-if pg.get("in_scene", True): room.append(mesh_obj("penguin", [(px_ - 0.45, pz_, 0), (px_ + 0.45, pz_, 0), (px_ + 0.45, pz_, 1.4), (px_ - 0.45, pz_, 1.4)],
-                     [(0, 1, 2, 3)], room_mat))
+pg = P["penguin"]
+if pg.get("in_scene", True):
+    px_, pz_ = pg["position"]
+    room.append(mesh_obj("penguin", [(px_ - 0.45, pz_, 0), (px_ + 0.45, pz_, 0), (px_ + 0.45, pz_, 1.4), (px_ - 0.45, pz_, 1.4)],
+                         [(0, 1, 2, 3)], room_mat))
 
 for ob in room: ob.scale = (RS, RS, RS)              # the room, built in measured units, scaled about the camera's foot
 A_, B_, T = A_ * RS, B_ * RS, T * RS
 
 # ---- his card: the take's frame at his plane, standing behind the island's far edge ----
 n_back = Vector((-ax.y, ax.x, 0))                   # away from the camera, off the far long edge
-Pp = A_ + ax * perf["along_edge"] * RS + n_back * perf["behind_edge"]   # clearance to the stone is his real size
+if "position" in perf:                              # a spot on the floor, in the room's measured units (DECISION)
+    Pp = Vector((perf["position"][0], perf["position"][1], 0)) * RS
+else:
+    Pp = A_ + ax * perf["along_edge"] * RS + n_back * perf["behind_edge"]   # clearance to the stone is his real size
 ppm = src["px_per_metre_at_face"]
 cw, chh = W / ppm, H / ppm                          # the frame's size at his plane (m)
 centre_h = src["eye_height"] - (src["horizon_y"] - src["eye_y"]) / ppm   # the take's horizon row: its camera's height
