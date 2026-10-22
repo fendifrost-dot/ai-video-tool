@@ -291,28 +291,45 @@ Project YSL `764a63d2`, folder `canonical/body_only_swap_c033_2026-10-18/blender
 - **VERIFIED:** his face is the approved file's pixels, resampled and graded. His mouth is on the take's own frames.
 - **OBSERVED:** no stray matte outside his body on any checked frame (largest separate piece: 50 px, on the tight).
 
-### Edge flashing (Fendi, 21 Oct, on the first static: "There's some pixelation blur and flashing around my edges"): OPEN
+### Edge flashing (Fendi, 21 Oct: "There's some pixelation blur and flashing around my edges"; 22 Oct: "It's the entire outline of my upper body"): fixed in v2, awaiting his eye
 
-- **Three matte fixes were tried in `prep_performer.py` and all were rejected.** The code is back to `main`; nothing of them ships.
-  1. **A per-pixel hold** (keep the previous matte where the picture changed by under 8–20 levels).
-     - This was based on a first reading, later shown wrong: that the take repeats frames while its matte does not.
-     - It left partial edges held over still background, and they piled up into **ghost trails** beside him (seen on the tight, frame 120). Rejected.
-  2. **A whole-frame hold** (reuse the matte when the whole picture changed by under 74 levels).
-     - That number came from the whole frame, where repeats (≤ 66) and new pictures (≥ 82) separate cleanly.
-     - Around his outline there is **no such gap**: the picture changes on almost every frame (23–190 levels).
-     - So a "repeat" can still move his head, and the held matte lagged it: a pale strip of the take's background beside his face on frames 160–161 (face PSNR min 25.5 dB). Rejected.
-  3. **A matte carried along his motion** (optical flow) and mixed with the frame's own.
-     - MEASURED: the edge's change beyond his motion went only from 0.076 to 0.073. No real gain, so not kept.
-- **VERIFIED:** Blender's matte equals the exact warp of the texture within 1–4 %. Cycles adds no edge noise.
-- **OBSERVED:** about two-thirds of the matte's change at his edge is real motion (0.258 raw against 0.091 after optical flow). The take's matte boils a little, but not enough to explain a visible flash.
-- **Not yet located.** The remaining candidates are compositing-only, each a few minutes with no re-render:
-  - the edge wrap (0.15);
-  - the grain;
-  - snowflakes seen through his soft edge;
-  - the Ferrari's LED band reaching his outline.
-  The take's 24p cadence (new pictures every 2–3 frames, against 59.94 snow) is another, and it can only be changed by generating frames of him, which is ruled out.
-- **Asked Fendi:** where (cap, face, shoulders, hands), against what (window, headlights, car) and when in the 4 s.
-- **The "blur":** on the wide he is ~0.21× the take's size on screen (face ~745 px). That is the take's detail at that size. The tight (0.445×) is sharper.
+**Cause, VERIFIED.**
+- The approved take is 24p content in a 59.94 file: his picture changes every 2–3 frames and holds in between.
+- His outline jumps only on the frames where the picture changes: 17–29 levels there, against 4–8 between. The room just beside him changes 3–5 levels (snow and grain).
+- Against the dark, snowy window, that step reads as the whole outline flashing. In the take he stood before a white door close to his jacket's colour, so it never showed.
+- Also MEASURED: his outline was ~8 % brighter than the jacket just inside it (0.507 against 0.471 in Blender's pass). That is the take's door left in the soft edge.
+
+**Fix (DECISION, compositing only; `lens` in `showroom_c033_room2.json`, each option off by default in `comp_scene.py`).**
+- `edge_tween_px` 3: within 3 px of his outline, his matte is blended from this picture's toward the next picture's across the hold, as a shutter would smear it. Nothing of him is generated: his body and face are the frame's own pixels.
+- `edge_colour_from_inside_px` 1.5: his outline takes the colour of his body just inside it.
+- `edge_choke` 0.15: the thin outer fringe of the matte is dropped.
+- `wrap` 0 (was 0.15): the room is no longer screened onto his edge.
+- MEASURED on the static's first 48 frames:
+
+  | | Outline change on a new picture / between | Rim over a clean edge |
+  |---|---|---|
+  | before | 22.5 / 6.2 levels (3.7×) | +8.1 levels |
+  | after | 12.9 / 11.3 levels (1.1×) | +3.6 levels |
+
+  The rim fixes alone (no tween) left the pulse at 21.6 / 6.0: the cadence was the cause.
+
+| v2 (current) | Asset | Face PSNR median / min | Timing | Decoded MD5 |
+|---|---|---|---|---|
+| **Static** | **`b2ad4ae6`**; with song `df0a070d` | 35.7 / 31.8 dB (8 px in: 35.5 / 33.9, before 35.3 / 33.4) | 111 / 111 | `07e2787f59861e7f8696e0c29f2e921c` |
+| **Tight** | **`9271b8eb`**; with song `e425a805` | 38.5 / 36.3 dB (10 px in) | 111 / 111 | `04b00d03387aa1ad6a88a21ae8ec6abb` |
+| **Dolly** | **`28d2190b`**; with song `e22c6c71` | 35.7 / 32.6 dB | 111 / 111 | `b9182d91c903aa2e6d6f0151e7626c6a` |
+
+- Review: his outline before / after, half speed, `6039f53d`. The v1 versions above (`18a6ad54`, `65df207f`, `e8dff105`) are superseded.
+- **OBSERVED:** the static's 5 px minimum is frame 167 (31.8, was 34.5): the side of his head as it turns, the tween at work on his outline. 8 px in, his face is as good as or better than before. On that frame it reads as a slight softness, with no artifact.
+
+**Rejected on the way (do not repeat).** All three changed the matte itself in `prep_performer.py`; it is back to `main`.
+1. **A per-pixel hold** (keep the previous matte where the picture changed by under 8–20 levels): ghost trails beside him.
+2. **A whole-frame hold** (reuse the matte when the whole picture changed by under 74 levels):
+   - Around his outline the picture changes on almost every frame (23–190 levels, no gap), so the held matte lagged his head.
+   - A pale strip of the take's background showed beside his face on frames 160–161.
+3. **A matte carried along his motion** (optical flow): the edge's change beyond his motion went only from 0.076 to 0.073.
+
+**The "blur":** on the wide he is ~0.21× the take's size on screen (face ~745 px). That is the take's detail at that size. The tight (0.445×) is sharper.
 
 ## How the shot is built (scripts/edit/blender/)
 
