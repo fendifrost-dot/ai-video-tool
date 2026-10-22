@@ -91,6 +91,9 @@ for i in frames:
         fill = blur(him * body[..., None], ec) / np.maximum(near, 1e-4)[..., None]
         use = ((fg[..., 3] <= 0.98) & (near > 1e-3))[..., None]
         him = np.where(use, fill, him).astype(np.float32)
+    ch = lens.get("edge_choke", 0)
+    if ch:  # the matte's thin outer fringe (alpha under `ch`) is dropped and the rest re-spread to 0..1
+        fg[..., 3] = np.clip((fg[..., 3] - ch) / (1 - ch), 0, 1)
     soft = lens.get("performer_softness_px", 0)
     if soft:  # lens softness on premultiplied colour, so the edge does not pick up black
         a0 = fg[..., 3]; him = blur(him * a0[..., None], soft) / np.maximum(blur(a0, soft), 1e-4)[..., None]
