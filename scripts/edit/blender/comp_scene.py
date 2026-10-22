@@ -65,7 +65,7 @@ if not A.stills:
                            "-movflags", "+faststart", A.out], stdin=subprocess.PIPE)
 frames = [A.only] if A.only else range(1, NF + 1)
 fg_path = lambda i: os.path.join(A.passes, f"{A.move}_fg", f"f_{i:04d}.png")
-tween = lens.get("edge_tween_px", 0)
+tween = int(round(lens.get("edge_tween_px", 0)))
 if tween:
     # The take is 24p in a 59.94 file: his picture changes every 2-3 frames and holds in between. Against a dark,
     # snowy window his outline then jumps in steps (MEASURED: 17-29 levels on a new picture, 4-8 between). His outline
