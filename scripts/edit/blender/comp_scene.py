@@ -64,12 +64,38 @@ if not A.stills:
                            "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
                            "-movflags", "+faststart", A.out], stdin=subprocess.PIPE)
 frames = [A.only] if A.only else range(1, NF + 1)
+fg_path = lambda i: os.path.join(A.passes, f"{A.move}_fg", f"f_{i:04d}.png")
+tween = int(round(lens.get("edge_tween_px", 0)))
+if tween:
+    # The take is 24p in a 59.94 file: his picture changes every 2-3 frames and holds in between. Against a dark,
+    # snowy window his outline then jumps in steps (MEASURED: 17-29 levels on a new picture, 4-8 between). His outline
+    # alone, within `tween` px of it, is blended from this picture's matte toward the next picture's across the hold,
+    # as a shutter would smear it. His body and face stay this frame's own pixels.
+    def body_sig(i):
+        f = read_rgba(fg_path(i)); return cv2.resize(f, (270, 480), interpolation=cv2.INTER_AREA)
+    sig = [body_sig(i) for i in range(1, NF + 1)]
+    new_pic = [1] + [i for i in range(2, NF + 1)
+                     if np.abs(sig[i - 1][..., :3] - sig[i - 2][..., :3]).max(2)[(sig[i - 1][..., 3] > 0.98) & (sig[i - 2][..., 3] > 0.98)].mean() * 255 > 4]
+    print("pictures change on", len(new_pic), "of", NF, "frames")
+def next_alpha(i):
+    """(weight toward the next picture, its matte) for frame i; (0, None) if no later picture."""
+    later = [p for p in new_pic if p > i]
+    if not later: return 0.0, None
+    start = max(p for p in new_pic if p <= i); nxt = later[0]
+    return (i - start) / (nxt - start), read_rgba(fg_path(nxt))[..., 3]
 rows = np.arange(H, dtype=np.float32)[:, None]
 for i in frames:
     zf = S["performer_depth_per_frame"][i - 1]
     env = read_rgba(os.path.join(A.passes, f"{A.move}_env", f"f_{i:04d}.png"))
     refl = read_rgba(os.path.join(A.passes, f"{A.move}_refl", f"f_{i:04d}.png"))
-    fg = read_rgba(os.path.join(A.passes, f"{A.move}_fg", f"f_{i:04d}.png"))
+    fg = read_rgba(fg_path(i))
+    if tween:
+        t, a_next = next_alpha(i)
+        if t > 0:
+            a_now = fg[..., 3]
+            near = cv2.dilate(((a_now > 0.02) & (a_now < 0.98)).astype(np.uint8),
+                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * tween + 1, 2 * tween + 1))) > 0
+            fg[..., 3] = np.where(near, (1 - t) * a_now + t * a_next, a_now)
     Z = depth(i)
     # his light: white balance + exposure, the room's light changes, then the top light by height on screen
     t_plate = pl["start_seconds"] + (i - 1) / FPS
@@ -83,6 +109,17 @@ for i in frames:
     tt = np.clip((rows - y_head) / max(1.0, y_counter - y_head), 0, 1)
     top = 2 ** (L["top_light_stops"][0] * (1 - tt) + L["top_light_stops"][1] * tt)
     him = srgb(np.clip(lin(fg[..., :3]) * gain * top[..., None], 0, 1)).astype(np.float32)
+    ec = lens.get("edge_colour_from_inside_px", 0)
+    if ec:  # his outline takes the colour of his body just inside it: the take's own background (a white door) is
+            # left in the soft edge and changes with the matte every frame; the edge keeps its shape (alpha), not that light
+        body = (fg[..., 3] > 0.98).astype(np.float32)
+        near = blur(body, ec)
+        fill = blur(him * body[..., None], ec) / np.maximum(near, 1e-4)[..., None]
+        use = ((fg[..., 3] <= 0.98) & (near > 1e-3))[..., None]
+        him = np.where(use, fill, him).astype(np.float32)
+    ch = lens.get("edge_choke", 0)
+    if ch:  # the matte's thin outer fringe (alpha under `ch`) is dropped and the rest re-spread to 0..1
+        fg[..., 3] = np.clip((fg[..., 3] - ch) / (1 - ch), 0, 1)
     soft = lens.get("performer_softness_px", 0)
     if soft:  # lens softness on premultiplied colour, so the edge does not pick up black
         a0 = fg[..., 3]; him = blur(him * a0[..., None], soft) / np.maximum(blur(a0, soft), 1e-4)[..., None]

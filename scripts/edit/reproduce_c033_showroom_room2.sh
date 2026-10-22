@@ -41,7 +41,7 @@ for p in depth env refl fg save; do
 done
 "$PY" -I "$bl/comp_scene.py" "$J" "$OUT/passes" "$MOVE" "$OUT/plate_light.npy" "$OUT/c033_showroom_room2_$MOVE.mp4"
 md5=$(ffmpeg -loglevel error -i "$OUT/c033_showroom_room2_$MOVE.mp4" -map 0:v -f md5 - | cut -d= -f2)
-echo "decoded MD5 $md5  (filed: see docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md, 'Room 2')"
+echo "decoded MD5 $md5  (expected: docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md, Reproduce room 2)"
 if [ -n "${MODELS:-}" ]; then
   "$PY" -I "$bl/verify_scene.py" "$IN/fg.mp4" "$OUT/c033_showroom_room2_$MOVE.mp4" "$OUT/passes/scene_$MOVE.json" \
     "$J" "$MODELS/face_landmarker.task" "$OUT/verify_$MOVE.json" --every 2
