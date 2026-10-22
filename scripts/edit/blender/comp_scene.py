@@ -83,6 +83,14 @@ for i in frames:
     tt = np.clip((rows - y_head) / max(1.0, y_counter - y_head), 0, 1)
     top = 2 ** (L["top_light_stops"][0] * (1 - tt) + L["top_light_stops"][1] * tt)
     him = srgb(np.clip(lin(fg[..., :3]) * gain * top[..., None], 0, 1)).astype(np.float32)
+    ec = lens.get("edge_colour_from_inside_px", 0)
+    if ec:  # his outline takes the colour of his body just inside it: the take's own background (a white door) is
+            # left in the soft edge and changes with the matte every frame; the edge keeps its shape (alpha), not that light
+        body = (fg[..., 3] > 0.98).astype(np.float32)
+        near = blur(body, ec)
+        fill = blur(him * body[..., None], ec) / np.maximum(near, 1e-4)[..., None]
+        use = ((fg[..., 3] <= 0.98) & (near > 1e-3))[..., None]
+        him = np.where(use, fill, him).astype(np.float32)
     soft = lens.get("performer_softness_px", 0)
     if soft:  # lens softness on premultiplied colour, so the edge does not pick up black
         a0 = fg[..., 3]; him = blur(him * a0[..., None], soft) / np.maximum(blur(a0, soft), 1e-4)[..., None]
