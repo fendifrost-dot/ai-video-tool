@@ -522,10 +522,14 @@
  "lens": {
   "f_stop": 2.0,
   "performer_softness_px": 0.5,
-  "wrap": 0.15,
+  "wrap": 0.0,
   "_wrap": "DECISION (Fendi, 20 Oct: 'there is bleed I believe from the headlight effect, it looks like I'm coming out of the environment'): the composite lane's 0.5 screen wrap of the blurred room left a pale rim on his outline against the snowy window and carried the Ferrari lamps' rolling band onto his car-side edge; 0.15 keeps the edge in the room's light without the halo (checked at 0.5 / 0.15 / 0 on frames 60, 120, 180)",
   "_soft": "DECISION: his 4K-derived pixels are crisper than the 1080 AI plate; a 0.5 px lens softness puts him in the same camera (optics, not a redraw)",
-  "_": "DECISION: depth of field from the scene depth, focused on him; 1-4 px of blur on the island and the room"
+  "_": "DECISION: depth of field from the scene depth, focused on him; 1-4 px of blur on the island and the room",
+  "edge_colour_from_inside_px": 1.5,
+  "edge_choke": 0.15,
+  "edge_tween_px": 3,
+  "_outline": "DECISION (Fendi, 21-22 Oct: 'pixelation blur and flashing around my edges' ... 'It's the entire outline of my upper body'). VERIFIED cause: the take is 24p in a 59.94 file, so his outline jumps only when it shows a new picture (17-29 levels; 4-8 between), a hard step against the dark snowy window. MEASURED on 48 frames of the static, outline change on new pictures / between: 22.5 / 6.2 before, 12.9 / 11.3 with edge_tween_px 3 (his matte within 3 px of the outline blended toward the next picture across the hold, like a shutter's smear). Also measured: his outline was ~8 % brighter than the jacket inside it (the take's white door left in the edge), so edge_colour_from_inside_px 1.5 fills it from his body, edge_choke 0.15 drops the thin outer fringe and wrap 0 (was 0.15) stops the room being screened onto it: rim +8.1 -> +3.6 levels over a clean edge. His body and face are the frame's own pixels (verify_scene.py)"
  },
  "reflection": {
   "strength": 0.12,
