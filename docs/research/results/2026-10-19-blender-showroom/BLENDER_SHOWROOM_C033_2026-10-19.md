@@ -448,6 +448,30 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 - **The LED band is a model** (PWM rate, row time and depth are estimates), not a measurement of a real Purosangue.
 - **The clean room under the car and the penguin is a still edit.** It is used only where they stood. A dark-floor patch under the shrunk car's front is that edit's floor.
 
+## Shoot sheet for room 2 (22 Oct, Fendi: "I'm going to shoot multiple shots and reshoot my main performance shot correctly")
+
+Derived from the measured room-2 camera (`showroom_c033_room2.json`). The goal is that his take is filmed from where the plate's camera stands, so nothing has to be bent to fit.
+
+**VERIFIED first:** in the approved take his face changes on every frame (true 59.94), but the jacket holds for 2–3 frames (24p). The cadence that flashed his outline came from the wardrobe swap's 24p output, not the phone. **Wear the real outfit** and no swap or outline tween is needed.
+
+| Setting | Value | Why |
+|---|---|---|
+| Phone | portrait (vertical), on a tripod, locked off | the plate is 9:16 and still; the move is added in Blender |
+| Lens | **1×** main only (no 0.5×, no zoom); Settings → Camera → Record Video → **Lock Camera on** | the plate reads ~25 mm equivalent; the lock stops the phone switching lens in low light |
+| Lens height | **1.55 m (61 in)** from the floor to the centre of the lens | MEASURED plate camera height |
+| Tilt / roll | **level, 0°** (Camera → Level on) | the plate is level; the last take had 1.23° roll |
+| Distance | **4.7 m (15 ft 5 in)** from the lens to the spot under his body's centre | where he stands in the room (0.25 m beyond the island's end) |
+| Side offset | stand **0.8 m (2 ft 7 in) camera-right** of the line the lens points along, body turned to face the lens | his spot in the room is 0.8 m right of the camera's axis |
+| Format | **4K, 60 fps** (59.94); HDR Video **off**; Auto FPS **off**; Action mode, Cinematic and Enhanced Stabilisation **off** | 60 fps matches the shot; HDR and Auto FPS change the picture |
+| Exposure / focus | AE/AF lock on his face; with a manual app (e.g. Blackmagic Camera): shutter **1/120**, fixed ISO, white balance fixed at **~4000 K** | no exposure or colour drift; 1/120 at 60 fps gives natural motion blur |
+| Frame | full body head to toe, with space around | 4K at 4.7 m covers the wide, the 2× tight and the dolly from one take (≥ 1.1× the pixels the tight needs) |
+| Backdrop | plain, matte, **medium-dark grey**, ≥ 2 m behind him, evenly lit; no white door or wall | the white door left a bright rim in his edge against the dark window |
+| Light | soft, dim warm front fill (~3200–3500 K); a cool rim from behind at shoulder height (the window); a warm top-back light (downlights 5–11 m behind him) | room 2's light comes from behind him: blue window, warm downlights |
+| Each take | 2 s of a white card and a grey card at his spot; one clap on camera; the song from before 0:56.9 out loud; ≥ 10 s; then 5 s of the empty frame without moving the phone | white balance reference, sync, and a clean plate for the matte |
+
+- **Other shots:** each needs its own room measured first, because the camera height and distance come from that room's picture.
+- **Default when a room is unknown:** lens at 1.55–1.6 m, level, 1×, 4K60, 4–5 m away, full body.
+
 ## For tomorrow's takes: shoot to match this room
 
 - Phone at **eye height (~1.7 m)**, level (no tilt). The plate camera is level at 1.74 m.
