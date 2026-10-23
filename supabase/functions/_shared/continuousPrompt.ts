@@ -35,6 +35,12 @@ export const ALREADY_MOVING =
 // (Fendi, 17 Oct 2026: "the way my hands are positioned and fists balled up, it doesn't look good")
 export const FACE_TO_CAMERA =
   "He faces the camera and raps, his mouth clearly visible and unobstructed for the whole take: no hand, microphone, collar or object in front of his face, his hands low and relaxed, away from his face and collar.";
+/**
+ * B-roll with him in it (Fendi, 23 Oct 2026: "on b roll shots re render the approved shots with no mouth movement. Same
+ * scene"): he is in the place, his mouth shut the whole take; nothing is sung and no vocals go under it.
+ */
+export const MOUTH_STILL =
+  "His mouth stays closed for the whole take: he is not rapping, not singing, not talking and not mouthing anything; no lip movement at all, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
 export const NOBODY_PERFORMS =
   "Nobody performs to camera and no face fills the frame; he appears only where this says so.";
 /** The same hour in every clip of the ending and the hook (Fendi: "cold, winter, consistent with the cold-runway board"). */
@@ -62,6 +68,8 @@ export type ContinuousRequest = {
   lyrics?: TakeLyric[];
   /** The song's vocals under the take are sent as @Audio1. */
   audio?: boolean;
+  /** "still": he is in it but his mouth never moves — no lyric lines, no @Audio1 (b-roll with him). */
+  mouth?: "still";
 };
 
 export type TakeLyric = { at: number; text: string };
@@ -116,8 +124,7 @@ export function continuousPrompt(r: ContinuousRequest): string {
         sentence(action),
         WAIST_UP,
         NO_FEET,
-        FACE_TO_CAMERA,
-        rapsTheLines(r.lyrics ?? [], !!r.audio),
+        ...(r.mouth === "still" ? [MOUTH_STILL] : [FACE_TO_CAMERA, rapsTheLines(r.lyrics ?? [], !!r.audio)]),
         `On the last frames: ${end} — still moving on the very last frame, so the edit can cut on the motion.`,
         `Keep everything identical to @Video1 — ${(r.keep ?? []).filter(Boolean).join(", ") || "his face, skin and build, and every piece of his wardrobe"}; nothing he wears changes during the take.`,
         // the place may move here (headlights flaring, snow falling): only the montage's "the environment is still" goes

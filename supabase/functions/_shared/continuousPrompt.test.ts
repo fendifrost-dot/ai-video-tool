@@ -89,6 +89,18 @@ describe("one continuous take", () => {
     expect(place).not.toMatch(/@Audio1|rapping/);
   });
 
+  it("mouth still: he is in it and never moves his mouth — no words, no @Audio1, nothing about rapping", () => {
+    const p = continuousPrompt({ seconds: 5, camera: "a slow push-in", action: "He watches the dice", endMotion: "settling on him", withHim: true, mouth: "still", audio: true, lyrics: [{ at: 0.5, text: "On the highway" }] });
+    expect(p).toContain("His mouth stays closed for the whole take");
+    expect(p).not.toMatch(/@Audio1|actually rapping|raps along|raps at|exact words|On the highway/);
+    expect(p).toContain("@Video1 is the performer");
+    const r = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: "a slow push-in", action: "x", endMotion: "y", mouth: "still", lyrics: [{ at: 0.5, text: "On the highway" }], audio: true });
+    if (!r.ok) throw new Error("refused");
+    expect(r.plan.prompt).not.toMatch(/@Audio1|actually rapping|exact words/);
+    expect((r.plan.payload.settings as { variant: Record<string, unknown> }).variant).toMatchObject({ withHim: true, mouth: "still" });
+    expect((r.plan.payload.settings as { variant: Record<string, unknown> }).variant.lyrics).toBeUndefined();
+  });
+
   it("a planned take with him records its lyrics and the vocals reference; one without him carries neither", () => {
     const lyrics = [{ at: 0.5, text: "On the highway" }];
     const r = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: "a slow push-in", action: "He raps", endMotion: "right", lyrics, audio: true });
