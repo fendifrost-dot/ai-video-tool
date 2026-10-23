@@ -39,6 +39,8 @@ ap = argparse.ArgumentParser()
 for a in ("clip", "clip_alpha", "take", "take_alpha", "segments", "out"): ap.add_argument(a)
 ap.add_argument("--size", default="1080x1920"); ap.add_argument("--stills", default=""); ap.add_argument("--report", default="")
 ap.add_argument("--model", default=os.path.join(os.environ.get("AVT_MODELS", "models"), "face_landmarker.task"))
+ap.add_argument("--choke", type=int, default=0, help="erode the take's matte this many take px: the matte's outer band carries the take's own wall shadow and floor (a dark rim on a light garment)")
+ap.add_argument("--despill", type=int, default=0, help="push his own colours this many take px outward from the choked core before the feather, so the edge pixels are his, not the take's background")
 A = ap.parse_args()
 OW, OH = map(int, A.size.split("x"))
 LM = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(base_options=BaseOptions(model_asset_path=A.model), num_faces=1))
@@ -96,6 +98,16 @@ for i in range(n):
     s = segs.get(i)
     if s is not None:
         j = take_index(i); ta = talpha[j].astype(np.float32) / 255; tf = take[j]
+        if A.choke > 0 or A.despill > 0:
+            # a clean edge: the matte choked to his core, and the band just outside the core painted with the nearest
+            # core colours (a normalised box blur of the core) so the feathered edge mixes his colours, not the wall's
+            core = cv2.erode((ta > 0.5).astype(np.uint8), np.ones((2 * A.choke + 1, 2 * A.choke + 1), np.uint8)) if A.choke > 0 else (ta > 0.5).astype(np.uint8)
+            if A.despill > 0:
+                k = 2 * A.despill + 1; kn = core.astype(np.float32)
+                den = cv2.blur(kn, (k, k)); num = cv2.blur(tf.astype(np.float32) * kn[..., None], (k, k))
+                ext = np.where(den[..., None] > 1e-3, num / np.maximum(den[..., None], 1e-3), tf.astype(np.float32))
+                tf = np.where(core[..., None] > 0, tf, ext.round().clip(0, 255).astype(np.uint8))
+            ta = cv2.GaussianBlur(core.astype(np.float32), (0, 0), 1.2)
         ys, xs = np.nonzero(ta > 0.5)
         if len(ys) == 0:
             report.append(dict(frame=i, take_frame=j, note="no one in the take frame")); vw.stdin.write(out.tobytes()); continue
