@@ -2,7 +2,8 @@
 usage: body_only_swap.py <original.mp4> <swap.mp4> <out_dir>
 - Both cover the same 4.000 s; the original frame at t takes the swap frame at t (swap is time-conformed already).
 - Swap frames are aligned to the original by an ECC affine fit on the background (Genjutsu shifts and rescales).
-- Taken from the swap: clothes/accessories in either frame, plus the cap (above the brow line, over the head).
+- Taken from the swap: clothes/accessories in either frame, plus the cap (above the brow line, over the head), plus
+  any strongly changed pixel next to him that is not protected (an original shoe or hem reaching past the new one).
 - Always original: the face from the eyebrows down (landmark face shape: eyes, glasses, nose, mouth, beard), face skin
   and hair below the brows, and skin wherever the swap also shows skin (hands, neck). A swap sleeve over the original
   bare arm wins. The script proves it: max |out - original| inside the protected region is printed (must be 0;
@@ -130,6 +131,12 @@ for i, o in enumerate(orig):
         y_lo = int(brow - 0.9 * fh)
         box = np.zeros((H, W), bool); box[max(0, y_lo):int(brow), max(0, x_lo):min(W, x_hi)] = True
         clothes |= box & ((oc != 0) | (sc != 0))
+    # where the original garment reaches past the new one (a bigger shoe, a longer hem) the swap shows floor or
+    # wall there; the segmenter can miss a dark shoe on a dark floor, so any strong change next to him that is not
+    # protected is taken from the swap too (c044, 23 Oct: the original black toe showed under the cream sneaker)
+    near = cv2.dilate(((oc != 0) | (sc != 0)).astype(np.uint8), np.ones((31, 31), np.uint8)).astype(bool)
+    changed = np.abs(o.astype(np.int16) - sw.astype(np.int16)).max(2) > 40
+    clothes |= changed & near
     m = (clothes & ~protect).astype(np.float32)
     m = cv2.GaussianBlur(m, (0, 0), 2.0)
     m[protect] = 0.0                                       # no feather leaks onto the face or hands
