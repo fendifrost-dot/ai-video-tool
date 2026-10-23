@@ -456,6 +456,8 @@ export type ContinuousInput = {
   lyrics?: TakeLyric[];
   /** The slice of the song's vocals under the take goes as @Audio1 (the I/O half cuts, stores and signs it). */
   audio?: boolean;
+  /** "still": he is in it with his mouth shut — no lyrics, no vocals (continuousPrompt MOUTH_STILL; b-roll with him). */
+  mouth?: "still";
 };
 
 /**
@@ -468,6 +470,7 @@ export type ContinuousInput = {
 export function planContinuous(input: ContinuousInput): { ok: true; plan: MontagePlan } | Refusal {
   const { shot, take, plate } = input;
   const withHim = !!take;
+  const still = withHim && input.mouth === "still";
   for (const [name, v] of [["camera", input.camera], ["action", input.action], ["endMotion", input.endMotion]] as const)
     if (typeof v !== "string" || !v.trim()) return refuse(400, `missing_${name}`, `say the ${name === "endMotion" ? "motion it ends on" : name} in words`);
   for (const [name, v] of [["camera", input.camera], ["action", input.action], ["endMotion", input.endMotion], ...(input.images ?? []).map((im, k) => [`picture ${k + 2}`, im.as] as const)] as const)
@@ -488,8 +491,9 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
     keep: take ? restageKeep({ shows: take.shows }) : undefined,
     images: images.map((i) => ({ as: i.as })),
     light: input.light ?? null,
-    lyrics: withHim ? input.lyrics ?? [] : [],
-    audio: withHim && !!input.audio,
+    lyrics: withHim && !still ? input.lyrics ?? [] : [],
+    audio: withHim && !still && !!input.audio,
+    ...(still ? { mouth: "still" as const } : {}),
   });
   const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds, take ? Math.round(take.seconds) : 0).toFixed(3));
   const aspect = clipAspect(input.aspect);
@@ -512,7 +516,7 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
     endMotion: input.endMotion.trim(),
     withHim,
     images: images.map((i) => ({ path: i.path, as: i.as })),
-    ...(withHim ? { lyrics: input.lyrics ?? [], audio: !!input.audio } : {}),
+    ...(withHim ? (still ? { mouth: "still" as const } : { lyrics: input.lyrics ?? [], audio: !!input.audio }) : {}),
   };
   const settings = {
     batchRun: STORYBOARD_RUN,

@@ -82,6 +82,8 @@ type Body = {
     seconds?: number;
     withHim?: boolean;
     images?: { assetId?: string; featureId?: string; as: string }[];
+    /** "still": he is in it but never moves his mouth — no lyric lines, no vocals under it (b-roll with him; Fendi, 23 Oct 2026). */
+    mouth?: "still";
   };
 };
 
@@ -196,6 +198,7 @@ serve(async (req) => {
   const shotType = str(shotRow.shot_type) ?? str(spec.shotType);
   // a shot he is not in is a montage of the place and its people, with no take (plan.ts planBrollMontage)
   const continuous = body.continuous && typeof body.continuous === "object" ? body.continuous : null;
+  const mouthStill = !!continuous && continuous.mouth === "still";
   const broll = continuous ? continuous.withHim === false || (continuous.withHim !== true && !!shotType && shotType !== "performance") : !!shotType && shotType !== "performance";
   const provenance = ((shotRow.generated_json as Row | null)?.provenance as Row | null) ?? null;
   const shot: ShotFacts = {
@@ -340,7 +343,7 @@ serve(async (req) => {
   let takeLyrics: TakeLyric[] = [];
   let vocals: { id: string; bucket: string; path: string; bytes: number | null } | null = null;
   let songWindow: [number, number] | null = null;
-  if (continuous && take) {
+  if (continuous && take && !mouthStill) {
     const secs = continuousSeconds(continuous.seconds);
     const at = continuousSongStart(shot.start, shot.end, secs);
     songWindow = [at, Math.round((at + secs) * 1000) / 1000];
@@ -385,6 +388,7 @@ serve(async (req) => {
         light,
         lyrics: takeLyrics,
         audio: !!vocals,
+        ...(mouthStill ? { mouth: "still" as const } : {}),
       })
     : take
     ? planMontage({
