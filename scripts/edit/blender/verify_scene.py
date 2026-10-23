@@ -61,6 +61,24 @@ def detect(img, box, up):
 OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149,
         150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
 det_src = (int(.1 * W), int(.05 * H), int(.85 * W), int(.6 * H))
+last_box = None
+def find_face(img):
+    """Landmarks on the approved frame: the search box at 1x; a small face (the 23 Oct full-body takes, ~100 px wide)
+    is missed there, so then a box around the last find at 3x, else windows of the search box at 3x (first frame)."""
+    global last_box
+    p = detect(img, det_src, 1.0)
+    if p is None and last_box is not None: p = detect(img, last_box, 3.0)
+    if p is None:
+        x0, y0, x1, y1 = det_src; ww, hh = 360, 480
+        for y in range(y0, y1 - hh // 2, hh // 2):
+            for x in range(x0, x1 - ww // 2, ww // 2):
+                p = detect(img, (x, y, min(x1, x + ww), min(y1, y + hh)), 3.0)
+                if p is not None: break
+            if p is not None: break
+    if p is not None:
+        lo = np.floor(p.min(0) - 60).astype(int); hi = np.ceil(p.max(0) + 60).astype(int)
+        last_box = (max(0, lo[0]), max(0, lo[1]), min(W, hi[0]), min(H, hi[1]))
+    return p
 
 def psnr(pred, got, mask):
     pa, fa = lin(pred[mask]), lin(got[mask].astype(np.float32) / 255)
@@ -70,7 +88,7 @@ def psnr(pred, got, mask):
 
 rows = []; mouth = []
 for i in range(0, n, A.every):
-    pa = detect(appr[i], det_src, 1.0)
+    pa = find_face(appr[i])
     if pa is None: continue
     M = take_to_shot(i)
     oval = cv2.perspectiveTransform(pa[OVAL][None].astype(np.float32), M)[0]
