@@ -24,6 +24,7 @@ def probe(p):
     o = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                         "stream=width,height,r_frame_rate,duration", "-of", "json", p], capture_output=True, text=True).stdout
     s = json.loads(o)["streams"][0]; n, d = s["r_frame_rate"].split("/")
+    probe.rate = s["r_frame_rate"]      # the last probed rate as a fraction, for the encoder
     return int(s["width"]), int(s["height"]), float(n) / float(d), float(s["duration"])
 
 def read(p, w, h):
@@ -31,7 +32,7 @@ def read(p, w, h):
                           "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
     return np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3)
 
-W, H, FPS, DUR = probe(orig_p)
+W, H, FPS, DUR = probe(orig_p); FPS_RATE = probe.rate
 _, _, SFPS, SDUR = probe(swap_p)
 orig = read(orig_p, W, H)
 swap = read(swap_p, W, H)            # upscaled to the original's size; only the clothes are used
@@ -76,19 +77,25 @@ def face_region(img):
         last_face = (pts, brow, face_h)
     if last_face is None: return None, None
     pts, brow, face_h = last_face
+    if brow_override is not None: brow = brow_override          # the smoothed line (see the pre-pass below)
     m = np.zeros((h0, w0), np.uint8)
     cv2.fillPoly(m, [pts.astype(np.int32)], 1)
     m = cv2.dilate(m, np.ones((9, 9), np.uint8))
     m[: int(brow)] = 0                     # above the brows (cap, forehead under the brim) may take the swap
     return m.astype(bool), brow
+brow_override = None
 
 # per swap frame: categories and an affine aligning it to the original frame at the same time
 SC = 0.25
 def gray_small(img): return cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), None, fx=SC, fy=SC).astype(np.float32)
 swap_cat, warp = {}, {}
-fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-tmp = os.path.join(out_dir, "_bodyonly.mp4")
-vw = cv2.VideoWriter(tmp, fourcc, FPS, (W, H))
+# raw frames straight into libx264: an intermediate cv2.VideoWriter("mp4v") encode has a 12-frame GOP whose I-frames
+# re-quantise the picture differently from the P-frames between them, which read as a pulse every 12 frames at the
+# cap (c044, 23 Oct: hat flicker, frame-to-frame diff spikes at frames 12, 24, 36 ... that no input had)
+out_p = os.path.join(out_dir, "c033_body_only_swap.mp4")
+vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
+                       "-r", FPS_RATE, "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
+                       "-movflags", "+faststart", out_p], stdin=subprocess.PIPE)
 face_err = 0; seam_frames = []
 prev_M = np.eye(2, 3, dtype=np.float32)
 # frames before the first face detection borrow the first detection (the face shape only gates the cap/brow line)
@@ -97,6 +104,21 @@ for k in range(len(orig)):
     face_region(orig[k])
     if last_face is not None: first = k; break
 print("first face detection at frame", first)
+# the brow line per frame, then smoothed over time: a line that jumps a few px between frames flickers the cap's
+# underside (the original brim shows under the new one on some frames and not others; c044, 23 Oct)
+brows = []
+for k in range(len(orig)):
+    _, b = face_region(orig[k]); brows.append(b)
+brows = np.array([b if b is not None else np.nan for b in brows], np.float32)
+if np.isfinite(brows).any():
+    idx = np.arange(len(brows)); brows = np.interp(idx, idx[np.isfinite(brows)], brows[np.isfinite(brows)])
+    sm = np.array([np.median(brows[max(0, k - 4):k + 5]) for k in range(len(brows))], np.float32)
+else:
+    sm = brows
+last_face = None
+for k in range(len(orig)):
+    face_region(orig[k])
+    if last_face is not None: break
 for i, o in enumerate(orig):
     t = i / FPS
     j = min(len(swap) - 1, int(round(t * SFPS)))
@@ -116,11 +138,19 @@ for i, o in enumerate(orig):
     sw, sc = warp[j], swap_cat[j]
     # always original: face skin and hair (beard) of the ORIGINAL; other skin only where the swap shows skin too
     # (hands, neck). Where the swap puts a sleeve over the original bare arm, the sleeve wins.
+    brow_override = float(sm[i]) if np.isfinite(sm[i]) else None
     face, brow = face_region(o)
     rows = np.arange(H)[:, None]
     below_brow = (rows > brow) if brow is not None else np.ones((H, 1), bool)
-    protect = ((oc == 3) & below_brow) | ((oc == 1) & below_brow) | ((oc == 2) & (sc == 2))
-    if face is not None: protect |= face
+    # the forehead band between the brow cut and the eyebrows: face skin there is kept only where the swap shows
+    # face skin too, so a new cap brim that sits lower than the old one (or the old black brim under the new one)
+    # comes from the swap, as a sleeve over a bare arm does
+    eyebrow = (brow + 0.08 * last_face[2]) if (brow is not None and last_face is not None) else brow
+    band = below_brow & (rows < eyebrow) if eyebrow is not None else np.zeros((H, 1), bool)
+    changed = np.abs(o.astype(np.int16) - sw.astype(np.int16)).max(2) > 40
+    keep_band = (sc == 3) & ~changed                            # forehead skin in both, unchanged: his own pixels
+    protect = ((oc == 3) & below_brow & (~band | keep_band)) | ((oc == 1) & below_brow & ~band) | ((oc == 2) & (sc == 2))
+    if face is not None: protect |= face & (~band | keep_band)
     clothes = np.isin(oc, (4, 5)) | np.isin(sc, (4, 5))
     # the cap: anything labelled hair/accessory above the brow line, in either frame, comes from the swap
     above_brow = ~below_brow
@@ -135,18 +165,15 @@ for i, o in enumerate(orig):
     # wall there; the segmenter can miss a dark shoe on a dark floor, so any strong change next to him that is not
     # protected is taken from the swap too (c044, 23 Oct: the original black toe showed under the cream sneaker)
     near = cv2.dilate(((oc != 0) | (sc != 0)).astype(np.uint8), np.ones((31, 31), np.uint8)).astype(bool)
-    changed = np.abs(o.astype(np.int16) - sw.astype(np.int16)).max(2) > 40
     clothes |= changed & near
     m = (clothes & ~protect).astype(np.float32)
     m = cv2.GaussianBlur(m, (0, 0), 2.0)
     m[protect] = 0.0                                       # no feather leaks onto the face or hands
     out = (o.astype(np.float32) * (1 - m[..., None]) + sw.astype(np.float32) * m[..., None]).round().clip(0, 255).astype(np.uint8)
     face_err = max(face_err, int(np.abs(out[protect].astype(int) - o[protect].astype(int)).max()) if protect.any() else 0)
-    vw.write(cv2.cvtColor(out, cv2.COLOR_RGB2BGR))
+    vw.stdin.write(np.ascontiguousarray(out).tobytes())
     if i in (0, 60, 120, 180, 239):
         cv2.imwrite(os.path.join(out_dir, f"mask_{i:03d}.png"), (m * 255).astype(np.uint8))
-vw.release()
-subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp, "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
-                "-movflags", "+faststart", os.path.join(out_dir, "c033_body_only_swap.mp4")], check=True)
-os.remove(tmp)
+vw.stdin.close()
+if vw.wait() != 0: raise SystemExit("ffmpeg encode failed")
 print("frames", len(orig), "swap frames aligned", len(warp), "max |out-original| on face/hair/skin:", face_err)
