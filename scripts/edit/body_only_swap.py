@@ -8,6 +8,8 @@ usage: body_only_swap.py <original.mp4> <swap.mp4> <out_dir>
   bare arm wins. The script proves it: max |out - original| inside the protected region is printed (must be 0;
   measured before the final video encode).
 - Models (env AVT_MODELS, default ./models): MediaPipe selfie_multiclass_256x256.tflite and face_landmarker.task.
+- A small face (env AVT_HEAD_ZOOM=4): see HEAD_ZOOM below. The run must print a first face detection, not None;
+  with None the face shape and brow line are missing and the glasses would come from the swap.
 - Verified on c033 (18 Oct 2026): docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md"""
 import subprocess, sys, os, json
 import numpy as np, cv2, mediapipe as mp
@@ -46,6 +48,9 @@ BROWS = [70,63,105,66,107,336,296,334,293,300]
 lmk = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
     base_options=BaseOptions(model_asset_path=os.path.join(MODELS, "face_landmarker.task")), running_mode=vision.RunningMode.IMAGE, num_faces=1))
 DET = (0.1, 0.05, 0.85, 0.6)  # x, y, w, h of the frame searched for the face (full-body framing: the face is small)
+# env AVT_HEAD_ZOOM (default 0, off): when the search box finds no face, enlarge a crop around his face skin this many
+# times and look again. The 23 Oct reshoot needs it (his face ~100 px wide at 1080); c033 (18 Oct) runs without it.
+HEAD_ZOOM = int(os.environ.get("AVT_HEAD_ZOOM", "0"))
 last_face = None
 def face_region(img):
     """Mask of the face from the eyebrows down (eyes, glasses, nose, mouth, jaw, beard line), and the brow cut row."""
@@ -53,6 +58,15 @@ def face_region(img):
     h0, w0, _ = img.shape
     x0, y0 = int(w0 * DET[0]), int(h0 * DET[1]); cw, ch = int(w0 * DET[2]), int(h0 * DET[3])
     r = lmk.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(img[y0:y0 + ch, x0:x0 + cw])))
+    if not r.face_landmarks and HEAD_ZOOM:   # a small face: look again on an enlarged crop around his face skin
+        fs = (cats(img) == 3).astype(np.uint8)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(fs)
+        if n > 1:
+            bx, by, bw, bh, _ = st[1 + np.argmax(st[1:, cv2.CC_STAT_AREA])]
+            side = int(max(bw, bh) * 2.2); x0 = max(0, bx + bw // 2 - side // 2); y0 = max(0, by + bh // 2 - side // 2)
+            crop = img[y0:y0 + side, x0:x0 + side]; ch, cw = crop.shape[:2]
+            big = cv2.resize(crop, (cw * HEAD_ZOOM, ch * HEAD_ZOOM), interpolation=cv2.INTER_CUBIC)
+            r = lmk.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(big)))
     if r.face_landmarks:
         L = r.face_landmarks[0]
         pts = np.array([[x0 + L[k].x * cw, y0 + L[k].y * ch] for k in OVAL], np.float32)
