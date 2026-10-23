@@ -16,7 +16,10 @@ segments.json: {"song_start_clip": s, "song_start_take": s, "segments": [
   pillar), all in clip px; "track": true to follow the shake (default); "track_rect": [x0, y0, x1, y1] (clip px) a fixed
   window the generated him never enters, for the shake (else the whole background under a per-frame mask);
   "clip_face": [x0, y0, x1, y1] (clip px) the generated face when the landmarker misses it (profile, cap);
-  "gain": [r, g, b] a fixed light gain instead
+  "gain": [r, g, b] a fixed light gain instead;
+  "fill": "rows" (default) fills what the generated him hid along each row from its nearest known pixels (a passing
+  train's streaks survive), "median" with the segment's per-pixel median background (a static patch where the
+  background moves), "inpaint" with cv2.inpaint alone (the first version: it smeared a ghost of his outline)
 ]}
 His light: a per-channel linear gain from the generated him's FACE to the real him's face (the clothes differ, the skin
 does not), once per segment on its first frame; the face is the landmarker's oval, found on an enlarged crop of the top
@@ -149,8 +152,10 @@ for i in range(n):
         aw = cv2.GaussianBlur(aw, (0, 0), 0.8)
         # what the generated him still shows: his matte (shifted with the shake is where it already is) minus the real him's
         cao = cv2.resize(ca, (OW, OH), interpolation=cv2.INTER_LINEAR)
-        left = np.clip(cao - aw, 0, 1); left_m = (left > 0.3).astype(np.uint8)
-        left_m = cv2.dilate(left_m, np.ones((5, 5), np.uint8))
+        left = np.clip(cao - aw, 0, 1)
+        # everything the generated him touches is cleared first (his matte's soft edges, hair and blur included: a
+        # half-covered pixel of him left a ghost outline beside the real him), then the real him goes on top
+        left_m = cv2.dilate((cao > 0.1).astype(np.uint8), np.ones((7, 7), np.uint8))
         if "plate" in s:
             # the scene's plate as the background, moved by the clip's shake; the generated him and the clip's people are gone
             if s["plate"] not in PLATES:
@@ -166,7 +171,39 @@ for i in range(n):
         else:
             base = out
             if left_m.any():
-                base = cv2.inpaint(out, left_m, 7, cv2.INPAINT_TELEA)
+                fill = s.get("fill", "rows")
+                if fill == "rows":
+                    # each row of the hole is filled along the row from its nearest known pixels left and right: a
+                    # passing train is horizontal motion blur, and a horizontal fill keeps its streaks where a median
+                    # (a static patch) or an isotropic inpaint (a smear) both show as a cut-out of his shape
+                    hole = left_m.astype(bool); base = out.astype(np.float32).copy()
+                    xs = np.arange(OW, dtype=np.float32)
+                    for y in np.nonzero(hole.any(1))[0]:
+                        known = ~hole[y]
+                        if known.sum() < 2: continue
+                        kx = xs[known]
+                        for c in range(3): base[y, hole[y], c] = np.interp(xs[hole[y]], kx, out[y, known, c].astype(np.float32))
+                    base = base.round().clip(0, 255).astype(np.uint8)
+                elif fill == "median":
+                    # what the generated him hid: the segment's own background, each pixel the median of the frames in
+                    # which the generated him is not over it (the pillar, the platform; a train blurs into its motion blur);
+                    # pixels he covers in every frame fall back to the inpaint
+                    if "bg" not in ref[key]:
+                        fr = range(s["from"], min(s["to"], n - 1) + 1)
+                        stack = np.stack([cv2.resize(clip[j], (OW, OH), interpolation=cv2.INTER_LANCZOS4) for j in fr]).astype(np.float32)
+                        free = np.stack([cv2.resize(calpha[j], (OW, OH), interpolation=cv2.INTER_LINEAR) for j in fr]) < 25
+                        bg = np.zeros((OH, OW, 3), np.float32); known = np.zeros((OH, OW), bool)
+                        for c in range(3):
+                            v = np.where(free[..., None].repeat(3, 3)[..., c], stack[..., c], np.nan)
+                            med = np.nanmedian(v, 0); known |= ~np.isnan(med); bg[..., c] = np.nan_to_num(med)
+                        ref[key].update(bg=bg.round().clip(0, 255).astype(np.uint8), bg_known=known)
+                    bg, known = ref[key]["bg"], ref[key]["bg_known"]
+                    hole = left_m.astype(bool)
+                    base = out.copy(); base[hole & known] = bg[hole & known]
+                    rest = (hole & ~known).astype(np.uint8)
+                    if rest.any(): base = cv2.inpaint(base, rest, 7, cv2.INPAINT_TELEA)
+                else:
+                    base = cv2.inpaint(out, left_m, 7, cv2.INPAINT_TELEA)
             v = base.astype(np.float32) / 255 * (1 - aw[..., None]) + hw * aw[..., None]
             oth = cv2.resize(others, (OW, OH), interpolation=cv2.INTER_LINEAR)[..., None]     # the clip's other people, in front
             v = v * (1 - oth) + out.astype(np.float32) / 255 * oth
