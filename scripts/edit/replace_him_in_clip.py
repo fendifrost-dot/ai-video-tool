@@ -1,7 +1,7 @@
 """Put his REAL take in place of the generated him in a Seedance clip, $0 (Fendi, 23 Oct 2026, c044: "the same exact
 scene if possible, just use my leg on wall performance shot in place of seedance generated performance shot").
 usage: replace_him_in_clip.py <clip.mp4> <clip_alpha.mp4> <take.mp4> <take_alpha.mp4> <segments.json> <out.mp4>
-       [--size WxH] [--stills DIR] [--report out.json]
+       [--size WxH] [--stills DIR] [--report out.json] [--model face_landmarker.task]
 
 The clip (24 fps, 720x1280, the montage) keeps every cutaway exactly. In the segments listed, the generated him is
 covered by the real him from the take (his own pixels, never redrawn): the take frame at the same time, matted, scaled
@@ -13,12 +13,20 @@ the real him's matte is inpainted from its surroundings (cv2.inpaint, Telea) and
 segments.json: {"song_start_clip": s, "song_start_take": s, "segments": [
   {"from": f0, "to": f1, "head_y": y, "height": h, "head_x": cx | "left_x": x}  — clip frames (inclusive), the real him's
   matte box: its top at head_y, its height, and either its centre (head_x) or its left edge (left_x: his back on a
-  pillar), all in clip px; "track": true to follow the shake (default)
+  pillar), all in clip px; "track": true to follow the shake (default); "track_rect": [x0, y0, x1, y1] (clip px) a fixed
+  window the generated him never enters, for the shake (else the whole background under a per-frame mask);
+  "clip_face": [x0, y0, x1, y1] (clip px) the generated face when the landmarker misses it (profile, cap);
+  "gain": [r, g, b] a fixed light gain instead
 ]}
 His light: a per-channel linear gain from the generated him's FACE to the real him's face (the clothes differ, the skin
 does not), once per segment on its first frame; the face is the landmarker's oval, found on an enlarged crop of the top
 of each matte's box. Clip people outside the generated him's box (a model crossing the frame) are not inpainted and stay
-in front of the real him."""
+in front of the real him.
+A segment may instead stand him in the scene's PLATE ("plate": still path, 9:16): when the generated him fills the frame
+(c009: seated, half the picture) there is nothing to inpaint from, so the background becomes the plate the montage was
+made from, moved by the clip's tracked shake, and the real him stands in it; "plate_front": [[[x, y], ...], ...] are
+polygons (output px) of the plate that stay in front of him (a table, the couch back). The gain is still the generated
+him's face over his."""
 import argparse, json, os, subprocess
 import numpy as np, cv2
 import mediapipe as mp
@@ -79,6 +87,7 @@ vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "
 report = []
 segs = {i: s for s in SEG["segments"] for i in range(s["from"], s["to"] + 1)}
 ref = {}   # per segment: the first frame's background (for the shake) and his gain
+PLATES = {}
 for i in range(n):
     out = cv2.resize(clip[i], (OW, OH), interpolation=cv2.INTER_LANCZOS4)
     s = segs.get(i)
@@ -106,11 +115,29 @@ for i in range(n):
         if "gain" not in ref[key]:
             # his light: the generated him's face over the real him's face, in linear light (the clothes differ, skin does not)
             fc = face_mean(clip[i], ca); ft = face_mean(tf, ta)
+            if fc is None and "clip_face" in s:
+                # the landmarker misses a face in profile under a cap: the generated face is then the given rect (clip px)
+                # under his matte
+                x0, y0, x1, y1 = s["clip_face"]; fm = np.zeros((CH, CW), bool); fm[y0:y1, x0:x1] = True; fm &= ca > 0.5
+                fc = lin(clip[i][fm].astype(np.float32) / 255).mean(0) if fm.sum() >= 50 else None
             gain = np.clip(fc / np.maximum(ft, 1e-4), 0.25, 4.0) if fc is not None and ft is not None else np.ones(3)
-            ref[key].update(g=g * mask, mask=mask, gain=gain, faces=(fc is not None, ft is not None))
+            if "gain" in s: gain = np.float32(s["gain"])
+            tr = s.get("track_rect")
+            ref[key].update(g=g * mask, mask=mask, gain=gain, faces=(fc is not None, ft is not None),
+                            win=(g[tr[1]:tr[3], tr[0]:tr[2]] * cv2.createHanningWindow((tr[2] - tr[0], tr[3] - tr[1]), cv2.CV_32F)) if tr else None, last=(0.0, 0.0))
         dx = dy = 0.0
         if s.get("track", True):
-            (dx, dy), _ = cv2.phaseCorrelate(ref[key]["g"], g * mask)
+            tr = s.get("track_rect")
+            if tr:
+                # a fixed window of the clip the generated him never enters (its posters, its crew): a clean shake estimate
+                win = g[tr[1]:tr[3], tr[0]:tr[2]] * cv2.createHanningWindow((tr[2] - tr[0], tr[3] - tr[1]), cv2.CV_32F)
+                (dx, dy), resp = cv2.phaseCorrelate(ref[key]["win"], win)
+                lx, ly = ref[key]["last"]
+                if resp < 0.05 or max(abs(dx), abs(dy)) > 40 or max(abs(dx - lx), abs(dy - ly)) > 12:
+                    dx, dy = lx, ly                                                       # no lock, or a jump: hold the last estimate
+                ref[key]["last"] = (dx, dy)
+            else:
+                (dx, dy), _ = cv2.phaseCorrelate(ref[key]["g"], g * mask)
         gain = ref[key]["gain"]
         # the real him: graded, scaled, his head top at the anchor (plus the shake), in output px
         him = srgb(np.clip(lin(tf.astype(np.float32) / 255) * gain, 0, 1)).astype(np.float32)
@@ -124,12 +151,25 @@ for i in range(n):
         cao = cv2.resize(ca, (OW, OH), interpolation=cv2.INTER_LINEAR)
         left = np.clip(cao - aw, 0, 1); left_m = (left > 0.3).astype(np.uint8)
         left_m = cv2.dilate(left_m, np.ones((5, 5), np.uint8))
-        base = out
-        if left_m.any():
-            base = cv2.inpaint(out, left_m, 7, cv2.INPAINT_TELEA)
-        v = base.astype(np.float32) / 255 * (1 - aw[..., None]) + hw * aw[..., None]
-        oth = cv2.resize(others, (OW, OH), interpolation=cv2.INTER_LINEAR)[..., None]     # the clip's other people, in front
-        v = v * (1 - oth) + out.astype(np.float32) / 255 * oth
+        if "plate" in s:
+            # the scene's plate as the background, moved by the clip's shake; the generated him and the clip's people are gone
+            if s["plate"] not in PLATES:
+                PLATES[s["plate"]] = cv2.resize(cv2.cvtColor(cv2.imread(s["plate"]), cv2.COLOR_BGR2RGB), (OW, OH), interpolation=cv2.INTER_AREA)
+            base = cv2.warpAffine(PLATES[s["plate"]], np.float32([[1, 0, dx * sx], [0, 1, dy * sy]]), (OW, OH), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            left = np.zeros((OH, OW), np.float32)
+            v = base.astype(np.float32) / 255 * (1 - aw[..., None]) + hw * aw[..., None]
+            if s.get("plate_front"):
+                fm = np.zeros((OH, OW), np.uint8)
+                for poly in s["plate_front"]: cv2.fillPoly(fm, [np.array(poly, np.int32)], 1)
+                fm = cv2.GaussianBlur(fm.astype(np.float32), (0, 0), 1.0)[..., None]
+                v = v * (1 - fm) + base.astype(np.float32) / 255 * fm
+        else:
+            base = out
+            if left_m.any():
+                base = cv2.inpaint(out, left_m, 7, cv2.INPAINT_TELEA)
+            v = base.astype(np.float32) / 255 * (1 - aw[..., None]) + hw * aw[..., None]
+            oth = cv2.resize(others, (OW, OH), interpolation=cv2.INTER_LINEAR)[..., None]     # the clip's other people, in front
+            v = v * (1 - oth) + out.astype(np.float32) / 255 * oth
         out = (np.clip(v, 0, 1) * 255).round().astype(np.uint8)
         report.append(dict(frame=i, take_frame=j, scale=round(float(scale), 4), shake=[round(float(dx), 2), round(float(dy), 2)],
                            uncovered_px=int((left > 0.3).sum()), gain=[round(float(x), 4) for x in gain], faces=ref[key]["faces"]))
