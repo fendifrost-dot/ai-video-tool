@@ -44,17 +44,25 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## Not done: what needs a person or a later session
 
-S. **The reshoot (Fendi, 23 Oct).** He is shooting new performance takes in a ~10 ft room, as two lighting tests:
-   - (a) the room's warm overhead light, placed a little in front of him, with any plain white sheet or towel as a bounce;
-   - (b) overhead off, his two small LEDs about 1 m from his face either side of the camera, at full power.
-   - Rig for both: 1×, portrait, level, lens at 1.55 m, 4K 60, a medium-grey backdrop ≥ 0.75 m behind him, a white card, a clap, and a clean plate (write-up: "Shoot sheet for room 2" and "Capture standard").
-   - Not yet received: they are on his T7 drive. This cloud session cannot read it, so he will upload them to AVT, with his tape-measured lens-to-mark distance.
-   - When they arrive:
-     1. Check colour, flicker (bands on the 60 fps frames) and exposure from the white card.
-     2. Check his outline against the grey.
-     3. Set `performer` / take geometry in `showroom_c033_room2.json` from the measured distance.
-     4. Show him both lights in room 2 side by side. Do not pick for him.
-   - He has no foam boards or video lights yet. Two identical soft, flicker-free lights are the recommendation for the capture standard (not bought; ask before any spend).
+S. **The reshoot (23 Oct): received, placed in room 2, the clothing swap BLOCKED on the Higgsfield API wallet.**
+   - **Takes on AVT** (reference_video, project YSL, uploaded by the Mac session): overhead `a38e403f` (HALF_SONG_FOOT_ON_WALL), `cc3a8a3f` (HALF_SONG_SIDE); LED `92d60797` (IMG_6228), `4dc59481` (IMG_6229), `393cfc88` (IMG_6230). The sixth, FULL SONG FRONT FACING (1.59 GB), exceeded the bucket limit; Fendi has not chosen (recommended: split it losslessly on the Mac).
+   - **VERIFIED:** the LED takes are neutral (red/blue 1.02) and sharp; the overhead takes warm (1.11) and hazy. Fendi: use the LED takes. No flicker in either. iPhone 4K HEVC, ~60 fps, rotation −90.
+   - **IMG_6228 → c033:** sync take t = song t + 5.7977 s (audio cross-correlation, 20 sd). Window frames 3759–3998 = song 56.9098 s, 240 frames at 1080×1920 59.94: asset **`859308f6`**, on the c033 shot as a performance take, unselected; sync row `d9f88b54`. Geometry MEASURED: 420 px/m at his face, lens 1.54 m, roll −0.40°; scene file `scripts/edit/blender/showroom_c033_room2_reshoot.json` (room, camera and placement as room 2). Matte: `matte-video-proxy` job `4b40d992`, $0.18 (ledger 158); the wall shadow is gone with the matte.
+   - **Room 2 static, black outfit (a placement test, $0):** asset **`8bfc21f2`**, review (take | result, with song) `423e2fbc`. VERIFIED by `verify_scene.py`: 120 frames checked, face PSNR median 37.58 dB (min 34.98), timing lag 0 on 119/120, margin median 6.34 dB. Decoded MD5 `e959bf5e4a29937db2bee4f40bc42933`. Not rendered: dolly and tight. For tight, cut the window from the 4K take (the 1080 window gives a 1.28× upscale at 2.0×).
+   - **The clothing swap (Fendi: "You didn't do the clothing swap"), the approved c033 look (`YSL_JACKET` v2, the four pieces of job `c817d489`):**
+     1. Whole frame (ledger 159, $3.405, job `fa940bc9`, result `fc411c26` on the shot, unselected): **UNUSABLE**. Genjutsu re-staged him ~2.5× larger (he fills little of a full-body frame). It also put a white T-shirt and a gold chain at the neck. Fendi: tacky; remove the chain; the jacket zipped all the way up ("perfect", the approved c033 collar).
+     2. The jacket piece `0feb028f` (`character_features.dimensions_description`, in AVT, not this repo) now reads FULLY ZIPPED to the collar, nothing at the neck, no chain. Dry run VERIFIED: the dress prompt carries it.
+     3. The swap goes on an **enlarged crop** where he fills the frame: `project-clips …/swap-crops/c033_reshoot_IMG6228_crop_243_760_486x864.mp4` (box 486×864 at (243, 760), ×2.22; sha256 `0cbad25c…`), `dress-clip` with `crop {rect {x 0.225, y 0.395833, w 0.45, h 0.45}, window [0, 4.004]}`.
+     4. **REFUSED twice**, "Your credit balance is too low" (ledger 160 and 161, $0, jobs `7772a27c`, `5f034b0e`). The wallet is Control Center's Higgsfield **API** account at `platform.higgsfield.ai` (keys in CC), not higgsfield.ai plan credits (0.68 credits, no CC spend). Fendi (23 Oct): "if you get an alert saying there's nothing left, I'll top up … just proceed." He has the link.
+   - **When the wallet is topped up (each step prints what to expect):**
+     1. `avt_call dress-clip` with the body of ledger 161, `dryRun: true` first (expect `estimateUsd 3.405`, `batchShotId c033_swap_crop`), then without. Poll `provider_jobs` by `jobId`: `succeeded` with a `result_asset_id`, else `failed` with the refusal text.
+     2. Download the result (project-clips path in the asset's `file_url`; 89 frames, 4.004 s, 720×1280).
+     3. `python3 -I scripts/edit/paste_region_swap.py <take window 859308f6> <result> 243 760 486 864 swap_full.mp4` → prints `pasted 89 swap frames into 1080x1920`.
+     4. `AVT_HEAD_ZOOM=4 AVT_MODELS=<models> python3 -I scripts/edit/body_only_swap.py <take window> swap_full.mp4 <dir>` → must print `first face detection at frame 0` and `max |out-original| on face/hair/skin: 0`. `None` or a non-zero proof is a stop.
+     5. Look at frames 30/120/210 of the result against the take: the jacket zipped, no shirt, no chain, his own glasses. If Genjutsu opened the collar again, the lever is the piece text (step 2 above), not the put-back.
+     6. Matte the dressed take (`matte-video-proxy`, ~$0.18, ledger row), then prep + the four Blender passes + comp with `showroom_c033_room2_reshoot.json` (the passes of this session are gone with its scratchpad: ~1 h a pass on CPU), `verify_scene.py` (expect PSNR ≥ 34 dB, lag 0), file unassigned, post the clips.
+   - **Next performance shots (Fendi):** the subway / L-platform fashion-show shot from the lean takes (IMG_6229, HALF_SONG_FOOT_ON_WALL): him rapping while leaning on the platform, models walking past, trains going by, recreated in Seedance. The black outfit is irrelevant (swapped later). Fendi's three wardrobe notes above apply to every swap.
+   - He has no foam boards or video lights yet; the LEDs worked. Two identical soft, flicker-free lights remain the capture-standard recommendation (not bought; ask before any spend).
 R. **Room 2: Fendi's eye on v2's outline** (the before / after `6039f53d`, then the three versions).
    - If it still flashes, the levers are in `lens` of `showroom_c033_room2.json`:
      - `edge_tween_px`: wider smears more;
@@ -111,6 +119,8 @@ R2. **Room 2: Fendi's eye** on placement (behind the island's far end), size aga
   - Plate v3 versions: the script at commit `75c1279` (MD5 `aecb5dbc…` static).
   - A different MD5 with identical input hashes means a different Blender/ffmpeg/numpy build. Compare the versions before trusting it.
   - A MISMATCH on an input means the wrong file. Do not edit the hashes.
+- **The reshoot's room 2 static** (`showroom_c033_room2_reshoot.json`, take window `859308f6`, matte job `4b40d992`): decoded MD5 **e959bf5e4a29937db2bee4f40bc42933**. The room passes are room 2's (same plate MD5); only his passes differ.
+- **`verify_scene.py` on a full-body take:** his face is ~100 px wide at 1080; the script (since #365) searches 360×480 windows at 3× when the 1× box finds nothing. `frames_checked 0` (an empty-array crash before #365) means the search failed, not that the face is wrong.
 - **`verify_scene.py` on the result.** Expected (static):
   - face PSNR median ~36 dB (min ≥ 34; dolly ≥ 33.5). For tight use `--inner 10`: ~38, min ≥ 35;
   - timing lag-0 fraction **1.0**, min margin > 0 dB.
