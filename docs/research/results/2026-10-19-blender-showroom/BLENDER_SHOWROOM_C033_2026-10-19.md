@@ -448,6 +448,27 @@ per-channel linear gain is fitted, since the grade is linear in light. Every sec
 - **The LED band is a model** (PWM rate, row time and depth are estimates), not a measurement of a real Purosangue.
 - **The clean room under the car and the penguin is a still edit.** It is used only where they stood. A dark-floor patch under the shrunk car's front is that edit's floor.
 
+## Capture standard for every performance shot (23 Oct, Fendi: "we need something that will be good for multiple performance shots not just this one")
+
+**Principle (DECISION):** film him in flat, even, neutral light, and let the composite give each room its look.
+- What the composite can do: `comp_scene.py` applies white balance and exposure from the take's white card to the room's white, a top-to-bottom light gradient and the room's light changes.
+- What it cannot do: remove a hard shadow or a coloured rim that is filmed in. Anything directional baked into the take is wrong for every room whose light comes from elsewhere.
+
+| | Standard | Why |
+|---|---|---|
+| Key light | **two identical soft lights**, equal power, ±30–45° either side of the camera, ~1.8–2 m high, tipped slightly down, diffused (softbox, umbrella or a white sheet) | even, shadow-light front light the composite can shape |
+| Colour | **one colour temperature for every light** (~5000–5600 K daylight is the most neutral); room lights and window light off | one white the composite can match to any room |
+| Light quality | sold as flicker-free for video, CRI 95+, run at full power and softened by diffusion or distance | dimmed or cheap LEDs pulse on 60 fps video |
+| Rim / back light | **none** in the standard take | a rim's direction and colour belong to one room only |
+| Backdrop | plain matte **medium grey** (18 %), ≥ 1.5 m behind him, lit evenly, none of his shadow on it | neutral spill in his edge; a clean matte |
+| Camera | 1× lens, portrait, tripod, level, **lens at 1.55 m**, as far away as the space allows (corner to corner), 4K 60 fps, HDR / Auto FPS / stabilisation off, Lock Camera on; a manual app at 1/120 | one viewpoint for every take; the rooms are generated to match it (below) |
+| Frame | full body, head to toe | any placement: behind objects or in open floor |
+| Each take | white and grey card 2 s, one clap, the song aloud, then 5 s of the empty frame | white balance, sync, clean plate |
+| Wardrobe | the real outfit (no swap, so no 24p cadence); not the backdrop's grey; no fine stripes, no shine | swaps bring 24p steps; stripes and shine break the matte |
+
+- **Rooms follow the rig, not the other way round (DECISION).** Each new Gemini room prompt asks for a phone photo taken level at ~1.5 m eye height (portrait, 1×). Then the takes need no per-room camera. The measured room camera (`plate` in its scene file) only confirms it.
+- **Known gap:** the composite has no rim-light model yet. A room with strong back light (like room 2's window) would need one built (a gradient along his outline from the room's side), rather than a filmed rim.
+
 ## Shoot sheet for room 2 (22 Oct, Fendi: "I'm going to shoot multiple shots and reshoot my main performance shot correctly")
 
 Derived from the measured room-2 camera (`showroom_c033_room2.json`). The goal is that his take is filmed from where the plate's camera stands, so nothing has to be bent to fit.

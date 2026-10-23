@@ -73,9 +73,10 @@ if tween:
     # as a shutter would smear it. His body and face stay this frame's own pixels.
     def body_sig(i):
         f = read_rgba(fg_path(i)); return cv2.resize(f, (270, 480), interpolation=cv2.INTER_AREA)
-    sig = [body_sig(i) for i in range(1, NF + 1)]
-    new_pic = [1] + [i for i in range(2, NF + 1)
-                     if np.abs(sig[i - 1][..., :3] - sig[i - 2][..., :3]).max(2)[(sig[i - 1][..., 3] > 0.98) & (sig[i - 2][..., 3] > 0.98)].mean() * 255 > 4]
+    have = [i for i in range(1, NF + 1) if os.path.exists(fg_path(i))]     # a one-frame test has only its frame
+    sig = {i: body_sig(i) for i in have}
+    new_pic = [have[0]] + [i for i in have[1:] if i - 1 in sig and
+                           np.abs(sig[i][..., :3] - sig[i - 1][..., :3]).max(2)[(sig[i][..., 3] > 0.98) & (sig[i - 1][..., 3] > 0.98)].mean() * 255 > 4]
     print("pictures change on", len(new_pic), "of", NF, "frames")
 def next_alpha(i):
     """(weight toward the next picture, its matte) for frame i; (0, None) if no later picture."""
