@@ -104,6 +104,8 @@ export type MontageInput = {
   cast?: CastFacts | null;
   /** The song's beats, song seconds (song_analyses.beat_map_json): untimed lines are cut on them. */
   beats?: readonly number[] | null;
+  /** "still": the same montage with his mouth shut in every shot he is in (montagePrompt MONTAGE_MOUTH_STILL; b-roll with him, Fendi, 23 Oct 2026). */
+  mouth?: "still";
 };
 
 export type MontagePlan = {
@@ -225,15 +227,16 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   const pictures = picturesAfterPlace(plate, footwear, cast);
   // the app's order: the montage, its shoes and its people are the variant's sentence, the light follows it
   // (restage.ts restageShot)
+  const still = input.mouth === "still" ? ("still" as const) : undefined;
   const angle = [
-    montagePrompt(planned.scenes),
+    montagePrompt(planned.scenes, still),
     footwearLine(footwear),
     cast ? castLine(pictures.castImage) : "",
     light,
   ]
     .filter(Boolean)
     .join(" ");
-  const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }));
+  const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }), undefined, still);
   const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds).toFixed(3));
   const aspect = clipAspect(input.aspect);
   const batchShotId = `${shot.key}_${MONTAGE_ID_SUFFIX}`;
@@ -264,7 +267,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn }),
+    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),

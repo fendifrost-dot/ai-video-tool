@@ -69,6 +69,8 @@ type Body = {
   lines?: string;
   /** Answer with the exact request and send nothing. */
   dryRun?: boolean;
+  /** "still": the montage with his mouth shut in every shot he is in — the same scenes, no mouth movement (b-roll with him; Fendi, 23 Oct 2026). */
+  mouth?: "still";
   /**
    * One continuous take instead of a montage (_shared/continuousPrompt.ts): one named camera move, no cuts, as long as
    * the lane allows. `withHim` false = a shot of the place or a detail (no take), even on a performance shot.
@@ -403,6 +405,7 @@ serve(async (req) => {
         footwear: null,
         cast,
         beats,
+        ...(body.mouth === "still" ? { mouth: "still" as const } : {}),
       })
     : planBrollMontage({
         projectId,

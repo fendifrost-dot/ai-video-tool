@@ -18,6 +18,14 @@ export const MONTAGE_SYNC =
   "Whenever he is on screen his mouth movements are exactly @Video1's at that same second, word for word, in sync from the first frame to the last; " +
   "a cutaway does not pause, repeat or shift the performance — it continues underneath and is where @Video1 is when the picture comes back to him.";
 
+/**
+ * B-roll with him in it (Fendi, 23 Oct 2026: "on b roll shots re render the approved shots with no mouth movement. Same
+ * scene"): the same montage, his mouth shut in every shot he is in. The edge copy only — the storyboard's button has
+ * no still-mouth montage yet.
+ */
+export const MONTAGE_MOUTH_STILL =
+  "Whenever he is on screen his mouth stays closed: he is not rapping, not singing, not talking and not mouthing anything; no lip movement at all, in every shot he is in, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
+
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
 
@@ -157,11 +165,11 @@ export function montageScript(scenes: readonly MontageScene[]): string {
   ].join("\n");
 }
 
-export function montagePrompt(scenes: readonly MontageScene[]): string {
+export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still"): string {
   return [
     `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
     montageScript(scenes),
-    MONTAGE_SYNC,
+    mouth === "still" ? MONTAGE_MOUTH_STILL : MONTAGE_SYNC,
     NEVER_WIDER,
     NO_FEET,
     WAIST_UP,
@@ -272,7 +280,7 @@ export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
-  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null } = {},
+  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" } = {},
 ): {
   version: string;
   scenes: MontageScene[];
@@ -281,6 +289,7 @@ export function montageRecord(
   cast?: { id: string };
   broll?: true;
   cutOn?: { beats: number; cuts: number };
+  mouth?: "still";
 } {
   return {
     version: MONTAGE_VERSION,
@@ -290,6 +299,7 @@ export function montageRecord(
     ...(more.cast ? { cast: { id: more.cast.id } } : {}),
     ...(more.broll ? { broll: true as const } : {}),
     ...(more.cutOn ? { cutOn: { ...more.cutOn } } : {}),
+    ...(more.mouth === "still" ? { mouth: "still" as const } : {}),
   };
 }
 
@@ -362,14 +372,22 @@ export function seedanceAnglePrompt(
   angle: string,
   keep: string[],
   lookSuffix: string | null = DEFAULT_LOOK_SUFFIX,
+  mouth?: "still",
 ): string {
   const keepStr =
     keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
-  const parts = [
-    `@Video1 is the performer, rapping to camera. Re-shoot the exact same performance from a second camera: ${angle}`,
-    `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
-    PLACE_LIGHT,
-  ];
+  // a still mouth: @Video1 is who he is and how he moves, not a performance to copy (continuousPrompt's PERFORMER)
+  const parts = mouth === "still"
+    ? [
+        `@Video1 is the performer: his face, build, wardrobe and the way he moves; his performance there is a reference for his body, not a timeline to copy. Shoot him from a second camera: ${angle}`,
+        `Keep everything identical to @Video1 — ${keepStr}; nothing he wears changes during the take.`,
+        PLACE_LIGHT,
+      ]
+    : [
+        `@Video1 is the performer, rapping to camera. Re-shoot the exact same performance from a second camera: ${angle}`,
+        `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
+        PLACE_LIGHT,
+      ];
   if (lookSuffix) parts.push(lookSuffix);
   return parts.join(" ");
 }

@@ -226,6 +226,24 @@ const SHOES = {
 };
 const CAST = { id: "17ac4e3a", bucket: "project-references", path: "u/p/worlds/scene_oak_street_boosters_2.png" };
 
+describe("a montage with his mouth still (b-roll with him; Fendi, 23 Oct 2026)", () => {
+  it("keeps the scenes and the place, drops the sync rule and the rapping opening, and records mouth: still", () => {
+    const r = planMontage(c042({ lines: LINES, mouth: "still" }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const same = planMontage(c042({ lines: LINES }));
+    if (!same.ok) throw new Error(same.detail);
+    expect(r.plan.scenes).toEqual(same.plan.scenes);
+    expect(r.plan.prompt).toContain("Whenever he is on screen his mouth stays closed: he is not rapping");
+    expect(r.plan.prompt).not.toMatch(/mouth movements|rapping to camera|word for word|in sync with @Video1/);
+    expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
+    expect(r.plan.prompt).toContain("@Video1 is the performer: his face, build, wardrobe");
+    expect(((r.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).mouth).toBe("still");
+    expect("mouth" in ((same.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>)).toBe(false);
+    expect(same.plan.prompt).toContain("mouth movements are exactly @Video1's");
+  });
+});
+
 describe("the people of the scene, and no shots of his feet (17 Oct 2026)", () => {
   it("every montage asks for no shot of his shoes or feet", () => {
     const r = planMontage(c042({ lines: LINES }));
