@@ -44,6 +44,17 @@ Canonical method: [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/F
 
 ## Not done: what needs a person or a later session
 
+S. **The reshoot (Fendi, 23 Oct).** He is shooting new performance takes in a ~10 ft room, as two lighting tests:
+   - (a) the room's warm overhead light, placed a little in front of him, with any plain white sheet or towel as a bounce;
+   - (b) overhead off, his two small LEDs about 1 m from his face either side of the camera, at full power.
+   - Rig for both: 1×, portrait, level, lens at 1.55 m, 4K 60, a medium-grey backdrop ≥ 0.75 m behind him, a white card, a clap, and a clean plate (write-up: "Shoot sheet for room 2" and "Capture standard").
+   - Not yet received: they are on his T7 drive. This cloud session cannot read it, so he will upload them to AVT, with his tape-measured lens-to-mark distance.
+   - When they arrive:
+     1. Check colour, flicker (bands on the 60 fps frames) and exposure from the white card.
+     2. Check his outline against the grey.
+     3. Set `performer` / take geometry in `showroom_c033_room2.json` from the measured distance.
+     4. Show him both lights in room 2 side by side. Do not pick for him.
+   - He has no foam boards or video lights yet. Two identical soft, flicker-free lights are the recommendation for the capture standard (not bought; ask before any spend).
 R. **Room 2: Fendi's eye on v2's outline** (the before / after `6039f53d`, then the three versions).
    - If it still flashes, the levers are in `lens` of `showroom_c033_room2.json`:
      - `edge_tween_px`: wider smears more;
