@@ -24,7 +24,7 @@ export const MONTAGE_SYNC =
  * no still-mouth montage yet.
  */
 export const MONTAGE_MOUTH_STILL =
-  "No lip sync and no lip movement: his lips stay closed and he never mouths the words, in every shot he is in, from the first frame to the last. Everything else about his performance is @Video1's, moment for moment: the same head turns, nods and body movement, the same hands, the same eyes and eyebrows, the same energy and attitude at the same seconds, in sync with @Video1; he is alive and moving exactly as he does there, never frozen, stiff or blank — the only thing taken away is the lip movement.";
+  "No lip sync and no lip movement: his lips stay closed and still and he never mouths the words, in every shot he is in, from the first frame to the last. Transfer the exact movement and timing of @Video1 onto him, beat for beat: the same head turns and nods, the same shoulders and body, the same hands, the same eyes and eyebrows (he blinks, his brows lift and knit, he breathes) at the same seconds, in sync with @Video1; he is alive and moving exactly as he does there, never frozen, stiff or blank — the only thing taken away is the lip movement.";
 
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";

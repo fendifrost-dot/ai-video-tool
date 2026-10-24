@@ -91,7 +91,7 @@ describe("one continuous take", () => {
 
   it("mouth still: he is in it and never moves his mouth — no words, no @Audio1, nothing about rapping", () => {
     const p = continuousPrompt({ seconds: 5, camera: "a slow push-in", action: "He watches the dice", endMotion: "settling on him", withHim: true, mouth: "still", audio: true, lyrics: [{ at: 0.5, text: "On the highway" }] });
-    expect(p).toContain("No lip sync and no lip movement: his lips stay closed and he never mouths the words");
+    expect(p).toContain("No lip sync and no lip movement: his lips stay closed and still and he never mouths the words");
     expect(p).not.toMatch(/@Audio1|actually rapping|raps along|raps at|exact words|On the highway/);
     expect(p).toContain("@Video1 is the performer");
     const r = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: "a slow push-in", action: "x", endMotion: "y", mouth: "still", lyrics: [{ at: 0.5, text: "On the highway" }], audio: true });
