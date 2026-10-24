@@ -24,7 +24,7 @@ export const MONTAGE_SYNC =
  * no still-mouth montage yet.
  */
 export const MONTAGE_MOUTH_STILL =
-  "Whenever he is on screen his mouth stays closed: he is not rapping, not singing, not talking and not mouthing anything; no lip movement at all, in every shot he is in, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
+  "No lip sync and no lip movement: whenever he is on screen his lips do not move and his mouth stays closed; he is not rapping, not singing, not talking and not mouthing anything, in every shot he is in, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
 
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
