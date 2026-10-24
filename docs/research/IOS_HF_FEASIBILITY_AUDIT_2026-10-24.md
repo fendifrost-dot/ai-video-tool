@@ -111,7 +111,7 @@ The attached note (`hf_deep_dive_2026-10-23`) is a short pointer, not a full mod
 | No automated shot QA; issue #105 | **Partly stale.** Issue #105 is still **OPEN** ("Lane E2 — Video-level automated evaluator"). `evaluateVideoQa` is already merged and tested for reconstruction frame packs. It does not score wardrobe swaps or replace-him. A shot QA for those lanes is still absent. |
 | `Wan-AI/Wan2.2-Animate-14B` | **VERIFIED** on the Hub. Apache-2.0. Updated 5 Nov 2025 on the card read here. |
 | `facebook/sam3` | **VERIFIED**, gated, license `other`. AVT already calls SAM 3 through Fal for stills. See §1.4. |
-| `lixiaowen/diffuEraser` | **VERIFIED** repo exists, Apache-2.0, video inpainting, last card update Jan 2025. Not evaluated further. UNTESTED on the hole-fill shots. |
+| `lixiaowen/diffuEraser` | **VERIFIED** the Hub card says Apache-2.0 (updated 20 Jan 2025). That tag does **not** clear the stack. The GitHub README says ProPainter is the prior model and must be complied with or replaced. ProPainter is S-Lab 1.0, non-commercial unless the authors permit it. See §8. |
 | `Qwen/Qwen3.8-27B` | **VERIFIED** the id exists (about 27.8B, Apache-2.0, several Inference Providers listed). It is a multimodal LM. It is not a shot QA system, and this audit does not recommend dropping it in front of issue #105. |
 
 ### 1.4 SAM 3 mask work already in the repo
@@ -120,7 +120,7 @@ The attached note (`hf_deep_dive_2026-10-23`) is a short pointer, not a full mod
 
 **VERIFIED.** On 24 October 2026 this audit listed open PRs and remote heads. There was **no open PR and no remote branch** whose name indicated a new flag-gated SAM 3 replacement for the MediaPipe video masks. Open work nearby is PR #353 (showroom headlight-halo tests, not yet run on the shot).
 
-**DECISION for this audit:** do not propose a second SAM 3 integration. If the other Claude Code effort opens a flag-gated mask PR, that PR owns the experiment. The gap it would be trying to close is real and narrower than "add SAM": offline video compositing still uses MediaPipe, which has no shoe class and needs a manual box on profile faces.
+**DECISION for this audit:** do not open a second SAM 3 integration from this document. The still path already calls Fal SAM 3. Offline video compositing still uses MediaPipe, which has no shoe class and needs a manual box on profile faces. A flagged comparison of those video masks on named frames is the right next experiment (§8). If the other Claude Code effort opens that PR, that PR owns the code. Any "1–2 days" or "cents per clip" figure for SAM 3 is a **HYPOTHESIS**. This audit did not measure either.
 
 ---
 
@@ -202,6 +202,8 @@ Hugging Face Inference Providers did **not** list Wan-Animate, LatentSync, or SA
 
 **Export contract to keep:** mix and per-pad stems share one frame count, 24-bit, 44.1 or 48 kHz, aligned at 00:00:00, so a DAW session at the project BPM lines them up. The Chromium device check's numeric expectations (frame counts, ≤ 1.5 sample hit error, stems sum to the mix) are the acceptance numbers to re-implement, not new numbers.
 
+**Beat tracking stays optional.** Pads, chops, BPM fit, and export run offline with the code already in `timing.ts` and `analysis.ts`. `CPJKU/beat_this` (MIT, copyright 2024 Institute of Computational Perception, JKU Linz) is a candidate to benchmark beside the current onset suggestion, including a Core ML conversion. It is not a dependency of the instrument. Detail in §8. SAM Audio, if it is ever tried, is a consented server stem. It is gated, and the SAM License needs a commercial read before shipping. It does not sit on the pad-trigger path.
+
 ### 3.3 What neither app should become
 
 - A second render farm, a second database, or a Hugging Face account baked into the client.
@@ -252,7 +254,9 @@ Hugging Face Inference Providers did **not** list Wan-Animate, LatentSync, or SA
 | Fal LatentSync | $0.20 up to 40 s | **~$0.20**, same order as Sync. Checkpoint version on Fal unverified. |
 | SAM Audio | Self-host GPU | Worth it only as an occasional stem, not as an always-on service. |
 
-**DECISION.** Do not rent GPUs and do not switch Dress to Wan to save the difference between $3.405 and ~$1.21. The $2 is smaller than one rejected full-frame redraw. A single approved short test, paid once, is the only spend this report contemplates, and it is not approved here.
+**Hugging Face credits, checked 24 October 2026.** The Inference Providers pricing page fetched that day (`https://huggingface.co/docs/inference-providers/en/pricing`) lists **Free users: None**, **PRO: $2.00 per month** for Hugging Face compute services, **Team or Enterprise: $2.00 per seat**. PRO is not unlimited inference. The public pricing page (`https://huggingface.co/pricing`) advertises the same $2 PRO credit and does not advertise a free-user inference credit. A search snippet of an older or alternate copy of the docs said free users receive $0.10 "subject to change"; the page fetched for this audit does not say that. This audit did not open a billing dashboard, so an individual account can still differ from the doc. None of Wan-Animate, LatentSync, or SAM Audio is an Inference Providers route on the cards read here, so those credits would not pay for them anyway.
+
+**DECISION.** Do not rent GPUs and do not switch Dress to Wan to save the difference between $3.405 and ~$1.21. The $2 is smaller than one rejected full-frame redraw. Wan is sequenced after a mask and compositing baseline on the same clips (§8). A single approved short test, paid once, is the only spend this report contemplates, and it is not approved here.
 
 **Class C reminder.** Pointing `dress-clip` or `lipsync-shot` at a new model changes providers, money, and the locked picture pipeline. That is not an iOS task and not a docs follow-up.
 
@@ -266,10 +270,12 @@ Order is technical dependency. No calendar estimate.
 2. **AVT auth spike, read-only.** Prove a native session can become the same Supabase user as the website and can read one owned project. Stop if the Lovable callback cannot return to the app.
 3. **AVT review client.** Shot list, play the selected asset, play one unselected candidate, write the existing approval fields. Still no new generation.
 4. **Sampler native engine, only if milestone 1 fails for an audio reason.** Port the pure modules. `AVAudioEngine` playback and 24-bit export. Cloud sync against the existing `/api/cloud`. Acceptance is the same numeric device check, on device.
-5. **Mask experiment stays with the other effort.** If a flag-gated SAM 3 video-mask PR opens, review it against shoes, the dark rim, profile faces, and the 0-difference face proof. Do not open a parallel branch.
-6. **One unpaid-or-single paid model test, only with an explicit spend approval.** Preferred order: (a) SAM Audio small or base on one consented Sampler recording, text prompt, compared with chopping the original; (b) only if a wardrobe alternate is still wanted, Wan-Animate-2 **or** Fal's older replace on a 2–4 s cut, then body-only put-back, then the face proof. LatentSync only as a lip-sync candidate next to `fal-ai/sync-lipsync/v2`, scored on pixels outside the mouth. Stop on the kill criterion. Do not scale.
+5. **Label the defects, then compare masks.** On 3–5 already-rendered YSL frames, write down which failures are segmentation (shoe, dark rim, profile miss, double edge, mask flicker) and which are generation (garment identity, glasses, mouth timing, light). Keep MediaPipe. A flag-gated SAM 3 pass on those same frames is the comparison, owned by the other effort if that PR opens. Record runtime and cost on that run. Do not treat a guessed "cents per clip" as a budget.
+6. **Compositing baseline before any new generator.** Score the current put-back (`--choke`, `--despill`, row fill versus Telea) on those same frames. DiffuEraser is a candidate only after the ProPainter license is replaced or permitted (§8). It is not commercially cleared by the Apache tag on the Hub card.
+7. **Wan only after steps 5 and 6, and only against the existing Higgsfield outputs.** Name the checkpoint: `Wan-AI/Wan2.2-Animate-2-14B` is the model ChatGPT linked; Fal's published price is for `Wan2.2-Animate-14B`. Compare both, if either is run, to the Higgsfield intermediate plus body-only put-back. The face proof still has to print 0. LatentSync stays on the lip-sync lane, scored against `fal-ai/sync-lipsync/v2` for pixels outside the mouth.
+8. **Sampler beat-tracking benchmark, after the pads already work offline.** On songs already imported in Frost Sampler, compare `CPJKU/beat_this` (PyTorch, and a Core ML build if one is produced) with the current onset suggestion and with tapped markers. Record latency and battery. A miss does not change the pad engine. SAM Audio large stays off that path until the gate is accepted and a consented stem test exists.
 
-Milestones 1–3 can be skipped entirely if the Home Screen Sampler is good enough and the website is good enough for review. That is an acceptable outcome of this audit.
+The iOS client milestones (1–4) can wait if the Home Screen Sampler and the website already cover review. The mask baseline (5–6) is still the first AVT experiment, and it does not require a phone app.
 
 ---
 
@@ -283,7 +289,7 @@ Milestones 1–3 can be skipped entirely if the Home Screen Sampler is good enou
 4. **SAM Audio is gated.** Access has not been requested by this audit. The GGUF redistribution needs a legal read before commercial use. On-device Core ML does not exist for it.
 5. **Native AVT auth is unproven** against the Lovable managed callback.
 6. **Sampler on-device proof is not in the repo**, even though the PWA and cloud code are on `main`. A native rewrite before that proof is blocked by the app's own `DEVICE_PROOF.md`.
-7. **SAM 3 video masks:** no flag-gated PR was open on 24 October 2026. Starting one from this audit would duplicate the effort the brief said to leave alone. The still path already exists and should not be rebuilt.
+7. **SAM 3 video masks:** no flag-gated PR was open on 24 October 2026. This audit still does not open one. The still path already exists. A later flagged comparison is blocked until someone names the frames, and until runtime and cost are measured rather than estimated. `facebook/sam3` remains gated, license `other`; the gated license file was not downloaded.
 8. **Issue #105 is open**, and a reconstruction evaluator already exists. A new "auto QA" project that ignores `evaluateVideoQa` would duplicate it. Shot-level QA for wardrobe is a real gap and is not an iOS feature.
 9. **Spend freeze for this task.** Higgsfield has already refused calls for balance (PRs #363–#366). This audit does not ask anyone to top up a wallet.
 
@@ -295,7 +301,68 @@ Milestones 1–3 can be skipped entirely if the Home Screen Sampler is good enou
 
 **AVT native, if built.** Signed-in user reads only their rows. A shot opened on the phone shows the same selected asset id as the website. Approving on the phone changes the same field the website reads, and a second device sees it after refresh. A `dryRun` Dress returns a plan and creates no `provider_jobs` row. Killing the app mid-playback does not create a job.
 
-**Any model test, if later approved.** 2–4 s of a real performance take, original pixels retained for the face from the brows down, the beard, the mouth, and the hands (max absolute difference 0 on that mask, same proof `body_only_swap.py` prints). Garment construction and logo compared to the product still. No flicker across the cut. Identity recognizable to Fendi. A written fail stops the experiment. The run records model id, revision, prompt, seed, resolution, and cost. It is a go/no-go, not a certified benchmark, until `docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md` is followed on purpose.
+**Any model test, if later approved.** 2–4 s of a real performance take, original pixels retained for the face from the brows down, the beard, the mouth, and the hands (max absolute difference 0 on that mask, same proof `body_only_swap.py` prints). Garment construction and logo compared to the product still. No flicker across the cut. Identity recognizable to Fendi. A written fail stops the experiment. The run records model id, revision, prompt, seed, resolution, and cost. It is a go/no-go, not a certified benchmark, until `docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md` is followed on purpose. A director looking at the clip is a separate acceptance from that score.
+
+**Defect baseline, before Wan.** For each of 3–5 named frames: asset id, timecode, and one label from the segmentation list or the generation list in §8. SAM 3, if run, is compared on those frames only, with MediaPipe still available behind a flag. The sheet records wall time, hardware, and dollars. A blank cost cell is a failed record, not a guess.
+
+**beat-this, if benchmarked.** On at least two real songs, beat times versus the app's current suggestion and versus a hand-tapped grid. Core ML build reports model file size, compute units, and time per 30 seconds of audio on one iPhone. The pad engine's device check still passes with beat-this turned off.
+
+---
+
+## 8. ChatGPT's review, and where this audit agrees
+
+Source, read only, not commented on: [fendi-control-center issue #77](https://github.com/fendifrost-dot/fendi-control-center/issues/77), posted 24 October 2026 by `fendifrost-dot`, titled as ChatGPT's independent assessment of Grok's Hugging Face deep dive. No production change and no paid test is authorized there either. Items about LLB, Continuum, Modest, Boltz, and ACE-Step are outside the two repos this audit was asked to cover. They were not verified here.
+
+### 8.1 Segmentation defects and generation defects
+
+**Agree with ChatGPT.** SAM 3 is a mask model. It does not repaint a jacket, move a mouth onto a vocal, or relight a shot. Grok's short note listed MediaPipe misses, Telea fill, grain, a $3.405 dress run, lip-sync, and missing shot QA in one list. That list mixes two causes. This audit splits them as follows.
+
+| Defect ChatGPT named | Class | Evidence already in AVT | What a new mask can and cannot do |
+|---|---|---|---|
+| Missing shoe | Segmentation | **VERIFIED** the MediaPipe multiclass file has six labels and no shoe class (`FACE_PRESERVING_CLOTHING_SWAP.md`). A scored "shoe missing on frame N" was not re-measured here. | A better mask can include the shoe in the put-back. It cannot invent a shoe the generator failed to draw. |
+| Black surrounding area / dark rim | Segmentation or composite edge | **VERIFIED** `--choke` exists because the matte's outer band carries the take's wall and floor, "a dark rim on a light garment" (`replace_him_in_clip.py`). The recipe records a navy fringe where the original cap is larger than the swapped cap. | A tighter matte can shrink the rim. A black halo painted by the generator inside the garment is a generation defect. |
+| Double silhouette / ghost outline | Compositing | **VERIFIED** the Telea help text says the first inpaint "smeared a ghost of his outline"; row fill was added later. | A mask does not choose the fill. DiffuEraser would be a fill experiment, still **UNTESTED**, and not commercially clear (§8.3). |
+| Profile face, small face | Segmentation | **VERIFIED** `clip_face` is the manual box "when the landmarker misses it (profile, cap)". PR #365 added a 3× window for a small face in `verify_scene.py`. | SAM 3 might track those frames. That is a **HYPOTHESIS** until the same frames are scored. |
+| Edge flicker | Split it | **VERIFIED** the approved body-only recipe holds each Genjutsu frame for about 2.7 source frames (clothes at 22.25 fps on a 59.94 plate). Mask-to-mask jitter was not measured. | Held generative frames flicker even with a perfect mask. Mask jitter is a separate measurement (frame-to-frame IoU). |
+| Wardrobe identity, stripes, logos | Generation | **VERIFIED** the recipe: "the garment itself is still Genjutsu's rebuild." | A mask selects pixels. It does not redraw the jacket. |
+| Glasses | Do not assign yet | **VERIFIED** body-only keeps his own glasses because they sit inside the protected face; the outfit's glasses reference has no effect on that final. | If the glasses are the take's, the mask is doing its job. If a whole-frame Dress file shows different glasses, that file is the generative intermediate. |
+| Mouth timing | Generation, and only on the lip-sync lane | **VERIFIED** body-only keeps the take's mouth. `lipsync-shot` then runs `fal-ai/sync-lipsync/v2` when the mouth is supposed to follow the song. | SAM 3 does not set phoneme timing. LatentSync would be compared on this lane only. |
+| Lighting | Grade / composite | **VERIFIED** `replace_him_in_clip.py` applies one per-channel gain from the generated face to the real face. The showroom write-up says his light stays fixed while the plate shifts. | A segmentation model does not match light. |
+
+**Agree with ChatGPT's warning.** Nothing in the repo proves that masking causes most of the visible failures. The shoe-class gap and the profile fallback are real. The jacket, the mouth-to-song pass, and the light gain are real too. A before/after on named frames is the only way to weigh them.
+
+**Disagree with treating SAM 3 as the first thing to build.** ChatGPT ranks a SAM 3 benchmark first among models, and also says to keep MediaPipe behind a flag. The second half is the part this audit adopts. The still proxy already calls `fal-ai/sam-3/image`. No video-mask PR was open. The first work is the labeled baseline on frames that already exist, at $0. The SAM 3 run is the comparison after those frames are named. Grok's fuller dive, as ChatGPT describes it, estimated "1–2 days" and "cents per clip." Those numbers are **not** in the short note attached to this audit, they were **not** measured here, and they stay hypotheses. `facebook/sam3` is gated. Its license file was not downloaded (the card says `other`). There is no guarantee in the card of feet, profile faces, or zero flicker.
+
+### 8.2 Wan after the baseline, compared with Higgsfield
+
+**Agree with ChatGPT on order.** Wan is a generator. It comes after the mask and compositing baseline, and the comparison set is the Higgsfield runs that already exist (Dress list price $3.405 for the 4.04 s case; PR #367 records one such charge). Wan does not get to skip body-only put-back. ChatGPT's sentence is right: do not assume it can redress the body and keep the original face unless a test shows that. The face proof remains max difference 0 on the protected pixels.
+
+**Disagree on the name being one model.** ChatGPT's link is `Wan-AI/Wan2.2-Animate-2-14B` (Apache-2.0, August 2026, direct driving video). Fal and Replicate routes found in this audit serve `Wan-AI/Wan2.2-Animate-14B` (Apache-2.0, September 2025). A cost comparison that uses Fal's $0.08 per billed second is a comparison to the older checkpoint. Animate-2 had no Fal price and no Fal route in this audit. Grok's short note named the older repo. Both names are real. A test log has to say which one ran.
+
+### 8.3 Licenses Grok summarized, checked at a specific version
+
+| Model | Exact version read | What the license actually says | Versus Grok's short note | Versus ChatGPT |
+|---|---|---|---|---|
+| MiniMax H3 | `MiniMaxAI/MiniMax-H3`. Community license date **2 August 2026**. Licensor **Nanonoble Pte. Ltd.** | Applicable territory is worldwide **except the EU, the UK, South Korea, and the United States**. A separate license is how those territories are supposed to get access. Section IV: yearly revenue above **US$20 million** needs prior written authorization even inside the allowed territory. Section V.4: use of the works **or their outputs** outside the applicable territory is not authorized, and hosted services count as use. The encoder note in the same file says the encoder is Qwen3-VL-32B under Apache-2.0. That does not lift the territory clause. | **Agree that the US is excluded from the community grant.** The note understated the exclusion (EU, UK, and South Korea as well) and did not mention the $20 million clause. | **Agree** that a categorical line is not enough. The text above is the category, with the version and the entity. A US production calling Fal's MiniMax-H3 route (the Hub card lists fal-ai as a provider) is the case the territory clause is about. This audit does not give a legal opinion. It does say the community license is the wrong grant for that use. |
+| MatAnyone | `pq-yang/MatAnyone` v1.0.0. `LICENSE` is **S-Lab License 1.0**, copyright 2023 S-Lab. | Redistribution and use for a **non-commercial purpose**. Commercial use: contact Peiqing Yang, Shangchen Zhou, and Chen Change Loy. | **Agree** it is non-commercial by default. | **Agree** it is not "no commercial path exists." The path is written permission. |
+| MatAnyone 2 | Code `pq-yang/MatAnyone2` `LICENSE.txt`. Weights `PeiqingYang/MatAnyone2`. Same **S-Lab License 1.0** text. Hub README has no license key; the GitHub file does. | Same non-commercial default. A June 2026 GitHub comment from a project author tells a Core ML porter to keep that restriction. | **Agree** MatAnyone2 is in the same license family as v1. | Same as v1. A third-party iPhone port does not make the weights commercial. |
+| LTX-2.5 | Hub: `Lightricks/LTX-2.5`, gated, license `other`, card updated 11 Oct 2026. The gated `LICENSE` blob returned **401**, so it was not read from the Hub. The text that was read is `github.com/Lightricks/LTX-2` file `LICENSE-2_x`, **LTX-2.x Community License, 11 August 2026**, which says it covers LTX-2.5 versions released since that date. Licensor **Lightricks Ltd.** | Worldwide grant, subject to Attachment A, **except** entities with annual revenue of at least **$10,000,000**. Revenue is aggregated across subsidiaries, affiliates, and companies under common Control (more than 50% ownership or the power to direct management). Those entities need a paid license from `licensing@ltx.io` for any use that is not the defined non-commercial purpose (personal hobby, or internal evaluation that does not earn revenue, touch end users, or train a commercial model). | The attached short note **does not mention LTX-2.5**. | **Agree.** It is not universally forbidden. It is also not "free for every company." This audit does not know the revenue of the using entity, and it does not recommend LTX-2.5 for the wardrobe lane. |
+| DiffuEraser | Hub `lixiaowen/diffuEraser`, tag `apache-2.0`, updated 20 Jan 2025. Code `lixiaowen-xw/DiffuEraser`, README on `master`. | Apache-2.0 **except third-party components**. README: ProPainter is the prior model; comply with ProPainter's license or replace it. Required weights include `propainter/ProPainter.pth` plus `stable-diffusion-v1-5`. | The short note did not mention ProPainter. | **Agree.** The top-level Apache tag is not a commercial clearance. |
+| ProPainter | `sczhou/ProPainter` `LICENSE` on `master`. **S-Lab License 1.0**, copyright 2023 S-Lab. | Non-commercial unless Dr. Shangchen Zhou and Prof. Chen Change Loy permit commercial use. | Not in the short note. | This is the transitive block ChatGPT asked for. |
+
+`stable-diffusion-v1-5` is on DiffuEraser's download list. This audit did not re-read that model's license file. It is a second uncleared dependency. Replacing ProPainter and leaving SD 1.5 unexamined would repeat the mistake.
+
+### 8.4 Sampler: offline instrument, beat-this, SAM Audio
+
+**Agree with ChatGPT.** The 16 pads, waveform chop, BPM fit, and 24-bit export stay on device. The web app already does this in `src/lib/frost/` with no network on the trigger path. A native port, if milestone 1 says the PWA misses taps or dies on export, keeps that offline. Cloud sync stays optional.
+
+**beat-this.** **VERIFIED** `CPJKU/beat_this` is MIT (copyright 2024 Institute of Computational Perception, JKU Linz). The official interface is PyTorch (`beat_this.inference`, checkpoints such as `final0`). **No official Core ML model is in that repo.** A third-party iOS app (`palmier-io/palmier-pro`) documents a 6.6 MB FP16 `small0` conversion: raw 22,050 Hz mono, 30-second chunks, beat and downbeat logits, with a parity check against upstream on a click track. That shows a conversion is possible. It does **not** show accuracy on these songs, battery cost, or that Frost Sampler should replace `suggestTempo`. iPhone execution inside this product is **UNTESTED**. ChatGPT is right to call iPhone execution unverified.
+
+**SAM Audio large.** **Agree with ChatGPT.** `facebook/sam-audio-large` is gated. The license read from `github.com/facebookresearch/sam-audio` is the SAM License (19 November 2025): a commercial grant with trade-control and acceptable-use limits, not Apache-2.0. Shipping it, or the `audio-cpp` GGUF of it, needs that review. It is an optional stem, not the pad engine.
+
+### 8.5 Shot QA
+
+**Agree** that an LLM looking at a frame is not ground truth, and that ghost outlines, black contamination, flicker, a frozen mouth, missing accessories, and delivery specs are the checks worth adding. **Disagree** that this work starts from zero. `evaluateVideoQa` (`lane-e2-video-qa-v1`) already scores reconstruction packs. Issue #105 is still open because that scorer does not cover Dress, body-only, or replace-him. Extend that contract, or write a sibling one. Do not claim either equals a director's acceptance. ChatGPT's gate matches `docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`: a preliminary score is not approval.
 
 ---
 
@@ -306,3 +373,6 @@ Milestones 1–3 can be skipped entirely if the Home Screen Sampler is good enou
 - Hub cards and READMEs: `Wan-AI/Wan2.2-Animate-14B`, `Wan-AI/Wan2.2-Animate-2-14B`, `ByteDance/LatentSync-1.6`, `facebook/sam-audio-large`, `facebook/sam-audio-small`, `audio-cpp/SAM-Audio-GGUF`, `facebook/sam3`, `facebook/sam3.1`, `lixiaowen/diffuEraser`, `Qwen/Qwen3.8-27B`.
 - License pages: `github.com/facebookresearch/sam-audio` LICENSE (SAM License, 19 Nov 2025); `github.com/bytedance/LatentSync` requirements and Apache-2.0 code license; InsightFace README on pretrained-model non-commercial terms.
 - Provider pages: Fal Wan 2.2 Animate move and replace pricing; Fal `fal-ai/latentsync` pricing. No job was sent.
+- ChatGPT review: `fendifrost-dot/fendi-control-center` issue #77 (read 24 Oct 2026, no comment posted).
+- Licenses read in full or in the granting sections: `MiniMaxAI/MiniMax-H3` LICENSE (2 Aug 2026); `pq-yang/MatAnyone` LICENSE and `pq-yang/MatAnyone2` LICENSE.txt (S-Lab 1.0); `sczhou/ProPainter` LICENSE (S-Lab 1.0); `Lightricks/LTX-2` `LICENSE` and `LICENSE-2_x` (11 Aug 2026; the gated Hub LICENSE blob for `Lightricks/LTX-2.5` returned 401); `lixiaowen-xw/DiffuEraser` README license section; `CPJKU/beat_this` LICENSE (MIT).
+- Hugging Face pricing pages fetched 24 Oct 2026: `https://huggingface.co/docs/inference-providers/en/pricing` and `https://huggingface.co/pricing`.
