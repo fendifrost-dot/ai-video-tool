@@ -234,7 +234,7 @@ describe("a montage with his mouth still (b-roll with him; Fendi, 23 Oct 2026)",
     const same = planMontage(c042({ lines: LINES }));
     if (!same.ok) throw new Error(same.detail);
     expect(r.plan.scenes).toEqual(same.plan.scenes);
-    expect(r.plan.prompt).toContain("Whenever he is on screen his mouth stays closed: he is not rapping");
+    expect(r.plan.prompt).toContain("No lip sync and no lip movement: whenever he is on screen his lips do not move and his mouth stays closed");
     expect(r.plan.prompt).not.toMatch(/mouth movements|rapping to camera|word for word|in sync with @Video1/);
     expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
     expect(r.plan.prompt).toContain("@Video1 is the performer: his face, build, wardrobe");
