@@ -11,13 +11,25 @@ usage: body_only_swap.py <original.mp4> <swap.mp4> <out_dir>
 - Models (env AVT_MODELS, default ./models): MediaPipe selfie_multiclass_256x256.tflite and face_landmarker.task.
 - A small face (env AVT_HEAD_ZOOM=4): see HEAD_ZOOM below. The run must print a first face detection, not None;
   with None the face shape and brow line are missing and the glasses would come from the swap.
-- Verified on c033 (18 Oct 2026): docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md"""
-import subprocess, sys, os, json
+- Verified on c033 (18 Oct 2026): docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md
+- --segmenter sam3 (or env AVT_SEGMENTER=sam3; default mediapipe, byte-identical to before): the person region of both
+  clips comes from a SAM 3 text-prompt matte (scripts/edit/segmenters.py) — a pixel MediaPipe called background inside
+  the matte is taken as clothes (the black shoe on the dark floor), a pixel it called him outside the matte is dropped
+  (the halo) — and when the landmarker finds no face at all, the face oval and brow line come from a SAM 3 "face"
+  mask. MediaPipe still labels skin/hair/face, so the protection proof holds either way."""
+import argparse, subprocess, sys, os, json
 import numpy as np, cv2, mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from segmenters import add_segmenter_args, choose_segmenter, Sam3Segmenter, refine_categories, matte_for_clip, face_geometry_from_mask
 
 MODELS = os.environ.get("AVT_MODELS", "models")  # selfie_multiclass_256x256.tflite + face_landmarker.task
-orig_p, swap_p, out_dir = sys.argv[1:4]
+ap = argparse.ArgumentParser(description="Body-only clothing swap: clothes from the Genjutsu output, everything else from the ORIGINAL pixels.")
+ap.add_argument("original"); ap.add_argument("swap"); ap.add_argument("out_dir")
+add_segmenter_args(ap)
+A = ap.parse_args()
+orig_p, swap_p, out_dir = A.original, A.swap, A.out_dir
+SEGMENTER = choose_segmenter(A.segmenter)
 os.makedirs(out_dir, exist_ok=True)
 
 def probe(p):
@@ -33,17 +45,30 @@ def read(p, w, h):
     return np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3)
 
 W, H, FPS, DUR = probe(orig_p); FPS_RATE = probe.rate
-_, _, SFPS, SDUR = probe(swap_p)
+_, _, SFPS, SDUR = probe(swap_p); SFPS_RATE = probe.rate
 orig = read(orig_p, W, H)
 swap = read(swap_p, W, H)            # upscaled to the original's size; only the clothes are used
 print("original", orig.shape, FPS, "swap", swap.shape, SFPS)
 
+# --segmenter sam3: a tracked person matte of each clip (computed here, or loaded from --sam3-matte-dir when a GPU run
+# made it); None under mediapipe, and then nothing below changes
+SAM, M_ORIG, M_SWAP = None, None, None
+if SEGMENTER == "sam3":
+    SAM = Sam3Segmenter.from_args(A)
+    M_ORIG = matte_for_clip(SAM, orig, FPS, orig_p, A.sam3_matte_dir, FPS_RATE)
+    M_SWAP = matte_for_clip(SAM, swap, SFPS, swap_p, A.sam3_matte_dir, SFPS_RATE)
+    print("segmenter sam3", M_ORIG.provenance, "person px/frame", int(M_ORIG.alpha.sum(axis=(1, 2)).mean()))
+else:
+    print("segmenter mediapipe")
+def PO(k): return M_ORIG.alpha[k] if M_ORIG is not None else None
+
 seg = vision.ImageSegmenter.create_from_options(vision.ImageSegmenterOptions(
     base_options=BaseOptions(model_asset_path=os.path.join(MODELS, "selfie_multiclass_256x256.tflite")),
     running_mode=vision.RunningMode.IMAGE, output_category_mask=True))
-def cats(img):
+def cats(img, person=None):
     r = seg.segment(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(img)))
-    return np.squeeze(r.category_mask.numpy_view()).copy()   # 0 bg, 1 hair, 2 body-skin, 3 face-skin, 4 clothes, 5 others
+    c = np.squeeze(r.category_mask.numpy_view()).copy()   # 0 bg, 1 hair, 2 body-skin, 3 face-skin, 4 clothes, 5 others
+    return refine_categories(c, person) if person is not None else c
 
 OVAL = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109]
 BROWS = [70,63,105,66,107,336,296,334,293,300]
@@ -55,7 +80,8 @@ DET = (0.1, 0.05, 0.85, 0.6)  # x, y, w, h of the frame searched for the face (f
 # times and look again. The 23 Oct reshoot needs it (his face ~100 px wide at 1080); c033 (18 Oct) runs without it.
 HEAD_ZOOM = int(os.environ.get("AVT_HEAD_ZOOM", "0"))
 last_face = None
-def face_region(img):
+sam_face_frames = []   # frames whose face geometry came from the SAM 3 face mask, not the landmarker
+def face_region(img, person=None):
     """Mask of the face from the eyebrows down (eyes, glasses, nose, mouth, jaw, beard line), and the brow cut row."""
     global last_face
     h0, w0, _ = img.shape
@@ -77,6 +103,14 @@ def face_region(img):
         brow = min(y0 + L[k].y * ch for k in BROWS) - 0.04 * face_h
         eye = min(y0 + L[k].y * ch for k in EYES) - 0.02 * face_h
         last_face = (pts, brow, face_h, eye)
+    elif SAM is not None and last_face is None:
+        # the landmarker has found nothing so far (a small or profile face): the face oval, brow and eye rows from a
+        # SAM 3 "face" mask inside his matte; later frames borrow it exactly as they borrow a landmarker detection
+        fm = SAM.face_mask(img, (person > 0.5) if person is not None else None)
+        geo = face_geometry_from_mask(fm) if fm is not None else None
+        if geo is not None:
+            last_face = geo; sam_face_frames.append(len(sam_face_frames))
+            print("face from the SAM 3 face mask (landmarker found none): rows brow", round(geo[1]), "eye", round(geo[3]), "height", round(geo[2]))
     if last_face is None: return None, None
     pts, brow, face_h, eye = last_face
     if brow_override is not None: brow = brow_override          # the smoothed line (see the pre-pass below)
@@ -103,14 +137,14 @@ prev_M = np.eye(2, 3, dtype=np.float32)
 # frames before the first face detection borrow the first detection (the face shape only gates the cap/brow line)
 first = None
 for k in range(len(orig)):
-    face_region(orig[k])
+    face_region(orig[k], PO(k))
     if last_face is not None: first = k; break
 print("first face detection at frame", first)
 # the brow line per frame, then smoothed over time: a line that jumps a few px between frames flickers the cap's
 # underside (the original brim shows under the new one on some frames and not others; c044, 23 Oct)
 brows, eyes = [], []
 for k in range(len(orig)):
-    _, b = face_region(orig[k]); brows.append(b); eyes.append(last_face[3] if last_face is not None else None)
+    _, b = face_region(orig[k], PO(k)); brows.append(b); eyes.append(last_face[3] if last_face is not None else None)
 def smooth(v):
     v = np.array([x if x is not None else np.nan for x in v], np.float32)
     if not np.isfinite(v).any(): return v
@@ -119,12 +153,12 @@ def smooth(v):
 sm, sm_eye = smooth(brows), smooth(eyes)
 last_face = None
 for k in range(len(orig)):
-    face_region(orig[k])
+    face_region(orig[k], PO(k))
     if last_face is not None: break
 for i, o in enumerate(orig):
     t = i / FPS
     j = min(len(swap) - 1, int(round(t * SFPS)))
-    oc = cats(o)
+    oc = cats(o, PO(i))
     if j not in warp:
         bgmask = cv2.resize(((oc == 0) * 255).astype(np.uint8), None, fx=SC, fy=SC, interpolation=cv2.INTER_NEAREST)
         M = prev_M.copy()
@@ -136,12 +170,15 @@ for i, o in enumerate(orig):
         prev_M = M
         Mf = M.copy(); Mf[:, 2] /= SC
         sw = cv2.warpAffine(swap[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REPLICATE)
-        warp[j] = sw; swap_cat[j] = cats(sw)
+        ps = None
+        if M_SWAP is not None:   # the swap's matte travels with the swap frame
+            ps = cv2.warpAffine(M_SWAP.alpha[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+        warp[j] = sw; swap_cat[j] = cats(sw, ps)
     sw, sc = warp[j], swap_cat[j]
     # always original: face skin and hair (beard) of the ORIGINAL; other skin only where the swap shows skin too
     # (hands, neck). Where the swap puts a sleeve over the original bare arm, the sleeve wins.
     brow_override = float(sm[i]) if np.isfinite(sm[i]) else None
-    face, brow = face_region(o)
+    face, brow = face_region(o, PO(i))
     rows = np.arange(H)[:, None]
     below_brow = (rows > brow) if brow is not None else np.ones((H, 1), bool)
     # the band between the brow cut and his upper eyelids: his own pixels, except where the old cap sat. He wears the
@@ -185,6 +222,8 @@ for i, o in enumerate(orig):
     vw.stdin.write(np.ascontiguousarray(out).tobytes())
     if i in (0, 60, 120, 180, 239):
         cv2.imwrite(os.path.join(out_dir, f"mask_{i:03d}.png"), (m * 255).astype(np.uint8))
+        if M_ORIG is not None: cv2.imwrite(os.path.join(out_dir, f"person_{i:03d}.png"), (M_ORIG.alpha[i] * 255).astype(np.uint8))
 vw.stdin.close()
 if vw.wait() != 0: raise SystemExit("ffmpeg encode failed")
 print("frames", len(orig), "swap frames aligned", len(warp), "max |out-original| on face/hair/skin:", face_err)
+if SAM is not None: print("segmenter sam3: face geometry from the SAM 3 face mask on", len(sam_face_frames), "lookups")

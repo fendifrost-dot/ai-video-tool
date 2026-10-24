@@ -60,3 +60,25 @@ jobs:
 
       - name: Tests
         run: npm test
+
+  # The put-back scripts' segmenter flag (scripts/edit/segmenters.py): SAM 3 behind --segmenter, MediaPipe the default.
+  # These tests run the scripts under a stub `mediapipe` on a synthetic clip, with no weights, no network, no GPU, and
+  # prove the default path is byte-identical with and without the flag. ffmpeg encodes the fixtures.
+  python-segmenters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install the test deps (numpy, OpenCV, pytest; no ML stack)
+        run: python -m pip install --quiet numpy opencv-python-headless pytest
+
+      - name: Segmenter tests
+        run: python -m pytest scripts/edit/tests/test_segmenters.py scripts/edit/tests/test_cli_help.py::test_help_strings_are_percent_safe -q

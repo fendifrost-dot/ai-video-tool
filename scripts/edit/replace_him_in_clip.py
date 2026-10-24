@@ -31,14 +31,22 @@ A segment may instead stand him in the scene's PLATE ("plate": still path, 9:16)
 (c009: seated, half the picture) there is nothing to inpaint from, so the background becomes the plate the montage was
 made from, moved by the clip's tracked shake, and the real him stands in it; "plate_front": [[[x, y], ...], ...] are
 polygons (output px) of the plate that stay in front of him (a table, the couch back). The gain is still the generated
-him's face over his."""
-import argparse, json, os, subprocess
+him's face over his.
+--segmenter sam3 (or env AVT_SEGMENTER=sam3; default mediapipe, byte-identical to before): either alpha argument may
+then be `sam3` or `sam3:<cache.mp4>` instead of a matte file — the clip / take is matted here by a SAM 3 text prompt
+(scripts/edit/segmenters.py; the cache file is written once and reused, or taken from --sam3-matte-dir) — and when the
+landmarker finds no face for the gain (profile, cap, small), the face comes from a SAM 3 "face" mask under the matte,
+before the manual clip_face rect."""
+import argparse, json, os, subprocess, sys
 import numpy as np, cv2
 import mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from segmenters import add_segmenter_args, choose_segmenter, Sam3Segmenter, Matte, resolve_alpha_source, matte_path_for
 
 ap = argparse.ArgumentParser()
 for a in ("clip", "clip_alpha", "take", "take_alpha", "segments", "out"): ap.add_argument(a)
+add_segmenter_args(ap)
 ap.add_argument("--size", default="1080x1920"); ap.add_argument("--stills", default=""); ap.add_argument("--report", default="")
 ap.add_argument("--model", default=os.path.join(os.environ.get("AVT_MODELS", "models"), "face_landmarker.task"))
 ap.add_argument("--choke", type=int, default=0, help="erode the take's matte this many take px: the matte's outer band carries the take's own wall shadow and floor (a dark rim on a light garment)")
@@ -47,6 +55,9 @@ ap.add_argument("--grain", type=float, default=0.0, help="film grain on the real
 ap.add_argument("--soften", type=float, default=0.0, help="Gaussian blur (output px) on the real him before compositing, to meet the clip's softness")
 A = ap.parse_args()
 OW, OH = map(int, A.size.split("x"))
+SEGMENTER = choose_segmenter(A.segmenter)
+SAM = Sam3Segmenter.from_args(A) if SEGMENTER == "sam3" else None
+print("segmenter", SEGMENTER)
 LM = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(base_options=BaseOptions(model_asset_path=A.model), num_faces=1))
 OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
 def face_mean(img, alpha):
@@ -66,6 +77,14 @@ def face_mean(img, alpha):
             m = cv2.erode(m, np.ones((5, 5), np.uint8)).astype(bool) & (alpha > 0.5)
             if m.sum() < 50: return None
             return lin(img[m].astype(np.float32) / 255).mean(0)
+    if SAM is not None:
+        # the landmarker misses a profile or a small face under a cap: the SAM 3 "face" mask under the matte instead
+        fm = SAM.face_mask(img, alpha > 0.5)
+        if fm is not None:
+            fm = cv2.erode(fm.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+            if fm.sum() >= 50:
+                print("face from the SAM 3 face mask (landmarker found none)")
+                return lin(img[fm].astype(np.float32) / 255).mean(0)
     return None
 SEG = json.load(open(A.segments))
 
@@ -80,8 +99,20 @@ def frames(p, w, h, pix="rgb24"):
     return np.frombuffer(raw, np.uint8).reshape(-1, h, w, c) if c == 3 else np.frombuffer(raw, np.uint8).reshape(-1, h, w)
 
 CW, CH, CFPS = probe(A.clip); TW, TH, TFPS = probe(A.take)
-clip = frames(A.clip, CW, CH); calpha = frames(A.clip_alpha, CW, CH, "gray")
-take = frames(A.take, TW, TH); talpha = frames(A.take_alpha, TW, TH, "gray")
+def alpha_frames(value, video_path, video, w, h, fps):
+    """The matte as 8-bit grey frames: from the file given, or (`sam3` / `sam3:<cache.mp4>`, --segmenter sam3) from a
+    SAM 3 text-prompt matte of the video, cached at <cache.mp4> or in --sam3-matte-dir."""
+    kind, cache = resolve_alpha_source(value, SEGMENTER)
+    if kind == "file": return frames(value, w, h, "gray")
+    if cache is None and A.sam3_matte_dir: cache = matte_path_for(A.sam3_matte_dir, video_path)
+    if cache and os.path.exists(cache):
+        m = Matte.load(cache, w, h, len(video)); print("matte loaded", cache, m.frames, "frames")
+    else:
+        m = SAM.person_matte(video, fps); print("matte computed by SAM 3:", m.provenance)
+        if cache: os.makedirs(os.path.dirname(os.path.abspath(cache)), exist_ok=True); m.save(cache); print("matte saved", cache)
+    return (m.alpha * 255).round().astype(np.uint8)
+clip = frames(A.clip, CW, CH); calpha = alpha_frames(A.clip_alpha, A.clip, clip, CW, CH, CFPS)
+take = frames(A.take, TW, TH); talpha = alpha_frames(A.take_alpha, A.take, take, TW, TH, TFPS)
 n = min(len(clip), len(calpha))
 lin = lambda v: np.where(v <= 0.04045, v / 12.92, ((v + 0.055) / 1.055) ** 2.4)
 srgb = lambda v: np.where(v <= 0.0031308, v * 12.92, 1.055 * np.power(np.clip(v, 0, None), 1 / 2.4) - 0.055)
