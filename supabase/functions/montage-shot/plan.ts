@@ -104,8 +104,11 @@ export type MontageInput = {
   cast?: CastFacts | null;
   /** The song's beats, song seconds (song_analyses.beat_map_json): untimed lines are cut on them. */
   beats?: readonly number[] | null;
-  /** "still": the same montage with his mouth shut in every shot he is in (montagePrompt MONTAGE_MOUTH_STILL; b-roll with him, Fendi, 23 Oct 2026). */
-  mouth?: "still";
+  /**
+   * "still": the same montage with his mouth shut in every shot he is in (montagePrompt MONTAGE_MOUTH_STILL; b-roll with him, Fendi, 23 Oct 2026).
+   * "silent": the take is a SILENT clip (montage-shot `reference`): the performance is copied whole, mouth included, nothing suppressed (24 Oct 2026).
+   */
+  mouth?: "still" | "silent";
 };
 
 export type MontagePlan = {
@@ -204,10 +207,13 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
       `the shot runs past the ${seconds} s the model is given`,
     );
   const thing = thingOfLabel(plate.shotLabel);
-  const lines = (input.lines?.trim() ? input.lines : defaultMontageLines(thing)).slice(
-    0,
-    MONTAGE_LINES_MAX,
-  );
+  // a silent reference: the prefill's "rapping" would ask for the lip movement the clip does not have
+  const lines = (input.lines?.trim()
+    ? input.lines
+    : input.mouth === "silent"
+      ? defaultMontageLines(thing).replace(/, rapping/g, "")
+      : defaultMontageLines(thing)
+  ).slice(0, MONTAGE_LINES_MAX);
   const lead = Math.max(0, takeIn);
   const songStart = r3(performanceToSong(0, take.sync));
   // the lines share the part of the clip the edit plays, cut on the song's beats (montagePrompt.ts planBeatLockedScenes)
@@ -227,7 +233,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   const pictures = picturesAfterPlace(plate, footwear, cast);
   // the app's order: the montage, its shoes and its people are the variant's sentence, the light follows it
   // (restage.ts restageShot)
-  const still = input.mouth === "still" ? ("still" as const) : undefined;
+  const still = input.mouth === "still" || input.mouth === "silent" ? input.mouth : undefined;
   const angle = [
     montagePrompt(planned.scenes, still),
     footwearLine(footwear),

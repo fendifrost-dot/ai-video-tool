@@ -79,7 +79,8 @@ type Body = {
    * in the shot's outfit, at least the shot's length (one of the caller's project assets, a video). The montage
    * copies its movement, so his mouth stays shut on its own instead of being told to — every still-mouth re-shoot
    * of a rapping take came out stiff (Fendi, 24 Oct 2026: "non rapping footage should have been used for all b roll
-   * shots"). The clip's first frame is placed on the shot's first frame (its own song time does not matter).
+   * shots"). The clip's first frame is placed on the shot's first frame (its own song time does not matter). The prompt
+   * then copies the performance whole, mouth included (no "rapping", no still-mouth block), unless `mouth: "still"` is given too.
    */
   reference?: { assetId: string };
   /**
@@ -419,7 +420,8 @@ serve(async (req) => {
         footwear: null,
         cast,
         beats,
-        ...(body.mouth === "still" ? { mouth: "still" as const } : {}),
+        // a silent reference clip: the performance copied whole, nothing suppressed (montagePrompt MONTAGE_SILENT)
+        ...(body.mouth === "still" ? { mouth: "still" as const } : reference ? { mouth: "silent" as const } : {}),
       })
     : planBrollMontage({
         projectId,
