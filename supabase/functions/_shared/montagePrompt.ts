@@ -24,7 +24,7 @@ export const MONTAGE_SYNC =
  * no still-mouth montage yet.
  */
 export const MONTAGE_MOUTH_STILL =
-  "No lip sync and no lip movement: whenever he is on screen his lips do not move and his mouth stays closed; he is not rapping, not singing, not talking and not mouthing anything, in every shot he is in, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
+  "No lip sync and no lip movement: his lips stay closed and still and he never mouths the words, in every shot he is in, from the first frame to the last. Transfer the exact movement and timing of @Video1 onto him, beat for beat: the same head turns and nods, the same shoulders and body, the same hands, the same eyes and eyebrows (he blinks, his brows lift and knit, he breathes) at the same seconds, in sync with @Video1; he is alive and moving exactly as he does there, never frozen, stiff or blank. His mouth is his own, natural and shut, the lips together as in a silent take; his face is complete and unchanged.";
 
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
@@ -376,11 +376,13 @@ export function seedanceAnglePrompt(
 ): string {
   const keepStr =
     keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
-  // a still mouth: @Video1 is who he is and how he moves, not a performance to copy (continuousPrompt's PERFORMER)
+  // a still mouth: the SAME performance, copied moment for moment, minus the lip movement (Fendi, 24 Oct 2026: the
+  // "reference for his body, not a timeline to copy" framing came back "completely still ... stiff as a board";
+  // "my movements should be the exact same as the bad lip sync render with no lip sync")
   const parts = mouth === "still"
     ? [
-        `@Video1 is the performer: his face, build, wardrobe and the way he moves; his performance there is a reference for his body, not a timeline to copy. Shoot him from a second camera: ${angle}`,
-        `Keep everything identical to @Video1 — ${keepStr}; nothing he wears changes during the take.`,
+        `@Video1 is the performer. Re-shoot the exact same performance from a second camera: ${angle}`,
+        `Keep everything identical to @Video1 — ${keepStr} — and most of all the same movements at the same moments: his head, body, hands, eyes and expression move exactly as in @Video1 from the first frame to the last, with his lips together and still as in a silent take; nothing he wears changes during the take.`,
         PLACE_LIGHT,
       ]
     : [
