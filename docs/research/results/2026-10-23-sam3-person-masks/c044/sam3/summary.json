@@ -1,0 +1,76 @@
+{
+ "clip": "c044_IMG6229_take_1080x1920_5994.mp4",
+ "frames": 243,
+ "size": [
+  1080,
+  1920
+ ],
+ "fps": 59.94005994005994,
+ "sam3_matte": "c044_IMG6229_take_1080x1920_5994.mp4.matte.mp4",
+ "per_frame": [
+  {
+   "frame": 0,
+   "mediapipe_person_px": 79845,
+   "face": "head zoom x4",
+   "face_box": [
+    455.0194091796875,
+    867.0328979492188,
+    508.87298583984375,
+    926.4383544921875
+   ],
+   "sam3_face_px": 3449,
+   "sam3_person_px": 76788,
+   "iou": 0.8653,
+   "mediapipe_only_px": 7183,
+   "sam3_only_px": 4126
+  },
+  {
+   "frame": 50,
+   "mediapipe_person_px": 79289,
+   "face": "head zoom x4",
+   "face_box": [
+    452.5899353027344,
+    865.3668212890625,
+    509.65374755859375,
+    926.9148559570312
+   ],
+   "sam3_face_px": 3419,
+   "sam3_person_px": 77236,
+   "iou": 0.8948,
+   "mediapipe_only_px": 5372,
+   "sam3_only_px": 3319
+  },
+  {
+   "frame": 90,
+   "mediapipe_person_px": 79309,
+   "face": "head zoom x4",
+   "face_box": [
+    452.6163330078125,
+    865.7273559570312,
+    508.254150390625,
+    925.8583984375
+   ],
+   "sam3_face_px": 3229,
+   "sam3_person_px": 77417,
+   "iou": 0.9016,
+   "mediapipe_only_px": 5002,
+   "sam3_only_px": 3110
+  },
+  {
+   "frame": 180,
+   "mediapipe_person_px": 79652,
+   "face": "head zoom x4",
+   "face_box": [
+    452.17584228515625,
+    859.5691528320312,
+    511.0130615234375,
+    924.4762573242188
+   ],
+   "sam3_face_px": 3753,
+   "sam3_person_px": 76851,
+   "iou": 0.8892,
+   "mediapipe_only_px": 5989,
+   "sam3_only_px": 3188
+  }
+ ]
+}
