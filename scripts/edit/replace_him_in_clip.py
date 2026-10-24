@@ -17,6 +17,8 @@ segments.json: {"song_start_clip": s, "song_start_take": s, "segments": [
   window the generated him never enters, for the shake (else the whole background under a per-frame mask);
   "clip_face": [x0, y0, x1, y1] (clip px) the generated face when the landmarker misses it (profile, cap);
   "gain": [r, g, b] a fixed light gain instead;
+  "box_frame": f the clip frame whose generated-him matte gives the box of what is cleared (default: "from"; use it
+  when a passer-by touches the generated him on the segment's first frame);
   "fill": "rows" (default) fills what the generated him hid along each row from its nearest known pixels (a passing
   train's streaks survive), "median" with the segment's per-pixel median background (a static patch where the
   background moves), "inpaint" with cv2.inpaint alone (the first version: it smeared a ghost of his outline)
@@ -41,6 +43,8 @@ ap.add_argument("--size", default="1080x1920"); ap.add_argument("--stills", defa
 ap.add_argument("--model", default=os.path.join(os.environ.get("AVT_MODELS", "models"), "face_landmarker.task"))
 ap.add_argument("--choke", type=int, default=0, help="erode the take's matte this many take px: the matte's outer band carries the take's own wall shadow and floor (a dark rim on a light garment)")
 ap.add_argument("--despill", type=int, default=0, help="push his own colours this many take px outward from the choked core before the feather, so the edge pixels are his, not the take's background")
+ap.add_argument("--grain", type=float, default=0.0, help="film grain on the real him and on the filled hole: Gaussian noise of this sigma (8-bit units) made at the clip's resolution and upscaled like the clip, fresh each frame; the take is cleaner than the Seedance clip and reads as pasted on")
+ap.add_argument("--soften", type=float, default=0.0, help="Gaussian blur (output px) on the real him before compositing, to meet the clip's softness")
 A = ap.parse_args()
 OW, OH = map(int, A.size.split("x"))
 LM = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(base_options=BaseOptions(model_asset_path=A.model), num_faces=1))
@@ -89,7 +93,7 @@ def take_index(i):
 
 vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{OW}x{OH}", "-r", f"{CFPS}",
                        "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", "-movflags", "+faststart", A.out], stdin=subprocess.PIPE)
-report = []
+report = []; RNG = np.random.default_rng(44)
 segs = {i: s for s in SEG["segments"] for i in range(s["from"], s["to"] + 1)}
 ref = {}   # per segment: the first frame's background (for the shake) and his gain
 PLATES = {}
@@ -116,9 +120,9 @@ for i in range(n):
         key = (s["from"], s["to"])
         ca_all = calpha[i].astype(np.float32) / 255
         if key not in ref:
-            # the generated him's box on the segment's first frame: what is covered and inpainted; the rest of the clip's
-            # people (a model crossing) stay in front
-            cys, cxs = np.nonzero(ca_all > 0.5)
+            # the generated him's box on the segment's first frame (or "box_frame"): what is covered and inpainted; the
+            # rest of the clip's people (a model crossing) stay in front
+            cys, cxs = np.nonzero((calpha[s.get("box_frame", s["from"])].astype(np.float32) / 255) > 0.5)
             gx0, gx1, gy0, gy1 = (cxs.min(), cxs.max(), cys.min(), cys.max()) if len(cys) else (0, CW - 1, 0, CH - 1)
             box = np.zeros((CH, CW), np.float32); box[max(0, gy0 - 20):gy1 + 21, max(0, gx0 - 20):gx1 + 21] = 1
             ref[key] = dict(box=box)
@@ -162,6 +166,7 @@ for i in range(n):
         hw = cv2.warpAffine(him, M, (OW, OH), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
         aw = cv2.warpAffine(ta, M, (OW, OH), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
         aw = cv2.GaussianBlur(aw, (0, 0), 0.8)
+        if A.soften > 0: hw = cv2.GaussianBlur(hw, (0, 0), A.soften)
         # what the generated him still shows: his matte (shifted with the shake is where it already is) minus the real him's
         cao = cv2.resize(ca, (OW, OH), interpolation=cv2.INTER_LINEAR)
         left = np.clip(cao - aw, 0, 1)
@@ -219,6 +224,12 @@ for i in range(n):
             v = base.astype(np.float32) / 255 * (1 - aw[..., None]) + hw * aw[..., None]
             oth = cv2.resize(others, (OW, OH), interpolation=cv2.INTER_LINEAR)[..., None]     # the clip's other people, in front
             v = v * (1 - oth) + out.astype(np.float32) / 255 * oth
+        if A.grain > 0:
+            # grain where the picture is new (the real him and the filled hole), made at the clip's size and upscaled the
+            # way the clip is, so it matches the clip's own grain
+            gn = cv2.resize(RNG.normal(0, A.grain / 255, (CH, CW, 3)).astype(np.float32), (OW, OH), interpolation=cv2.INTER_LINEAR)
+            where = np.clip(aw + (cv2.resize(left_m.astype(np.float32), (OW, OH), interpolation=cv2.INTER_LINEAR) if "plate" not in s else 0), 0, 1)
+            v = v + gn * where[..., None]
         out = (np.clip(v, 0, 1) * 255).round().astype(np.uint8)
         report.append(dict(frame=i, take_frame=j, scale=round(float(scale), 4), shake=[round(float(dx), 2), round(float(dy), 2)],
                            uncovered_px=int((left > 0.3).sum()), gain=[round(float(x), 4) for x in gain], faces=ref[key]["faces"]))
