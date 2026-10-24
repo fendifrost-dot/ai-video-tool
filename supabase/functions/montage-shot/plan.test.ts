@@ -247,6 +247,31 @@ describe("a montage with his mouth still (b-roll with him; Fendi, 23 Oct 2026; 2
   });
 });
 
+describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage for every b-roll shot with him)", () => {
+  it("a clip placed with its first frame on the shot's first frame plans like a take: no lead, the shot's own song start, the plain performance copy", () => {
+    // montage-shot's referenceClipOf: the clip's own song time does not matter — offset = the shot's start, no drift
+    const r = planMontage(
+      c042({
+        lines: LINES,
+        take: { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } },
+      }),
+    );
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.lead).toBe(0);
+    expect(r.plan.songStart).toBe(73.8);
+    expect(r.plan.seconds).toBe(4);
+    expect(r.plan.prompt).toContain("mouth movements are exactly @Video1's");   // shut in the clip, so shut here, nothing to suppress
+    expect(r.plan.prompt).not.toContain("No lip sync");
+    const s = r.plan.payload.settings as Record<string, unknown>;
+    expect(s.sourceAssetId).toBe("silent-1");
+    expect(s.masterStart).toBe(73.8);
+    // a clip shorter than the shot is refused like a short take
+    const short = planMontage(c042({ lines: LINES, take: { id: "s", bucket: "b", path: "p.mp4", seconds: 1.2, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } } }));
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.error).toBe("take_ends_before_shot");
+  });
+});
+
 describe("the people of the scene, and no shots of his feet (17 Oct 2026)", () => {
   it("every montage asks for no shot of his shoes or feet", () => {
     const r = planMontage(c042({ lines: LINES }));
