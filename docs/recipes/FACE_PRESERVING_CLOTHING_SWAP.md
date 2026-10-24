@@ -34,6 +34,7 @@ approved away.
 2. **Genjutsu object-swap output** for that cut, **conformed** to the source's length.
    - **Conform:** container timescale. c033: the provider returned 89 frames / 3.708 s; ×1.078652 gives 4.000 s at 22.25 fps.
    - **Order:** the conformed file goes into the script; the raw output never does.
+   - **Frame rate (rule, 24 Oct 2026):** the script motion-interpolates the swap to the source's frame rate before anything else whenever the two differ (`scripts/edit/swap_rate.py`, ffmpeg `minterpolate` mci; the file is written to `<out_dir>/swap_at_source_rate.mp4`). VERIFIED on c044: a 22.2 fps swap paired frame-for-time inside a 59.94 fps source held the clothes still for two frames in three (torso frame-to-frame diff 0.3 / 0.4 / 13.4 …) while the face and hands moved every frame, and a model that copies the clip's motion copied that stutter as robotic movement; interpolated first, no near-zero-motion torso frames remain (67 → 0 of 239) and the face proof stays 0. `AVT_SWAP_INTERPOLATE=0` disables it for diagnosis only.
 3. **Genjutsu reference order** (as Dress sends them; c033 job `c817d489`, outfit `YSL_JACKET` v2, prompt `dress-v1`):
    1. jacket
    2. cap
@@ -46,7 +47,7 @@ approved away.
 
 | Step | What | Setting |
 |---|---|---|
-| Time | Original frame at `t` takes the swap frame at `t` | nearest frame; the swap's clothes update at 22.25 fps |
+| Time | Original frame at `t` takes the swap frame at `t` | nearest frame of the swap AFTER it is interpolated to the source's rate (swap_rate.py); the clothes update every source frame |
 | Align | Swap frame → original frame | ECC, `MOTION_AFFINE`, at ¼ scale, on the original's background mask; 200 iterations, eps 1e-5, Gaussian 5. Applied with `WARP_INVERSE_MAP` and `BORDER_REPLICATE`. One fit per swap frame. |
 | Labels | Both frames | MediaPipe multiclass: 0 background, 1 hair, 2 body skin, 3 face skin, 4 clothes, 5 accessories |
 | Face shape | Original frame | landmark face oval, dilated 9×9, cut at the brow line (brow landmarks minus 4 % of face height). Searched in x 10–95 %, y 5–65 % of the frame. Frames before the first detection reuse the first detection. |
@@ -84,7 +85,7 @@ None of these is assigned to a shot. The board and the Cut are unchanged.
 ## Limitations (still true of the approved result)
 
 - **Cap edge:** a faint navy fringe in a few frames, where the original cap is larger than the swapped one.
-- **Clothing frame rate:** the clothes update at the swap's 22.25 fps (each swap frame held for ~2.7 source frames). Watch the sleeves at 1×.
+- **Clothing frame rate:** no longer a limitation since 24 Oct 2026 (the swap is interpolated to the source's rate first); the c033 result above (18 Oct) predates the rule and still updates its clothes at 22.25 fps.
 - **Background:** where the new garment's outline differs from the original, the swap's regraded background shows. It disappears once the background is replaced.
 - **Garment rebuild:** the garment itself is still Genjutsu's rebuild, so its construction holds as well as Genjutsu holds it. Judge stripes and logos per shot.
 - **Framing:** works on full-body framing because the face search region is wide. A face that leaves the frame or turns fully away falls back to the last detection.

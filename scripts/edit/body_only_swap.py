@@ -11,10 +11,15 @@ usage: body_only_swap.py <original.mp4> <swap.mp4> <out_dir>
 - Models (env AVT_MODELS, default ./models): MediaPipe selfie_multiclass_256x256.tflite and face_landmarker.task.
 - A small face (env AVT_HEAD_ZOOM=4): see HEAD_ZOOM below. The run must print a first face detection, not None;
   with None the face shape and brow line are missing and the glasses would come from the swap.
-- Verified on c033 (18 Oct 2026): docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md"""
+- Verified on c033 (18 Oct 2026): docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md
+- The swap is motion-interpolated to the original's frame rate first whenever the rates differ (swap_rate.py says why:
+  a ~22 fps swap inside a 59.94 fps window made the clothes stutter and the re-shoot robotic, c044 24 Oct 2026). The
+  interpolated file is written to <out_dir>/swap_at_source_rate.mp4; AVT_SWAP_INTERPOLATE=0 skips it (diagnostic only)."""
 import subprocess, sys, os, json
 import numpy as np, cv2, mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from swap_rate import needs_interpolation, interpolate_swap, enabled as interpolation_enabled
 
 MODELS = os.environ.get("AVT_MODELS", "models")  # selfie_multiclass_256x256.tflite + face_landmarker.task
 orig_p, swap_p, out_dir = sys.argv[1:4]
@@ -34,6 +39,14 @@ def read(p, w, h):
 
 W, H, FPS, DUR = probe(orig_p); FPS_RATE = probe.rate
 _, _, SFPS, SDUR = probe(swap_p)
+if needs_interpolation(FPS, SFPS):
+    if interpolation_enabled():
+        # the rule, not a one-off: a swap at another rate would hold its frames inside the original's clock
+        swap_p = interpolate_swap(swap_p, FPS_RATE, os.path.join(out_dir, "swap_at_source_rate.mp4"), W, H)
+        _, _, SFPS, SDUR = probe(swap_p)
+        print(f"swap interpolated to the original's rate: {FPS_RATE} ({SFPS:.3f} fps), minterpolate mci")
+    else:
+        print(f"WARNING: swap at {SFPS:.3f} fps inside a {FPS:.3f} fps original, AVT_SWAP_INTERPOLATE=0: the clothes will stutter")
 orig = read(orig_p, W, H)
 swap = read(swap_p, W, H)            # upscaled to the original's size; only the clothes are used
 print("original", orig.shape, FPS, "swap", swap.shape, SFPS)
