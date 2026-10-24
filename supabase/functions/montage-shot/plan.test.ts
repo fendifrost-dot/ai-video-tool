@@ -260,7 +260,7 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     expect(r.plan.lead).toBe(0);
     expect(r.plan.songStart).toBe(73.8);
     expect(r.plan.seconds).toBe(4);
-    expect(r.plan.prompt).toContain("mouth movements are exactly @Video1's");   // shut in the clip, so shut here, nothing to suppress
+    expect(r.plan.prompt).toContain("mouth movements are exactly @Video1's");   // without mouth: "silent" the plain copy applies
     expect(r.plan.prompt).not.toContain("No lip sync");
     const s = r.plan.payload.settings as Record<string, unknown>;
     expect(s.sourceAssetId).toBe("silent-1");
@@ -269,6 +269,22 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     const short = planMontage(c042({ lines: LINES, take: { id: "s", bucket: "b", path: "p.mp4", seconds: 1.2, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } } }));
     expect(short.ok).toBe(false);
     if (!short.ok) expect(short.error).toBe("take_ends_before_shot");
+  });
+  it("mouth: silent (what montage-shot sets for a reference clip): the performance copied whole, mouth included, no 'rapping', no still-mouth block", () => {
+    const silentTake = { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } };
+    const r = planMontage(c042({ take: silentTake, mouth: "silent" }));   // no lines: the prefill, minus its "rapping"
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toContain("@Video1 is the performer. Re-shoot the exact same performance from a second camera");
+    expect(r.plan.prompt).toContain("@Video1 is a silent take: whenever he is on screen his movements and his expression are exactly @Video1's");
+    expect(r.plan.prompt).toContain("his head, body, hands, eyes, expression and mouth move exactly as in @Video1");
+    expect(r.plan.prompt).not.toMatch(/rapping|word for word|No lip sync|lips together/);
+    expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
+    expect(r.plan.scenes.map((s) => s.text).join(" ")).not.toContain("rapping");
+    expect(((r.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).mouth).toBe("silent");
+    // the director's own lines are kept as written
+    const own = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES }));
+    if (!own.ok) throw new Error(own.detail);
+    expect(own.plan.scenes[1].text).toContain("rapping");
   });
 });
 
