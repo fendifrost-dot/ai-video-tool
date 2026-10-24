@@ -69,7 +69,7 @@ Both dollar figures are **HYPOTHESIS**. The $1.00/h rate is the comment in `scri
 
 The byte-identical `body_only_swap` / `replace_him` checks were not re-executed in this VM: those tests set `HOME` to a temp directory, and OpenCV here is only on the user site, so the child process cannot import it. The scripts themselves were not edited. CI installs OpenCV onto the interpreter path and is the run that covers them.
 
-Ledger row 183. Spent: **$0**.
+Ledger row 189. Spent: **$0**.
 
 ## Blockers
 
