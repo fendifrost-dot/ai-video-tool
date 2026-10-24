@@ -40,7 +40,7 @@ export const FACE_TO_CAMERA =
  * scene"): he is in the place, his mouth shut the whole take; nothing is sung and no vocals go under it.
  */
 export const MOUTH_STILL =
-  "No lip sync and no lip movement: his lips do not move and his mouth stays closed for the whole take; he is not rapping, not singing, not talking and not mouthing anything, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
+  "No lip sync and no lip movement: his lips stay closed and he never mouths the words, from the first frame to the last. Everything else about him moves as it does in @Video1: the same head turns, nods and body movement, the same hands, the same eyes and eyebrows, the same energy and attitude; he is alive and moving, never frozen, stiff or blank — the only thing taken away is the lip movement.";
 export const NOBODY_PERFORMS =
   "Nobody performs to camera and no face fills the frame; he appears only where this says so.";
 /** The same hour in every clip of the ending and the hook (Fendi: "cold, winter, consistent with the cold-runway board"). */
