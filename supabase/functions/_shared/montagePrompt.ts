@@ -24,7 +24,7 @@ export const MONTAGE_SYNC =
  * no still-mouth montage yet.
  */
 export const MONTAGE_MOUTH_STILL =
-  "No lip sync and no lip movement: his lips stay closed and still and he never mouths the words, in every shot he is in, from the first frame to the last. Transfer the exact movement and timing of @Video1 onto him, beat for beat: the same head turns and nods, the same shoulders and body, the same hands, the same eyes and eyebrows (he blinks, his brows lift and knit, he breathes) at the same seconds, in sync with @Video1; he is alive and moving exactly as he does there, never frozen, stiff or blank — the only thing taken away is the lip movement.";
+  "No lip sync and no lip movement: his lips stay closed and still and he never mouths the words, in every shot he is in, from the first frame to the last. Transfer the exact movement and timing of @Video1 onto him, beat for beat: the same head turns and nods, the same shoulders and body, the same hands, the same eyes and eyebrows (he blinks, his brows lift and knit, he breathes) at the same seconds, in sync with @Video1; he is alive and moving exactly as he does there, never frozen, stiff or blank. His mouth is his own, natural and shut, the lips together as in a silent take; his face is complete and unchanged.";
 
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
@@ -382,7 +382,7 @@ export function seedanceAnglePrompt(
   const parts = mouth === "still"
     ? [
         `@Video1 is the performer. Re-shoot the exact same performance from a second camera: ${angle}`,
-        `Keep everything identical to @Video1 — ${keepStr} — and most of all the same movements at the same moments: his head, body, hands, eyes and expression move exactly as in @Video1 from the first frame to the last, only his lips do not; nothing he wears changes during the take.`,
+        `Keep everything identical to @Video1 — ${keepStr} — and most of all the same movements at the same moments: his head, body, hands, eyes and expression move exactly as in @Video1 from the first frame to the last, with his lips together and still as in a silent take; nothing he wears changes during the take.`,
         PLACE_LIGHT,
       ]
     : [
