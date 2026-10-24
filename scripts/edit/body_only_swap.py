@@ -47,6 +47,7 @@ def cats(img):
 
 OVAL = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109]
 BROWS = [70,63,105,66,107,336,296,334,293,300]
+EYES = [159,160,158,386,387,385]     # upper eyelids: the face is his own from here down, whatever the cap did above
 lmk = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
     base_options=BaseOptions(model_asset_path=os.path.join(MODELS, "face_landmarker.task")), running_mode=vision.RunningMode.IMAGE, num_faces=1))
 DET = (0.1, 0.05, 0.85, 0.6)  # x, y, w, h of the frame searched for the face (full-body framing: the face is small)
@@ -74,9 +75,10 @@ def face_region(img):
         pts = np.array([[x0 + L[k].x * cw, y0 + L[k].y * ch] for k in OVAL], np.float32)
         face_h = pts[:, 1].max() - pts[:, 1].min()
         brow = min(y0 + L[k].y * ch for k in BROWS) - 0.04 * face_h
-        last_face = (pts, brow, face_h)
+        eye = min(y0 + L[k].y * ch for k in EYES) - 0.02 * face_h
+        last_face = (pts, brow, face_h, eye)
     if last_face is None: return None, None
-    pts, brow, face_h = last_face
+    pts, brow, face_h, eye = last_face
     if brow_override is not None: brow = brow_override          # the smoothed line (see the pre-pass below)
     m = np.zeros((h0, w0), np.uint8)
     cv2.fillPoly(m, [pts.astype(np.int32)], 1)
@@ -106,15 +108,15 @@ for k in range(len(orig)):
 print("first face detection at frame", first)
 # the brow line per frame, then smoothed over time: a line that jumps a few px between frames flickers the cap's
 # underside (the original brim shows under the new one on some frames and not others; c044, 23 Oct)
-brows = []
+brows, eyes = [], []
 for k in range(len(orig)):
-    _, b = face_region(orig[k]); brows.append(b)
-brows = np.array([b if b is not None else np.nan for b in brows], np.float32)
-if np.isfinite(brows).any():
-    idx = np.arange(len(brows)); brows = np.interp(idx, idx[np.isfinite(brows)], brows[np.isfinite(brows)])
-    sm = np.array([np.median(brows[max(0, k - 4):k + 5]) for k in range(len(brows))], np.float32)
-else:
-    sm = brows
+    _, b = face_region(orig[k]); brows.append(b); eyes.append(last_face[3] if last_face is not None else None)
+def smooth(v):
+    v = np.array([x if x is not None else np.nan for x in v], np.float32)
+    if not np.isfinite(v).any(): return v
+    idx = np.arange(len(v)); v = np.interp(idx, idx[np.isfinite(v)], v[np.isfinite(v)])
+    return np.array([np.median(v[max(0, k - 4):k + 5]) for k in range(len(v))], np.float32)
+sm, sm_eye = smooth(brows), smooth(eyes)
 last_face = None
 for k in range(len(orig)):
     face_region(orig[k])
@@ -142,21 +144,30 @@ for i, o in enumerate(orig):
     face, brow = face_region(o)
     rows = np.arange(H)[:, None]
     below_brow = (rows > brow) if brow is not None else np.ones((H, 1), bool)
-    # the forehead band between the brow cut and the eyebrows: face skin there is kept only where the swap shows
-    # face skin too, so a new cap brim that sits lower than the old one (or the old black brim under the new one)
-    # comes from the swap, as a sleeve over a bare arm does
-    eyebrow = (brow + 0.08 * last_face[2]) if (brow is not None and last_face is not None) else brow
-    band = below_brow & (rows < eyebrow) if eyebrow is not None else np.zeros((H, 1), bool)
+    # the band between the brow cut and his upper eyelids: his own pixels, except where the old cap sat. He wears the
+    # cap low, so the ORIGINAL black brim reaches the top of his glasses, below the brow cut and inside the face oval,
+    # and a horizontal cut cannot separate it from his brows (c044, 24 Oct: Fendi, "there's still some of the old
+    # hat ... black space where the hat should be"). In the band, a strongly changed pixel that is dark in the
+    # original (the black cap: luminance < 80, grown 3 px) comes from the swap; so does any strongly changed pixel in
+    # the top 8 % of the face height (a new brim that sits lower than the old one). Eyes, glasses, nose, mouth, beard
+    # stay his.
     changed = np.abs(o.astype(np.int16) - sw.astype(np.int16)).max(2) > 40
-    keep_band = (sc == 3) & ~changed                            # forehead skin in both, unchanged: his own pixels
-    protect = ((oc == 3) & below_brow & (~band | keep_band)) | ((oc == 1) & below_brow & ~band) | ((oc == 2) & (sc == 2))
-    if face is not None: protect |= face & (~band | keep_band)
+    eye_line = float(sm_eye[i]) if np.isfinite(sm_eye[i]) else None
+    if brow is not None and eye_line is not None and last_face is not None:
+        band = below_brow & (rows < max(eye_line, brow + 1))
+        dark_o = cv2.dilate((cv2.cvtColor(o, cv2.COLOR_RGB2GRAY) < 80).astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool)
+        top = rows < brow + 0.08 * last_face[2]
+        take_band = band & changed & (dark_o | top)
+    else:
+        take_band = np.zeros((H, W), bool)
+    protect = (((oc == 3) & below_brow) | ((oc == 1) & below_brow)) & ~take_band | ((oc == 2) & (sc == 2))
+    if face is not None: protect |= face & ~take_band
     clothes = np.isin(oc, (4, 5)) | np.isin(sc, (4, 5))
     # the cap: anything labelled hair/accessory above the brow line, in either frame, comes from the swap
     above_brow = ~below_brow
     clothes |= (np.isin(oc, (1, 5)) | np.isin(sc, (1, 5))) & above_brow
     if last_face is not None:   # cap box: above the brows, over the head; any non-background pixel comes from the swap
-        pts, _, fh = last_face
+        pts, _, fh, _ = last_face
         x_lo, x_hi = int(pts[:, 0].min() - 0.35 * fh), int(pts[:, 0].max() + 0.35 * fh)
         y_lo = int(brow - 0.9 * fh)
         box = np.zeros((H, W), bool); box[max(0, y_lo):int(brow), max(0, x_lo):min(W, x_hi)] = True
