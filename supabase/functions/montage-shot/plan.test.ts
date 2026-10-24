@@ -226,21 +226,65 @@ const SHOES = {
 };
 const CAST = { id: "17ac4e3a", bucket: "project-references", path: "u/p/worlds/scene_oak_street_boosters_2.png" };
 
-describe("a montage with his mouth still (b-roll with him; Fendi, 23 Oct 2026)", () => {
-  it("keeps the scenes and the place, drops the sync rule and the rapping opening, and records mouth: still", () => {
+describe("a montage with his mouth still (b-roll with him; Fendi, 23 Oct 2026; 24 Oct: the same performance minus the lips)", () => {
+  it("keeps the scenes, the place and the performance copy, drops only the lip sync, and records mouth: still", () => {
     const r = planMontage(c042({ lines: LINES, mouth: "still" }));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const same = planMontage(c042({ lines: LINES }));
     if (!same.ok) throw new Error(same.detail);
     expect(r.plan.scenes).toEqual(same.plan.scenes);
-    expect(r.plan.prompt).toContain("Whenever he is on screen his mouth stays closed: he is not rapping");
-    expect(r.plan.prompt).not.toMatch(/mouth movements|rapping to camera|word for word|in sync with @Video1/);
+    expect(r.plan.prompt).toContain("No lip sync and no lip movement: his lips stay closed and still and he never mouths the words");
+    expect(r.plan.prompt).toContain("Re-shoot the exact same performance from a second camera");
+    expect(r.plan.prompt).not.toContain("not a timeline to copy");
+    expect(r.plan.prompt).not.toMatch(/mouth movements|rapping to camera|word for word/);
+    expect(r.plan.prompt).toContain("in sync with @Video1");   // the performance is copied, only the lips are not
+    expect(r.plan.prompt).toContain("never frozen, stiff or blank");
     expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
-    expect(r.plan.prompt).toContain("@Video1 is the performer: his face, build, wardrobe");
     expect(((r.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).mouth).toBe("still");
     expect("mouth" in ((same.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>)).toBe(false);
     expect(same.plan.prompt).toContain("mouth movements are exactly @Video1's");
+  });
+});
+
+describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage for every b-roll shot with him)", () => {
+  it("a clip placed with its first frame on the shot's first frame plans like a take: no lead, the shot's own song start, the plain performance copy", () => {
+    // montage-shot's referenceClipOf: the clip's own song time does not matter — offset = the shot's start, no drift
+    const r = planMontage(
+      c042({
+        lines: LINES,
+        take: { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } },
+      }),
+    );
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.lead).toBe(0);
+    expect(r.plan.songStart).toBe(73.8);
+    expect(r.plan.seconds).toBe(4);
+    expect(r.plan.prompt).toContain("mouth movements are exactly @Video1's");   // without mouth: "silent" the plain copy applies
+    expect(r.plan.prompt).not.toContain("No lip sync");
+    const s = r.plan.payload.settings as Record<string, unknown>;
+    expect(s.sourceAssetId).toBe("silent-1");
+    expect(s.masterStart).toBe(73.8);
+    // a clip shorter than the shot is refused like a short take
+    const short = planMontage(c042({ lines: LINES, take: { id: "s", bucket: "b", path: "p.mp4", seconds: 1.2, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } } }));
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.error).toBe("take_ends_before_shot");
+  });
+  it("mouth: silent (what montage-shot sets for a reference clip): the performance copied whole, mouth included, no 'rapping', no still-mouth block", () => {
+    const silentTake = { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } };
+    const r = planMontage(c042({ take: silentTake, mouth: "silent" }));   // no lines: the prefill, minus its "rapping"
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toContain("@Video1 is the performer. Re-shoot the exact same performance from a second camera");
+    expect(r.plan.prompt).toContain("@Video1 is a silent take: whenever he is on screen his movements and his expression are exactly @Video1's");
+    expect(r.plan.prompt).toContain("his head, body, hands, eyes, expression and mouth move exactly as in @Video1");
+    expect(r.plan.prompt).not.toMatch(/rapping|word for word|No lip sync|lips together/);
+    expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
+    expect(r.plan.scenes.map((s) => s.text).join(" ")).not.toContain("rapping");
+    expect(((r.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).mouth).toBe("silent");
+    // the director's own lines are kept as written
+    const own = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES }));
+    if (!own.ok) throw new Error(own.detail);
+    expect(own.plan.scenes[1].text).toContain("rapping");
   });
 });
 

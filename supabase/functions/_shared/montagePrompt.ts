@@ -24,7 +24,14 @@ export const MONTAGE_SYNC =
  * no still-mouth montage yet.
  */
 export const MONTAGE_MOUTH_STILL =
-  "Whenever he is on screen his mouth stays closed: he is not rapping, not singing, not talking and not mouthing anything; no lip movement at all, in every shot he is in, from the first frame to the last. His face is calm and natural; he can look around, nod, breathe and shift his weight.";
+  "No lip sync and no lip movement: his lips stay closed and still and he never mouths the words, in every shot he is in, from the first frame to the last. Transfer the exact movement and timing of @Video1 onto him, beat for beat: the same head turns and nods, the same shoulders and body, the same hands, the same eyes and eyebrows (he blinks, his brows lift and knit, he breathes) at the same seconds, in sync with @Video1; he is alive and moving exactly as he does there, never frozen, stiff or blank. His mouth is his own, natural and shut, the lips together as in a silent take; his face is complete and unchanged.";
+
+/** A SILENT reference (montage-shot `reference`): his mouth is shut in @Video1, so the performance is copied whole and
+ * nothing is suppressed (Fendi, 24 Oct 2026: still-mouth re-shoots of a rapping take came out stiff; "non rapping
+ * footage should have been used for all b roll shots"). */
+export const MONTAGE_SILENT =
+  "@Video1 is a silent take: whenever he is on screen his movements and his expression are exactly @Video1's at that same second — head, body, hands, eyes and mouth — in sync from the first frame to the last; " +
+  "a cutaway does not pause, repeat or shift the performance — it continues underneath and is where @Video1 is when the picture comes back to him.";
 
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
@@ -165,11 +172,11 @@ export function montageScript(scenes: readonly MontageScene[]): string {
   ].join("\n");
 }
 
-export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still"): string {
+export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still" | "silent"): string {
   return [
     `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
     montageScript(scenes),
-    mouth === "still" ? MONTAGE_MOUTH_STILL : MONTAGE_SYNC,
+    mouth === "still" ? MONTAGE_MOUTH_STILL : mouth === "silent" ? MONTAGE_SILENT : MONTAGE_SYNC,
     NEVER_WIDER,
     NO_FEET,
     WAIST_UP,
@@ -280,7 +287,7 @@ export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
-  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" } = {},
+  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" | "silent" } = {},
 ): {
   version: string;
   scenes: MontageScene[];
@@ -289,7 +296,7 @@ export function montageRecord(
   cast?: { id: string };
   broll?: true;
   cutOn?: { beats: number; cuts: number };
-  mouth?: "still";
+  mouth?: "still" | "silent";
 } {
   return {
     version: MONTAGE_VERSION,
@@ -299,7 +306,7 @@ export function montageRecord(
     ...(more.cast ? { cast: { id: more.cast.id } } : {}),
     ...(more.broll ? { broll: true as const } : {}),
     ...(more.cutOn ? { cutOn: { ...more.cutOn } } : {}),
-    ...(more.mouth === "still" ? { mouth: "still" as const } : {}),
+    ...(more.mouth === "still" || more.mouth === "silent" ? { mouth: more.mouth } : {}),
   };
 }
 
@@ -372,15 +379,24 @@ export function seedanceAnglePrompt(
   angle: string,
   keep: string[],
   lookSuffix: string | null = DEFAULT_LOOK_SUFFIX,
-  mouth?: "still",
+  mouth?: "still" | "silent",
 ): string {
   const keepStr =
     keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
-  // a still mouth: @Video1 is who he is and how he moves, not a performance to copy (continuousPrompt's PERFORMER)
+  // a still mouth: the SAME performance, copied moment for moment, minus the lip movement (Fendi, 24 Oct 2026: the
+  // "reference for his body, not a timeline to copy" framing came back "completely still ... stiff as a board";
+  // "my movements should be the exact same as the bad lip sync render with no lip sync")
   const parts = mouth === "still"
     ? [
-        `@Video1 is the performer: his face, build, wardrobe and the way he moves; his performance there is a reference for his body, not a timeline to copy. Shoot him from a second camera: ${angle}`,
-        `Keep everything identical to @Video1 — ${keepStr}; nothing he wears changes during the take.`,
+        `@Video1 is the performer. Re-shoot the exact same performance from a second camera: ${angle}`,
+        `Keep everything identical to @Video1 — ${keepStr} — and most of all the same movements at the same moments: his head, body, hands, eyes and expression move exactly as in @Video1 from the first frame to the last, with his lips together and still as in a silent take; nothing he wears changes during the take.`,
+        PLACE_LIGHT,
+      ]
+    : mouth === "silent"
+    ? [
+        // a silent reference: the whole performance copied, mouth included (shut in @Video1), nothing to suppress
+        `@Video1 is the performer. Re-shoot the exact same performance from a second camera: ${angle}`,
+        `Keep everything identical to @Video1 — ${keepStr} — and most of all the same movements at the same moments: his head, body, hands, eyes, expression and mouth move exactly as in @Video1 from the first frame to the last; nothing he wears changes during the take.`,
         PLACE_LIGHT,
       ]
     : [

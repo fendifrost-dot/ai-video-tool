@@ -13,7 +13,10 @@
 //   2. its DRESSED take: the newest non-rejected clip on the shot whose derived_from.method is "dressed" (the
 //      selected one first) and that take's place on the song (performance_syncs) — the montage wears what the video
 //      wears. A shot with no dressed take is refused: dress it first (the browser's fallback to cutting the raw
-//      take needs an encoder this function does not have);
+//      take needs an encoder this function does not have). Or, `reference: { assetId }`, a SILENT clip of him in
+//      the shot's outfit (a non-rapping stretch of a take, cut to the shot's length, filed as a video asset), placed
+//      with its first frame on the shot's first frame: b-roll with him copies that clip's movement and his mouth
+//      stays shut on its own (Fendi, 24 Oct 2026);
 //   3. the place: the newest usable plate still (metadata lane world_still) of the scene the shot falls in
 //      (variation_scenes by its start), else refused — generate the place first. No shoe picture is sent: every
 //      shot of him is waist-up (Fendi, 17 Oct 2026);
@@ -71,6 +74,15 @@ type Body = {
   dryRun?: boolean;
   /** "still": the montage with his mouth shut in every shot he is in — the same scenes, no mouth movement (b-roll with him; Fendi, 23 Oct 2026). */
   mouth?: "still";
+  /**
+   * A SILENT clip of him as @Video1 instead of the shot's dressed take: a stretch of a take where he is not rapping,
+   * in the shot's outfit, at least the shot's length (one of the caller's project assets, a video). The montage
+   * copies its movement, so his mouth stays shut on its own instead of being told to — every still-mouth re-shoot
+   * of a rapping take came out stiff (Fendi, 24 Oct 2026: "non rapping footage should have been used for all b roll
+   * shots"). The clip's first frame is placed on the shot's first frame (its own song time does not matter). The prompt
+   * then copies the performance whole, mouth included (no "rapping", no still-mouth block), unless `mouth: "still"` is given too.
+   */
+  reference?: { assetId: string };
   /**
    * One continuous take instead of a montage (_shared/continuousPrompt.ts): one named camera move, no cuts, as long as
    * the lane allows. `withHim` false = a shot of the place or a detail (no take), even on a performance shot.
@@ -219,8 +231,11 @@ serve(async (req) => {
 
   // 2. the dressed take on the shot (a performance shot only)
   let take: TakeFacts | null = null;
+  const reference = body.reference && typeof body.reference === "object" ? body.reference : null;
   if (!broll) {
-    const found = await dressedTakeOf(user, projectId, shot.id);
+    const found = reference
+      ? await referenceClipOf(user, projectId, shot.start, reference.assetId)
+      : await dressedTakeOf(user, projectId, shot.id);
     if (!found.ok) return json(found.status, found.body);
     take = found.take;
   }
@@ -405,7 +420,8 @@ serve(async (req) => {
         footwear: null,
         cast,
         beats,
-        ...(body.mouth === "still" ? { mouth: "still" as const } : {}),
+        // a silent reference clip: the performance copied whole, nothing suppressed (montagePrompt MONTAGE_SILENT)
+        ...(body.mouth === "still" ? { mouth: "still" as const } : reference ? { mouth: "silent" as const } : {}),
       })
     : planBrollMontage({
         projectId,
@@ -421,6 +437,8 @@ serve(async (req) => {
   if (!planned.ok)
     return json(planned.status, { ok: false, error: planned.error, detail: planned.detail });
   const plan = planned.plan;
+  if (reference && take)
+    (plan.payload.settings as Row).reference = { assetId: take.id, silent: true, placedAtSongSeconds: shot.start };
   const facts = {
     mode: continuous ? "continuous" : "montage",
     ...(continuous ? { pictures: contImages.map((i) => ({ path: i.path, as: i.as })) } : {}),
@@ -432,6 +450,7 @@ serve(async (req) => {
           path: take.path,
           seconds: take.seconds,
           songStart: take.sync.offsetSeconds,
+          ...(reference ? { reference: "silent clip, placed on the shot's first frame" } : {}),
         }
       : null,
     broll,
@@ -586,6 +605,51 @@ serve(async (req) => {
 type Found =
   | { ok: true; take: TakeFacts }
   | { ok: false; status: number; body: Record<string, unknown> };
+
+/**
+ * A silent clip of him as the source (Body.reference): one of the caller's video assets, its length from its record,
+ * placed with its first frame on the shot's first frame (offset = the shot's start, no drift). The planner then
+ * checks it covers the shot like any take.
+ */
+async function referenceClipOf(
+  user: import("https://esm.sh/@supabase/supabase-js@2.45.0").SupabaseClient,
+  projectId: string,
+  shotStart: number,
+  assetId: unknown,
+): Promise<Found> {
+  const fail = (status: number, body: Record<string, unknown>): Found => ({ ok: false, status, body: { ok: false, ...body } });
+  const id = typeof assetId === "string" ? assetId.trim() : "";
+  if (!UUID_RE.test(id)) return fail(400, { error: "bad_reference", detail: "reference.assetId must be a project_assets id" });
+  const { data: row, error } = await user
+    .from("project_assets")
+    .select("id, file_url, approval_status, metadata_json")
+    .eq("id", id)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (error) return fail(500, { error: "reference_lookup_failed", detail: error.message });
+  if (!row) return fail(404, { error: "reference_not_found", detail: "no asset of this project has that id" });
+  const meta = ((row as Row).metadata_json ?? {}) as Row;
+  const path = String((row as Row).file_url ?? "");
+  const mime = str(meta.mime_type) ?? "";
+  if (!(mime.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(path)))
+    return fail(422, { error: "reference_not_video", detail: "the reference must be a video clip" });
+  if ((row as Row).approval_status === "rejected")
+    return fail(422, { error: "reference_rejected", detail: "the reference clip is marked rejected" });
+  const seconds = num(meta.duration_seconds);
+  if (seconds == null)
+    return fail(422, { error: "reference_length_unknown", detail: "the reference clip's length is not on its record" });
+  return {
+    ok: true,
+    take: {
+      id: String((row as Row).id),
+      bucket: str(meta.bucket) ?? "project-clips",
+      path,
+      seconds,
+      shows: str(meta.shows),
+      sync: { offsetSeconds: shotStart, driftPpm: 0 },
+    },
+  };
+}
 
 /** The dressed take on the shot, the selected one first, else the newest; and its place on the song. */
 // NOTE: `ReturnType<typeof createClient>` resolves the schema param to `never` under
