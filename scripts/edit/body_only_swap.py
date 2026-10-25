@@ -16,12 +16,16 @@ usage: body_only_swap.py <original.mp4> <swap.mp4> <out_dir>
   clips comes from a SAM 3 text-prompt matte (scripts/edit/segmenters.py) — a pixel MediaPipe called background inside
   the matte is taken as clothes (the black shoe on the dark floor), a pixel it called him outside the matte is dropped
   (the halo) — and when the landmarker finds no face at all, the face oval and brow line come from a SAM 3 "face"
-  mask. MediaPipe still labels skin/hair/face, so the protection proof holds either way."""
+  mask. MediaPipe still labels skin/hair/face, so the protection proof holds either way.
+- The swap is motion-interpolated to the original's frame rate first whenever the rates differ (swap_rate.py says why:
+  a ~22 fps swap inside a 59.94 fps window made the clothes stutter and the re-shoot robotic, c044 24 Oct 2026). The
+  interpolated file is written to <out_dir>/swap_at_source_rate.mp4; AVT_SWAP_INTERPOLATE=0 skips it (diagnostic only)."""
 import argparse, subprocess, sys, os, json
 import numpy as np, cv2, mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from segmenters import add_segmenter_args, choose_segmenter, Sam3Segmenter, refine_categories, matte_for_clip, face_geometry_from_mask
+from swap_rate import needs_interpolation, interpolate_swap, enabled as interpolation_enabled
 
 MODELS = os.environ.get("AVT_MODELS", "models")  # selfie_multiclass_256x256.tflite + face_landmarker.task
 ap = argparse.ArgumentParser(description="Body-only clothing swap: clothes from the Genjutsu output, everything else from the ORIGINAL pixels.")
@@ -45,7 +49,16 @@ def read(p, w, h):
     return np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3)
 
 W, H, FPS, DUR = probe(orig_p); FPS_RATE = probe.rate
-_, _, SFPS, SDUR = probe(swap_p); SFPS_RATE = probe.rate
+_, _, SFPS, SDUR = probe(swap_p)
+if needs_interpolation(FPS, SFPS):
+    if interpolation_enabled():
+        # the rule, not a one-off: a swap at another rate would hold its frames inside the original's clock
+        swap_p = interpolate_swap(swap_p, FPS_RATE, os.path.join(out_dir, "swap_at_source_rate.mp4"), W, H)
+        _, _, SFPS, SDUR = probe(swap_p)
+        print(f"swap interpolated to the original's rate: {FPS_RATE} ({SFPS:.3f} fps), minterpolate mci")
+    else:
+        print(f"WARNING: swap at {SFPS:.3f} fps inside a {FPS:.3f} fps original, AVT_SWAP_INTERPOLATE=0: the clothes will stutter")
+SFPS_RATE = probe.rate
 orig = read(orig_p, W, H)
 swap = read(swap_p, W, H)            # upscaled to the original's size; only the clothes are used
 print("original", orig.shape, FPS, "swap", swap.shape, SFPS)

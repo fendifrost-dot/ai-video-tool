@@ -109,6 +109,8 @@ export type MontageInput = {
    * "silent": the take is a SILENT clip (montage-shot `reference`): the performance is copied whole, mouth included, nothing suppressed (24 Oct 2026).
    */
   mouth?: "still" | "silent";
+  /** With mouth "silent" only: the clip copied LOOSELY (montagePrompt MONTAGE_LOOSE) — identity and wardrobe locked, the body followed, nothing pinned (25 Oct 2026). Default: the exact copy. */
+  sync?: "exact" | "loose";
 };
 
 export type MontagePlan = {
@@ -234,15 +236,18 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   // the app's order: the montage, its shoes and its people are the variant's sentence, the light follows it
   // (restage.ts restageShot)
   const still = input.mouth === "still" || input.mouth === "silent" ? input.mouth : undefined;
+  if (input.sync === "loose" && still !== "silent")
+    return refuse(422, "loose_needs_silent_reference", "sync: \"loose\" copies a SILENT reference clip loosely; give reference: { assetId } and no mouth: \"still\"");
+  const sync = still === "silent" && input.sync === "loose" ? ("loose" as const) : ("exact" as const);
   const angle = [
-    montagePrompt(planned.scenes, still),
+    montagePrompt(planned.scenes, still, sync),
     footwearLine(footwear),
     cast ? castLine(pictures.castImage) : "",
     light,
   ]
     .filter(Boolean)
     .join(" ");
-  const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }), undefined, still);
+  const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }), undefined, still, sync);
   const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds).toFixed(3));
   const aspect = clipAspect(input.aspect);
   const batchShotId = `${shot.key}_${MONTAGE_ID_SUFFIX}`;
@@ -273,7 +278,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still }),
+    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still, sync }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),

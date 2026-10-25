@@ -84,6 +84,13 @@ type Body = {
    */
   reference?: { assetId: string };
   /**
+   * With `reference` only: "loose" copies the silent clip LOOSELY — his identity and wardrobe locked to @Video1, his
+   * posture and gestures following it, his face his own and alive, nothing pinned "exactly" (montagePrompt
+   * MONTAGE_LOOSE). Fendi, 25 Oct 2026: every re-render that pinned every channel to a silent clip came out stiff and
+   * robotic; the fluid 16 Oct original locked only the mouth. Default: the exact copy (MONTAGE_SILENT).
+   */
+  sync?: "loose";
+  /**
    * One continuous take instead of a montage (_shared/continuousPrompt.ts): one named camera move, no cuts, as long as
    * the lane allows. `withHim` false = a shot of the place or a detail (no take), even on a performance shot.
    * `images`: pictures after the place (@Image2 …) — a project asset (assetId) or a wardrobe picture (featureId) — and
@@ -232,6 +239,9 @@ serve(async (req) => {
   // 2. the dressed take on the shot (a performance shot only)
   let take: TakeFacts | null = null;
   const reference = body.reference && typeof body.reference === "object" ? body.reference : null;
+  const loose = body.sync === "loose";
+  if (loose && (!reference || body.mouth === "still"))
+    return json(400, { ok: false, error: "loose_needs_silent_reference", detail: "sync: \"loose\" goes with reference: { assetId } and without mouth: \"still\"" });
   if (!broll) {
     const found = reference
       ? await referenceClipOf(user, projectId, shot.start, reference.assetId)
@@ -422,6 +432,7 @@ serve(async (req) => {
         beats,
         // a silent reference clip: the performance copied whole, nothing suppressed (montagePrompt MONTAGE_SILENT)
         ...(body.mouth === "still" ? { mouth: "still" as const } : reference ? { mouth: "silent" as const } : {}),
+        ...(loose ? { sync: "loose" as const } : {}),
       })
     : planBrollMontage({
         projectId,
@@ -450,7 +461,7 @@ serve(async (req) => {
           path: take.path,
           seconds: take.seconds,
           songStart: take.sync.offsetSeconds,
-          ...(reference ? { reference: "silent clip, placed on the shot's first frame" } : {}),
+          ...(reference ? { reference: loose ? "silent clip, placed on the shot's first frame, copied loosely" : "silent clip, placed on the shot's first frame" } : {}),
         }
       : null,
     broll,

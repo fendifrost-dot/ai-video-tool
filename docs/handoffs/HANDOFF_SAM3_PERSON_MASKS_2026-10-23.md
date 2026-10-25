@@ -42,4 +42,4 @@ cached login) and never printed. No access →
 
 - Canonical recipe (unchanged): [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PRESERVING_CLOTHING_SWAP.md) (new section "Segmenter flag").
 - c044 history: [`HANDOFF_BLENDER_SHOWROOM_2026-10-19.md`](HANDOFF_BLENDER_SHOWROOM_2026-10-19.md) item S.
-- Ledger row 188 ($0): [`docs/LEDGER_YSL_TESTING_BUDGET.md`](../LEDGER_YSL_TESTING_BUDGET.md).
+- Ledger row 192 ($0): [`docs/LEDGER_YSL_TESTING_BUDGET.md`](../LEDGER_YSL_TESTING_BUDGET.md).
