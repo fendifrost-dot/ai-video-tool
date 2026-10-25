@@ -33,6 +33,14 @@ export const MONTAGE_SILENT =
   "@Video1 is a silent take: whenever he is on screen his movements and his expression are exactly @Video1's at that same second — head, body, hands, eyes and mouth — in sync from the first frame to the last; " +
   "a cutaway does not pause, repeat or shift the performance — it continues underneath and is where @Video1 is when the picture comes back to him.";
 
+/** A silent reference copied LOOSELY (montage-shot `sync: "loose"`; Fendi, 25 Oct 2026: every re-render that pinned
+ * head, body, hands, eyes and mouth "exactly" to a silent clip came out stiff and robotic, where the 16 Oct original
+ * locked only the mouth and left the rest free). Identity and wardrobe stay locked; his body follows the clip loosely;
+ * his face is his own and alive; nothing is pinned. The exact copy (MONTAGE_SILENT) stays the default. */
+export const MONTAGE_LOOSE =
+  "@Video1 is a silent take of him, not rapping. He carries himself as he does there — his posture and his gestures follow @Video1 at the same moments, loosely, as a second take of the same moment rather than a copy — and his face is alive and his own: he breathes, blinks, looks around and takes in the place; " +
+  "a cutaway does not pause him — he continues underneath and is where @Video1 is when the picture comes back to him.";
+
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
 
@@ -172,11 +180,13 @@ export function montageScript(scenes: readonly MontageScene[]): string {
   ].join("\n");
 }
 
-export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still" | "silent"): string {
+export type MontageSync = "exact" | "loose";
+
+export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still" | "silent", sync: MontageSync = "exact"): string {
   return [
     `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
     montageScript(scenes),
-    mouth === "still" ? MONTAGE_MOUTH_STILL : mouth === "silent" ? MONTAGE_SILENT : MONTAGE_SYNC,
+    mouth === "still" ? MONTAGE_MOUTH_STILL : mouth === "silent" ? (sync === "loose" ? MONTAGE_LOOSE : MONTAGE_SILENT) : MONTAGE_SYNC,
     NEVER_WIDER,
     NO_FEET,
     WAIST_UP,
@@ -287,7 +297,7 @@ export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
-  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" | "silent" } = {},
+  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" | "silent"; sync?: MontageSync } = {},
 ): {
   version: string;
   scenes: MontageScene[];
@@ -297,6 +307,7 @@ export function montageRecord(
   broll?: true;
   cutOn?: { beats: number; cuts: number };
   mouth?: "still" | "silent";
+  sync?: "loose";
 } {
   return {
     version: MONTAGE_VERSION,
@@ -307,6 +318,7 @@ export function montageRecord(
     ...(more.broll ? { broll: true as const } : {}),
     ...(more.cutOn ? { cutOn: { ...more.cutOn } } : {}),
     ...(more.mouth === "still" || more.mouth === "silent" ? { mouth: more.mouth } : {}),
+    ...(more.mouth === "silent" && more.sync === "loose" ? { sync: "loose" as const } : {}),
   };
 }
 
@@ -380,6 +392,7 @@ export function seedanceAnglePrompt(
   keep: string[],
   lookSuffix: string | null = DEFAULT_LOOK_SUFFIX,
   mouth?: "still" | "silent",
+  sync: MontageSync = "exact",
 ): string {
   const keepStr =
     keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
@@ -390,6 +403,13 @@ export function seedanceAnglePrompt(
     ? [
         `@Video1 is the performer. Re-shoot the exact same performance from a second camera: ${angle}`,
         `Keep everything identical to @Video1 — ${keepStr} — and most of all the same movements at the same moments: his head, body, hands, eyes and expression move exactly as in @Video1 from the first frame to the last, with his lips together and still as in a silent take; nothing he wears changes during the take.`,
+        PLACE_LIGHT,
+      ]
+    : mouth === "silent" && sync === "loose"
+    ? [
+        // a silent reference copied loosely: identity and wardrobe locked, the body followed, the face his own (MONTAGE_LOOSE)
+        `@Video1 is him, at ease and not rapping. Shoot him from a second camera: ${angle}`,
+        `Keep him identical to @Video1 — ${keepStr}; nothing he wears changes during the take.`,
         PLACE_LIGHT,
       ]
     : mouth === "silent"

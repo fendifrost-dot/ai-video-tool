@@ -286,6 +286,34 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     if (!own.ok) throw new Error(own.detail);
     expect(own.plan.scenes[1].text).toContain("rapping");
   });
+  it("sync: loose (Fendi, 25 Oct 2026: the exact copy of a silent clip came out stiff): identity and wardrobe locked, the body followed loosely, nothing pinned", () => {
+    const silentTake = { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } };
+    const r = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", lines: LINES }));
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toContain("@Video1 is him, at ease and not rapping. Shoot him from a second camera");
+    expect(r.plan.prompt).toContain("@Video1 is a silent take of him, not rapping. He carries himself as he does there");
+    expect(r.plan.prompt).toContain("loosely, as a second take of the same moment rather than a copy");
+    expect(r.plan.prompt).toContain("his face is alive and his own");
+    expect(r.plan.prompt).toContain("Keep him identical to @Video1 — his face, skin and build, every piece of his wardrobe and everything he wears, exactly as in @Video1; nothing he wears changes during the take.");
+    // nothing pinned: no "exactly" outside the wardrobe lock, no mouth or expression sync, no still-mouth block
+    expect(r.plan.prompt).not.toMatch(/mouth|expression|word for word|No lip sync|same second|Re-shoot the exact same performance/);
+    expect((r.plan.prompt.match(/exactly/g) ?? []).length).toBe(1);
+    expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
+    expect(r.plan.prompt).toContain(NO_FEET);
+    const variant = (r.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>;
+    expect(variant.mouth).toBe("silent");
+    expect(variant.sync).toBe("loose");
+    // the exact copy stays the default, and loose without a silent reference is refused
+    const exact = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES }));
+    if (!exact.ok) throw new Error(exact.detail);
+    expect(exact.plan.prompt).toContain("are exactly @Video1's at that same second");
+    expect("sync" in ((exact.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>)).toBe(false);
+    for (const over of [{ sync: "loose" as const }, { sync: "loose" as const, mouth: "still" as const }]) {
+      const bad = planMontage(c042({ lines: LINES, ...over }));
+      expect(bad.ok).toBe(false);
+      if (!bad.ok) expect(bad.error).toBe("loose_needs_silent_reference");
+    }
+  });
 });
 
 describe("the people of the scene, and no shots of his feet (17 Oct 2026)", () => {
