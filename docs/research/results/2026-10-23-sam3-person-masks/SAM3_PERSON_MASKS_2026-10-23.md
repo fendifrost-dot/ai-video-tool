@@ -76,7 +76,7 @@ OBSERVED on the sheets:
   does not follow the shoulder and sleeve, and the right hand is only partly labelled skin.
 - Person pixels per frame ≈ 79–80 k (summary.json).
 
-## c044 — SAM 3 "after": **PENDING**
+## c044 — SAM 3 "after": **DONE 24 Oct** — see `SAM3_C044_RESULTS_2026-10-24.md` (the text below is the original 23 Oct plan)
 
 Not run: `facebook/sam3` is gated and access is still being requested; this machine had no `HF_TOKEN`, no
 `~/.cache/huggingface/token`, no `~/.modal.toml`, no `hf`/`modal` CLI at launch, and the brief forbids obtaining

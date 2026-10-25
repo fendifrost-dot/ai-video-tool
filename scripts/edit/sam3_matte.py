@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["torch", "transformers", "accelerate", "huggingface_hub", "numpy", "opencv-python-headless", "pillow", "imageio-ffmpeg"]
+# dependencies = ["torch", "torchvision", "transformers>=5.20", "accelerate", "huggingface_hub", "numpy", "opencv-python-headless", "pillow", "imageio-ffmpeg"]
 # ///
 """SAM 3 person matte of one clip, as a file the put-back scripts read: <out>.matte.mp4 (8-bit grey H.264, the clip's
 frame count and rate) + <out>.matte.mp4.json (model, revision, prompt, device, mode, frames, fps).

@@ -1,0 +1,15 @@
+{
+ "frames": 243,
+ "height": 1920,
+ "width": 1080,
+ "fps": 59.94005994005994,
+ "prompt": "man in cap",
+ "model": "facebook/sam3",
+ "revision": "main",
+ "device": "cuda",
+ "seed": null,
+ "mode": "text",
+ "union": false,
+ "object_id": 0,
+ "source": "c044_IMG6229_take_1080x1920_5994.mp4"
+}
