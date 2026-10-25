@@ -174,3 +174,14 @@ Fendi approved the 18 Oct showroom composite as the working baseline and asked f
 - **"Face paste-back with alignment"** (Claudia's 18 Oct handoff, c028 test): replaced. The face is never moved or redrawn, so there is nothing to paste back.
 
 Evidence: `docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md`.
+
+## Segmenter flag (23 Oct 2026, opt-in, not part of the approved recipe)
+
+`body_only_swap.py` and `replace_him_in_clip.py` take `--segmenter {mediapipe,sam3}` (env `AVT_SEGMENTER`). The default
+is `mediapipe`, the path above, byte-identical. `sam3` takes the person region from a SAM 3 text-prompt matte
+(`scripts/edit/segmenters.py`; weights gated at https://huggingface.co/facebook/sam3, token from `HF_TOKEN`) and falls
+back to a SAM 3 face mask when the landmarker finds no face. The face-protection proof (`max |out-original| on
+face/hair/skin: 0`) is printed either way. Status and the c044 before/after:
+`docs/research/results/2026-10-23-sam3-person-masks/SAM3_PERSON_MASKS_2026-10-23.md`. Until Fendi approves a SAM 3
+put-back on real footage, the approved recipe stays the MediaPipe path.
+
