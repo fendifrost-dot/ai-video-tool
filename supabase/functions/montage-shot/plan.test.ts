@@ -294,7 +294,7 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     expect(r.plan.prompt).toContain("@Video1 is a silent take of him, not rapping. He carries himself as he does there");
     expect(r.plan.prompt).toContain("loosely, as a second take of the same moment rather than a copy");
     // the face is exact (Fendi, 26 Oct 2026: a face told to be "alive and his own" came back "crazy … doesn't even look like me")
-    expect(r.plan.prompt).toContain("His face is exactly @Video1's face at that same second: the same man, the same features, the same expression and the same closed mouth — no smile, no word, no new expression is added to it");
+    expect(r.plan.prompt).toContain("His face is exactly @Video1's face at that same second: the same man, the same features, the same expression, his mouth at rest as it is there — the lips together, full and relaxed, never pressed, pursed, pulled thin or bunched — and no smile, no word, no new expression is added to it");
     expect(r.plan.prompt).toContain("Keep him identical to @Video1 — his face, skin and build, every piece of his wardrobe and everything he wears, exactly as in @Video1 — and his face and expression exactly @Video1's at the same moments, nothing added to them; nothing he wears changes during the take.");
     expect(r.plan.prompt).not.toMatch(/alive and his own|breathes, blinks/);
     // the body is not pinned: no beat-for-beat sync of head, body or hands, no still-mouth block, no re-shoot of "the exact same performance"
@@ -315,6 +315,37 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
       expect(bad.ok).toBe(false);
       if (!bad.ok) expect(bad.error).toBe("loose_needs_silent_reference");
     }
+  });
+  it("face pictures (Fendi, 26 Oct 2026: 'you have so many images of my face in my tool you should be referencing'): sent after the place, the shoes and the cast, named by number, the mouth at rest", () => {
+    const silentTake = { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } };
+    const FACES = [
+      { id: "f-neutral", bucket: "artist-assets", path: "u/a/face_neutral.jpg", label: "neutral" },
+      { id: "f-tql", bucket: "artist-assets", path: "u/a/face_three_quarter_left.jpg", label: "three_quarter_left" },
+      { id: "f-tqr", bucket: "artist-assets", path: "u/a/face_three_quarter_right.jpg", label: "three_quarter_right" },
+    ];
+    // no shoes, no cast: the faces are @Image2–4
+    const r = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", lines: LINES, faces: FACES }));
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toContain("@Image2, @Image3 and @Image4 are photographs of his face (neutral, three quarter left, three quarter right): he is this man, feature for feature");
+    expect(r.plan.prompt).toContain("his mouth at rest is as in these photographs, the lips together, full and relaxed, never pressed, pursed, pulled thin or bunched");
+    const s = r.plan.payload.settings as Record<string, unknown>;
+    expect((s.extraImages as { bucket: string; path: string }[]).map((x) => x.path)).toEqual(FACES.map((f) => f.path));
+    expect((s.variant as Record<string, unknown>).faces).toEqual(FACES.map((f) => ({ id: f.id, label: f.label })));
+    // with shoes and a cast still first, the faces move to @Image4–6 and the cast stays @Image3
+    const withAll = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", lines: LINES, footwear: SHOES, cast: CAST, faces: FACES }));
+    if (!withAll.ok) throw new Error(withAll.detail);
+    expect(withAll.plan.prompt).toContain("The people in this place are the people in @Image3");
+    expect(withAll.plan.prompt).toContain("@Image4, @Image5 and @Image6 are photographs of his face");
+    expect(((withAll.plan.payload.settings as Record<string, unknown>).extraImages as unknown[]).length).toBe(5);
+    // one picture reads singular
+    const one = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES, faces: [FACES[0]] }));
+    if (!one.ok) throw new Error(one.detail);
+    expect(one.plan.prompt).toContain("@Image2 is a photograph of his face (neutral)");
+    // none: nothing said, nothing recorded
+    const none = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES }));
+    if (!none.ok) throw new Error(none.detail);
+    expect(none.plan.prompt).not.toContain("photograph");
+    expect("faces" in ((none.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>)).toBe(false);
   });
 });
 
@@ -339,10 +370,11 @@ describe("the people of the scene, and no shots of his feet (17 Oct 2026)", () =
   });
 
   it("a cast still that is the place is not sent twice: its people are @Image1's", () => {
-    expect(picturesAfterPlace({ id: CAST.id }, null, CAST)).toEqual({ extra: [], castImage: 1 });
+    expect(picturesAfterPlace({ id: CAST.id }, null, CAST)).toEqual({ extra: [], castImage: 1, faceImage: 2 });
     expect(picturesAfterPlace({ id: "plate" }, null, CAST)).toEqual({
       extra: [{ bucket: "project-references", path: CAST.path }],
       castImage: 2,
+      faceImage: 3,
     });
   });
 });

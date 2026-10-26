@@ -44,6 +44,7 @@ import {
   type PlateFacts,
   type ShotFacts,
   type TakeFacts,
+  type MontageFace,
 } from "./plan.ts";
 import { continuousSeconds, continuousSongStart, lyricsInTake, type TakeLyric } from "../_shared/continuousPrompt.ts";
 import { sliceVocals } from "../_shared/vocalSlice.ts";
@@ -90,6 +91,14 @@ type Body = {
    * robotic; the fluid 16 Oct original locked only the mouth. Default: the exact copy (MONTAGE_SILENT).
    */
   sync?: "loose";
+  /**
+   * His face pictures from the tool as extra references (after the place, the shoes and the cast): `true` sends the
+   * artist's primary `character_features` face pictures labelled neutral, three_quarter_left and three_quarter_right
+   * (the artist = the project's primary_artist cast entity); `{ featureIds }` names the face pictures instead (at most
+   * 4). The prompt then says who he is from photographs (montagePrompt faceLine) — Fendi, 26 Oct 2026, on a render
+   * whose face was not his: "you have so many images of my face in my tool you should be referencing".
+   */
+  face?: boolean | { featureIds: string[] };
   /**
    * One continuous take instead of a montage (_shared/continuousPrompt.ts): one named camera move, no cuts, as long as
    * the lane allows. `withHim` false = a shot of the place or a detail (no take), even on a performance shot.
@@ -240,6 +249,7 @@ serve(async (req) => {
   let take: TakeFacts | null = null;
   const reference = body.reference && typeof body.reference === "object" ? body.reference : null;
   const loose = body.sync === "loose";
+  const faceWanted = body.face === true || (!!body.face && typeof body.face === "object");
   if (loose && (!reference || body.mouth === "still"))
     return json(400, { ok: false, error: "loose_needs_silent_reference", detail: "sync: \"loose\" goes with reference: { assetId } and without mouth: \"still\"" });
   if (!broll) {
@@ -312,6 +322,15 @@ serve(async (req) => {
         path: String(castRow.file_url),
       }
     : null;
+
+  // his face pictures (Body.face): the artist's character_features of feature_type "face", bucket artist-assets
+  // (compose-look-proxy's rule: non-wardrobe features live there)
+  let faces: MontageFace[] = [];
+  if (faceWanted && !continuous) {
+    const found = await facesOf(user, projectId, str(shotRow?.variation_id) ?? null, body.face === true ? null : (body.face as { featureIds?: unknown }).featureIds);
+    if (!found.ok) return json(found.status, found.body);
+    faces = found.faces;
+  }
 
   // no shoe picture is sent (Fendi, 17 Oct 2026: "Stop the full body shots … the shoes are an issue … they look huge
   // and not recreated correctly"): every shot of him is waist-up (WAIST_UP), and a shoe picture beside the place made
@@ -429,6 +448,7 @@ serve(async (req) => {
         light,
         footwear: null,
         cast,
+        faces,
         beats,
         // a silent reference clip: the performance copied whole, nothing suppressed (montagePrompt MONTAGE_SILENT)
         ...(body.mouth === "still" ? { mouth: "still" as const } : reference ? { mouth: "silent" as const } : {}),
@@ -462,6 +482,7 @@ serve(async (req) => {
           seconds: take.seconds,
           songStart: take.sync.offsetSeconds,
           ...(reference ? { reference: loose ? "silent clip, placed on the shot's first frame, copied loosely" : "silent clip, placed on the shot's first frame" } : {}),
+          ...(faces.length > 0 ? { faces: faces.map((f) => ({ id: f.id, label: f.label, path: f.path })) } : {}),
         }
       : null,
     broll,
@@ -616,6 +637,53 @@ serve(async (req) => {
 type Found =
   | { ok: true; take: TakeFacts }
   | { ok: false; status: number; body: Record<string, unknown> };
+
+const FACE_LABELS_DEFAULT = ["neutral", "three_quarter_left", "three_quarter_right"];
+const FACE_BUCKET = "artist-assets";
+const FACES_MAX = 4;
+
+/**
+ * His face pictures (Body.face): the project's primary-artist cast entity names the artist; that artist's primary
+ * `character_features` of feature_type "face" (the default labels, or the ids given) are the pictures, in artist-assets.
+ */
+async function facesOf(
+  user: import("https://esm.sh/@supabase/supabase-js@2.45.0").SupabaseClient,
+  projectId: string,
+  variationId: string | null,
+  featureIds: unknown,
+): Promise<{ ok: true; faces: MontageFace[] } | { ok: false; status: number; body: Record<string, unknown> }> {
+  const fail = (status: number, body: Record<string, unknown>) => ({ ok: false as const, status, body: { ok: false, ...body } });
+  const ids = Array.isArray(featureIds) ? featureIds.filter((x): x is string => typeof x === "string" && UUID_RE.test(x)) : null;
+  if (featureIds != null && (!ids || ids.length === 0 || ids.length !== (featureIds as unknown[]).length))
+    return fail(400, { error: "bad_face", detail: "face.featureIds must be character_features ids" });
+  if (ids && ids.length > FACES_MAX) return fail(400, { error: "too_many_faces", detail: `at most ${FACES_MAX} face pictures` });
+  let q = user.from("character_features").select("id, artist_id, feature_type, label, storage_path, is_primary").eq("feature_type", "face");
+  if (ids) q = q.in("id", ids);
+  else {
+    const { data: ents, error: entErr } = await user
+      .from("continuity_entities")
+      .select("artist_id, variation_id")
+      .eq("project_id", projectId)
+      .eq("kind", "character")
+      .eq("cast_role", "primary_artist")
+      .not("artist_id", "is", null);
+    if (entErr) return fail(500, { error: "face_lookup_failed", detail: entErr.message });
+    const rows = (ents ?? []) as Row[];
+    const ent = rows.find((e) => variationId && String(e.variation_id) === variationId) ?? rows[0] ?? null;
+    if (!ent) return fail(422, { error: "no_artist", detail: "the project has no primary-artist cast entity with an artist record" });
+    q = q.eq("artist_id", String(ent.artist_id)).in("label", FACE_LABELS_DEFAULT);
+  }
+  const { data, error } = await q;
+  if (error) return fail(500, { error: "face_lookup_failed", detail: error.message });
+  const feats = ((data ?? []) as Row[]).filter((f) => str(f.storage_path));
+  if (feats.length === 0) return fail(422, { error: "no_face_pictures", detail: "no face pictures (character_features feature_type face) found for him" });
+  const order = ids ?? FACE_LABELS_DEFAULT;
+  feats.sort((a, b) => order.indexOf(String(ids ? a.id : a.label)) - order.indexOf(String(ids ? b.id : b.label)));
+  return {
+    ok: true,
+    faces: feats.slice(0, FACES_MAX).map((f) => ({ id: String(f.id), bucket: FACE_BUCKET, path: String(f.storage_path), label: String(f.label ?? "face") })),
+  };
+}
 
 /**
  * A silent clip of him as the source (Body.reference): one of the caller's video assets, its length from its record,
