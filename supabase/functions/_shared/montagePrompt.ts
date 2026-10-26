@@ -35,10 +35,14 @@ export const MONTAGE_SILENT =
 
 /** A silent reference copied LOOSELY (montage-shot `sync: "loose"`; Fendi, 25 Oct 2026: every re-render that pinned
  * head, body, hands, eyes and mouth "exactly" to a silent clip came out stiff and robotic, where the 16 Oct original
- * locked only the mouth and left the rest free). Identity and wardrobe stay locked; his body follows the clip loosely;
- * his face is his own and alive; nothing is pinned. The exact copy (MONTAGE_SILENT) stays the default. */
+ * locked only the mouth and left the rest free). The body is loose, the FACE is exact: Fendi on the first loose
+ * renders (26 Oct 2026): "the body language is more natural … looks natural", but "the face looks crazy … that half
+ * smile lip thing … doesn't even look like me" — a face told to be "alive and his own" was invented. So his face and
+ * its expression are @Video1's at the same second, nothing added; only his body and his gaze are free.
+ * The exact copy (MONTAGE_SILENT) stays the default. */
 export const MONTAGE_LOOSE =
-  "@Video1 is a silent take of him, not rapping. He carries himself as he does there — his posture and his gestures follow @Video1 at the same moments, loosely, as a second take of the same moment rather than a copy — and his face is alive and his own: he breathes, blinks, looks around and takes in the place; " +
+  "@Video1 is a silent take of him, not rapping. He carries himself as he does there — his posture, his gestures and where he looks follow @Video1 at the same moments, loosely, as a second take of the same moment rather than a copy. " +
+  "His face is exactly @Video1's face at that same second: the same man, the same features, the same expression and the same closed mouth — no smile, no word, no new expression is added to it; " +
   "a cutaway does not pause him — he continues underneath and is where @Video1 is when the picture comes back to him.";
 
 export const NEVER_WIDER =
@@ -409,7 +413,7 @@ export function seedanceAnglePrompt(
     ? [
         // a silent reference copied loosely: identity and wardrobe locked, the body followed, the face his own (MONTAGE_LOOSE)
         `@Video1 is him, at ease and not rapping. Shoot him from a second camera: ${angle}`,
-        `Keep him identical to @Video1 — ${keepStr}; nothing he wears changes during the take.`,
+        `Keep him identical to @Video1 — ${keepStr} — and his face and expression exactly @Video1's at the same moments, nothing added to them; nothing he wears changes during the take.`,
         PLACE_LIGHT,
       ]
     : mouth === "silent"
