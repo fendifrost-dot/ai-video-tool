@@ -46,6 +46,7 @@ import {
   type TakeFacts,
   type MontageFace,
 } from "./plan.ts";
+import type { FaceWords } from "../_shared/montagePrompt.ts";
 import { continuousSeconds, continuousSongStart, lyricsInTake, type TakeLyric } from "../_shared/continuousPrompt.ts";
 import { sliceVocals } from "../_shared/vocalSlice.ts";
 
@@ -99,6 +100,14 @@ type Body = {
    * whose face was not his: "you have so many images of my face in my tool you should be referencing".
    */
   face?: boolean | { featureIds: string[] };
+  /* (Fendi, 26 Oct 2026: "a defining moment that we should be using all of our reference images to get character
+   * continuity correct every time") — the pictures are ON by default on every shot he is in; `face: false` opts out. */
+  /**
+   * With `sync: "loose"` only: how much he moves — "still", "calm" or "lively" (montagePrompt MONTAGE_MOTION), said in
+   * physical terms for the body; the face stays the exact copy. Fendi, 26 Oct 2026, on the first render whose face and
+   * body held: "absolutely no movement … we need more control over character movement".
+   */
+  motion?: "still" | "calm" | "lively";
   /**
    * One continuous take instead of a montage (_shared/continuousPrompt.ts): one named camera move, no cuts, as long as
    * the lane allows. `withHim` false = a shot of the place or a detail (no take), even on a performance shot.
@@ -249,7 +258,12 @@ serve(async (req) => {
   let take: TakeFacts | null = null;
   const reference = body.reference && typeof body.reference === "object" ? body.reference : null;
   const loose = body.sync === "loose";
-  const faceWanted = body.face === true || (!!body.face && typeof body.face === "object");
+  const faceWanted = body.face !== false;
+  const motion = body.motion === "still" || body.motion === "calm" || body.motion === "lively" ? body.motion : undefined;
+  if (body.motion !== undefined && !motion)
+    return json(400, { ok: false, error: "bad_motion", detail: "motion is \"still\", \"calm\" or \"lively\"" });
+  if (motion && !loose)
+    return json(400, { ok: false, error: "motion_needs_loose", detail: "motion goes with sync: \"loose\"" });
   if (loose && (!reference || body.mouth === "still"))
     return json(400, { ok: false, error: "loose_needs_silent_reference", detail: "sync: \"loose\" goes with reference: { assetId } and without mouth: \"still\"" });
   if (!broll) {
@@ -326,10 +340,12 @@ serve(async (req) => {
   // his face pictures (Body.face): the artist's character_features of feature_type "face", bucket artist-assets
   // (compose-look-proxy's rule: non-wardrobe features live there)
   let faces: MontageFace[] = [];
-  if (faceWanted && !continuous) {
-    const found = await facesOf(user, projectId, str(shotRow?.variation_id) ?? null, body.face === true ? null : (body.face as { featureIds?: unknown }).featureIds);
+  let faceWords: FaceWords | null = null;
+  if (faceWanted && take) {
+    const found = await facesOf(user, projectId, str(shotRow?.variation_id) ?? null, body.face && typeof body.face === "object" ? (body.face as { featureIds?: unknown }).featureIds : null);
     if (!found.ok) return json(found.status, found.body);
     faces = found.faces;
+    faceWords = found.words;
   }
 
   // no shoe picture is sent (Fendi, 17 Oct 2026: "Stop the full body shots … the shoes are an issue … they look huge
@@ -384,6 +400,11 @@ serve(async (req) => {
     } else return json(400, { ok: false, error: "bad_image", detail: "each picture is { assetId } or { featureId }, with as" });
   }
   if (contImages.length > 8) return json(400, { ok: false, error: "too_many_images", detail: "at most 8 pictures after the place" });
+  if (continuous && faces.length > 0) {
+    // his face pictures ride along, after the caller's pictures, as many as the cap leaves room for (the face set first)
+    for (const f of faces.slice(0, Math.max(0, 8 - contImages.length)))
+      contImages.push({ bucket: f.bucket, path: f.path, as: f.kind === "glasses" ? "his glasses: he wears exactly these frames, never another pair" : `a photograph of his face (${f.label.replace(/_/g, " ")}): he is this man, feature for feature, his mouth at rest as in it` });
+  }
   // a continuous take with him: he raps the lyric lines that fall in it, over the song's vocals (@Audio1) — Fendi, 17 Oct
   // 2026: "Skip AI lip sync completely … him actually rapping the lyrics on camera … say the actual lyric line"
   let takeLyrics: TakeLyric[] = [];
@@ -449,10 +470,12 @@ serve(async (req) => {
         footwear: null,
         cast,
         faces,
+        faceWords,
         beats,
         // a silent reference clip: the performance copied whole, nothing suppressed (montagePrompt MONTAGE_SILENT)
         ...(body.mouth === "still" ? { mouth: "still" as const } : reference ? { mouth: "silent" as const } : {}),
         ...(loose ? { sync: "loose" as const } : {}),
+        ...(motion ? { motion } : {}),
       })
     : planBrollMontage({
         projectId,
@@ -482,7 +505,8 @@ serve(async (req) => {
           seconds: take.seconds,
           songStart: take.sync.offsetSeconds,
           ...(reference ? { reference: loose ? "silent clip, placed on the shot's first frame, copied loosely" : "silent clip, placed on the shot's first frame" } : {}),
-          ...(faces.length > 0 ? { faces: faces.map((f) => ({ id: f.id, label: f.label, path: f.path })) } : {}),
+          ...(faces.length > 0 ? { faces: faces.map((f) => ({ id: f.id, label: f.label, path: f.path })), faceWords } : {}),
+          ...(motion ? { motion } : {}),
         }
       : null,
     broll,
@@ -638,9 +662,10 @@ type Found =
   | { ok: true; take: TakeFacts }
   | { ok: false; status: number; body: Record<string, unknown> };
 
-const FACE_LABELS_DEFAULT = ["neutral", "three_quarter_left", "three_quarter_right"];
+const FACE_LABELS_DEFAULT = ["neutral", "three_quarter_left", "three_quarter_right", "side_profile_left", "side_profile_right"];
 const FACE_BUCKET = "artist-assets";
-const FACES_MAX = 4;
+const GLASSES_LABEL = "Glasses — Cazal MOD octagonal (multi-angle)";
+const FACES_MAX = 6;
 
 /**
  * His face pictures (Body.face): the project's primary-artist cast entity names the artist; that artist's primary
@@ -651,13 +676,14 @@ async function facesOf(
   projectId: string,
   variationId: string | null,
   featureIds: unknown,
-): Promise<{ ok: true; faces: MontageFace[] } | { ok: false; status: number; body: Record<string, unknown> }> {
+): Promise<{ ok: true; faces: MontageFace[]; words: FaceWords | null } | { ok: false; status: number; body: Record<string, unknown> }> {
   const fail = (status: number, body: Record<string, unknown>) => ({ ok: false as const, status, body: { ok: false, ...body } });
   const ids = Array.isArray(featureIds) ? featureIds.filter((x): x is string => typeof x === "string" && UUID_RE.test(x)) : null;
   if (featureIds != null && (!ids || ids.length === 0 || ids.length !== (featureIds as unknown[]).length))
     return fail(400, { error: "bad_face", detail: "face.featureIds must be character_features ids" });
   if (ids && ids.length > FACES_MAX) return fail(400, { error: "too_many_faces", detail: `at most ${FACES_MAX} face pictures` });
-  let q = user.from("character_features").select("id, artist_id, feature_type, label, storage_path, is_primary").eq("feature_type", "face");
+  let q = user.from("character_features").select("id, artist_id, feature_type, label, storage_path, is_primary");
+  let artistId: string | null = null;
   if (ids) q = q.in("id", ids);
   else {
     const { data: ents, error: entErr } = await user
@@ -671,18 +697,37 @@ async function facesOf(
     const rows = (ents ?? []) as Row[];
     const ent = rows.find((e) => variationId && String(e.variation_id) === variationId) ?? rows[0] ?? null;
     if (!ent) return fail(422, { error: "no_artist", detail: "the project has no primary-artist cast entity with an artist record" });
-    q = q.eq("artist_id", String(ent.artist_id)).in("label", FACE_LABELS_DEFAULT);
+    artistId = String(ent.artist_id);
+    q = q.eq("artist_id", artistId).in("label", [...FACE_LABELS_DEFAULT, GLASSES_LABEL]);
   }
   const { data, error } = await q;
   if (error) return fail(500, { error: "face_lookup_failed", detail: error.message });
-  const feats = ((data ?? []) as Row[]).filter((f) => str(f.storage_path));
+  const feats = ((data ?? []) as Row[]).filter((f) => str(f.storage_path) && (f.feature_type === "face" || (!ids && f.feature_type === "wardrobe_accessory" && f.label === GLASSES_LABEL)));
   if (feats.length === 0) return fail(422, { error: "no_face_pictures", detail: "no face pictures (character_features feature_type face) found for him" });
-  const order = ids ?? FACE_LABELS_DEFAULT;
+  const order = ids ?? [...FACE_LABELS_DEFAULT, GLASSES_LABEL];
   feats.sort((a, b) => order.indexOf(String(ids ? a.id : a.label)) - order.indexOf(String(ids ? b.id : b.label)));
-  return {
-    ok: true,
-    faces: feats.slice(0, FACES_MAX).map((f) => ({ id: String(f.id), bucket: FACE_BUCKET, path: String(f.storage_path), label: String(f.label ?? "face") })),
-  };
+  const faces: MontageFace[] = feats.slice(0, FACES_MAX).map((f) => ({
+    id: String(f.id),
+    // compose-look-proxy's rule: wardrobe_* features live in wardrobe-refs, the rest in artist-assets
+    bucket: String(f.feature_type).startsWith("wardrobe_") ? "wardrobe-refs" : FACE_BUCKET,
+    path: String(f.storage_path),
+    label: f.feature_type === "face" ? String(f.label ?? "face") : "glasses",
+    kind: f.feature_type === "face" ? ("face" as const) : ("glasses" as const),
+  }));
+  // his written identity: the artist record's face and eyewear lines and its continuity rules
+  let words: FaceWords | null = null;
+  const aid = artistId ?? str((feats[0] as Row).artist_id);
+  if (aid) {
+    const { data: artist } = await user.from("artists").select("identity_profile_json, continuity_rules").eq("id", aid).maybeSingle();
+    const prof = ((artist as Row | null)?.identity_profile_json ?? {}) as Row;
+    const rules = str((artist as Row | null)?.continuity_rules);
+    words = {
+      face: str(prof.face),
+      eyewear: str(prof.eyewear),
+      rules: rules ? rules.split(/\r?\n/).map((r) => r.trim()).filter(Boolean).slice(0, 4).join("; ") : null,
+    };
+  }
+  return { ok: true, faces, words };
 }
 
 /**
