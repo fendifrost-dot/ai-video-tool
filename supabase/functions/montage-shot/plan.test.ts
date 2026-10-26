@@ -293,11 +293,13 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     expect(r.plan.prompt).toContain("@Video1 is him, at ease and not rapping. Shoot him from a second camera");
     expect(r.plan.prompt).toContain("@Video1 is a silent take of him, not rapping. He carries himself as he does there");
     expect(r.plan.prompt).toContain("loosely, as a second take of the same moment rather than a copy");
-    expect(r.plan.prompt).toContain("his face is alive and his own");
-    expect(r.plan.prompt).toContain("Keep him identical to @Video1 — his face, skin and build, every piece of his wardrobe and everything he wears, exactly as in @Video1; nothing he wears changes during the take.");
-    // nothing pinned: no "exactly" outside the wardrobe lock, no mouth or expression sync, no still-mouth block
-    expect(r.plan.prompt).not.toMatch(/mouth|expression|word for word|No lip sync|same second|Re-shoot the exact same performance/);
-    expect((r.plan.prompt.match(/exactly/g) ?? []).length).toBe(1);
+    // the face is exact (Fendi, 26 Oct 2026: a face told to be "alive and his own" came back "crazy … doesn't even look like me")
+    expect(r.plan.prompt).toContain("His face is exactly @Video1's face at that same second: the same man, the same features, the same expression and the same closed mouth — no smile, no word, no new expression is added to it");
+    expect(r.plan.prompt).toContain("Keep him identical to @Video1 — his face, skin and build, every piece of his wardrobe and everything he wears, exactly as in @Video1 — and his face and expression exactly @Video1's at the same moments, nothing added to them; nothing he wears changes during the take.");
+    expect(r.plan.prompt).not.toMatch(/alive and his own|breathes, blinks/);
+    // the body is not pinned: no beat-for-beat sync of head, body or hands, no still-mouth block, no re-shoot of "the exact same performance"
+    expect(r.plan.prompt).not.toMatch(/head, body, hands|word for word|No lip sync|Re-shoot the exact same performance|movements and his expression are exactly/);
+    expect((r.plan.prompt.match(/exactly/g) ?? []).length).toBe(3);   // the wardrobe lock, the face (block), the face (keep sentence)
     expect(r.plan.prompt).toContain("Place him inside the environment of @Image1");
     expect(r.plan.prompt).toContain(NO_FEET);
     const variant = (r.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>;
