@@ -14,6 +14,7 @@ import {
   brollMontagePrompt,
   castLine,
   defaultMontageLines,
+  faceLine,
   footwearLine,
   montagePrompt,
   montageRecord,
@@ -25,6 +26,7 @@ import {
   seedanceAnglePrompt,
   seedanceUsd,
   thingOfLabel,
+  type MontageFace,
   type MontageFootwear,
   type MontageScene,
 } from "../_shared/montagePrompt.ts";
@@ -111,6 +113,8 @@ export type MontageInput = {
   mouth?: "still" | "silent";
   /** With mouth "silent" only: the clip copied LOOSELY (montagePrompt MONTAGE_LOOSE) — identity and wardrobe locked, the body followed, nothing pinned (25 Oct 2026). Default: the exact copy. */
   sync?: "exact" | "loose";
+  /** His face pictures from the tool, sent after the place, the shoes and the cast (montagePrompt faceLine; 26 Oct 2026). */
+  faces?: readonly MontageFace[] | null;
 };
 
 export type MontagePlan = {
@@ -232,7 +236,8 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   const light = input.light?.trim() ? `The light: ${input.light.trim()}` : "";
   const footwear = input.footwear ?? null;
   const cast = input.cast ?? null;
-  const pictures = picturesAfterPlace(plate, footwear, cast);
+  const faces = input.faces ?? [];
+  const pictures = picturesAfterPlace(plate, footwear, cast, faces);
   // the app's order: the montage, its shoes and its people are the variant's sentence, the light follows it
   // (restage.ts restageShot)
   const still = input.mouth === "still" || input.mouth === "silent" ? input.mouth : undefined;
@@ -243,6 +248,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     montagePrompt(planned.scenes, still, sync),
     footwearLine(footwear),
     cast ? castLine(pictures.castImage) : "",
+    faceLine(pictures.faceImage, faces),
     light,
   ]
     .filter(Boolean)
@@ -278,7 +284,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still, sync }),
+    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still, sync, faces }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),
@@ -319,12 +325,19 @@ export function picturesAfterPlace(
   plate: Pick<PlateFacts, "id">,
   footwear: MontageFootwear | null,
   cast: CastFacts | null,
-): { extra: { bucket: string; path: string }[]; castImage: number } {
+  faces: readonly Pick<MontageFace, "bucket" | "path">[] = [],
+): { extra: { bucket: string; path: string }[]; castImage: number; faceImage: number } {
   const extra: { bucket: string; path: string }[] = [];
   if (footwear) extra.push({ bucket: footwear.bucket, path: footwear.path });
-  if (!cast || cast.id === plate.id) return { extra, castImage: 1 };
-  extra.push({ bucket: cast.bucket, path: cast.path });
-  return { extra, castImage: 1 + extra.length };
+  let castImage = 1;
+  if (cast && cast.id !== plate.id) {
+    extra.push({ bucket: cast.bucket, path: cast.path });
+    castImage = 1 + extra.length;
+  }
+  // his face pictures come last: @Image numbers after the shoes and the cast
+  const faceImage = 2 + extra.length;
+  for (const f of faces) extra.push({ bucket: f.bucket, path: f.path });
+  return { extra, castImage, faceImage };
 }
 
 export type BrollInput = {
