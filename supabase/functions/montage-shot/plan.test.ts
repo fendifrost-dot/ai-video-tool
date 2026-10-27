@@ -358,6 +358,15 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     expect(all.plan.prompt).toContain("@Image6 is his glasses: he wears exactly these frames, never another pair.");
     expect(all.plan.prompt).toContain("His face, in words: Long oval face with a defined jawline. Medium-full lips with pronounced lower lip. His glasses: Cazal MOD octagonal aviator frames, clear lenses. Always: glasses usually remain on; beard always connected and maintained; never overweight.");
     expect(((all.plan.payload.settings as Record<string, unknown>).extraImages as { bucket: string }[]).map((x) => x.bucket)).toEqual(["artist-assets", "artist-assets", "artist-assets", "artist-assets", "wardrobe-refs"]);
+    // a long written face is cut at a sentence end, never mid-word (the live prompt of 27 Oct 2026 ended "Facial.")
+    const long = "Long oval face with defined angular jawline and narrow chin. High cheekbones with lean facial structure. Medium-width nose with narrow bridge and rounded tip. Deep-set almond-shaped dark brown eyes. Thick eyebrows with slight downward taper toward outer edges. Medium-full lips with pronounced lower lip. Facial proportions lean and elongated rather than wide or square. " + "Another sentence that pushes the text well past the limit of the line and then some more words. ".repeat(4);
+    const cut = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES, faces: [FACES[0]], faceWords: { face: long } }));
+    if (!cut.ok) throw new Error(cut.detail);
+    const said = cut.plan.prompt.match(/His face, in words: ([^]*?)\. Keep (?:him|everything) identical/)?.[1] ?? "";
+    expect(said.length).toBeGreaterThan(0);
+    expect(said.length).toBeLessThanOrEqual(400);
+    expect(said.endsWith("square") || said.endsWith("words")).toBe(true);
+    expect(said).not.toMatch(/Facial$/);
   });
   it("motion (Fendi, 26 Oct 2026: 'we need more control over character movement'): still, calm or lively, loose only, body words only", () => {
     const silentTake = { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } };

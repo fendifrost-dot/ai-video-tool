@@ -391,9 +391,13 @@ export function footwearLine(footwear: Pick<MontageFootwear, "label" | "words"> 
 export type MontageFace = { id: string; bucket: string; path: string; label: string; kind?: "face" | "glasses" };
 /** His written identity from the artist record (identity_profile_json.face / .eyewear, continuity_rules), one line each. */
 export type FaceWords = { face?: string | null; eyewear?: string | null; rules?: string | null };
-const oneLine = (t: string | null | undefined, max = 320): string => {
+/** One line of at most `max` characters, cut at the last sentence end that fits (a cut mid-sentence left "Facial." in a live prompt, 27 Oct 2026). */
+const oneLine = (t: string | null | undefined, max = 400): string => {
   const c = (t ?? "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
-  return c.length > max ? c.slice(0, max).replace(/\s+\S*$/, "") : c;
+  if (c.length <= max) return c;
+  const head = c.slice(0, max + 1);
+  const end = head.lastIndexOf(". ");
+  return (end > 0 ? head.slice(0, end) : head.slice(0, max).replace(/\s+\S*$/, "")).replace(/[.\s]+$/, "");
 };
 export function faceLine(first: number, faces: readonly Pick<MontageFace, "label" | "kind">[], words: FaceWords | null = null): string {
   if (faces.length === 0) return "";
