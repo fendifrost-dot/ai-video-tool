@@ -45,6 +45,16 @@ export const MONTAGE_LOOSE =
   "His face is exactly @Video1's face at that same second: the same man, the same features, the same expression, his mouth at rest as it is there — the lips together, full and relaxed, never pressed, pursed, pulled thin or bunched — and no smile, no word, no new expression is added to it; " +
   "a cutaway does not pause him — he continues underneath and is where @Video1 is when the picture comes back to him.";
 
+/** How much he moves in a LOOSE montage (montage-shot `motion`; Fendi, 26 Oct 2026, on the first render whose face and
+ * body held: "absolutely no movement … in the case of another shot with little to no movement we need more control over
+ * character movement"). The energy is said in physical terms, body only — the face stays the exact copy. */
+export type MontageMotion = "still" | "calm" | "lively";
+export const MONTAGE_MOTION: Record<MontageMotion, string> = {
+  still: "He holds his position: only the small movement of a man standing — he breathes, he blinks, his weight settles — nothing more.",
+  calm: "He is never frozen: a breath, a shift of his weight, a slow turn of his head to follow what passes, a hand that moves — small, continuous, human movement from the first frame to the last, never a held pose.",
+  lively: "He is in motion the whole time he is on screen: he shifts his weight from foot to foot, rolls his shoulders, turns his head to follow what passes, his hands move and gesture, he leans and straightens — a continuous, restless, human energy from the first frame to the last, never a held pose, never a freeze; the handheld camera moves with him.",
+};
+
 export const NEVER_WIDER =
   "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
 
@@ -186,15 +196,17 @@ export function montageScript(scenes: readonly MontageScene[]): string {
 
 export type MontageSync = "exact" | "loose";
 
-export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still" | "silent", sync: MontageSync = "exact"): string {
+export function montagePrompt(scenes: readonly MontageScene[], mouth?: "still" | "silent", sync: MontageSync = "exact", motion?: MontageMotion): string {
+  const loose = mouth === "silent" && sync === "loose";
   return [
     `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
     montageScript(scenes),
-    mouth === "still" ? MONTAGE_MOUTH_STILL : mouth === "silent" ? (sync === "loose" ? MONTAGE_LOOSE : MONTAGE_SILENT) : MONTAGE_SYNC,
+    mouth === "still" ? MONTAGE_MOUTH_STILL : mouth === "silent" ? (loose ? MONTAGE_LOOSE : MONTAGE_SILENT) : MONTAGE_SYNC,
+    loose && motion ? MONTAGE_MOTION[motion] : "",
     NEVER_WIDER,
     NO_FEET,
     WAIST_UP,
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 }
 
 /** The people of a scene still with its own people in it (montage.ts castLine). */
@@ -301,7 +313,7 @@ export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
-  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" | "silent"; sync?: MontageSync; faces?: readonly Pick<MontageFace, "id" | "label">[] } = {},
+  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null; mouth?: "still" | "silent"; sync?: MontageSync; faces?: readonly Pick<MontageFace, "id" | "label">[]; motion?: MontageMotion } = {},
 ): {
   version: string;
   scenes: MontageScene[];
@@ -313,6 +325,7 @@ export function montageRecord(
   mouth?: "still" | "silent";
   sync?: "loose";
   faces?: { id: string; label: string }[];
+  motion?: MontageMotion;
 } {
   return {
     version: MONTAGE_VERSION,
@@ -325,6 +338,7 @@ export function montageRecord(
     ...(more.mouth === "still" || more.mouth === "silent" ? { mouth: more.mouth } : {}),
     ...(more.mouth === "silent" && more.sync === "loose" ? { sync: "loose" as const } : {}),
     ...(more.faces && more.faces.length > 0 ? { faces: more.faces.map((f) => ({ id: f.id, label: f.label })) } : {}),
+    ...(more.mouth === "silent" && more.sync === "loose" && more.motion ? { motion: more.motion } : {}),
   };
 }
 
@@ -374,13 +388,31 @@ export function footwearLine(footwear: Pick<MontageFootwear, "label" | "words"> 
 /** His face pictures from the tool (character_features, feature_type "face"), sent after the place, the shoes and the cast
  * (montage-shot `face`): the model is told who he is from photographs, not from the clip alone (Fendi, 26 Oct 2026: "you have
  * so many images of my face in my tool you should be referencing"). `first` is the @Image number of the first picture. */
-export type MontageFace = { id: string; bucket: string; path: string; label: string };
-export function faceLine(first: number, faces: readonly Pick<MontageFace, "label">[]): string {
+export type MontageFace = { id: string; bucket: string; path: string; label: string; kind?: "face" | "glasses" };
+/** His written identity from the artist record (identity_profile_json.face / .eyewear, continuity_rules), one line each. */
+export type FaceWords = { face?: string | null; eyewear?: string | null; rules?: string | null };
+const oneLine = (t: string | null | undefined, max = 320): string => {
+  const c = (t ?? "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
+  return c.length > max ? c.slice(0, max).replace(/\s+\S*$/, "") : c;
+};
+export function faceLine(first: number, faces: readonly Pick<MontageFace, "label" | "kind">[], words: FaceWords | null = null): string {
   if (faces.length === 0) return "";
   const nums = faces.map((_, k) => `@Image${first + k}`);
-  const which = nums.length === 1 ? nums[0] : `${nums.slice(0, -1).join(", ")} and ${nums[nums.length - 1]}`;
-  const what = faces.map((f) => f.label.trim().replace(/_/g, " ")).join(", ");
-  return `${which} ${nums.length === 1 ? "is a photograph" : "are photographs"} of his face (${what}): he is this man, feature for feature — the same eyes, brows, nose, lips, beard, skin and glasses — in every frame he is in; his mouth at rest is as in these photographs, the lips together, full and relaxed, never pressed, pursed, pulled thin or bunched.`;
+  const face = faces.map((f, k) => ({ f, n: nums[k] })).filter((x) => x.f.kind !== "glasses");
+  const glasses = faces.map((f, k) => ({ f, n: nums[k] })).filter((x) => x.f.kind === "glasses");
+  const list = (ns: string[]) => (ns.length === 1 ? ns[0] : `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`);
+  const parts: string[] = [];
+  if (face.length > 0) {
+    const what = face.map((x) => x.f.label.trim().replace(/_/g, " ")).join(", ");
+    parts.push(
+      `${list(face.map((x) => x.n))} ${face.length === 1 ? "is a photograph" : "are photographs"} of his face (${what}): he is this man, feature for feature — the same eyes, brows, nose, lips, beard, skin and glasses — from every angle, in every frame he is in; his mouth at rest is as in these photographs, the lips together, full and relaxed, never pressed, pursed, pulled thin or bunched.`,
+    );
+  }
+  if (glasses.length > 0) parts.push(`${list(glasses.map((x) => x.n))} ${glasses.length === 1 ? "is" : "are"} his glasses: he wears exactly these frames, never another pair.`);
+  const w = words ?? {};
+  const said = [oneLine(w.face) && `His face, in words: ${oneLine(w.face)}.`, oneLine(w.eyewear) && `His glasses: ${oneLine(w.eyewear)}.`, oneLine(w.rules, 200) && `Always: ${oneLine(w.rules, 200)}.`].filter(Boolean);
+  if (said.length > 0) parts.push(said.join(" "));
+  return parts.join(" ");
 }
 
 /** What is kept of him, word for word — the take's own description when Setup has one (restage.ts restageKeep). */
@@ -411,6 +443,7 @@ export function seedanceAnglePrompt(
   lookSuffix: string | null = DEFAULT_LOOK_SUFFIX,
   mouth?: "still" | "silent",
   sync: MontageSync = "exact",
+  motion?: MontageMotion,
 ): string {
   const keepStr =
     keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
@@ -426,7 +459,7 @@ export function seedanceAnglePrompt(
     : mouth === "silent" && sync === "loose"
     ? [
         // a silent reference copied loosely: identity and wardrobe locked, the body followed, the face his own (MONTAGE_LOOSE)
-        `@Video1 is him, at ease and not rapping. Shoot him from a second camera: ${angle}`,
+        `@Video1 is him, ${motion === "lively" ? "in motion" : "at ease"} and not rapping. Shoot him from a second camera: ${angle}`,
         `Keep him identical to @Video1 — ${keepStr} — and his face and expression exactly @Video1's at the same moments, nothing added to them; nothing he wears changes during the take.`,
         PLACE_LIGHT,
       ]

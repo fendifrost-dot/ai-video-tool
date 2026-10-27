@@ -346,6 +346,44 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     if (!none.ok) throw new Error(none.detail);
     expect(none.plan.prompt).not.toContain("photograph");
     expect("faces" in ((none.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>)).toBe(false);
+    // all of his references (Fendi, 26 Oct 2026): the profiles, the glasses picture and his written identity
+    const ALL = [
+      ...FACES,
+      { id: "f-spl", bucket: "artist-assets", path: "u/a/face_side_profile_left.jpg", label: "side_profile_left", kind: "face" as const },
+      { id: "g-cazal", bucket: "wardrobe-refs", path: "u/a/glasses_cazal.jpeg", label: "glasses", kind: "glasses" as const },
+    ];
+    const all = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", lines: LINES, faces: ALL, faceWords: { face: "Long oval face with a defined jawline. Medium-full lips with pronounced lower lip. ", eyewear: "Cazal MOD octagonal aviator frames, clear lenses.", rules: "glasses usually remain on; beard always connected and maintained; never overweight" } }));
+    if (!all.ok) throw new Error(all.detail);
+    expect(all.plan.prompt).toContain("@Image2, @Image3, @Image4 and @Image5 are photographs of his face (neutral, three quarter left, three quarter right, side profile left)");
+    expect(all.plan.prompt).toContain("@Image6 is his glasses: he wears exactly these frames, never another pair.");
+    expect(all.plan.prompt).toContain("His face, in words: Long oval face with a defined jawline. Medium-full lips with pronounced lower lip. His glasses: Cazal MOD octagonal aviator frames, clear lenses. Always: glasses usually remain on; beard always connected and maintained; never overweight.");
+    expect(((all.plan.payload.settings as Record<string, unknown>).extraImages as { bucket: string }[]).map((x) => x.bucket)).toEqual(["artist-assets", "artist-assets", "artist-assets", "artist-assets", "wardrobe-refs"]);
+  });
+  it("motion (Fendi, 26 Oct 2026: 'we need more control over character movement'): still, calm or lively, loose only, body words only", () => {
+    const silentTake = { id: "silent-1", bucket: "project-exports", path: "u/p/silent/c042_silent.mp4", seconds: 4.004, shows: null, sync: { offsetSeconds: 73.8, driftPpm: 0 } };
+    const lively = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", motion: "lively", lines: LINES }));
+    if (!lively.ok) throw new Error(lively.detail);
+    expect(lively.plan.prompt).toContain("@Video1 is him, in motion and not rapping. Shoot him from a second camera");
+    expect(lively.plan.prompt).toContain("He is in motion the whole time he is on screen: he shifts his weight from foot to foot");
+    expect(lively.plan.prompt).toContain("never a held pose, never a freeze; the handheld camera moves with him.");
+    // the face stays the exact copy whatever the energy
+    expect(lively.plan.prompt).toContain("His face is exactly @Video1's face at that same second");
+    expect(((lively.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).motion).toBe("lively");
+    const calm = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", motion: "calm", lines: LINES }));
+    if (!calm.ok) throw new Error(calm.detail);
+    expect(calm.plan.prompt).toContain("@Video1 is him, at ease and not rapping");
+    expect(calm.plan.prompt).toContain("He is never frozen: a breath, a shift of his weight");
+    const still = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", motion: "still", lines: LINES }));
+    if (!still.ok) throw new Error(still.detail);
+    expect(still.plan.prompt).toContain("He holds his position: only the small movement of a man standing");
+    // no motion: nothing said, nothing recorded; motion without loose is refused
+    const none = planMontage(c042({ take: silentTake, mouth: "silent", sync: "loose", lines: LINES }));
+    if (!none.ok) throw new Error(none.detail);
+    expect(none.plan.prompt).not.toMatch(/holds his position|never frozen|in motion the whole time/);
+    expect("motion" in ((none.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>)).toBe(false);
+    const bad = planMontage(c042({ take: silentTake, mouth: "silent", motion: "lively", lines: LINES }));
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error).toBe("motion_needs_loose");
   });
 });
 

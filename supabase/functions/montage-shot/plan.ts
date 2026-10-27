@@ -26,8 +26,10 @@ import {
   seedanceAnglePrompt,
   seedanceUsd,
   thingOfLabel,
+  type FaceWords,
   type MontageFace,
   type MontageFootwear,
+  type MontageMotion,
   type MontageScene,
 } from "../_shared/montagePrompt.ts";
 import { CONTINUOUS_LINE_MAX, CONTINUOUS_VERSION, continuousPrompt, continuousSeconds, continuousSongStart, type TakeLyric } from "../_shared/continuousPrompt.ts";
@@ -115,6 +117,10 @@ export type MontageInput = {
   sync?: "exact" | "loose";
   /** His face pictures from the tool, sent after the place, the shoes and the cast (montagePrompt faceLine; 26 Oct 2026). */
   faces?: readonly MontageFace[] | null;
+  /** His written identity from the artist record, said after the pictures (montagePrompt faceLine). */
+  faceWords?: FaceWords | null;
+  /** With sync "loose" only: how much he moves (montagePrompt MONTAGE_MOTION) — still, calm or lively (26 Oct 2026). */
+  motion?: MontageMotion | null;
 };
 
 export type MontagePlan = {
@@ -244,16 +250,19 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   if (input.sync === "loose" && still !== "silent")
     return refuse(422, "loose_needs_silent_reference", "sync: \"loose\" copies a SILENT reference clip loosely; give reference: { assetId } and no mouth: \"still\"");
   const sync = still === "silent" && input.sync === "loose" ? ("loose" as const) : ("exact" as const);
+  if (input.motion && sync !== "loose")
+    return refuse(422, "motion_needs_loose", "motion goes with sync: \"loose\" — the exact copy takes its movement from the clip");
+  const motion = sync === "loose" ? input.motion ?? undefined : undefined;
   const angle = [
-    montagePrompt(planned.scenes, still, sync),
+    montagePrompt(planned.scenes, still, sync, motion),
     footwearLine(footwear),
     cast ? castLine(pictures.castImage) : "",
-    faceLine(pictures.faceImage, faces),
+    faceLine(pictures.faceImage, faces, input.faceWords ?? null),
     light,
   ]
     .filter(Boolean)
     .join(" ");
-  const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }), undefined, still, sync);
+  const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }), undefined, still, sync, motion);
   const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds).toFixed(3));
   const aspect = clipAspect(input.aspect);
   const batchShotId = `${shot.key}_${MONTAGE_ID_SUFFIX}`;
@@ -284,7 +293,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still, sync, faces }),
+    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn, mouth: still, sync, faces, motion }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),
