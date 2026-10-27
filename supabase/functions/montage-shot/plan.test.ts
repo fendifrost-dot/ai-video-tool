@@ -362,7 +362,8 @@ describe("a silent clip as the source (Fendi, 24 Oct 2026: non-rapping footage f
     const long = "Long oval face with defined angular jawline and narrow chin. High cheekbones with lean facial structure. Medium-width nose with narrow bridge and rounded tip. Deep-set almond-shaped dark brown eyes. Thick eyebrows with slight downward taper toward outer edges. Medium-full lips with pronounced lower lip. Facial proportions lean and elongated rather than wide or square. " + "Another sentence that pushes the text well past the limit of the line and then some more words. ".repeat(4);
     const cut = planMontage(c042({ take: silentTake, mouth: "silent", lines: LINES, faces: [FACES[0]], faceWords: { face: long } }));
     if (!cut.ok) throw new Error(cut.detail);
-    const said = cut.plan.prompt.match(/His face, in words: ([^]*?)\. Keep him identical/)?.[1] ?? "";
+    const said = cut.plan.prompt.match(/His face, in words: ([^]*?)\. Keep (?:him|everything) identical/)?.[1] ?? "";
+    expect(said.length).toBeGreaterThan(0);
     expect(said.length).toBeLessThanOrEqual(400);
     expect(said.endsWith("square") || said.endsWith("words")).toBe(true);
     expect(said).not.toMatch(/Facial$/);
