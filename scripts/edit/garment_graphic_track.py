@@ -165,6 +165,44 @@ def snap_to_band(frames, track, anchors, owner, reach, tol, min_conf):
         out[k] = {**t, "H": cv2.getPerspectiveTransform(aq2.astype(np.float32), q), "quad": q}
     return out, sm, new_anchors
 
+def body_reaching_out(body_like, pl):
+    """Body-coloured pixels under the plane count as the plane overshooting the band only when
+    their region CONTINUES past the plane's edge. A body-coloured island enclosed by the band (the
+    generator's script drawn in the garment's own colour on the navy band) is lettering, and is
+    dropped from the mask so it gets painted."""
+    if not body_like.any(): return body_like
+    n_c, cc = cv2.connectedComponents(body_like.astype(np.uint8), connectivity=8)
+    reaches_out = np.zeros(n_c, bool); reaches_out[np.unique(cc[body_like & ~pl])] = True; reaches_out[0] = True
+    return body_like & reaches_out[cc]
+
+
+def band_lettering_core(pl, sure, loose, body_like):
+    """Lettering under the plane by HYSTERESIS: a sure stroke is off the band's chroma by the full
+    tolerance; its thin tails and anti-aliased edges, blurred halfway into the band, are off by
+    only half of it, so the loose mask is kept where it is connected to a sure stroke and dropped
+    where it is only the band's own weave noise. The blurred rim where the band meets the body is
+    off both colours too, and is footage, not lettering: a loose component that touches the body
+    (or the plane's border, where the plane overshoots onto it) is left alone. Returns a uint8
+    mask; closing joins a stroke to the tails it owns."""
+    n_l, lc = cv2.connectedComponents(loose.astype(np.uint8), connectivity=8)
+    seeded = np.zeros(n_l, bool); seeded[np.unique(lc[sure & loose])] = True; seeded[0] = False
+    touches_body = cv2.dilate(body_like.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    touches_body |= ~(cv2.erode(pl.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0)
+    seeded[np.unique(lc[loose & touches_body])] = False
+    return cv2.morphologyEx(seeded[lc].astype(np.uint8), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+
+
+def thin_band_rows(pl, band_like, H, gsize):
+    """The plane's rows (in the graphic's frame) whose width is mostly band-coloured, back in the
+    frame: a far-away band is refilled whole on those rows, and the rows where the plane
+    overshoots onto the body stay."""
+    gw, gh = gsize; h, w = pl.shape[:2]
+    bl_g = cv2.warpPerspective(band_like.astype(np.uint8), H, (gw, gh), flags=cv2.INTER_NEAREST | cv2.WARP_INVERSE_MAP)
+    row_ok = (bl_g.mean(axis=1) > 0.5).astype(np.uint8)
+    rows_g = np.repeat(row_ok[:, None], gw, axis=1) * 255
+    return ((cv2.warpPerspective(rows_g, H, (w, h), flags=cv2.INTER_NEAREST) > 0) & pl).astype(np.uint8)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--video", required=True); ap.add_argument("--graphic", required=True); ap.add_argument("--out-dir", required=True)
@@ -183,6 +221,7 @@ def main():
     ap.add_argument("--erase-beside", default="0,0", help="stray-mark eraser LEFT,RIGHT of the plane in its own rows, as fractions of the plane width (marks mode only: islands enclosed by band colour)")
     ap.add_argument("--erase-extend", default="0,0", help="widen the erase bands sideways: 'left,right' fractions of the plane width (stray marks often sit beside the graphic's column)")
     ap.add_argument("--plane-mode", choices=["band", "opaque"], default="band", help="band: keep the footage's own band texture, inpaint the generator's lettering inside the plane from the band and paint only the graphic's mark, never outside the band-coloured region; opaque: paint the whole graphic plane")
+    ap.add_argument("--band-min-height", type=float, default=40.0, help="band mode: a plane shorter than this many px is refilled whole from the band's colour (lettering on a far-away band spans its full height and cannot be told from the band's edge)")
     ap.add_argument("--band-min-frac", type=float, default=0.6, help="band mode: below this band-coloured share of the plane (a white or fully lettered generator band) the frame falls back to the opaque plane")
     ap.add_argument("--band-dab", type=float, default=12.0, help="band mode: a and b (Lab) tolerance for band / body membership (chroma-led, shading-invariant)")
     ap.add_argument("--band-dl", type=float, default=45.0, help="band mode: L tolerance for band membership (white lettering on a navy band is far in L, the band's own shading is not)")
@@ -467,9 +506,38 @@ def main():
             body_ref = np.median(lab_f[ring].reshape(-1, 3), axis=0) if ring.sum() > 50 else None
             # the body is also chroma-led, with no L bound at all: the same mastic in shadow is the body
             body_like = ((np.abs(lab_f[..., 1] - body_ref[1]) < a.band_dab) & (np.abs(lab_f[..., 2] - body_ref[2]) < a.band_dab) & ~band_like) if body_ref is not None else np.zeros_like(band_like)
+            # a body-coloured region under the plane counts as overshoot only when it CONTINUES past
+            # the plane's edge; a body-coloured island enclosed by the band (the generator's script
+            # drawn in the garment's own colour on the navy band) is lettering, and gets painted
+            body_like = body_reaching_out(body_like, pl)
             mark_alpha = cv2.warpPerspective(gmark_f, H, (w, h), flags=cv2.INTER_LINEAR)
-            paint = ((cv2.dilate((pl & ~band_like & ~body_like).astype(np.uint8), np.ones((7, 7), np.uint8)) > 0) & pl).astype(np.float32)   # lettering edges are half band-coloured
-            paint = cv2.GaussianBlur(paint, (0, 0), 1.0)                                   # soft edge between kept band and painted plane
+            loose = pl & ~chroma_near(ref, a.band_dab * 0.5, a.band_dl) & ~body_like
+            sure = pl & ~band_like & ~body_like
+            core = band_lettering_core(pl, sure, loose, body_like)
+            # a THIN plane (a band seen from far away) has no room for the island / rim distinction:
+            # lettering spans the band's full height and merges with the body in chroma, so the
+            # band's own rows of the plane are refilled whole from the band's colour (its texture is
+            # sub-pixel there)
+            q_ = t["quad"]; plane_h = 0.5 * (np.linalg.norm(q_[3] - q_[0]) + np.linalg.norm(q_[2] - q_[1]))
+            thin = plane_h < a.band_min_height
+            if thin: core = thin_band_rows(pl, band_like, H, (gw, gh))
+            rec["thin_plane"] = bool(thin)
+            paint = ((cv2.dilate(core, np.ones((7, 7), np.uint8)) > 0) & pl).astype(np.float32)   # lettering edges are half band-coloured
+            # the lettering is INPAINTED from the band around it, so the band's own weave and
+            # shading continue through where the generator wrote; the graphic's mark then goes on
+            # top. Painting the graphic's own background there instead leaves a patch in the
+            # product photo's colour on the footage's band.
+            fill = ((paint > 0.5) & (occ < 0.3) & ~(mark_alpha > 0.5)).astype(np.uint8) * 255
+            if fill.any():
+                # the inpainting borrows from band pixels only: body-coloured pixels around the plane
+                # (the band's edge where the plane overshoots) are swapped for the band's median
+                # in the source, so no garment colour bleeds into the band
+                src = f.copy(); bm = band_like & pl & (occ < 0.3)
+                if bm.sum() > 50: src[near & ~band_like_full] = np.median(f[bm].reshape(-1, 3), axis=0).astype(np.uint8)
+                inp = cv2.inpaint(src, fill, 5, cv2.INPAINT_TELEA)
+                fa = cv2.GaussianBlur((fill > 0).astype(np.float32), (0, 0), 1.0)[..., None] if thin else (fill[..., None] > 0).astype(np.float32)
+                f = np.clip(f.astype(np.float32) * (1 - fa) + inp.astype(np.float32) * fa, 0, 255).astype(np.uint8)
+            paint = cv2.GaussianBlur(paint, (0, 0), 1.0) * (mark_alpha > 0.5).astype(np.float32)   # the plane is painted only where the mark is
             alpha = np.clip(np.maximum(mark_alpha * (~body_like).astype(np.float32), paint) * wa * (1.0 - occ), 0, 1)   # the mark never lands on the body beyond the band's end
             rec["band_region_frac"] = float(band_like[pl].mean()); rec["painted_frac"] = float((paint[pl] > 0.5).mean())
             alpha = alpha[..., None]
