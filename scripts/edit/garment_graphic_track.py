@@ -176,31 +176,46 @@ def body_reaching_out(body_like, pl):
     return body_like & reaches_out[cc]
 
 
-def band_lettering_core(pl, sure, loose, body_like):
+def band_lettering_core(pl, sure, loose, body_like, grow_px=6):
     """Lettering under the plane by HYSTERESIS: a sure stroke is off the band's chroma by the full
     tolerance; its thin tails and anti-aliased edges, blurred halfway into the band, are off by
     only half of it, so the loose mask is kept where it is connected to a sure stroke and dropped
     where it is only the band's own weave noise. The blurred rim where the band meets the body is
-    off both colours too, and is footage, not lettering: a loose component that touches the body
-    (or the plane's border, where the plane overshoots onto it) is left alone. Returns a uint8
-    mask; closing joins a stroke to the tails it owns."""
-    n_l, lc = cv2.connectedComponents(loose.astype(np.uint8), connectivity=8)
-    seeded = np.zeros(n_l, bool); seeded[np.unique(lc[sure & loose])] = True; seeded[0] = False
-    touches_body = cv2.dilate(body_like.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
-    touches_body |= ~(cv2.erode(pl.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0)
-    seeded[np.unique(lc[loose & touches_body])] = False
-    return cv2.morphologyEx(seeded[lc].astype(np.uint8), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    off both colours too, and is footage, not lettering: a loose component that lies mostly in
+    the rim zone (next to the body, or at the plane's border where the plane overshoots onto it)
+    is left alone. Returns a uint8 mask; closing joins a stroke to the tails it owns."""
+    rim = cv2.dilate(body_like.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+    rim |= ~(cv2.erode(pl.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0)
+    # the rim's own blur lives entirely inside the rim zone; a script that starts at the band's
+    # end touches it but mostly lies well inside the band, so a sure component is dropped only
+    # when more than half of it is rim
+    n_s, sc = cv2.connectedComponents(sure.astype(np.uint8), connectivity=8)
+    in_rim = np.bincount(sc[sure & rim].ravel(), minlength=n_s); total = np.bincount(sc[sure].ravel(), minlength=n_s)
+    keep = ~(in_rim > 0.5 * np.maximum(total, 1)); keep[0] = False
+    core = (keep[sc] & sure).astype(np.uint8)
+    # the loose mask is grown from the sure strokes by a few px only (geodesic dilation): a
+    # band's own chroma noise is loose everywhere, and a full connected-component reconstruction
+    # would flood the whole band from one stroke
+    loose8 = (loose & ~rim).astype(np.uint8)
+    for _ in range(grow_px): core = cv2.dilate(core, np.ones((3, 3), np.uint8)) & loose8 | core
+    return cv2.morphologyEx(core, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
 
 
 def thin_band_rows(pl, band_like, H, gsize):
-    """The plane's rows (in the graphic's frame) whose width is mostly band-coloured, back in the
-    frame: a far-away band is refilled whole on those rows, and the rows where the plane
-    overshoots onto the body stay."""
+    """A far-away band's refill region, back in the frame: the plane's rows (in the graphic's
+    frame) whose width is mostly band-coloured, on the columns where something other than band
+    sits on them; the rows where the plane overshoots onto the body stay, and so does the band
+    away from the lettering."""
     gw, gh = gsize; h, w = pl.shape[:2]
     bl_g = cv2.warpPerspective(band_like.astype(np.uint8), H, (gw, gh), flags=cv2.INTER_NEAREST | cv2.WARP_INVERSE_MAP)
-    row_ok = (bl_g.mean(axis=1) > 0.5).astype(np.uint8)
-    rows_g = np.repeat(row_ok[:, None], gw, axis=1) * 255
-    return ((cv2.warpPerspective(rows_g, H, (w, h), flags=cv2.INTER_NEAREST) > 0) & pl).astype(np.uint8)
+    row_ok = bl_g.mean(axis=1) > 0.5
+    if not row_ok.any(): return np.zeros((h, w), np.uint8)
+    # and only the columns where something other than band sits on those rows (the lettering),
+    # widened a little: the rest of the band keeps its own texture
+    col_bad = (bl_g[row_ok].mean(axis=0) < 0.8).astype(np.uint8)
+    col_bad = cv2.dilate(col_bad[None, :], np.ones((1, 13), np.uint8))[0]
+    fill_g = (row_ok[:, None] & (col_bad[None, :] > 0)).astype(np.uint8) * 255
+    return ((cv2.warpPerspective(fill_g, H, (w, h), flags=cv2.INTER_NEAREST) > 0) & pl).astype(np.uint8)
 
 
 def main():
@@ -221,7 +236,7 @@ def main():
     ap.add_argument("--erase-beside", default="0,0", help="stray-mark eraser LEFT,RIGHT of the plane in its own rows, as fractions of the plane width (marks mode only: islands enclosed by band colour)")
     ap.add_argument("--erase-extend", default="0,0", help="widen the erase bands sideways: 'left,right' fractions of the plane width (stray marks often sit beside the graphic's column)")
     ap.add_argument("--plane-mode", choices=["band", "opaque"], default="band", help="band: keep the footage's own band texture, inpaint the generator's lettering inside the plane from the band and paint only the graphic's mark, never outside the band-coloured region; opaque: paint the whole graphic plane")
-    ap.add_argument("--band-min-height", type=float, default=40.0, help="band mode: a plane shorter than this many px is refilled whole from the band's colour (lettering on a far-away band spans its full height and cannot be told from the band's edge)")
+    ap.add_argument("--band-min-height", type=float, default=38.0, help="band mode: a plane shorter than this many px is refilled whole from the band's colour (lettering on a far-away band spans its full height and cannot be told from the band's edge)")
     ap.add_argument("--band-min-frac", type=float, default=0.6, help="band mode: below this band-coloured share of the plane (a white or fully lettered generator band) the frame falls back to the opaque plane")
     ap.add_argument("--band-dab", type=float, default=12.0, help="band mode: a and b (Lab) tolerance for band / body membership (chroma-led, shading-invariant)")
     ap.add_argument("--band-dl", type=float, default=45.0, help="band mode: L tolerance for band membership (white lettering on a navy band is far in L, the band's own shading is not)")

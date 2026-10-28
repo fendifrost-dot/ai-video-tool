@@ -25,11 +25,13 @@ def test_hysteresis_keeps_tails_of_a_sure_stroke_and_drops_weave_noise_and_the_r
     pl = _plane()
     body = np.zeros_like(pl); body[:40, :] = True; body[80:, :] = True
     sure = np.zeros_like(pl); sure[55:65, 100:120] = True               # the stroke
-    loose = sure.copy(); loose[58:62, 120:150] = True                   # its thin tail
+    loose = sure.copy(); loose[58:62, 120:126] = True                   # its anti-aliased tail, a few px
     loose[50:52, 200:203] = True                                        # weave noise: no sure seed
+    loose[45:75, 160:260] = True                                        # the band's own chroma noise, loose everywhere but far from any stroke
     loose[40:43, 20:280] = True; sure[40:43, 20:280] = True             # the blurred rim against the body (sure too)
     core = band_lettering_core(pl, sure, loose, body) > 0
-    assert core[60, 110] and core[60, 140]                              # stroke and tail
+    assert core[60, 110] and core[60, 124]                              # stroke and tail
+    assert not core[60, 240]                                            # the band is not flooded from the stroke
     assert not core[51, 201]                                            # noise dropped
     assert not core[41, 150]                                            # rim left alone
 
@@ -37,6 +39,8 @@ def test_hysteresis_keeps_tails_of_a_sure_stroke_and_drops_weave_noise_and_the_r
 def test_thin_band_rows_follow_the_band_not_the_plane():
     pl = _plane(y0=40, y1=80)
     band = np.zeros_like(pl); band[48:72, :] = True                     # the band is narrower than the plane
+    band[50:70, 60:100] = False                                         # lettering near the band's left end
     H = np.array([[1.0, 0, 20], [0, 1.0, 40], [0, 0, 1]])               # graphic (260x40) → plane at (20,40)
     rows = thin_band_rows(pl, band, H, (260, 40)) > 0
-    assert rows[60, 150] and not rows[42, 150] and not rows[78, 150]
+    assert rows[60, 80] and not rows[42, 80] and not rows[78, 80]       # the lettering's band rows, not the overshoot rows
+    assert not rows[60, 200]                                            # the band away from the lettering keeps its texture
