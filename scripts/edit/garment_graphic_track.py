@@ -165,15 +165,31 @@ def snap_to_band(frames, track, anchors, owner, reach, tol, min_conf):
         out[k] = {**t, "H": cv2.getPerspectiveTransform(aq2.astype(np.float32), q), "quad": q}
     return out, sm, new_anchors
 
-def body_reaching_out(body_like, pl):
+def body_reaching_out(body_like, pl, rim_px=10, band_like=None, H=None, gsize=None):
     """Body-coloured pixels under the plane count as the plane overshooting the band only when
-    their region CONTINUES past the plane's edge. A body-coloured island enclosed by the band (the
-    generator's script drawn in the garment's own colour on the navy band) is lettering, and is
-    dropped from the mask so it gets painted."""
+    their region CONTINUES past the plane's edge AND hugs that edge: an overshoot is a rim, so at
+    least half of the region's pixels inside the plane lie within rim_px of the plane's border. A
+    body-coloured island enclosed by the band, or a region that sits deep inside the band and
+    only touches the body at the band's end (the generator's script in the garment's own colour,
+    running into the sleeve), is lettering and is dropped from the mask so it gets painted.
+    With the band given, a body-coloured pixel with band ABOVE and BELOW it (across the band's
+    height, in the graphic's frame) sits on the band: lettering, whatever it connects to sideways.
+    Such pixels are decided first and left out of the hug test, so a script running into the
+    sleeve neither keeps itself nor drags the sleeve's real overshoot into the paint."""
     if not body_like.any(): return body_like
     n_c, cc = cv2.connectedComponents(body_like.astype(np.uint8), connectivity=8)
     reaches_out = np.zeros(n_c, bool); reaches_out[np.unique(cc[body_like & ~pl])] = True; reaches_out[0] = True
-    return body_like & reaches_out[cc]
+    sandwiched = np.zeros_like(body_like)
+    if band_like is not None and H is not None:
+        gw, gh = gsize
+        bl_g = cv2.warpPerspective(band_like.astype(np.uint8), H, (gw, gh), flags=cv2.INTER_NEAREST | cv2.WARP_INVERSE_MAP) > 0
+        above = np.cumsum(bl_g, axis=0) > 0; below = np.cumsum(bl_g[::-1], axis=0)[::-1] > 0
+        sandwiched = (cv2.warpPerspective((above & below & ~bl_g).astype(np.uint8) * 255, H, body_like.shape[1::-1], flags=cv2.INTER_NEAREST) > 0) & pl & body_like
+    inside = body_like & pl & ~sandwiched
+    near_edge = inside & ~(cv2.erode(pl.astype(np.uint8), np.ones((2 * rim_px + 1, 2 * rim_px + 1), np.uint8)) > 0)
+    tot = np.bincount(cc[inside].ravel(), minlength=n_c); edge = np.bincount(cc[near_edge].ravel(), minlength=n_c)
+    hugs = edge >= 0.5 * np.maximum(tot, 1); hugs[0] = True
+    return body_like & (reaches_out & hugs)[cc] & ~sandwiched
 
 
 def band_lettering_core(pl, sure, loose, body_like, grow_px=6):
@@ -184,7 +200,9 @@ def band_lettering_core(pl, sure, loose, body_like, grow_px=6):
     off both colours too, and is footage, not lettering: a loose component that lies mostly in
     the rim zone (next to the body, or at the plane's border where the plane overshoots onto it)
     is left alone. Returns a uint8 mask; closing joins a stroke to the tails it owns."""
-    rim = cv2.dilate(body_like.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+    # the rim zone is the blur itself: 2 px around the body and 2 px inside the plane's border.
+    # Wider (7 px) swallowed a script that ends at the band's end next to the sleeve (c045 v5, 29 Oct)
+    rim = cv2.dilate(body_like.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
     rim |= ~(cv2.erode(pl.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0)
     # the rim's own blur lives entirely inside the rim zone; a script that starts at the band's
     # end touches it but mostly lies well inside the band, so a sure component is dropped only
@@ -524,7 +542,7 @@ def main():
             # a body-coloured region under the plane counts as overshoot only when it CONTINUES past
             # the plane's edge; a body-coloured island enclosed by the band (the generator's script
             # drawn in the garment's own colour on the navy band) is lettering, and gets painted
-            body_like = body_reaching_out(body_like, pl)
+            body_like = body_reaching_out(body_like, pl, band_like=band_like, H=H, gsize=(gw, gh))
             mark_alpha = cv2.warpPerspective(gmark_f, H, (w, h), flags=cv2.INTER_LINEAR)
             loose = pl & ~chroma_near(ref, a.band_dab * 0.5, a.band_dl) & ~body_like
             sure = pl & ~band_like & ~body_like
