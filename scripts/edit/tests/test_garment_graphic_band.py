@@ -17,8 +17,17 @@ def test_body_island_inside_the_band_is_lettering_but_overshoot_is_not():
     body[:38, :] = True; body[82:, :] = True          # the body above and below the band
     body[38:42, :] = True                              # the plane overshoots 2 rows onto the body: connected outward
     body[55:65, 100:140] = True                        # a beige script enclosed by the band: an island
+    body[55:65, 20:60] = True                          # a script at the band's end, running into the sleeve: deep inside, touching the edge
     kept = body_reaching_out(body, pl)
     assert kept[39, 150] and not kept[60, 120]         # overshoot kept as body, island released for painting
+    assert not kept[60, 40]                            # the end-of-band script is released too: it does not hug the edge
+    # with the band given: a body-coloured mark with band above and below it is lettering even when
+    # it belongs to the sleeve's component; the sleeve beyond the band's end (no band above/below) stays
+    band = np.zeros_like(pl); band[48:72, 60:280] = True; band[55:65, 100:140] = False; band[55:65, 60:100] = False
+    body2 = np.zeros_like(pl); body2[:, :60] = True; body2[55:65, 60:140] = True   # the sleeve runs into the plane and the script continues from it
+    H = np.array([[1.0, 0, 20], [0, 1.0, 40], [0, 0, 1]])
+    kept2 = body_reaching_out(body2, pl, band_like=band, H=H, gsize=(260, 40))
+    assert not kept2[60, 120] and kept2[60, 30]
 
 
 def test_hysteresis_keeps_tails_of_a_sure_stroke_and_drops_weave_noise_and_the_rim():
