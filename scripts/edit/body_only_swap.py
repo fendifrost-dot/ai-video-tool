@@ -136,6 +136,11 @@ brow_override = None
 
 # per swap frame: categories and an affine aligning it to the original frame at the same time
 SC = 0.25
+def plausible_affine(M, w, h):
+    """True when M (2x3, at the small scale) is a small correction: singular values within 0.8..1.25 and a shift
+    under 15 % of the frame; anything else is a diverged estimate."""
+    sv = np.linalg.svd(np.asarray(M, np.float64)[:, :2], compute_uv=False)
+    return bool(0.8 < sv.min() and sv.max() < 1.25 and abs(M[0, 2]) < 0.15 * w and abs(M[1, 2]) < 0.15 * h)
 def gray_small(img): return cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), None, fx=SC, fy=SC).astype(np.float32)
 swap_cat, warp = {}, {}
 # raw frames straight into libx264: an intermediate cv2.VideoWriter("mp4v") encode has a 12-frame GOP whose I-frames
@@ -174,12 +179,18 @@ for i, o in enumerate(orig):
     oc = cats(o, PO(i))
     if j not in warp:
         bgmask = cv2.resize(((oc == 0) * 255).astype(np.uint8), None, fx=SC, fy=SC, interpolation=cv2.INTER_NEAREST)
+        # a scene cut (a montage has several): the alignment of the previous scene is no seed for this one
+        if i > 0 and float(np.abs(gray_small(o) - gray_small(orig[i - 1])).mean()) > 25: prev_M = np.eye(2, 3, dtype=np.float32)
         M = prev_M.copy()
         try:
             _, M = cv2.findTransformECC(gray_small(o), gray_small(swap[j]), M, cv2.MOTION_AFFINE,
                                         (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-5), bgmask, 5)
         except cv2.error:
             pass
+        # the swap is the same picture re-drawn: its alignment is a small correction, never a re-framing. An
+        # affine that scales, shears or shifts beyond that has diverged (c041 v2, 29 Oct: the close-up came
+        # out as a smeared train) and the frame is used as it is
+        if not plausible_affine(M, W * SC, H * SC): M = np.eye(2, 3, dtype=np.float32)
         prev_M = M
         Mf = M.copy(); Mf[:, 2] /= SC
         sw = cv2.warpAffine(swap[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REPLICATE)
