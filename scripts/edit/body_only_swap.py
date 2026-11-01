@@ -9,8 +9,9 @@ usage: body_only_swap.py <original.mp4> <swap.mp4> <out_dir>
   bare arm wins. The script proves it: max |out - original| inside the protected region is printed (must be 0;
   measured before the final video encode).
 - Models (env AVT_MODELS, default ./models): MediaPipe selfie_multiclass_256x256.tflite and face_landmarker.task.
-- A small face (env AVT_HEAD_ZOOM=4): see HEAD_ZOOM below. The run must print a first face detection, not None;
-  with None the face shape and brow line are missing and the glasses would come from the swap.
+- A small face (env AVT_HEAD_ZOOM=4): see HEAD_ZOOM below. The run prints, per scene, on how many frames HIS face was
+  found (face_track.py: the subject is the face whose clothes the swap changed); a scene with none has no face shape
+  and no brow line, and the glasses would come from the swap there.
 - Verified on c033 (18 Oct 2026): docs/research/results/2026-10-18-body-only-swap/BODY_ONLY_SWAP_TEST_2026-10-18.md
 - --segmenter sam3 (or env AVT_SEGMENTER=sam3; default mediapipe, byte-identical to before): the person region of both
   clips comes from a SAM 3 text-prompt matte (scripts/edit/segmenters.py) — a pixel MediaPipe called background inside
@@ -26,6 +27,7 @@ from mediapipe.tasks.python import vision, BaseOptions
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from segmenters import add_segmenter_args, choose_segmenter, Sam3Segmenter, refine_categories, matte_for_clip, face_geometry_from_mask
 from swap_rate import needs_interpolation, interpolate_swap, enabled as interpolation_enabled
+from face_track import scene_starts, pick_subject, track_scene, centre
 
 MODELS = os.environ.get("AVT_MODELS", "models")  # selfie_multiclass_256x256.tflite + face_landmarker.task
 ap = argparse.ArgumentParser(description="Body-only clothing swap: clothes from the Genjutsu output, everything else from the ORIGINAL pixels.")
@@ -92,47 +94,45 @@ DET = (0.1, 0.05, 0.85, 0.6)  # x, y, w, h of the frame searched for the face (f
 # env AVT_HEAD_ZOOM (default 0, off): when the search box finds no face, enlarge a crop around his face skin this many
 # times and look again. The 23 Oct reshoot needs it (his face ~100 px wide at 1080); c033 (18 Oct) runs without it.
 HEAD_ZOOM = int(os.environ.get("AVT_HEAD_ZOOM", "0"))
-last_face = None
-sam_face_frames = []   # frames whose face geometry came from the SAM 3 face mask, not the landmarker
-def face_region(img, person=None):
-    """Mask of the face from the eyebrows down (eyes, glasses, nose, mouth, jaw, beard line), and the brow cut row."""
-    global last_face
-    h0, w0, _ = img.shape
+sam_face_frames = []   # scene starts whose face geometry came from the SAM 3 face mask, not the landmarker
+def landmarks_to_face(L, x0, y0, cw, ch):
+    pts = np.array([[x0 + L[k].x * cw, y0 + L[k].y * ch] for k in OVAL], np.float32)
+    face_h = pts[:, 1].max() - pts[:, 1].min()
+    brow = min(y0 + L[k].y * ch for k in BROWS) - 0.04 * face_h
+    eye = min(y0 + L[k].y * ch for k in EYES) - 0.02 * face_h
+    return (pts, brow, face_h, eye)
+def detect_candidates(img, oc):
+    """Every face the landmarker finds in a frame: in the search box and, with HEAD_ZOOM, on an enlarged crop around
+    each of the three largest face-skin regions. A frame can hold several people (c041 v2, 1 Nov 2026: the man in
+    the foreground has the bigger face); which one is him is decided by the swap (face_track.pick_subject: the
+    face whose clothes the swap changed), never by size or by whichever the landmarker returned first."""
+    h0, w0, _ = img.shape; found = []
     x0, y0 = int(w0 * DET[0]), int(h0 * DET[1]); cw, ch = int(w0 * DET[2]), int(h0 * DET[3])
     r = lmk.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(img[y0:y0 + ch, x0:x0 + cw])))
-    if not r.face_landmarks and HEAD_ZOOM:   # a small face: look again on an enlarged crop around his face skin
-        fs = (cats(img) == 3).astype(np.uint8)
-        n, lab, st, _ = cv2.connectedComponentsWithStats(fs)
-        if n > 1:
-            bx, by, bw, bh, _ = st[1 + np.argmax(st[1:, cv2.CC_STAT_AREA])]
-            side = int(max(bw, bh) * 2.2); x0 = max(0, bx + bw // 2 - side // 2); y0 = max(0, by + bh // 2 - side // 2)
-            crop = img[y0:y0 + side, x0:x0 + side]; ch, cw = crop.shape[:2]
-            big = cv2.resize(crop, (cw * HEAD_ZOOM, ch * HEAD_ZOOM), interpolation=cv2.INTER_CUBIC)
+    if r.face_landmarks: found.append(landmarks_to_face(r.face_landmarks[0], x0, y0, cw, ch))
+    if HEAD_ZOOM:
+        n, _, st, _ = cv2.connectedComponentsWithStats((oc == 3).astype(np.uint8))
+        for q in sorted(range(1, n), key=lambda q: -st[q, cv2.CC_STAT_AREA])[:3]:
+            bx, by, bw, bh, area = st[q]
+            if area < 64: continue
+            side = int(max(bw, bh) * 2.2); cx0 = max(0, bx + bw // 2 - side // 2); cy0 = max(0, by + bh // 2 - side // 2)
+            crop = img[cy0:cy0 + side, cx0:cx0 + side]; ch2, cw2 = crop.shape[:2]
+            if ch2 < 8 or cw2 < 8: continue
+            big = cv2.resize(crop, (cw2 * HEAD_ZOOM, ch2 * HEAD_ZOOM), interpolation=cv2.INTER_CUBIC)
             r = lmk.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(big)))
-    if r.face_landmarks:
-        L = r.face_landmarks[0]
-        pts = np.array([[x0 + L[k].x * cw, y0 + L[k].y * ch] for k in OVAL], np.float32)
-        face_h = pts[:, 1].max() - pts[:, 1].min()
-        brow = min(y0 + L[k].y * ch for k in BROWS) - 0.04 * face_h
-        eye = min(y0 + L[k].y * ch for k in EYES) - 0.02 * face_h
-        last_face = (pts, brow, face_h, eye)
-    elif SAM is not None and last_face is None:
-        # the landmarker has found nothing so far (a small or profile face): the face oval, brow and eye rows from a
-        # SAM 3 "face" mask inside his matte; later frames borrow it exactly as they borrow a landmarker detection
-        fm = SAM.face_mask(img, (person > 0.5) if person is not None else None)
-        geo = face_geometry_from_mask(fm) if fm is not None else None
-        if geo is not None:
-            last_face = geo; sam_face_frames.append(len(sam_face_frames))
-            print("face from the SAM 3 face mask (landmarker found none): rows brow", round(geo[1]), "eye", round(geo[3]), "height", round(geo[2]))
-    if last_face is None: return None, None
-    pts, brow, face_h, eye = last_face
-    if brow_override is not None: brow = brow_override          # the smoothed line (see the pre-pass below)
-    m = np.zeros((h0, w0), np.uint8)
-    cv2.fillPoly(m, [pts.astype(np.int32)], 1)
+            if r.face_landmarks: found.append(landmarks_to_face(r.face_landmarks[0], cx0, cy0, cw2, ch2))
+    uniq = []   # the box and a zoom crop can return the same face: keep one
+    for f in found:
+        c = centre(f)
+        if all(abs(c[0] - centre(g)[0]) > 0.3 * g[2] or abs(c[1] - centre(g)[1]) > 0.3 * g[2] for g in uniq): uniq.append(f)
+    return uniq
+def face_mask(face, brow):
+    """(the face from the brows down, the whole dilated oval) as boolean masks."""
+    m = np.zeros((H, W), np.uint8)
+    cv2.fillPoly(m, [face[0].astype(np.int32)], 1)
     m = cv2.dilate(m, np.ones((9, 9), np.uint8))
-    m[: int(brow)] = 0                     # above the brows (cap, forehead under the brim) may take the swap
-    return m.astype(bool), brow
-brow_override = None
+    full = m.astype(bool); m = m.copy(); m[: int(brow)] = 0   # above the brows (cap, forehead under the brim) may take the swap
+    return m.astype(bool), full
 
 # per swap frame: categories and an affine aligning it to the original frame at the same time
 SC = 0.25
@@ -142,6 +142,7 @@ def plausible_affine(M, w, h):
     sv = np.linalg.svd(np.asarray(M, np.float64)[:, :2], compute_uv=False)
     return bool(0.8 < sv.min() and sv.max() < 1.25 and abs(M[0, 2]) < 0.15 * w and abs(M[1, 2]) < 0.15 * h)
 def gray_small(img): return cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), None, fx=SC, fy=SC).astype(np.float32)
+def jof(i): return min(len(swap) - 1, int(round(i / FPS * SFPS)))
 swap_cat, warp = {}, {}
 # raw frames straight into libx264: an intermediate cv2.VideoWriter("mp4v") encode has a 12-frame GOP whose I-frames
 # re-quantise the picture differently from the P-frames between them, which read as a pulse every 12 frames at the
@@ -151,58 +152,66 @@ vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "
                        "-r", FPS_RATE, "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
                        "-movflags", "+faststart", out_p], stdin=subprocess.PIPE)
 face_err = 0; seam_frames = []
+# pass 1: the original's categories and the swap's alignment, frame by frame (the ECC seed carries within a scene)
+oc_all = [cats(o, PO(i)) for i, o in enumerate(orig)]
 prev_M = np.eye(2, 3, dtype=np.float32)
-# frames before the first face detection borrow the first detection (the face shape only gates the cap/brow line)
-first = None
-for k in range(len(orig)):
-    face_region(orig[k], PO(k))
-    if last_face is not None: first = k; break
-print("first face detection at frame", first)
-# the brow line per frame, then smoothed over time: a line that jumps a few px between frames flickers the cap's
-# underside (the original brim shows under the new one on some frames and not others; c044, 23 Oct)
-brows, eyes = [], []
-for k in range(len(orig)):
-    _, b = face_region(orig[k], PO(k)); brows.append(b); eyes.append(last_face[3] if last_face is not None else None)
-def smooth(v):
-    v = np.array([x if x is not None else np.nan for x in v], np.float32)
-    if not np.isfinite(v).any(): return v
-    idx = np.arange(len(v)); v = np.interp(idx, idx[np.isfinite(v)], v[np.isfinite(v)])
-    return np.array([np.median(v[max(0, k - 4):k + 5]) for k in range(len(v))], np.float32)
-sm, sm_eye = smooth(brows), smooth(eyes)
-last_face = None
-for k in range(len(orig)):
-    face_region(orig[k], PO(k))
-    if last_face is not None: break
 for i, o in enumerate(orig):
-    t = i / FPS
-    j = min(len(swap) - 1, int(round(t * SFPS)))
-    oc = cats(o, PO(i))
-    if j not in warp:
-        bgmask = cv2.resize(((oc == 0) * 255).astype(np.uint8), None, fx=SC, fy=SC, interpolation=cv2.INTER_NEAREST)
-        # a scene cut (a montage has several): the alignment of the previous scene is no seed for this one
-        if i > 0 and float(np.abs(gray_small(o) - gray_small(orig[i - 1])).mean()) > 25: prev_M = np.eye(2, 3, dtype=np.float32)
-        M = prev_M.copy()
-        try:
-            _, M = cv2.findTransformECC(gray_small(o), gray_small(swap[j]), M, cv2.MOTION_AFFINE,
-                                        (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-5), bgmask, 5)
-        except cv2.error:
-            pass
-        # the swap is the same picture re-drawn: its alignment is a small correction, never a re-framing. An
-        # affine that scales, shears or shifts beyond that has diverged (c041 v2, 29 Oct: the close-up came
-        # out as a smeared train) and the frame is used as it is
-        if not plausible_affine(M, W * SC, H * SC): M = np.eye(2, 3, dtype=np.float32)
-        prev_M = M
-        Mf = M.copy(); Mf[:, 2] /= SC
-        sw = cv2.warpAffine(swap[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REPLICATE)
-        ps = None
-        if M_SWAP is not None:   # the swap's matte travels with the swap frame
-            ps = cv2.warpAffine(M_SWAP.alpha[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-        warp[j] = sw; swap_cat[j] = cats(sw, ps)
+    j = jof(i); oc = oc_all[i]
+    if j in warp: continue
+    bgmask = cv2.resize(((oc == 0) * 255).astype(np.uint8), None, fx=SC, fy=SC, interpolation=cv2.INTER_NEAREST)
+    # a scene cut (a montage has several): the alignment of the previous scene is no seed for this one
+    if i > 0 and float(np.abs(gray_small(o) - gray_small(orig[i - 1])).mean()) > 25: prev_M = np.eye(2, 3, dtype=np.float32)
+    M = prev_M.copy()
+    try:
+        _, M = cv2.findTransformECC(gray_small(o), gray_small(swap[j]), M, cv2.MOTION_AFFINE,
+                                    (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-5), bgmask, 5)
+    except cv2.error:
+        pass
+    # the swap is the same picture re-drawn: its alignment is a small correction, never a re-framing. An
+    # affine that scales, shears or shifts beyond that has diverged (c041 v2, 29 Oct: the close-up came
+    # out as a smeared train) and the frame is used as it is
+    if not plausible_affine(M, W * SC, H * SC): M = np.eye(2, 3, dtype=np.float32)
+    prev_M = M
+    Mf = M.copy(); Mf[:, 2] /= SC
+    sw = cv2.warpAffine(swap[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REPLICATE)
+    ps = None
+    if M_SWAP is not None:   # the swap's matte travels with the swap frame
+        ps = cv2.warpAffine(M_SWAP.alpha[j], Mf, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    warp[j] = sw; swap_cat[j] = cats(sw, ps)
+def changed_at(i): return np.abs(orig[i].astype(np.int16) - warp[jof(i)].astype(np.int16)).max(2) > 40
+# pass 2: his face per scene. Scenes never borrow from each other; within a scene the subject is the face whose
+# clothes the swap changed, strangers and misfits are dropped, gaps are filled from the nearest kept detection and
+# the brow / eye rows are median-smoothed over time (a line that jumps a few px between frames flickers the cap's
+# underside; c044, 23 Oct)
+diffs = [0.0] + [float(np.abs(gray_small(orig[k]) - gray_small(orig[k - 1])).mean()) for k in range(1, len(orig))]
+starts = scene_starts(diffs); ends = starts[1:] + [len(orig)]
+faces = [None] * len(orig)
+def smooth(v):
+    v = np.array(v, np.float32)
+    return np.array([np.median(v[max(0, k - 4):k + 5]) for k in range(len(v))], np.float32)
+for s0, s1 in zip(starts, ends):
+    det = [pick_subject(detect_candidates(orig[k], oc_all[k]), changed_at(k)) for k in range(s0, s1)]
+    if all(f is None for f in det) and SAM is not None:
+        # the landmarker found nobody in this scene (a small or profile face): the face oval, brow and eye rows
+        # from a SAM 3 "face" mask inside his matte on the scene's first frame
+        fm = SAM.face_mask(orig[s0], (PO(s0) > 0.5) if PO(s0) is not None else None)
+        geo = face_geometry_from_mask(fm) if fm is not None else None
+        if geo is not None:
+            det[0] = geo; sam_face_frames.append(s0)
+            print("face from the SAM 3 face mask (landmarker found none): rows brow", round(geo[1]), "eye", round(geo[3]), "height", round(geo[2]))
+    tr = track_scene(det)
+    if tr[0] is not None:
+        sb, se = smooth([f[1] for f in tr]), smooth([f[3] for f in tr])
+        tr = [(f[0], float(sb[k]), f[2], float(se[k])) for k, f in enumerate(tr)]
+    faces[s0:s1] = tr
+    print(f"scene {s0}-{s1 - 1}: his face on {sum(f is not None for f in det)} of {s1 - s0} frames" + ("" if tr[0] is None else f", brow row {round(tr[0][1])}..{round(tr[-1][1])}, face height {round(tr[0][2])}"))
+for i, o in enumerate(orig):
+    j = jof(i); oc = oc_all[i]
     sw, sc = warp[j], swap_cat[j]
     # always original: face skin and hair (beard) of the ORIGINAL; other skin only where the swap shows skin too
     # (hands, neck). Where the swap puts a sleeve over the original bare arm, the sleeve wins.
-    brow_override = float(sm[i]) if np.isfinite(sm[i]) else None
-    face, brow = face_region(o, PO(i))
+    fc = faces[i]
+    face, oval_full, brow, eye_line = (None, None, None, None) if fc is None else (*face_mask(fc, fc[1]), fc[1], fc[3])
     rows = np.arange(H)[:, None]
     below_brow = (rows > brow) if brow is not None else np.ones((H, 1), bool)
     # the band between the brow cut and his upper eyelids: his own pixels, except where the old cap sat. He wears the
@@ -212,23 +221,32 @@ for i, o in enumerate(orig):
     # original (the black cap: luminance < 80, grown 3 px) comes from the swap; so does any strongly changed pixel in
     # the top 8 % of the face height (a new brim that sits lower than the old one). Eyes, glasses, nose, mouth, beard
     # stay his.
-    changed = np.abs(o.astype(np.int16) - sw.astype(np.int16)).max(2) > 40
-    eye_line = float(sm_eye[i]) if np.isfinite(sm_eye[i]) else None
-    if brow is not None and eye_line is not None and last_face is not None:
+    changed = changed_at(i)
+    if fc is not None:
+        pts, fh = fc[0], fc[2]
         band = below_brow & (rows < max(eye_line, brow + 1))
         dark_o = cv2.dilate((cv2.cvtColor(o, cv2.COLOR_RGB2GRAY) < 80).astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool)
-        top = rows < brow + 0.08 * last_face[2]
+        top = rows < brow + 0.08 * fh
         take_band = band & changed & (dark_o | top)
+        # the NEW hat: a swap pixel the segmenter calls hair / accessory / clothes inside the head box — above the
+        # brows, in the brow-to-eyelid band (a brim over his forehead and temples) and below the eyelids OUTSIDE the
+        # face oval (a bucket brim hanging beside his ears) — comes from the swap whatever the original shows there:
+        # background, forehead, ear, side hair (c041 v2, 1 Nov 2026, Fendi: "you can see through the inner edges
+        # around my head"). Eyes, glasses, nose, mouth and beard inside the oval stay his.
+        x_lo, x_hi = int(pts[:, 0].min() - 0.5 * fh), int(pts[:, 0].max() + 0.5 * fh)
+        head = np.zeros((H, W), bool); head[max(0, int(brow - 0.9 * fh)):min(H, int(eye_line + 0.8 * fh)), max(0, x_lo):min(W, x_hi)] = True
+        g = 2 * int(0.06 * fh) + 1
+        oval_protect = cv2.dilate(oval_full.astype(np.uint8), np.ones((g, g), np.uint8)).astype(bool)
+        take_hat = np.isin(sc, (1, 4, 5)) & head & changed & (~below_brow | band | ~oval_protect)
     else:
-        take_band = np.zeros((H, W), bool)
-    protect = (((oc == 3) & below_brow) | ((oc == 1) & below_brow)) & ~take_band | ((oc == 2) & (sc == 2))
-    if face is not None: protect |= face & ~take_band
-    clothes = np.isin(oc, (4, 5)) | np.isin(sc, (4, 5))
+        take_band = take_hat = np.zeros((H, W), bool)
+    protect = (((oc == 3) & below_brow) | ((oc == 1) & below_brow)) & ~take_band & ~take_hat | ((oc == 2) & (sc == 2) & ~take_hat)
+    if face is not None: protect |= face & ~take_band & ~take_hat
+    clothes = np.isin(oc, (4, 5)) | np.isin(sc, (4, 5)) | take_hat
     # the cap: anything labelled hair/accessory above the brow line, in either frame, comes from the swap
     above_brow = ~below_brow
     clothes |= (np.isin(oc, (1, 5)) | np.isin(sc, (1, 5))) & above_brow
-    if last_face is not None:   # cap box: above the brows, over the head; any non-background pixel comes from the swap
-        pts, _, fh, _ = last_face
+    if fc is not None:   # cap box: above the brows, over the head; any non-background pixel comes from the swap
         x_lo, x_hi = int(pts[:, 0].min() - 0.35 * fh), int(pts[:, 0].max() + 0.35 * fh)
         y_lo = int(brow - 0.9 * fh)
         box = np.zeros((H, W), bool); box[max(0, y_lo):int(brow), max(0, x_lo):min(W, x_hi)] = True
