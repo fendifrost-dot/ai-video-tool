@@ -97,6 +97,14 @@ DET = (0.1, 0.05, 0.85, 0.6)  # x, y, w, h of the frame searched for the face (f
 # times and look again. The 23 Oct reshoot needs it (his face ~100 px wide at 1080); c033 (18 Oct) runs without it.
 HEAD_ZOOM = int(os.environ.get("AVT_HEAD_ZOOM", "0"))
 DUMP = {int(x) for x in os.environ.get("AVT_DUMP", "").split(",") if x.strip()}
+# env AVT_ABLATE="headfit,vote,gap": switch a stage OFF for a controlled comparison (diagnosis only; default all on)
+ABLATE = {x.strip() for x in os.environ.get("AVT_ABLATE", "").split(",") if x.strip()}
+# env AVT_HEAD_FIT=1 turns the row-wise head re-fit (head_fit.py) ON. Default OFF since 2 Nov 2026: measured on c041 v2,
+# the per-row shift it applied to the hat (up to 24 px on the close-up, 30 px on the wide shot) moved 2-6 px between
+# consecutive frames with spikes of 8-11 px — a time-varying warp that morphed the hat. Its driving edges were not the
+# face outline either: the swap's face skin is occluded by its own brim at the temples. The hat is taken rigidly from
+# the scene-aligned swap; the head-size mismatch is handled at the composite boundary only (silhouette.py, feather).
+HEAD_FIT = os.environ.get("AVT_HEAD_FIT", "0") == "1" and "headfit" not in ABLATE
 sam_face_frames = []   # scene starts whose face geometry came from the SAM 3 face mask, not the landmarker
 def landmarks_to_face(L, x0, y0, cw, ch):
     pts = np.array([[x0 + L[k].x * cw, y0 + L[k].y * ch] for k in OVAL], np.float32)
@@ -235,7 +243,7 @@ def head_rules(i):
     j = jof(i); o = orig[i]; oc = oc_all[i]
     sw, sc = warp[j], swap_cat[j]
     fc = faces[i]
-    if fc is not None and edge_fit[i] is not None:   # the swap's head rows re-fitted to his face outline
+    if HEAD_FIT and fc is not None and edge_fit[i] is not None:   # the swap's head rows re-fitted to his face outline (opt-in)
         eo, es = edge_fit[i]; fh = fc[2]
         r0, r1 = max(0, int(fc[1] - 0.9 * fh)), min(H, int(fc[3] + 0.8 * fh))
         mx = x_map(W, H, r0, r1, eo, es, fh); my = np.tile(np.arange(H, dtype=np.float32)[:, None], (1, W))
@@ -281,7 +289,7 @@ def head_rules(i):
     # non-hat pixel of the head box is unknown to the fill, so the fill comes from the hat, not from the swap's
     # face) and taken with the hat. His own ear or hair there stays his (the original is not scene).
     poke = np.isin(sc, (2, 3)) & below_brow & ~oval_protect & head & (oc == 0)
-    if poke.any():
+    if poke.any() and "gap" not in ABLATE:
         unknown = (np.isin(sc, (2, 3)) & head).astype(np.uint8)
         filled = cv2.inpaint(sw, unknown, 3, cv2.INPAINT_TELEA)
         sw = sw.copy(); sw[poke] = filled[poke]
@@ -303,7 +311,7 @@ def head_rules(i):
     his = oval_protect | (np.isin(oc, (1, 3)) & below_brow)   # his face oval and his own beard and skin below the brows
     dist_face = cv2.distanceTransform((~his).astype(np.uint8), cv2.DIST_L2, 3)
     gap = ~take_hat & hat_zone & (dist_hat + dist_face <= 0.12 * fh) & (dist_hat > 0) & (dist_face > 0)
-    if gap.any():
+    if gap.any() and "gap" not in ABLATE:
         unknown = (np.isin(sc, (2, 3)) & head).astype(np.uint8)
         filled = cv2.inpaint(sw, unknown, 3, cv2.INPAINT_TELEA)
         sw = sw.copy(); sw[gap] = filled[gap]
@@ -316,6 +324,7 @@ def head_rules(i):
 # the generator's face was 9 % wider, its brim flared off his cheek and its jaw showed beside his beard).
 edge_fit = [None] * len(orig)
 for s0, s1 in zip(starts, ends):
+    if not HEAD_FIT: break
     per = {}
     for k in range(s0, s1):
         fc = faces[k]
@@ -343,7 +352,7 @@ for i, o in enumerate(orig):
     if fc is not None:
         nb = [k for k in (i - 1, i, i + 1) if 0 <= k < len(orig) and scene_of(k) == scene_of(i)]
         votes = sum(hat_of(k) for k in nb)
-        take_hat = (votes * 2 >= len(nb)) & hat_zone
+        if "vote" not in ABLATE: take_hat = (votes * 2 >= len(nb)) & hat_zone
     protect = (((oc == 3) & below_brow) | ((oc == 1) & below_brow)) & ~take_band & ~take_hat | ((oc == 2) & (sc == 2) & ~take_hat)
     if face is not None: protect |= face & ~take_band & ~take_hat
     # on his head everything comes from the re-fitted swap: the new hat, the old cap's band, and above the brows
@@ -397,7 +406,7 @@ for i, o in enumerate(orig):
     if i in (0, 60, 120, 180, 239) or i in DUMP:
         if i in DUMP:   # env AVT_DUMP="82,90": the masks behind a frame, for a diagnosis
             pal = np.array([[0, 0, 0], [255, 0, 255], [150, 200, 255], [60, 120, 255], [255, 180, 0], [0, 255, 0]], np.uint8)
-            np.savez_compressed(os.path.join(out_dir, f"dump_{i:03d}.npz"), oc=oc, sc=sc, take_hat=take_hat, take_band=take_band, protect=protect, clothes=clothes, m=m, hat_zone=hat_zone if fc is not None else np.zeros((H, W), bool))
+            np.savez_compressed(os.path.join(out_dir, f"dump_{i:03d}.npz"), oc=oc, sc=sc, take_hat=take_hat, take_band=take_band, protect=protect, clothes=clothes, m=m, hat_zone=hat_zone if fc is not None else np.zeros((H, W), bool), on_head=on_head, swh=swh, sw=sw, eo=edge_fit[i][0] if edge_fit[i] is not None else np.zeros((0, 2), np.float32), es=edge_fit[i][1] if edge_fit[i] is not None else np.zeros((0, 2), np.float32))
         cv2.imwrite(os.path.join(out_dir, f"mask_{i:03d}.png"), (m * 255).astype(np.uint8))
         if M_ORIG is not None: cv2.imwrite(os.path.join(out_dir, f"person_{i:03d}.png"), (M_ORIG.alpha[i] * 255).astype(np.uint8))
 vw.stdin.close()
