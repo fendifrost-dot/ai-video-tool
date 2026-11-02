@@ -266,8 +266,11 @@ def head_rules(i):
     # around my head"). Eyes, glasses, nose, mouth and beard inside the oval stay his.
     x_lo, x_hi = int(pts[:, 0].min() - 0.5 * fh), int(pts[:, 0].max() + 0.5 * fh)
     head = np.zeros((H, W), bool); head[max(0, int(brow - 0.9 * fh)):min(H, int(eye_line + 0.8 * fh)), max(0, x_lo):min(W, x_hi)] = True
-    g = 2 * int(0.06 * fh) + 1
-    oval_protect = cv2.dilate(oval_full.astype(np.uint8), np.ones((g, g), np.uint8)).astype(bool)
+    # the hat zone ends exactly where his protected face begins: the face polygon and his own skin and hair below
+    # the brows. A margin grown around the oval here (6 % of the face height, until 2 Nov 2026) left a strip that
+    # was neither hat nor protected — 10-15 px of original scene between the brim and his cheek, "the white space
+    # where the hat should be" (Fendi, c041 v2 close-up, rows 440-500 at x 226-237)
+    oval_protect = oval_full | (np.isin(oc, (1, 3)) & below_brow)
     hat_zone = head & (~below_brow | band | ~oval_protect)
     take_hat = np.isin(sc, (1, 4, 5)) & changed & hat_zone
     # the swap's redrawn head pokes out past his real face (its cheek, ear or neck a few px wider or elsewhere):
