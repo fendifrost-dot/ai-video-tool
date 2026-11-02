@@ -151,7 +151,7 @@ out_p = os.path.join(out_dir, "c033_body_only_swap.mp4")
 vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
                        "-r", FPS_RATE, "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
                        "-movflags", "+faststart", out_p], stdin=subprocess.PIPE)
-face_err = 0; seam_frames = []
+face_err = 0; seam_frames = []; redrawn_frames = []
 # pass 1: the original's categories and the swap's alignment, frame by frame (the ECC seed carries within a scene)
 oc_all = [cats(o, PO(i)) for i, o in enumerate(orig)]
 prev_M = np.eye(2, 3, dtype=np.float32)
@@ -237,7 +237,30 @@ for i, o in enumerate(orig):
         head = np.zeros((H, W), bool); head[max(0, int(brow - 0.9 * fh)):min(H, int(eye_line + 0.8 * fh)), max(0, x_lo):min(W, x_hi)] = True
         g = 2 * int(0.06 * fh) + 1
         oval_protect = cv2.dilate(oval_full.astype(np.uint8), np.ones((g, g), np.uint8)).astype(bool)
-        take_hat = np.isin(sc, (1, 4, 5)) & head & changed & (~below_brow | band | ~oval_protect)
+        hat_zone = head & (~below_brow | band | ~oval_protect)
+        take_hat = np.isin(sc, (1, 4, 5)) & changed & hat_zone
+        # the swap's redrawn head pokes out past his real face (its cheek, ear or neck a few px wider or elsewhere):
+        # between the new brim and his cheek the original shows the SCENE and the swap shows ITS skin, and neither
+        # belongs there — the gap read as a light outline around his face that jumped with the train (c041 v2,
+        # 1 Nov 2026, Fendi). The hat continues: those swap pixels are refilled from the hat around them (every
+        # non-hat pixel of the head box is unknown to the fill, so the fill comes from the hat, not from the swap's
+        # face) and taken with the hat. His own ear or hair there stays his (the original is not scene).
+        poke = np.isin(sc, (2, 3)) & below_brow & ~oval_protect & head & (oc == 0)
+        if poke.any():
+            unknown = (~np.isin(sc, (1, 4, 5)) & head).astype(np.uint8)
+            filled = cv2.inpaint(sw, unknown, 3, cv2.INPAINT_TELEA)
+            sw = sw.copy(); sw[poke] = filled[poke]
+            take_hat |= poke
+        # the hat by its colour too: the segmenter's labels are blocky at a small face (256x256 → 3-px blocks on an
+        # 86-px face) and the brim's inner edge came out ragged; a swap pixel in the hat zone within a Lab distance
+        # of 18 of the hat's own median colour is hat (the beard is outside the zone, the collar is clothes anyway)
+        hat_px = np.isin(sc, (1, 5)) & head
+        if hat_px.sum() > 50:
+            lab_sw = cv2.cvtColor(sw, cv2.COLOR_RGB2LAB).astype(np.int16)
+            hc = np.median(lab_sw[hat_px], axis=0)
+            take_hat |= (np.abs(lab_sw - hc).sum(2) < 18) & hat_zone & changed
+        # the brim's inner edge is closed over 5 px, then gated again
+        take_hat = cv2.morphologyEx(take_hat.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool) & hat_zone
     else:
         take_band = take_hat = np.zeros((H, W), bool)
     protect = (((oc == 3) & below_brow) | ((oc == 1) & below_brow)) & ~take_band & ~take_hat | ((oc == 2) & (sc == 2) & ~take_hat)
@@ -255,7 +278,22 @@ for i, o in enumerate(orig):
     # wall there; the segmenter can miss a dark shoe on a dark floor, so any strong change next to him that is not
     # protected is taken from the swap too (c044, 23 Oct: the original black toe showed under the cream sneaker)
     near = cv2.dilate(((oc != 0) | (sc != 0)).astype(np.uint8), np.ones((31, 31), np.uint8)).astype(bool)
-    clothes |= changed & near
+    overshoot = changed & near
+    # ... but never the SCENE around his face, and never the scene at all when the generator re-rendered it: with a
+    # moving train behind him every pixel next to his silhouette is "changed", and the band took the swap's train
+    # beside his original face — an outline that flickers as the train moves (c041 v2, 1 Nov 2026, Fendi). A
+    # frame whose far background (both segmenters: scene, outside the band) changed on more than 10 % of its pixels
+    # is a re-rendered scene: there the band keeps only pixels one of the segmenters calls him. Around the face
+    # (the oval grown 30 % of the face height) the band never applies: no garment overshoots there, the hat has
+    # its own rules, and the scene is the original's.
+    both_bg = (oc == 0) & (sc == 0)
+    far = both_bg & ~near
+    if far.any() and float(changed[far].mean()) > 0.10:
+        overshoot &= ~both_bg; redrawn_frames.append(i)
+    if fc is not None:
+        g2 = 2 * int(0.3 * fh) + 1
+        overshoot &= ~cv2.dilate(oval_full.astype(np.uint8), np.ones((g2, g2), np.uint8)).astype(bool)
+    clothes |= overshoot
     m = (clothes & ~protect).astype(np.float32)
     m = cv2.GaussianBlur(m, (0, 0), 2.0)
     m[protect] = 0.0                                       # no feather leaks onto the face or hands
@@ -268,4 +306,5 @@ for i, o in enumerate(orig):
 vw.stdin.close()
 if vw.wait() != 0: raise SystemExit("ffmpeg encode failed")
 print("frames", len(orig), "swap frames aligned", len(warp), "max |out-original| on face/hair/skin:", face_err)
+print("scene re-rendered by the generator (overshoot band limited to him) on", len(redrawn_frames), "frames")
 if SAM is not None: print("segmenter sam3: face geometry from the SAM 3 face mask on", len(sam_face_frames), "lookups")
