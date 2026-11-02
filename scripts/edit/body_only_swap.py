@@ -142,7 +142,30 @@ def plausible_affine(M, w, h):
     sv = np.linalg.svd(np.asarray(M, np.float64)[:, :2], compute_uv=False)
     return bool(0.8 < sv.min() and sv.max() < 1.25 and abs(M[0, 2]) < 0.15 * w and abs(M[1, 2]) < 0.15 * h)
 def gray_small(img): return cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), None, fx=SC, fy=SC).astype(np.float32)
-def jof(i): return min(len(swap) - 1, int(round(i / FPS * SFPS)))
+# the swap frame for each original frame. The swap is time-conformed, but its SCENE CUTS can sit a frame off the
+# original's (c041 v2, 2 Nov 2026: cuts at 40/53 against 39/54 — the first and last frame of the wide shot took
+# another scene's hat and coat, a flash at every cut). When both clips show the same number of cuts, each scene
+# maps onto its counterpart; otherwise the clock mapping stands and the mismatch is printed.
+diffs = [0.0] + [float(np.abs(gray_small(orig[k]) - gray_small(orig[k - 1])).mean()) for k in range(1, len(orig))]
+sdiffs = [0.0] + [float(np.abs(gray_small(swap[k]) - gray_small(swap[k - 1])).mean()) for k in range(1, len(swap))]
+starts = scene_starts(diffs); ends = starts[1:] + [len(orig)]
+s_starts = scene_starts(sdiffs); s_ends = s_starts[1:] + [len(swap)]
+J = [min(len(swap) - 1, int(round(i / FPS * SFPS))) for i in range(len(orig))]
+if len(starts) == len(s_starts) and len(starts) > 1:
+    for (o0, o1), (q0, q1) in zip(zip(starts, ends), zip(s_starts, s_ends)):
+        if abs((o1 - o0) - (q1 - q0)) <= 3:
+            # the same footage redrawn at the same rate: frame for frame from the cut, the last frame held when
+            # the swap's scene is a frame or two shorter (stretching it instead repeated frames mid-scene and the
+            # hat jumped two frames' worth at once)
+            for i in range(o0, o1): J[i] = min(q1 - 1, q0 + (i - o0))
+        else:
+            for i in range(o0, o1): J[i] = min(q1 - 1, q0 + int(round((i - o0) * (q1 - q0) / (o1 - o0))))
+            print(f"scene {o0}-{o1 - 1}: the swap's scene has {q1 - q0} frames for the original's {o1 - o0}: stretched")
+    print("scenes aligned by their cuts: original", starts, "swap", s_starts)
+elif len(starts) != len(s_starts):
+    print("WARNING: the original has", len(starts) - 1, "cuts and the swap", len(s_starts) - 1, "- frames mapped by the clock only")
+def jof(i): return J[i]
+def scene_of(i): return next(n for n, (a, b) in enumerate(zip(starts, ends)) if a <= i < b)
 swap_cat, warp = {}, {}
 # raw frames straight into libx264: an intermediate cv2.VideoWriter("mp4v") encode has a 12-frame GOP whose I-frames
 # re-quantise the picture differently from the P-frames between them, which read as a pulse every 12 frames at the
@@ -183,8 +206,6 @@ def changed_at(i): return np.abs(orig[i].astype(np.int16) - warp[jof(i)].astype(
 # clothes the swap changed, strangers and misfits are dropped, gaps are filled from the nearest kept detection and
 # the brow / eye rows are median-smoothed over time (a line that jumps a few px between frames flickers the cap's
 # underside; c044, 23 Oct)
-diffs = [0.0] + [float(np.abs(gray_small(orig[k]) - gray_small(orig[k - 1])).mean()) for k in range(1, len(orig))]
-starts = scene_starts(diffs); ends = starts[1:] + [len(orig)]
 faces = [None] * len(orig)
 def smooth(v):
     v = np.array(v, np.float32)
@@ -205,8 +226,10 @@ for s0, s1 in zip(starts, ends):
         tr = [(f[0], float(sb[k]), f[2], float(se[k])) for k, f in enumerate(tr)]
     faces[s0:s1] = tr
     print(f"scene {s0}-{s1 - 1}: his face on {sum(f is not None for f in det)} of {s1 - s0} frames" + ("" if tr[0] is None else f", brow row {round(tr[0][1])}..{round(tr[-1][1])}, face height {round(tr[0][2])}"))
-for i, o in enumerate(orig):
-    j = jof(i); oc = oc_all[i]
+def head_rules(i):
+    """Per frame: take_band, take_hat, hat_zone, sw, face, oval_full, below_brow, pts, fh, brow — sw is the swap frame,
+    or its copy with the swap's poking head refilled from the hat."""
+    j = jof(i); o = orig[i]; oc = oc_all[i]
     sw, sc = warp[j], swap_cat[j]
     # always original: face skin and hair (beard) of the ORIGINAL; other skin only where the swap shows skin too
     # (hands, neck). Where the swap puts a sleeve over the original bare arm, the sleeve wins.
@@ -222,47 +245,71 @@ for i, o in enumerate(orig):
     # the top 8 % of the face height (a new brim that sits lower than the old one). Eyes, glasses, nose, mouth, beard
     # stay his.
     changed = changed_at(i)
+    if fc is None: return np.zeros((H, W), bool), np.zeros((H, W), bool), np.zeros((H, W), bool), sw, face, oval_full, below_brow, None, None, None
+    pts, fh = fc[0], fc[2]
+    band = below_brow & (rows < max(eye_line, brow + 1))
+    dark_o = cv2.dilate((cv2.cvtColor(o, cv2.COLOR_RGB2GRAY) < 80).astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool)
+    top = rows < brow + 0.08 * fh
+    take_band = band & changed & (dark_o | top)
+    # the NEW hat: a swap pixel the segmenter calls hair / accessory / clothes inside the head box — above the
+    # brows, in the brow-to-eyelid band (a brim over his forehead and temples) and below the eyelids OUTSIDE the
+    # face oval (a bucket brim hanging beside his ears) — comes from the swap whatever the original shows there:
+    # background, forehead, ear, side hair (c041 v2, 1 Nov 2026, Fendi: "you can see through the inner edges
+    # around my head"). Eyes, glasses, nose, mouth and beard inside the oval stay his.
+    x_lo, x_hi = int(pts[:, 0].min() - 0.5 * fh), int(pts[:, 0].max() + 0.5 * fh)
+    head = np.zeros((H, W), bool); head[max(0, int(brow - 0.9 * fh)):min(H, int(eye_line + 0.8 * fh)), max(0, x_lo):min(W, x_hi)] = True
+    g = 2 * int(0.06 * fh) + 1
+    oval_protect = cv2.dilate(oval_full.astype(np.uint8), np.ones((g, g), np.uint8)).astype(bool)
+    hat_zone = head & (~below_brow | band | ~oval_protect)
+    take_hat = np.isin(sc, (1, 4, 5)) & changed & hat_zone
+    # the swap's redrawn head pokes out past his real face (its cheek, ear or neck a few px wider or elsewhere):
+    # between the new brim and his cheek the original shows the SCENE and the swap shows ITS skin, and neither
+    # belongs there — the gap read as a light outline around his face that jumped with the train (c041 v2,
+    # 1 Nov 2026, Fendi). The hat continues: those swap pixels are refilled from the hat around them (every
+    # non-hat pixel of the head box is unknown to the fill, so the fill comes from the hat, not from the swap's
+    # face) and taken with the hat. His own ear or hair there stays his (the original is not scene).
+    poke = np.isin(sc, (2, 3)) & below_brow & ~oval_protect & head & (oc == 0)
+    if poke.any():
+        unknown = (~np.isin(sc, (1, 4, 5)) & head).astype(np.uint8)
+        filled = cv2.inpaint(sw, unknown, 3, cv2.INPAINT_TELEA)
+        sw = sw.copy(); sw[poke] = filled[poke]
+        take_hat |= poke
+    # the hat by its colour too: the segmenter's labels are blocky at a small face (256x256 → 3-px blocks on an
+    # 86-px face) and the brim's inner edge came out ragged; a swap pixel in the hat zone within a Lab distance
+    # of 18 of the hat's own median colour is hat (the beard is outside the zone, the collar is clothes anyway)
+    hat_px = np.isin(sc, (1, 5)) & head
+    if hat_px.sum() > 50:
+        lab_sw = cv2.cvtColor(sw, cv2.COLOR_RGB2LAB).astype(np.int16)
+        hc = np.median(lab_sw[hat_px], axis=0)
+        take_hat |= (np.abs(lab_sw - hc).sum(2) < 18) & hat_zone & changed
+    # the brim's inner edge is closed over 5 px, then gated again
+    take_hat = cv2.morphologyEx(take_hat.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool) & hat_zone
+    # no gap between the brim and his face: a pixel of the hat zone that lies within 12 % of the face height of
+    # BOTH the hat and the face oval is the gap between them, whatever either frame shows there (a 1-2 px strip of
+    # the train stayed between the brim's end and his beard on some frames); it is filled from the hat and taken
+    dist_hat = cv2.distanceTransform((~take_hat).astype(np.uint8), cv2.DIST_L2, 3)
+    dist_face = cv2.distanceTransform((~oval_protect).astype(np.uint8), cv2.DIST_L2, 3)
+    gap = ~take_hat & hat_zone & (dist_hat + dist_face <= 0.12 * fh) & (dist_hat > 0) & (dist_face > 0)
+    if gap.any():
+        unknown = (~np.isin(sc, (1, 4, 5)) & head).astype(np.uint8)
+        filled = cv2.inpaint(sw, unknown, 3, cv2.INPAINT_TELEA)
+        sw = sw.copy(); sw[gap] = filled[gap]
+        take_hat |= gap
+    return take_band, take_hat, hat_zone, sw, face, oval_full, below_brow, pts, fh, brow
+
+# pass 3: every frame's hat decision first, so each frame's can be steadied against its neighbours' in the same
+# scene (majority of frame-1, frame, frame+1): the swap's redrawn head outline differs a little every frame and
+# the brim's shape beside his cheek wobbled with it (c041 v2, 2 Nov 2026, Fendi: "flickers as the train moves")
+hat_bits = [np.packbits(head_rules(i)[1]) for i in range(len(orig))]
+def hat_of(k): return np.unpackbits(hat_bits[k])[:H * W].reshape(H, W).astype(np.uint8)
+for i, o in enumerate(orig):
+    j = jof(i); oc = oc_all[i]; sc = swap_cat[j]
+    take_band, take_hat, hat_zone, sw, face, oval_full, below_brow, pts, fh, brow = head_rules(i)
+    changed = changed_at(i); fc = faces[i]
     if fc is not None:
-        pts, fh = fc[0], fc[2]
-        band = below_brow & (rows < max(eye_line, brow + 1))
-        dark_o = cv2.dilate((cv2.cvtColor(o, cv2.COLOR_RGB2GRAY) < 80).astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool)
-        top = rows < brow + 0.08 * fh
-        take_band = band & changed & (dark_o | top)
-        # the NEW hat: a swap pixel the segmenter calls hair / accessory / clothes inside the head box — above the
-        # brows, in the brow-to-eyelid band (a brim over his forehead and temples) and below the eyelids OUTSIDE the
-        # face oval (a bucket brim hanging beside his ears) — comes from the swap whatever the original shows there:
-        # background, forehead, ear, side hair (c041 v2, 1 Nov 2026, Fendi: "you can see through the inner edges
-        # around my head"). Eyes, glasses, nose, mouth and beard inside the oval stay his.
-        x_lo, x_hi = int(pts[:, 0].min() - 0.5 * fh), int(pts[:, 0].max() + 0.5 * fh)
-        head = np.zeros((H, W), bool); head[max(0, int(brow - 0.9 * fh)):min(H, int(eye_line + 0.8 * fh)), max(0, x_lo):min(W, x_hi)] = True
-        g = 2 * int(0.06 * fh) + 1
-        oval_protect = cv2.dilate(oval_full.astype(np.uint8), np.ones((g, g), np.uint8)).astype(bool)
-        hat_zone = head & (~below_brow | band | ~oval_protect)
-        take_hat = np.isin(sc, (1, 4, 5)) & changed & hat_zone
-        # the swap's redrawn head pokes out past his real face (its cheek, ear or neck a few px wider or elsewhere):
-        # between the new brim and his cheek the original shows the SCENE and the swap shows ITS skin, and neither
-        # belongs there — the gap read as a light outline around his face that jumped with the train (c041 v2,
-        # 1 Nov 2026, Fendi). The hat continues: those swap pixels are refilled from the hat around them (every
-        # non-hat pixel of the head box is unknown to the fill, so the fill comes from the hat, not from the swap's
-        # face) and taken with the hat. His own ear or hair there stays his (the original is not scene).
-        poke = np.isin(sc, (2, 3)) & below_brow & ~oval_protect & head & (oc == 0)
-        if poke.any():
-            unknown = (~np.isin(sc, (1, 4, 5)) & head).astype(np.uint8)
-            filled = cv2.inpaint(sw, unknown, 3, cv2.INPAINT_TELEA)
-            sw = sw.copy(); sw[poke] = filled[poke]
-            take_hat |= poke
-        # the hat by its colour too: the segmenter's labels are blocky at a small face (256x256 → 3-px blocks on an
-        # 86-px face) and the brim's inner edge came out ragged; a swap pixel in the hat zone within a Lab distance
-        # of 18 of the hat's own median colour is hat (the beard is outside the zone, the collar is clothes anyway)
-        hat_px = np.isin(sc, (1, 5)) & head
-        if hat_px.sum() > 50:
-            lab_sw = cv2.cvtColor(sw, cv2.COLOR_RGB2LAB).astype(np.int16)
-            hc = np.median(lab_sw[hat_px], axis=0)
-            take_hat |= (np.abs(lab_sw - hc).sum(2) < 18) & hat_zone & changed
-        # the brim's inner edge is closed over 5 px, then gated again
-        take_hat = cv2.morphologyEx(take_hat.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool) & hat_zone
-    else:
-        take_band = take_hat = np.zeros((H, W), bool)
+        nb = [k for k in (i - 1, i, i + 1) if 0 <= k < len(orig) and scene_of(k) == scene_of(i)]
+        votes = sum(hat_of(k) for k in nb)
+        take_hat = (votes * 2 >= len(nb)) & hat_zone
     protect = (((oc == 3) & below_brow) | ((oc == 1) & below_brow)) & ~take_band & ~take_hat | ((oc == 2) & (sc == 2) & ~take_hat)
     if face is not None: protect |= face & ~take_band & ~take_hat
     clothes = np.isin(oc, (4, 5)) | np.isin(sc, (4, 5)) | take_hat

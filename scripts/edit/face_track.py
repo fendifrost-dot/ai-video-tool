@@ -47,11 +47,12 @@ def pick_subject(cands, changed, min_score=0.15):
     return best
 
 
-def track_scene(faces):
+def track_scene(faces, window=4):
     """faces: one geometry or None per frame of ONE scene. Detections whose centre lies more than half the scene's
     median face height from the median centre, or whose height is outside 0.7..1.4 of the median, are dropped.
-    Every frame then takes the oval of the nearest kept detection in time, with brow and eye rows interpolated
-    linearly between the kept detections. All None when the scene has no detection."""
+    Every frame then takes the per-point median oval of the kept detections within `window` frames (the nearest
+    one when none is that close), with brow and eye rows interpolated linearly between the kept detections. All
+    None when the scene has no detection."""
     n = len(faces); idx = [k for k, f in enumerate(faces) if f is not None]
     if not idx: return [None] * n
     fh_med = float(np.median([faces[k][2] for k in idx]))
@@ -63,7 +64,11 @@ def track_scene(faces):
     brows = np.array([faces[k][1] for k in keep], np.float32); eyes = np.array([faces[k][3] for k in keep], np.float32)
     out = []
     for k in range(n):
-        j = keep[int(np.argmin(np.abs(ka - k)))]
-        pts, _, fh, _ = faces[j]
+        # the oval: the per-point median of the kept detections within `window` frames (the nearest one when none
+        # is that close). One detection drawn larger than its neighbours (the search box finding the face where
+        # the zoomed crop found it on the frames around) moved the hat rules for a frame and the brim jumped
+        near = [j for j in keep if abs(j - k) <= window] or [keep[int(np.argmin(np.abs(ka - k)))]]
+        pts = np.median(np.stack([faces[j][0] for j in near]), axis=0).astype(np.float32)
+        fh = float(pts[:, 1].max() - pts[:, 1].min())
         out.append((pts, float(np.interp(k, ka, brows)), fh, float(np.interp(k, ka, eyes))))
     return out
