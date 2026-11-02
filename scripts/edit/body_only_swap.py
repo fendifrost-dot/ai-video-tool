@@ -29,6 +29,7 @@ from segmenters import add_segmenter_args, choose_segmenter, Sam3Segmenter, refi
 from swap_rate import needs_interpolation, interpolate_swap, enabled as interpolation_enabled
 from face_track import scene_starts, pick_subject, track_scene, centre
 from head_fit import fit_edges, x_map
+from silhouette import refine_silhouette
 
 MODELS = os.environ.get("AVT_MODELS", "models")  # selfie_multiclass_256x256.tflite + face_landmarker.task
 ap = argparse.ArgumentParser(description="Body-only clothing swap: clothes from the Genjutsu output, everything else from the ORIGINAL pixels.")
@@ -377,8 +378,17 @@ for i, o in enumerate(orig):
         g2 = 2 * int(0.3 * fh) + 1
         overshoot &= ~cv2.dilate(oval_full.astype(np.uint8), np.ones((g2, g2), np.uint8)).astype(bool)
     clothes |= overshoot
+    # the protected region stops at his real silhouette (silhouette.py): its outer 4 px are kept only where the
+    # pixel is nearer his skin and hair than the scene. What that drops next to the hat or the coat is theirs.
+    # Then the feather: the hat's alpha is blurred with the face counted as covered, so it is not diluted against
+    # the protected zeros — a 2-3 px blend of hat and scene ran along the whole head (c041 v2, 2 Nov 2026: the
+    # pale contour between head and brim; traced on frame 84, rows 470 and 500, present in every version).
+    protect_wide = protect
+    protect = refine_silhouette(protect, o, band=4)
+    dropped = protect_wide & ~protect
+    clothes |= dropped & (cv2.dilate(clothes.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0)
     m = (clothes & ~protect).astype(np.float32)
-    m = cv2.GaussianBlur(m, (0, 0), 2.0)
+    m = cv2.GaussianBlur(np.maximum(m, protect.astype(np.float32)), (0, 0), 2.0)
     m[protect] = 0.0                                       # no feather leaks onto the face or hands
     src = np.where(on_head[..., None], swh, sw)
     out = (o.astype(np.float32) * (1 - m[..., None]) + src.astype(np.float32) * m[..., None]).round().clip(0, 255).astype(np.uint8)
