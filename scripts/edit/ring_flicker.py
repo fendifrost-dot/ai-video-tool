@@ -1,6 +1,7 @@
 """ring_flicker.py <original> <candidate> <a-b> [<a-b> ...]: mean frame-to-frame change in a ring 4..16 px outside
 his face-skin region, original vs candidate, per range and per frame. The check a put-back must pass before it is
 posted (c041 v2, 2 Nov 2026: stills looked right, the brim flickered; the number told the truth). Models: env AVT_MODELS."""
+import sys, numpy as np, cv2, mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
 import os
 M=os.environ.get("AVT_MODELS", "models")
