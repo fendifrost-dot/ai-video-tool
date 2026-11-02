@@ -29,7 +29,10 @@ def test_a_scene_fills_its_own_gaps_and_drops_the_stranger():
     faces = [None, him[1], None, stranger, him[4], None]
     tr = track_scene(faces)
     assert all(f is not None for f in tr)
-    assert tr[3][0] is him[4][0] or tr[3][0] is him[1][0]           # the stranger's oval is dropped, a neighbour's used
+    assert abs(tr[3][0][:, 0].mean() - 400) < 1e-3                     # the stranger's oval is dropped: his neighbours' used
+    big = face_at(400, 333, 130)                                       # one detection drawn larger than its neighbours
+    tr2 = track_scene([him[0], him[1], big, him[3], him[4]])
+    assert abs(tr2[2][2] - 100) < 3                                    # the oval is the median of the window, not the odd one (130)
     assert abs(tr[2][1] - (him[1][1] + (him[4][1] - him[1][1]) / 3)) < 1e-3   # the brow row between two detections is interpolated
     assert tr[0][1] == him[1][1] and tr[5][1] == him[4][1]             # ends hold the nearest detection
     assert track_scene([None, None]) == [None, None]                  # a scene with no face borrows nothing
