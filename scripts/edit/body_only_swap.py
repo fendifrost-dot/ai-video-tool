@@ -375,7 +375,12 @@ for i, o in enumerate(orig):
         # + anything that differs from the swap beyond video noise: the old cap's rim the segmenter missed, a faint
         # strand outside the new crown against the dark ceiling (eighth, 2 Nov 2026: 30-40 luminance, under the
         # 40 'changed' gate and labelled scene by both)
-        on_head |= box & ((oc != 0) | (sch != 0) | (np.abs(o.astype(np.int16) - swh.astype(np.int16)).max(2) > 20))
+        # ... only where one side is dark (the old cap's rim, or the new hat's edge): a bright-on-bright difference
+        # is the generator's re-rendered scene and must not be imported (ninth, 2 Nov 2026: this rule alone took
+        # ~1,500 px/frame on the close-up, ~210 of them bright on both sides = the swap's own window glow; the tenth
+        # takes 1 such px/frame, hat shape and ring flicker unchanged)
+        dark_either = (cv2.cvtColor(o, cv2.COLOR_RGB2GRAY) < 90) | (cv2.cvtColor(swh, cv2.COLOR_RGB2GRAY) < 90)
+        on_head |= box & ((oc != 0) | (sch != 0) | ((np.abs(o.astype(np.int16) - swh.astype(np.int16)).max(2) > 20) & dark_either))
         # and the swap's clothes within the head rows (the collar against his jaw) are read re-fitted too
         on_head |= np.isin(sch, (4, 5)) & hat_zone
     clothes = np.isin(oc, (4, 5)) | np.isin(sc, (4, 5)) | on_head
