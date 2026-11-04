@@ -83,6 +83,21 @@ It refuses any input whose sha256 differs. It prints the face proof (0) and comp
 
 None of these is assigned to a shot. The board and the Cut are unchanged.
 
+### Second approved result: c041 TENTH, black leather bucket hat (approved 4 Nov 2026)
+
+Fendi, 4 Nov 2026: "C041 can pass but there's still slight drift in the bucket hat but it's hardly noticeable we can
+keep it." The drift is the raw Genjutsu swap's own geometry wobble on the wide shot (frames 41/49/51/52 of the 24 fps
+master), not the put-back's; accepted as rendered. Script at `f92a169` (`AVT_HEAD_ZOOM=4`, head fit off).
+
+| Role | Asset | Storage | sha256 |
+|---|---|---|---|
+| Take (recipe-F b-roll, song 72.33 at frame 0) | `7b89d99f-fcb5-4bbb-b93b-c0ba68ec5e59` | project-clips | `1c55946d…d57d8f03e` |
+| Genjutsu object swap, conformed (intermediate) | `6f2e6dfb-f44e-44c3-bb80-4bb64352be6c` (job `ce147dcc`) | project-clips | `ab46e73f…fdb9b69a` |
+| **Approved final, c041 TENTH** (720×1280, 24, 97 frames, song muxed at 72.33; `approval_status` approved; **primary on shot c041**) | **`6f4edd50-90e1-4d1b-a1d8-297c14b14698`** | project-exports `…/canonical/body_only_swap_c041_2026-11-03/` | `b7f2d177…3f5422e7` (video stream md5 `36dcc2283718`, = silent render `670734ed340d`) |
+
+Evidence trail: `docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md`, rounds 8–11 (crown strand, front brim, hat
+motion, temple, right underside, scope of the cap-box rule; eighth `85e632f` and ninth `a5e948a` reproducible).
+
 ## Limitations (still true of the approved result)
 
 - **Cap edge:** a faint navy fringe in a few frames, where the original cap is larger than the swapped one.
