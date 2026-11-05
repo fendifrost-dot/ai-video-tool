@@ -44,7 +44,7 @@ Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **AP
 | c010 | verse 1 | 16.75–18.72 | 47 | `f6ac996b` c010_f6ac996b_source.mp4 | 0.898 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c011 | verse 1 | 18.72–20.69 | 47 | `aacbef7b` c011_aacbef7b_source.mp4 | 0.899 | CANDIDATE 17 Oct montage, nothing selected |
 | c012 | verse 1 | 20.69–22.65 | 47 | `2ddda13a` c012_2ddda13a_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
-| c013 | verse 1 | 22.65–25.11 | 59 | `75efaff6` c013_75efaff6_source.mp4 | 0.658 | PICK 23 Oct ('All of those pass'), still-mouth camera car |
+| c013 | verse 1 | 22.65–25.11 | 720 | `78ed5ca7` c013_78ed5ca7_source.mp4 | 0.000 | PICK 5 Nov (recipe-F calm, mouth at rest in the slot; replaces the 23 Oct render whose mouth moves) - not yet judged by Fendi |
 | c014 | verse 1 | 25.11–26.59 | 36 | `0f00ecd5` c014_0f00ecd5_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
 | c015 | verse 1 | 26.59–28.06 | 35 | `f1d0538b` c015_f1d0538b_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
 | c016 | verse 1 | 28.06–29.54 | 36 | `2f3061b9` c016_2f3061b9_source.mp4 | 1.147 | CANDIDATE 17 Oct montage (board holds the rider clip you approved 13 Oct) |
@@ -79,12 +79,52 @@ Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **AP
 | c045 | hook 1 | 78.72–80.69 | 47 | `f17bee00` c045_f17bee00_source.mp4 | 0.000 | FINAL 1 Nov |
 | c046 | hook 1 | 80.69–82.65 | 47 | `221961f4` c046_221961f4_source.mp4 | 0.000 | FINAL 4 Nov |
 | c047 | hook 1 | 82.65–86.10 | 82 | `41d5c1da` c047_41d5c1da_source.mp4 | 0.011 | CANDIDATE 16 Oct montage v2 (nothing selected) |
-
 Frame convention: 24 fps; a clip's frame 0 sits at its sync offset on the song; `source_in_s` is where the slot begins inside the source; slots are exact to the frame (2066 frames = 86.1 s in total).
 
 ## The board (VERIFIED by a read after the writes)
 
 `video_variations` `c067efb9` (the active board) now has exactly one primary clip per shot on c001–c047, and it is the clip in this package. Previous picks (the 15 Oct narrative-treatment clips, and the 13 Oct approvals on c016/c017/c018/c037/c039) stay on their shots as alternates. c034: the E2 restage was ruled not usable on this interval by Fendi on 18 Oct ("cover with a cutaway"), so the package and the board carry the E4 frost cutaway there.
+
+## Mouth rule, made explicit (5 Nov 2026, after Grokbot's first assembly)
+
+Fendi: any shot where a generated version of him moves his mouth is NOT usable as it stands. It is replaced by b-roll
+(a cutaway, or him with his mouth at rest), or it becomes a performance shot built from his real performance footage with
+the clothing swap. The hand-off above did not say this per shot. This section does.
+
+**Perfected performance shots — use as given, never replace:**
+
+| Shot | What it is |
+|---|---|
+| c041 | FINAL: his real face put back over the Genjutsu clothing swap (black leather bucket hat, leather car coat) |
+| c042 | FINAL: recipe-F b-roll with him, mouth at rest, band fixed (the mouth that moves in this slot is the woman beside him) |
+| c045 | FINAL: recipe-F b-roll with him, mouth at rest, band fixed |
+| c046 | FINAL: recipe-F b-roll with him, mouth at rest |
+| c044 | PICK ("F is the best"): recipe-F b-roll with him, mouth at rest; not yet final |
+| c033 | APPROVED 18 Oct: the E1 v3 restage, him rapping his own lines (a performance shot; the real-face canonical c033 BODY-ONLY `5482b35b` also exists) |
+| c009 | his REAL take in the lounge (frames 51–79 of the clip), no jewellery; the first second of the slot is the generated him with his mouth shut |
+| c013 | recipe-F calm b-roll `78ed5ca7`, mouth at rest in the slot (swapped in 5 Nov; the 23 Oct render it replaces moved its mouth) |
+
+**Shots with generated mouth movement — do NOT use the clip in the package as it stands:**
+
+| Shot | Clip in the package | Replacement | State |
+|---|---|---|---|
+| c007 | `85101246` | recipe-F still-mouth re-render from the black window | REFUSED by the provider (credits), resubmit after top-up |
+| c010 | `f6ac996b` | same | REFUSED (credits) |
+| c016 | `2f3061b9` | same | REFUSED (credits) |
+| c017 | `f7ebb204` | same | REFUSED (credits) |
+| c025 | `90ec4e33` | same | REFUSED (credits) |
+| c027 | `dc32d17c` | same (slight movement only) | REFUSED (credits) |
+| c028 | `b7ca925f` | same | REFUSED (credits) |
+| c036 | `b77ef700` | recipe-F still-mouth re-render from the beige-cap window | REFUSED (credits) |
+| c037 | `941148e8` | same | REFUSED (credits) |
+| c039 | `65465c7a` | same | REFUSED (credits) |
+
+Until the re-renders land: cover these ten slots with a cutaway that does not show him (the Director's call, Gemini
+where needed), or hold the slot. The replacements, once rendered, are filed on each shot as PRIMARY on variation
+`c067efb9` with the old clip left as an alternate, and this package is updated in place (same folder, new SHA256SUMS).
+Measurement behind the lists: `scripts/edit/mouth_scan.py` on every slot clip, lip gap / face width per sample at 12 fps
+(moving = mean > 0.08 with spread > 0.03, confirmed on a face sheet); c043's dressed take and c008's generated him keep
+their mouths shut and stay.
 
 ## Rules that do not bend
 
