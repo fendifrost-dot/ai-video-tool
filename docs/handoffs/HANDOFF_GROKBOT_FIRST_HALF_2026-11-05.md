@@ -174,7 +174,7 @@ their mouths shut and stay.
 
 ## Rules that do not bend
 
-1. **Never** apply generated lip-sync or any face-altering pass to Fendi. A shot with him keeps his real face; the finals c041/c042/c045/c046 were built with [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PRESERVING_CLOTHING_SWAP.md).
+1. **Never** apply generated lip-sync or any face-altering pass to Fendi. A shot with him keeps his real face; the finals c041/c042/c045/c046 were built with [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PRESERVING_CLOTHING_SWAP.md) (its "Run on a new take" is the run-book) and [`docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`](../recipes/BROLL_WITH_HIM_STILL_MOUTH.md) (recipe F: b-roll with him, mouth at rest). Which method applies to a shot with him: [`docs/recipes/README.md`](../recipes/README.md).
 2. A replacement clip goes back into AVT on its shot (`project_assets` + `shot_asset_assignments` on variation `c067efb9`) with a note saying what it replaced and why. No standalone Supabase: AVT is Lovable-managed; use the AVT MCP (`avt_insert`, `avt_update`) or the app.
 3. Paid renders are quoted before they run and appended to [`docs/LEDGER_YSL_TESTING_BUDGET.md`](../LEDGER_YSL_TESTING_BUDGET.md) in the same commit as the result.
 4. Report back with: the assembled first half (file + hash), the list of shots the Director replaced (old asset → new asset, why), and anything that needs Fendi's eye.

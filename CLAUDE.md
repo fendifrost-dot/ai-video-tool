@@ -134,6 +134,8 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 - The canonical method then composites only the garment and cap back over the original frames. The face from the brows down, beard, hands and mouth stay the take's own pixels (proof printed: 0 difference).
 - Approved by Fendi on c033 (final asset `5482b35b`).
 
+**Every method with him in a shot, and which applies when: [`docs/recipes/README.md`](docs/recipes/README.md).** AI b-roll with him in it (mouth at rest) is [`docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`](docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md); the swap page's "Run on a new take" is the run-book for a new shot.
+
 **Integration gap:** AVT's Dress and Region swap do **not** run this yet. It is the offline script `scripts/edit/body_only_swap.py`. Until it is in the app, a whole-frame Dress output is an intermediate, never the final picture.
 
 Never use generated lip-sync or a face-altering pass on Fendi.

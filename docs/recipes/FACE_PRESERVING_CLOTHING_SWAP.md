@@ -98,6 +98,78 @@ master), not the put-back's; accepted as rendered. Script at `f92a169` (`AVT_HEA
 Evidence trail: `docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md`, rounds 8–11 (crown strand, front brim, hat
 motion, temple, right underside, scope of the cap-box rule; eighth `85e632f` and ninth `a5e948a` reproducible).
 
+## Run on a new take (the run-book, added 5 Nov 2026)
+
+Everything above is the record of what was approved. This is the order of operations for the next shot. Two lanes:
+**A** when he fills the frame (a 720p montage render, or a take cut where he is large), **B** when he is a small figure
+in a wide 4K take (c044, 23 Oct: Genjutsu re-stages a small person ~2.5x larger, so the swap is made on an enlarged crop
+and put back). Both end in the same put-back and the same checks. $0 after the one paid Genjutsu call.
+
+Needs: ffmpeg; a Python with numpy, opencv-python, mediapipe (versions in the table above); the two model files in
+`$AVT_MODELS` (`selfie_multiclass_256x256.tflite`, `face_landmarker.task`, copies in AVT storage at
+`project-exports …/canonical/body_only_swap_c033_2026-10-18/models/`); the owner's sign-in for downloads
+(`avt_signed_url` or the browser session, never pasted anywhere). Run the scripts with `python -I`.
+
+### Lane A: he fills the frame
+
+1. **Pick the original.** A performance take window on the shot (real footage, synced on the song) or a recipe-F
+   render (`BROLL_WITH_HIM_STILL_MOUTH.md`). It is `original.mp4` from here on; its asset id is the lineage.
+2. **Dress it in the tool** (the one paid step, Genjutsu object swap through Control Center, ~$0.68 per source second,
+   billed in whole seconds): `avt_call` `dress-clip` with `{ "projectId", "assetId": "<original asset>", "pieceIds":
+   ["<character_features ids of the garment pieces>"], "dryRun": true }`, then `false`. Pieces: the jacket or coat, the
+   hat, the trousers; **leave the glasses piece out** (his own glasses sit inside the protected face and survive the
+   put-back). Give each piece its picture and its construction words in positive terms (`MONTAGE_MUSIC_VIDEO_WORKFLOW.md`
+   7b). The tick runner conforms the result to the original's length and files it on the shot unselected: that filed
+   asset is `swap.mp4`. The raw provider file is never used.
+3. **Download** `original.mp4` and `swap.mp4` with the owner's sign-in into an empty folder.
+4. **Put back:**
+   ```
+   AVT_MODELS=<models> AVT_HEAD_ZOOM=4 python -I scripts/edit/body_only_swap.py original.mp4 swap.mp4 <out>
+   ```
+   It interpolates the swap to the original's frame rate first (`swap_at_source_rate.mp4`), aligns, tracks his face per
+   scene, paints the garment and the new hat, and writes `<out>/c033_body_only_swap.mp4` (the output keeps that name
+   on every take; rename on filing). Head fit stays OFF. `AVT_HEAD_ZOOM=4` is the setting of both approved results.
+5. **Read the printout.** `max |out-original| on face/hair/skin: 0` is the proof; anything else is a failed run, never a
+   result. `first face detection at frame N` should be 0 or close; per scene, the number of frames his face was found on.
+6. **Measure before posting** (both $0): `scripts/edit/ring_flicker.py original.mp4 <out>/c033_body_only_swap.mp4 <a-b>`
+   on the frames he is in (seam flicker: compare the candidate's number with the original's own), and, when a hat
+   changed, `scripts/edit/hat_geometry.py <out>/c033_body_only_swap.mp4 <a-b>` (hat shape per frame; the approved TENTH
+   reads 0.03–0.14). A face sheet (`face_check.py`, or frame tiles) is read before the clip is posted.
+7. **Mux the song** at the shot's sync (`ffmpeg -i out.mp4 -ss <sync> -i song.wav -map 0:v -map 1:a -c:v copy -c:a aac
+   -shortest`) and post the clip with the sheet. Fendi judges.
+8. **File on his word** with `avt_upload_asset` to `project-exports …/canonical/body_only_swap_<shot>_<date>/`, then the
+   `project_assets` row (`edited_clip`, `source_tool` `manual`, `metadata_json.derived_from` = method, original asset,
+   swap asset, job, script commit, the proof) and the `shot_asset_assignments` primary, exactly as
+   `MCP_UPLOAD_AND_FILE.md` lays out. Add the result to the approved-results table on this page with its hashes.
+
+### Lane B: a small figure in a wide 4K take
+
+1. **Crop.** Cut an enlarged crop around him from the 4K source for the take window (c044: 486×864 at (240, 778) on the
+   2160×3840 frame), as an `.mp4` in the project's own folder in `project-clips`.
+2. **Dress the crop:** `dress-clip` with `"crop": { "path": "<that .mp4>", "rect": { "x", "y", "w", "h" }, "window":
+   [start, end] }` and the pieces as in lane A. The result is filed off the shot (a crop result never becomes the take).
+3. **Paste back:** `python -I scripts/edit/paste_region_swap.py original_1080.mp4 crop_swap.mp4 x y w h pasted.mp4`
+   (the box in 1080-scale pixels). `pasted.mp4` is lane A's `swap.mp4`.
+4. **Put back** as lane A step 4, on the 1080 original.
+5. **Lift to 4K:** `python -I scripts/edit/dressed_4k.py original_4k.mp4 original_1080.mp4 <out>/c033_body_only_swap.mp4
+   dressed_4k.mp4` (the garment region from the dressed 1080, every other pixel the 4K original; it prints the changed
+   area, 4.3 % on c044). Then lane A steps 5–8.
+
+### Putting the dressed real him into a generated scene
+
+When the shot is a montage with a generated him and Fendi wants his real take in its place (c044, 23 Oct: "just use my
+leg on wall performance shot in place of seedance generated performance shot"): matte the montage and the dressed take
+(Fal through CC, cents), then `scripts/edit/replace_him_in_clip.py clip.mp4 clip_alpha.mp4 take.mp4 take_alpha.mp4
+segments.json out.mp4` with the segments (frame ranges and anchors) where he appears. Every cutaway stays the montage's
+own. Record: ledger 164–175, result `21b9b341` on c044.
+
+### Do not
+
+- Do not take the whole-frame Dress output as the final: its face is a redraw.
+- Do not run the put-back on the raw provider file: the conformed, filed asset only.
+- Do not post a result whose proof is not 0, or whose ring flicker you have not read against the original.
+- Do not switch `AVT_HEAD_FIT` on, or change the script, to make a shot pass: a shot that fails is a finding.
+
 ## Limitations (still true of the approved result)
 
 - **Cap edge:** a faint navy fringe in a few frames, where the original cap is larger than the swapped one.

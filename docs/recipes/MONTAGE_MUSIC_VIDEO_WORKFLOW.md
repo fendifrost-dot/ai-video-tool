@@ -38,7 +38,11 @@ don't have to guess for the next song").
 6. **Dress** each performance shot in its scene's outfit (Storyboard → Dress, or `avt-press.mjs dress`): the
    Genjutsu swap of his real take, ~$2.72 for 4 s. Check one frame before shooting the montage.
 7. **Montage every shot** (`montage-shot` / `avt_montage`, or the storyboard's Montage button for performance shots):
-   - performance: his dressed take re-shot in the place, mouth in sync; never wider than the take; never a shot of
+   - performance: his dressed take re-shot in the place, mouth in sync — **superseded for shots with him (Fendi,
+     5 Nov 2026): a generated him never moves his mouth.** A shot with him is b-roll with his mouth at rest
+     ([`BROLL_WITH_HIM_STILL_MOUTH.md`](BROLL_WITH_HIM_STILL_MOUTH.md), recipe F) or his real take with the clothing
+     swap ([`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md)); the in-sync montage below is the
+     16–17 Oct record; never wider than the take; never a shot of
      his shoes or feet; never a full-body shot of him — waist up or closer (Fendi, 17 Oct: "Stop the full body
      shots") (~$2.22 for 4 s);
    - b-roll: the place and its people only, lines required, no close-up of anyone's shoes or feet (~$1.85 for 4 s).
