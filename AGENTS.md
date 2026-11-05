@@ -61,7 +61,7 @@ TanStack Start server entry is redirected to `src/server.ts` via `tanstackStart.
 
 ## Hard rules (wardrobe / asset pipeline)
 
-**Clothing swaps on Fendi's real footage: the canonical method is `docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md` (approved 18 Oct 2026).** Genjutsu dresses the frame; only the garment goes back over the original pixels, and his face, mouth and hands stay real. AVT's Dress and Region swap do not run it yet (an offline script): treat a whole-frame Dress output as an intermediate. **AI b-roll with him in it, mouth at rest: `docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`.** Which method applies when: `docs/recipes/README.md`.
+**Clothing swaps on Fendi's real footage: the canonical method is `docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md` (approved 18 Oct 2026).** Genjutsu dresses the frame; only the garment goes back over the original pixels, and his face, mouth and hands stay real. AVT's Dress and Region swap do not run it yet (an offline script): treat a whole-frame Dress output as an intermediate. **AI b-roll with him in it, mouth at rest: `docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`.** Which method applies when: `docs/recipes/README.md`. What is acceptable in a shot with him, locked: `docs/SHOT_RULES.md` (check before posting).
 
 Read `AVT_MEMORY_HANDOFF.md` for full context. Summary:
 
