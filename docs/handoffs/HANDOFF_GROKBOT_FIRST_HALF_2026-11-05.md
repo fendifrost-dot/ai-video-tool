@@ -61,20 +61,20 @@ Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **AP
 | c027 | verse 2 | 46.75–48.23 | 35 | `dc32d17c` c027_dc32d17c_source.mp4 | 1.135 | CANDIDATE 17 Oct montage (board holds a 15 Oct pick) |
 | c028 | verse 2 | 48.23–50.19 | 47 | `b7ca925f` c028_b7ca925f_source.mp4 | 0.896 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c029 | verse 2 | 50.19–52.16 | 47 | `a2f302bd` c029_a2f302bd_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
-| c030 | verse 2 | 52.16–54.13 | 47 | `607043dc` c030_607043dc_source.mp4 | 0.906 | CANDIDATE 17 Oct montage, nothing selected |
+| c030 | verse 2 | 52.16–54.13 | 1080 | `ca8bca0b` c030_ca8bca0b_source.mp4 | 1.000 | APPROVED by Fendi 4 Nov ('I like it'): Director cutaway, no him (replaces the generated profile whose mouth opened) |
 | c031 | verse 2 | 54.13–56.10 | 47 | `9da46aa6` c031_9da46aa6_source.mp4 | 0.000 | CANDIDATE 17 Oct b-roll, nothing selected |
 | c032 | verse 2 | 56.10–58.06 | 47 | `746b08a0` c032_746b08a0_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
 | c033 | verse 2 | 58.06–59.54 | 720 | `ce365795` c033_ce365795_source.mp4 | 4.218 | APPROVED 18 Oct restage E1 v3, picture 1 frame earlier as he accepted (slip -1f) |
 | c034 | verse 2 | 59.54–61.01 | 720 | `5aa6f01c` c034_5aa6f01c_source.mp4 | 0.000 | CANDIDATE 17 Oct E4 cutaway (frost on the showroom glass, no him); E2 restage ruled not usable here by Fendi 18 Oct |
 | c035 | hook 1 | 61.01–62.49 | 36 | `a64bfbb6` c035_a64bfbb6_source.mp4 | 0.000 | CANDIDATE 17 Oct E3 whip pan to the platform (board holds the 15 Oct carry) |
-| c036 | hook 1 | 62.49–63.96 | 35 | `b77ef700` c036_b77ef700_source.mp4 | 1.142 | CANDIDATE 17 Oct montage (board holds a 15 Oct pick) |
-| c037 | hook 1 | 63.96–65.93 | 47 | `941148e8` c037_941148e8_source.mp4 | 0.894 | CANDIDATE 17 Oct montage (board holds the Red Line clip you approved 13 Oct) |
+| c036 | hook 1 | 62.49–63.96 | 1080 | `7a115d9c` c036_7a115d9c_source.mp4 | 1.600 | Director cutaway 4 Nov, no him (penguins, lights dip); replaces b77ef700 (generated mouth); awaits Fendi |
+| c037 | hook 1 | 63.96–65.93 | 1080 | `4247fe23` c037_4247fe23_source.mp4 | 1.000 | Director cutaway 4 Nov, no him (frosted train); replaces 941148e8 (generated mouth close-up); awaits Fendi |
 | c038 | hook 1 | 65.93–67.90 | 47 | `c8e50b98` c038_c8e50b98_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
 | c039 | hook 1 | 67.90–70.85 | 70 | `65465c7a` c039_65465c7a_source.mp4 | 0.880 | CANDIDATE 17 Oct montage (board holds the Red Line clip you approved 13 Oct) |
 | c040 | hook 1 | 70.85–72.33 | 36 | `a172ae9b` c040_a172ae9b_source.mp4 | 0.000 | CANDIDATE 17 Oct b-roll (board holds a 15 Oct pick) |
 | c041 | hook 1 | 72.33–73.80 | 35 | `6f4edd50` c041_6f4edd50_source.mp4 | 0.000 | FINAL 4 Nov |
 | c042 | hook 1 | 73.80–75.28 | 36 | `a2d40377` c042_a2d40377_source.mp4 | 0.000 | FINAL 1 Nov |
-| c043 | hook 1 | 75.28–76.75 | 35 | `5f962dd8` c043_5f962dd8_source.mp4 | 1.153 | GAP: only the dressed take, its montage never ran (credits) |
+| c043 | hook 1 | 75.28–76.75 | 1080 | `d3b16d0a` c043_d3b16d0a_source.mp4 | 1.000 | Director cutaway 4 Nov, no him (chain in polar-bear fur, silver v2); fills the c043 gap; awaits Fendi |
 | c044 | hook 1 | 76.75–78.72 | 47 | `8d34b4d0` c044_8d34b4d0_source.mp4 | 0.000 | PICK 27 Oct ('F is the best'), not yet final |
 | c045 | hook 1 | 78.72–80.69 | 47 | `f17bee00` c045_f17bee00_source.mp4 | 0.000 | FINAL 1 Nov |
 | c046 | hook 1 | 80.69–82.65 | 47 | `221961f4` c046_221961f4_source.mp4 | 0.000 | FINAL 4 Nov |
@@ -106,22 +106,26 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 
 **Shots with generated mouth movement — do NOT use the clip in the package as it stands:**
 
-| Shot | Clip in the package | Replacement | State |
+| Shot | Clip that moved its mouth | Replacement | State |
 |---|---|---|---|
-| c007 | `85101246` | recipe-F still-mouth re-render from the black window | REFUSED by the provider (credits), resubmit after top-up |
-| c010 | `f6ac996b` | same | REFUSED (credits) |
-| c016 | `2f3061b9` | same | REFUSED (credits) |
-| c017 | `f7ebb204` | same | REFUSED (credits) |
-| c025 | `90ec4e33` | same | REFUSED (credits) |
-| c027 | `dc32d17c` | same (slight movement only) | REFUSED (credits) |
-| c028 | `b7ca925f` | same | REFUSED (credits) |
-| c036 | `b77ef700` | recipe-F still-mouth re-render from the beige-cap window | REFUSED (credits) |
-| c037 | `941148e8` | same | REFUSED (credits) |
-| c039 | `65465c7a` | same | REFUSED (credits) |
+| c030 | `607043dc` (profile, mouth opens) | Director cutaway `ca8bca0b`, no him | DONE, approved by Fendi 4 Nov; primary on the board and in the package |
+| c036 | `b77ef700` | Director cutaway `7a115d9c`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
+| c037 | `941148e8` | Director cutaway `4247fe23`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
+| c043 | `5f962dd8` (the rejected dressed take; the gap) | Director cutaway `d3b16d0a`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
+| c013 | `75efaff6` | recipe-F calm render `78ed5ca7`, mouth at rest | DONE $0 (5 Nov); primary; awaits Fendi |
+| c007 | `85101246` | still-mouth re-render (recipe F, black window) or a Director cutaway | OPEN: re-render REFUSED by the provider (credits), resubmit after top-up |
+| c010 | `f6ac996b` | same | OPEN (credits) |
+| c016 | `2f3061b9` | same | OPEN (credits) |
+| c017 | `f7ebb204` | same | OPEN (credits) |
+| c025 | `90ec4e33` | same | OPEN (credits) |
+| c027 | `dc32d17c` (slight) | same | OPEN (credits) |
+| c028 | `b7ca925f` | same | OPEN (credits) |
+| c039 | `65465c7a` | still-mouth re-render (recipe F, beige-cap window) or a Director cutaway | OPEN (credits) |
 
-Until the re-renders land: cover these ten slots with a cutaway that does not show him (the Director's call, Gemini
-where needed), or hold the slot. The replacements, once rendered, are filed on each shot as PRIMARY on variation
-`c067efb9` with the old clip left as an alternate, and this package is updated in place (same folder, new SHA256SUMS).
+The package in the folder above carries the Director's four cutaways in `sources/` and `slots/` (and the Director's own
+files stay in `replacements/`). The eight OPEN slots still hold the moving-mouth clip in the package: cover them with a
+cutaway without him until a replacement lands.
+
 Measurement behind the lists: `scripts/edit/mouth_scan.py` on every slot clip, lip gap / face width per sample at 12 fps
 (moving = mean > 0.08 with spread > 0.03, confirmed on a face sheet); c043's dressed take and c008's generated him keep
 their mouths shut and stay.
