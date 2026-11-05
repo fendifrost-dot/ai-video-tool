@@ -10,6 +10,10 @@
 // Money: no budgets or caps here, by the owner's decision (8 Oct 2026) — spend is controlled on the provider
 // accounts themselves. Every call is still the owner's own session, audited by batch_credential_mints.
 //
+// avt_upload_asset puts bytes into Storage as that same owner (signed upload URL, or base64 up to 50 MB).
+// It never calls a paid provider. One row per call is written by record_mcp_upload into mcp_upload_events.
+// No service role: storage RLS already lets the owner insert under their own user-id prefix.
+//
 // The credential may arrive as x-batch-secret, an Authorization bearer, the last path segment
 // (/functions/v1/avt-mcp/<secret>) for clients that only take a URL, or ?key=.
 //
@@ -27,16 +31,22 @@ import {
   TABLE_NOTES,
   TOOLS,
   TOOL_NAMES,
+  FINALIZE_MAX_BYTES,
   credentialFrom,
   functionPolicy,
   initializeResult,
   isRpcRequest,
   namesRowsById,
   parseFilters,
+  parseUploadRequest,
   rpcError,
   rpcResult,
+  sha256HexBytes,
+  signedUploadResult,
+  storedObjectResult,
   tableAccess,
   toolText,
+  uploadAuditArgs,
   validColumn,
   validSelect,
   type Filter,
@@ -185,6 +195,69 @@ function dbResult({ data, error }: { data: unknown; error: { message: string } |
   return data;
 }
 
+async function bytesOfDownload(data: unknown): Promise<Uint8Array> {
+  if (data instanceof Uint8Array) return data;
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  if (data && typeof (data as Blob).arrayBuffer === "function") return new Uint8Array(await (data as Blob).arrayBuffer());
+  throw new ToolError("stored object could not be read");
+}
+
+async function writeUploadAudit(
+  ctx: Ctx,
+  input: { mode: "signed_url" | "base64" | "finalize"; bucket: string; path: string; bytes: number | null; sha256: string | null },
+): Promise<{ audit_id: string | null; audit_error?: string }> {
+  const args = uploadAuditArgs({ credentialId: ctx.session.credentialId, ...input });
+  const { data, error } = await ctx.user.rpc("record_mcp_upload", args);
+  if (error) {
+    console.error("avt-mcp upload_audit_failed", error.message);
+    return { audit_id: null, audit_error: error.message };
+  }
+  if (typeof data !== "string" || data.length === 0) return { audit_id: null, audit_error: "audit row was not written" };
+  return { audit_id: data };
+}
+
+/**
+ * Storage writes run on the owner's client. The insert policy is auth.uid() = the first folder, which is the
+ * same prefix parseUploadRequest already enforced, so a service-role upload is not required.
+ */
+async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
+  const parsed = parseUploadRequest(ctx.session.userId, args);
+  if (!parsed.ok) throw new ToolError(parsed.error);
+  const req = parsed.request;
+
+  if (req.mode === "signed_url") {
+    const { data, error } = await ctx.user.storage.from(req.bucket).createSignedUploadUrl(req.path, { upsert: req.upsert });
+    if (error || !data) throw new ToolError(error?.message ?? "signed upload url was not created");
+    let shaped: ReturnType<typeof signedUploadResult>;
+    try {
+      shaped = signedUploadResult(req.bucket, req.path, data);
+    } catch (e) {
+      throw new ToolError(e instanceof Error ? e.message : String(e));
+    }
+    const audit = await writeUploadAudit(ctx, { mode: "signed_url", bucket: req.bucket, path: req.path, bytes: null, sha256: null });
+    return { ...shaped, ...audit };
+  }
+
+  if (req.mode === "base64") {
+    const sha256 = await sha256HexBytes(req.bytes);
+    const { error } = await ctx.user.storage.from(req.bucket).upload(req.path, req.bytes, { contentType: req.contentType, upsert: req.upsert });
+    if (error) throw new ToolError(error.message);
+    const audit = await writeUploadAudit(ctx, { mode: "base64", bucket: req.bucket, path: req.path, bytes: req.bytes.byteLength, sha256 });
+    return { ...storedObjectResult(req.bucket, req.path, req.bytes.byteLength, sha256), ...audit };
+  }
+
+  const { data, error } = await ctx.user.storage.from(req.bucket).download(req.path);
+  if (error || !data) throw new ToolError(error?.message ?? "object not found");
+  const bytes = await bytesOfDownload(data);
+  if (bytes.byteLength === 0) throw new ToolError("stored object is empty");
+  if (bytes.byteLength > FINALIZE_MAX_BYTES) {
+    throw new ToolError(`object is ${bytes.byteLength} bytes; finalize reads it back to hash it and stops at ${FINALIZE_MAX_BYTES}`);
+  }
+  const sha256 = await sha256HexBytes(bytes);
+  const audit = await writeUploadAudit(ctx, { mode: "finalize", bucket: req.bucket, path: req.path, bytes: bytes.byteLength, sha256 });
+  return { ...storedObjectResult(req.bucket, req.path, bytes.byteLength, sha256), ...audit };
+}
+
 async function callFunction(ctx: Ctx, args: Record<string, unknown>) {
   const name = arg<string>(args, "function");
   const body = (arg<Record<string, unknown>>(args, "body") ?? {}) as Record<string, unknown>;
@@ -310,6 +383,8 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
       if (error) throw new ToolError(error.message);
       return toolText(data);
     }
+    case "avt_upload_asset":
+      return toolText(await uploadAsset(ctx, args));
     case "avt_edit_list":
       return toolText(await editList(ctx.user, String(args.project_id ?? "")));
     case "avt_edit_get":

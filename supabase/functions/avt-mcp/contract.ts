@@ -3,7 +3,7 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.3.0";
+export const SERVER_VERSION = "1.4.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -12,6 +12,7 @@ export const INSTRUCTIONS = [
   "Generate and edit pictures and video by calling AVT's own edge functions with avt_call; avt_functions lists them with the request each one takes.",
   "Generation is billed to the owner's provider accounts at list price; prefer a dryRun first where a function offers one.",
   "Projects: video_projects; boards: shots (per video_variations); casting/continuity: continuity_entities; generated files: project_assets + provider_jobs.",
+  "Put bytes into Storage with avt_upload_asset (a signed upload URL, or base64 up to 50 MB). It does not call a paid provider. The same tool's description is the recipe for filing a project_assets row and swapping a shot's primary.",
 ].join("\n");
 
 // ---------------------------------------------------------------------------------------------------- credentials
@@ -80,7 +81,7 @@ export function toolText(value: unknown, isError = false) {
 /** Never reachable from the generic tools: credentials. */
 export const HIDDEN_TABLES = new Set(["batch_credentials", "batch_credential_mints"]);
 /** Readable, never writable from the generic tools: server-side configuration. */
-export const READ_ONLY_TABLES = new Set(["provider_capabilities", "job_runner_config", "generation_feasibility"]);
+export const READ_ONLY_TABLES = new Set(["provider_capabilities", "job_runner_config", "generation_feasibility", "mcp_upload_events"]);
 /** RPCs an AI may call. claim_provider_jobs belongs to the job runner, not to a client. */
 export const RPC_ALLOWED = new Set(["duplicate_variation", "lyric_lines_in_window"]);
 
@@ -91,8 +92,9 @@ export const TABLE_NOTES: Record<string, string> = {
   shot_overrides: "per-shot director overrides",
   continuity_entities: "cast (kind=character), continuity (location/prop/lighting) and outfits (kind=outfit: garment_feature_ids, version): description, approved_asset_id, reference_asset_ids",
   variation_scenes: "a video's scenes: a stretch of the song (start_seconds..end_seconds) wearing one outfit (outfit_key)",
-  project_assets: "every file in a project (stills, clips, references): bucket + file_url path",
-  shot_asset_assignments: "which asset is placed on which shot (and which still is selected)",
+  project_assets: "every file in a project (stills, clips, references): file_url is the storage path; metadata_json.bucket is the bucket",
+  shot_asset_assignments: "which asset is placed on which shot. is_primary true is the one the box shows; false keeps it as an alternate",
+  mcp_upload_events: "append-only ledger of avt_upload_asset calls (record_mcp_upload). Readable here, not writable",
   provider_jobs: "every generation job: status, request/response payloads, cost, result_asset_id",
   writer_runs: "treatment-writer runs and their evidence",
   lyric_lines: "the song's lyric lines on the song clock",
@@ -161,6 +163,166 @@ export function functionPolicy(name: string, known: readonly string[]): Function
   if (!known.includes(name)) return null;
   const why = blockedFunction(name);
   return why ? { name, access: "blocked", why } : { name, access: "callable" };
+}
+
+// ---------------------------------------------------------------------------------------------------- uploads
+
+/** Buckets an MCP upload may write. upload-asset also allows artist-assets and product-assets; this tool does not. */
+export const UPLOAD_BUCKETS = ["project-exports", "project-clips", "project-references", "project-audio"] as const;
+export type UploadBucket = (typeof UPLOAD_BUCKETS)[number];
+
+/** Decoded-byte cap for mode base64. Larger files use mode signed_url so the bytes never enter the MCP body. */
+export const BASE64_MAX_DECODED_BYTES = 50 * 1024 * 1024;
+
+/**
+ * Supabase Storage's signed upload token lifetime. createSignedUploadUrl does not take an expiry;
+ * the platform default is two hours.
+ */
+export const SIGNED_UPLOAD_EXPIRES_IN = 7200;
+
+/** finalize downloads the object to hash it. Above this, the caller hashes locally. */
+export const FINALIZE_MAX_BYTES = 200 * 1024 * 1024;
+
+const UPLOAD_MODES = ["signed_url", "base64", "finalize"] as const;
+export type UploadMode = (typeof UPLOAD_MODES)[number];
+
+export type ParsedUpload =
+  | { mode: "signed_url"; bucket: UploadBucket; path: string; upsert: boolean }
+  | { mode: "base64"; bucket: UploadBucket; path: string; upsert: boolean; bytes: Uint8Array; contentType: string }
+  | { mode: "finalize"; bucket: UploadBucket; path: string };
+
+export type UploadAuditArgs = {
+  p_credential_id: string;
+  p_bucket: string;
+  p_path: string;
+  p_bytes: number | null;
+  p_sha256: string | null;
+  p_mode: UploadMode;
+};
+
+/**
+ * How to file an uploaded object and make it the shot's primary, leaving the old primary as an alternate.
+ * Written from the live row of asset 6f4edd50-90e1-4d1b-a1d8-297c14b14698 (c041 FINAL, read 5 Nov 2026).
+ * There is no bucket column and no duration column: both live in metadata_json.
+ */
+export const FILE_ASSET_RECIPE = [
+  "File the object and swap the slot primary with avt_insert and avt_update. No new tool: row level security already lets the owner write these tables, and nothing in the database forces a single primary (the app demotes the old one itself). Do the demotion before the insert.",
+  "Reference row: project_assets 6f4edd50-90e1-4d1b-a1d8-297c14b14698. asset_type edited_clip, source_tool manual, approval_status approved, footage_role performance, version_number 1, file_url the owner-prefixed path with no bucket in it, metadata_json.bucket project-exports, metadata_json.duration_seconds 4.0417, metadata_json.sha256, metadata_json.file_size_bytes, metadata_json.derived_from (method, asset_id, source_window), parent_asset_id 7b89d99f-fcb5-4bbb-b93b-c0ba68ec5e59, notes the what-and-why. Its active-board assignment is shot_asset_assignments 6711bed6-f813-4cf4-8d25-f65b585a0947 on variation c067efb9-90af-418e-aa6d-58834f6e19de, shot 0bad80da-e7a4-4edc-a281-8e7cd4a69300: role performance, is_primary true, sort_order 8, source_in_seconds null, source_out_seconds null, slip_seconds 0.",
+  "1. avt_whoami. user_id is the path prefix and project_assets.user_id.",
+  "2. Find the box. avt_select table shots columns id,spec_key,shot_number,variation_id,project_id filters variation_id eq c067efb9-90af-418e-aa6d-58834f6e19de AND spec_key eq the shot key (c036, c037, c043). spec_key is the column; spec_json.id repeats it. Use that shots.id.",
+  "3. avt_insert table project_assets one row: user_id, project_id, shot_id, asset_type (edited_clip for a finished cut, or generated_clip), file_url (the upload path, no bucket prefix), source_tool manual, approval_status (pending until Fendi approves; 6f4edd50 is approved because he had), version_number 1, parent_asset_id (the asset it was made from, or null), footage_role (performance, b_roll, or reference — a silent cutaway is b_roll), metadata_json {bucket, sha256, file_size_bytes, duration_seconds, mime_type, original_filename, derived_from: {method, asset_id, replaced: {asset_id: the previous primary asset, why}}}, notes (what it replaced and why).",
+  "4. Read the current primary. avt_select table shot_asset_assignments columns id,asset_id,role,is_primary,sort_order filters shot_id eq that shots.id AND variation_id eq c067efb9-90af-418e-aa6d-58834f6e19de AND is_primary eq true.",
+  "5. For each of those ids, avt_update table shot_asset_assignments filters [{column:id, op:eq, value:that id}] values {is_primary: false}. The row stays. Do not avt_delete it. avt_update cannot filter on shot_id alone; it has to name id.",
+  "6. avt_insert table shot_asset_assignments one row: project_id, variation_id c067efb9-90af-418e-aa6d-58834f6e19de, shot_id, asset_id (the new project_assets.id), role (performance, b_roll, generated_image, generated_clip, or reference), is_primary true, sort_order (one more than the highest sort_order already on that shot), source_in_seconds null, source_out_seconds null, slip_seconds 0, notes (what it replaced and why). Omit user_id; it defaults to the owner. A null variation_id is filled from the shot by trigger shot_asset_assignments_fill_variation; set it anyway. unique (shot_id, asset_id, role): on conflict, avt_update that existing row to is_primary true instead of inserting another.",
+].join(" ");
+
+export function sha256HexBytes(bytes: Uint8Array): Promise<string> {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return crypto.subtle.digest("SHA-256", copy).then((digest) =>
+    Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join(""),
+  );
+}
+
+export function resolveUploadBucket(raw: unknown): { ok: true; bucket: UploadBucket } | { ok: false; error: string } {
+  if (typeof raw === "string" && (UPLOAD_BUCKETS as readonly string[]).includes(raw)) return { ok: true, bucket: raw as UploadBucket };
+  return { ok: false, error: `bucket must be one of ${UPLOAD_BUCKETS.join(", ")}` };
+}
+
+/** Owner prefix, no traversal. Rejects another user's first segment, absolute paths, and `..`. */
+export function resolveOwnerStoragePath(userId: string, raw: unknown): { ok: true; path: string } | { ok: false; error: string } {
+  if (typeof userId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    return { ok: false, error: "the session has no owner id" };
+  }
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > 1024) return { ok: false, error: "path is required" };
+  if (raw !== raw.trim() || /[\u0000-\u001f\\]/.test(raw) || raw.includes("%")) {
+    return { ok: false, error: "path must not contain whitespace, encoding, backslashes, or control characters" };
+  }
+  if (raw.startsWith("/")) return { ok: false, error: `path must start with ${userId}/` };
+  const parts = raw.split("/");
+  if (parts.some((p) => p === "" || p === "." || p === "..")) {
+    return { ok: false, error: "path must not contain '..', '.' or empty segments" };
+  }
+  if (parts[0] !== userId) return { ok: false, error: `path must start with ${userId}/` };
+  if (parts.length < 2) return { ok: false, error: `path must start with ${userId}/ and name a file` };
+  return { ok: true, path: parts.join("/") };
+}
+
+export function resolveUpsert(raw: unknown): boolean {
+  return raw === true;
+}
+
+const CONTENT_TYPE_RE = /^[\w.+-]+\/[\w.+-]+$/;
+
+export function resolveContentType(raw: unknown): { ok: true; contentType: string } | { ok: false; error: string } {
+  if (raw === undefined || raw === null || raw === "") return { ok: true, contentType: "application/octet-stream" };
+  if (typeof raw !== "string" || raw.length > 200 || !CONTENT_TYPE_RE.test(raw)) return { ok: false, error: "content_type must be a mime type such as video/mp4" };
+  return { ok: true, contentType: raw };
+}
+
+/** Decode base64 and refuse anything over the cap before the caller has to chunk. */
+export function decodeUploadBase64(data: unknown, maxBytes = BASE64_MAX_DECODED_BYTES): { ok: true; bytes: Uint8Array } | { ok: false; error: string } {
+  if (typeof data !== "string" || data.trim().length === 0) return { ok: false, error: "data_base64 is required for mode base64" };
+  const clean = data.replace(/\s/g, "");
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(clean) || clean.length % 4 !== 0) return { ok: false, error: "data_base64 is not valid base64" };
+  const pad = clean.endsWith("==") ? 2 : clean.endsWith("=") ? 1 : 0;
+  const decoded = (clean.length / 4) * 3 - pad;
+  if (decoded > maxBytes) {
+    return { ok: false, error: `decoded upload is ${decoded} bytes, over the ${maxBytes} byte cap; use mode "signed_url"` };
+  }
+  let bin: string;
+  try {
+    bin = atob(clean);
+  } catch {
+    return { ok: false, error: "data_base64 is not valid base64" };
+  }
+  if (bin.length === 0) return { ok: false, error: "data_base64 decoded to an empty file" };
+  if (bin.length > maxBytes) {
+    return { ok: false, error: `decoded upload is ${bin.length} bytes, over the ${maxBytes} byte cap; use mode "signed_url"` };
+  }
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { ok: true, bytes };
+}
+
+export function parseUploadRequest(userId: string, args: Record<string, unknown>): { ok: true; request: ParsedUpload } | { ok: false; error: string } {
+  const mode = args.mode;
+  if (typeof mode !== "string" || !(UPLOAD_MODES as readonly string[]).includes(mode)) {
+    return { ok: false, error: `mode must be one of ${UPLOAD_MODES.join(", ")}` };
+  }
+  const bucket = resolveUploadBucket(args.bucket);
+  if (!bucket.ok) return bucket;
+  const path = resolveOwnerStoragePath(userId, args.path);
+  if (!path.ok) return path;
+  if (mode === "finalize") return { ok: true, request: { mode: "finalize", bucket: bucket.bucket, path: path.path } };
+  const upsert = resolveUpsert(args.upsert);
+  if (mode === "signed_url") return { ok: true, request: { mode: "signed_url", bucket: bucket.bucket, path: path.path, upsert } };
+  const contentType = resolveContentType(args.content_type);
+  if (!contentType.ok) return contentType;
+  const bytes = decodeUploadBase64(args.data_base64);
+  if (!bytes.ok) return bytes;
+  return { ok: true, request: { mode: "base64", bucket: bucket.bucket, path: path.path, upsert, bytes: bytes.bytes, contentType: contentType.contentType } };
+}
+
+export function signedUploadResult(bucket: string, path: string, signed: { signedUrl?: unknown; token?: unknown }) {
+  if (typeof signed.signedUrl !== "string" || signed.signedUrl.length === 0) throw new Error("signed upload url missing");
+  if (typeof signed.token !== "string" || signed.token.length === 0) throw new Error("signed upload token missing");
+  return { bucket, path, signed_url: signed.signedUrl, token: signed.token, expires_in: SIGNED_UPLOAD_EXPIRES_IN };
+}
+
+export function storedObjectResult(bucket: string, path: string, sizeBytes: number, sha256: string) {
+  return { bucket, path, size_bytes: sizeBytes, sha256 };
+}
+
+export function uploadAuditArgs(input: { credentialId: string; bucket: string; path: string; bytes: number | null; sha256: string | null; mode: UploadMode }): UploadAuditArgs {
+  return {
+    p_credential_id: input.credentialId,
+    p_bucket: input.bucket,
+    p_path: input.path,
+    p_bytes: input.bytes,
+    p_sha256: input.sha256,
+    p_mode: input.mode,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------- tools
@@ -292,6 +454,24 @@ export const TOOLS = [
       type: "object",
       properties: { bucket: { type: "string" }, prefix: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 1000 } },
       required: ["bucket"],
+    },
+  },
+  {
+    name: "avt_upload_asset",
+    description:
+      "Put a file into Storage as the credential's owner. Cost is $0: this never calls a paid provider. mode signed_url returns {bucket, path, signed_url, token, expires_in} from createSignedUploadUrl on the owner's client (row level security, no service role). PUT the bytes to signed_url, then call mode finalize, which reads the object back and returns {bucket, path, size_bytes, sha256}. mode base64 takes data_base64, capped at 52428800 decoded bytes, and returns {bucket, path, size_bytes, sha256}; over the cap the error says to use signed_url. path must start with the owner's user id and a slash. Rejects another user's prefix, '..', and absolute paths. bucket is project-exports, project-clips, project-references, or project-audio. upsert defaults to false and is honored only when boolean true. Each call writes one mcp_upload_events row (tool avt_upload_asset, credential id, bucket, path, bytes, sha256) through record_mcp_upload. The result includes audit_id. If that function is not deployed yet, the upload still returns, audit_id is null, and audit_error says why. " +
+      FILE_ASSET_RECIPE,
+    inputSchema: {
+      type: "object",
+      properties: {
+        mode: { type: "string", enum: ["signed_url", "base64", "finalize"] },
+        bucket: { type: "string", enum: ["project-exports", "project-clips", "project-references", "project-audio"] },
+        path: { type: "string", description: "Must start with the owner's user id and a slash. No '..' and no leading slash." },
+        upsert: { type: "boolean", description: "default false. Only boolean true overwrites." },
+        content_type: { type: "string", description: "base64 mode. Default application/octet-stream." },
+        data_base64: { type: "string", description: "base64 mode only. Decoded size must be ≤ 52428800 bytes." },
+      },
+      required: ["mode", "bucket", "path"],
     },
   },
   {

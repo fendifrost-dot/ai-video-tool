@@ -6,14 +6,25 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
 import {
+  BASE64_MAX_DECODED_BYTES,
+  FILE_ASSET_RECIPE,
+  SIGNED_UPLOAD_EXPIRES_IN,
   TOOLS,
   credentialFrom,
+  decodeUploadBase64,
   functionPolicy,
   initializeResult,
   isRpcRequest,
   namesRowsById,
   parseFilters,
+  parseUploadRequest,
+  resolveOwnerStoragePath,
+  resolveUploadBucket,
+  sha256HexBytes,
+  signedUploadResult,
+  storedObjectResult,
   tableAccess,
+  uploadAuditArgs,
   validColumn,
   validSelect,
 } from "./contract.ts";
@@ -57,6 +68,7 @@ describe("tables", () => {
   it("hides credentials and keeps server configuration read-only", () => {
     expect(tableAccess("shots", KNOWN_TABLES)).toBe("write");
     expect(tableAccess("provider_capabilities", KNOWN_TABLES)).toBe("read");
+    expect(tableAccess("mcp_upload_events", KNOWN_TABLES)).toBe("read");
     expect(tableAccess("batch_credentials", KNOWN_TABLES)).toBeNull();
     expect(tableAccess("pg_user", KNOWN_TABLES)).toBeNull();
   });
@@ -97,7 +109,7 @@ describe("functions", () => {
   it("offers no budget, cap or ledger tool", () => {
     expect(TOOLS.map((t) => t.name).filter((n) => /budget|spend|cap/.test(n))).toEqual([]);
     expect(TOOLS.find((t) => t.name === "avt_call")!.inputSchema.properties).not.toHaveProperty("budget_id");
-    expect(TOOLS).toHaveLength(17);
+    expect(TOOLS).toHaveLength(18);
   });
   it("hands a browser an access token only, never a refresh token or a user of the caller's choosing", () => {
     const t = TOOLS.find((t) => t.name === "avt_browser_session")!;
@@ -119,6 +131,146 @@ describe("functions", () => {
     expect(src).toMatch(/args\.name === "avt_browser_session"\) return toolText\(await browserSession\(ctx\)\)/);
     expect(src).toMatch(/args\.browser_session === true\) return toolText\(\{ \.\.\.base, browser_session: await browserSession\(ctx\) \}\)/);
     expect(TOOLS.find((t) => t.name === "avt_functions")!.description).toMatch(/avt_browser_session/);
+  });
+});
+
+const OWNER = "3ca10935-8c3d-4479-9a0c-8bfe8050840c";
+const OTHER = "00000000-0000-0000-0000-0000000000b2";
+const HELLO_PATH = `${OWNER}/_mcp_upload_test/hello.bin`;
+
+describe("avt_upload_asset", () => {
+  it("describes a $0 upload and the filing recipe, with no budget argument", () => {
+    const t = TOOLS.find((t) => t.name === "avt_upload_asset")!;
+    expect(t.description).toMatch(/\$0/);
+    expect(t.description).toMatch(/never calls a paid provider/);
+    expect(t.description).toContain(FILE_ASSET_RECIPE);
+    for (const column of [
+      "project_assets",
+      "file_url",
+      "metadata_json",
+      "asset_type",
+      "source_tool",
+      "approval_status",
+      "footage_role",
+      "shot_asset_assignments",
+      "is_primary",
+      "variation_id",
+      "sort_order",
+      "source_in_seconds",
+      "c067efb9-90af-418e-aa6d-58834f6e19de",
+      "6f4edd50-90e1-4d1b-a1d8-297c14b14698",
+    ]) {
+      expect(t.description).toContain(column);
+    }
+    expect(t.description).toMatch(/is_primary: false/);
+    expect(t.description).toMatch(/Do not avt_delete/);
+    expect(t.inputSchema.properties).not.toHaveProperty("budget_id");
+    expect(t.inputSchema.required).toEqual(["mode", "bucket", "path"]);
+  });
+
+  it("keeps the path under the owner and rejects another user, '..' and absolute paths", () => {
+    expect(resolveOwnerStoragePath(OWNER, HELLO_PATH)).toEqual({ ok: true, path: HELLO_PATH });
+    expect(resolveOwnerStoragePath(OWNER, `${OTHER}/hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, `${OWNER}/../${OTHER}/hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, `${OWNER}/foo/../../${OTHER}/hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, `/${OWNER}/hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, "/tmp/hello.bin")).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, `${OWNER}/%2e%2e/hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, `${OWNER}\\hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, OWNER)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath("not-a-user", HELLO_PATH)).toMatchObject({ ok: false });
+  });
+
+  it("allows only the four project buckets", () => {
+    for (const bucket of ["project-exports", "project-clips", "project-references", "project-audio"]) {
+      expect(resolveUploadBucket(bucket)).toEqual({ ok: true, bucket });
+    }
+    for (const bucket of ["artist-assets", "product-assets", "project-exports ", "Project-Exports", ""]) {
+      expect(resolveUploadBucket(bucket).ok).toBe(false);
+    }
+  });
+
+  it("rejects base64 over the cap and says to use signed_url", () => {
+    expect(BASE64_MAX_DECODED_BYTES).toBe(50 * 1024 * 1024);
+    const over = decodeUploadBase64("aGVsbG8=", 4);
+    expect(over.ok).toBe(false);
+    if (!over.ok) expect(over.error).toMatch(/signed_url/);
+    const ok = decodeUploadBase64("aGVsbG8=");
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(Array.from(ok.bytes)).toEqual([104, 101, 108, 108, 111]);
+    expect(decodeUploadBase64("")).toMatchObject({ ok: false });
+    const parsed = parseUploadRequest(OWNER, { mode: "base64", bucket: "project-exports", path: HELLO_PATH, data_base64: "aGVsbG8=", upsert: "true" });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok && parsed.request.mode === "base64") expect(parsed.request.upsert).toBe(false);
+  });
+
+  it("hashes the bytes it would store", async () => {
+    const decoded = decodeUploadBase64("aGVsbG8=");
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) return;
+    expect(await sha256HexBytes(decoded.bytes)).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    expect(await sha256HexBytes(new Uint8Array())).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect(storedObjectResult("project-exports", HELLO_PATH, 5, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")).toEqual({
+      bucket: "project-exports",
+      path: HELLO_PATH,
+      size_bytes: 5,
+      sha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    });
+  });
+
+  it("returns the signed upload shape and an audit argument with credential, bucket, path, bytes and sha256", () => {
+    expect(signedUploadResult("project-exports", HELLO_PATH, { signedUrl: "https://storage.example/upload", token: "tok" })).toEqual({
+      bucket: "project-exports",
+      path: HELLO_PATH,
+      signed_url: "https://storage.example/upload",
+      token: "tok",
+      expires_in: SIGNED_UPLOAD_EXPIRES_IN,
+    });
+    expect(SIGNED_UPLOAD_EXPIRES_IN).toBe(7200);
+    expect(() => signedUploadResult("project-exports", HELLO_PATH, { signedUrl: "", token: "tok" })).toThrow(/signed upload url/);
+    const signed = parseUploadRequest(OWNER, { mode: "signed_url", bucket: "project-exports", path: HELLO_PATH });
+    expect(signed).toEqual({ ok: true, request: { mode: "signed_url", bucket: "project-exports", path: HELLO_PATH, upsert: false } });
+    expect(parseUploadRequest(OWNER, { mode: "signed_url", bucket: "project-audio", path: HELLO_PATH, upsert: true })).toMatchObject({
+      ok: true,
+      request: { upsert: true },
+    });
+    expect(parseUploadRequest(OWNER, { mode: "finalize", bucket: "project-clips", path: HELLO_PATH })).toEqual({
+      ok: true,
+      request: { mode: "finalize", bucket: "project-clips", path: HELLO_PATH },
+    });
+    expect(parseUploadRequest(OWNER, { mode: "signed_url", bucket: "artist-assets", path: HELLO_PATH }).ok).toBe(false);
+    expect(parseUploadRequest(OTHER, { mode: "finalize", bucket: "project-exports", path: HELLO_PATH }).ok).toBe(false);
+    expect(
+      uploadAuditArgs({
+        credentialId: "b1000000-0000-0000-0000-000000000001",
+        bucket: "project-exports",
+        path: HELLO_PATH,
+        bytes: 5,
+        sha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        mode: "base64",
+      }),
+    ).toEqual({
+      p_credential_id: "b1000000-0000-0000-0000-000000000001",
+      p_bucket: "project-exports",
+      p_path: HELLO_PATH,
+      p_bytes: 5,
+      p_sha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      p_mode: "base64",
+    });
+  });
+
+  it("uploads with the owner's storage client and records the ledger, never a service role (source-level)", () => {
+    const src = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    const start = src.indexOf("async function writeUploadAudit(");
+    expect(start).toBeGreaterThan(0);
+    const body = src.slice(start, src.indexOf("\nasync function callFunction(", start));
+    expect(body).toContain("async function uploadAsset(");
+    expect(body).toContain("createSignedUploadUrl");
+    expect(body).toContain("record_mcp_upload");
+    expect(body).toContain("sha256HexBytes");
+    expect(body).not.toMatch(/SERVICE_ROLE|service_role|createClient\(/);
+    expect(body).not.toMatch(/functions\/v1\//);
+    expect(src).toContain('case "avt_upload_asset"');
   });
 });
 

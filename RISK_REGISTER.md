@@ -489,3 +489,12 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Residual:** an hour of owner access in a transcript; a raw credential holder can still get the refresh token from the proxy directly (unchanged, pre-existing) without a `[browser]` row.
 - **DoD:** revoke ends access at once (admin `signOut` of the stored session is already done on revoke; the JWT's remaining minutes are the residual) — accepted; review again if a second AI vendor is given a credential.
 
+## MCP-UPLOAD-1 — Owner-scoped Storage upload from the MCP credential
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Open (mitigated in code; ledger SQL not yet applied on Lovable) · **Owner:** Platform (AVT) · **Opened:** 2026-11-05
+- **Class:** C (storage signed-upload + a security-definer ledger). Do not merge without architecture, product, and security sign-off.
+- **Summary:** `avt_upload_asset` lets a machine credential put bytes into Storage as the owner. `mode: signed_url` returns a signed upload URL (bearer for that one path for two hours) which then sits in the AI vendor's transcript. `mode: base64` accepts up to 50 MB in the MCP body. Neither mode calls a paid provider.
+- **Mitigations:** the path must start with the credential owner's user id (no `..`, no other prefix, no absolute path). Buckets are `project-exports`, `project-clips`, `project-references`, `project-audio` only. `upsert` defaults to false. The upload uses the owner's JWT and the existing storage insert policy; there is no service-role upload. `record_mcp_upload` appends `mcp_upload_events` and refuses a path or credential that is not `auth.uid()`'s. Direct inserts into that table are not granted. `finalize` stops at 200 MB.
+- **Residual:** a leaked signed URL can still PUT that one object until it expires, or until the object already exists and upsert is false. The owner's access token in the transcript (AUTH-1) can already upload; this tool does not widen the principal.
+- **DoD:** Lovable SQL editor has applied `20261105140000_mcp_upload_events.sql`, `avt-mcp` is redeployed, and `tools/list` on the live function shows `avt_upload_asset`. A hello.bin signed-url PUT plus finalize matches the local sha256, then the object is deleted.
+
