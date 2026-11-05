@@ -113,18 +113,60 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c037 | `941148e8` | Director cutaway `4247fe23`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
 | c043 | `5f962dd8` (the rejected dressed take; the gap) | Director cutaway `d3b16d0a`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
 | c013 | `75efaff6` | recipe-F calm render `78ed5ca7`, mouth at rest | DONE $0 (5 Nov); primary; awaits Fendi |
-| c007 | `85101246` | still-mouth re-render (recipe F, black window) or a Director cutaway | OPEN: re-render REFUSED by the provider (credits), resubmit after top-up |
-| c010 | `f6ac996b` | same | OPEN (credits) |
-| c016 | `2f3061b9` | same | OPEN (credits) |
-| c017 | `f7ebb204` | same | OPEN (credits) |
-| c025 | `90ec4e33` | same | OPEN (credits) |
-| c027 | `dc32d17c` (slight) | same | OPEN (credits) |
-| c028 | `b7ca925f` | same | OPEN (credits) |
-| c039 | `65465c7a` | still-mouth re-render (recipe F, beige-cap window) or a Director cutaway | OPEN (credits) |
+| c007 | `85101246` | Director's call: `punchin/c007_punchin.mp4` (coat and belt detail, soft: 3.9x), a cutaway, or a re-render | OPEN, with the Director (see the next section) |
+| c010 | `f6ac996b` | Director's call: `punchin/c010_punchin.mp4` (chain and leather-jacket detail, 3.0x), a cutaway, or a re-render | OPEN, with the Director |
+| c016 | `2f3061b9` | Director's call: `punchin/c016_punchin.mp4` (trench, 2.3x), a cutaway, or a re-render | OPEN, with the Director |
+| c017 | `f7ebb204` | Director's call: `punchin/c017_punchin.mp4` (trench, hands, shoes, 2.1x), a cutaway, or a re-render | OPEN, with the Director |
+| c025 | `90ec4e33` | Director's call: `punchin/c025_punchin.mp4` is NOT usable as is (cuts at the neck, reads headless); a lower reframe on the jacket, a cutaway, or a re-render | OPEN, with the Director |
+| c027 | `dc32d17c` (slight) | Director's call: `punchin/c027_punchin.mp4` (coat, 2.2x), a cutaway, or a re-render | OPEN, with the Director |
+| c028 | `b7ca925f` | Director's call: `punchin/c028_punchin.mp4` (mostly the fox cutaway already; his part becomes a coat detail, 3.0x), a cutaway, or a re-render | OPEN, with the Director |
+| c039 | `65465c7a` | Director's call: `punchin/c039_punchin.mp4` (body, hand, shoes, penguin, 2.1x), a cutaway, or a re-render (recipe F, beige-cap window) | OPEN, with the Director |
 
 The package in the folder above carries the Director's four cutaways in `sources/` and `slots/` (and the Director's own
 files stay in `replacements/`). The eight OPEN slots still hold the moving-mouth clip in the package: cover them with a
 cutaway without him until a replacement lands.
+
+### The eight open shots: the Director decides (Fendi, 5 Nov 2026, later)
+
+Fendi refilled the provider wallet but does not want to spend on re-renders before free editing tricks have been tried, and
+he wants the Director to decide how each of the eight moves forward: "let's hand off all of this with the option to keep
+some zoomed in if it fits but ultimately let my director handle how we move forward." Grokbot has tools outside AVT; use
+them. What Claude tried, free, and what it found:
+
+| Trick | Result | Evidence |
+|---|---|---|
+| Trim the slot to a stretch where the mouth is shut | RULED OUT: the longest closed-mouth run in any of the eight is 0.25 s (c017); slots are 1.48–2.95 s | `mouth/<shot>.csv` in the package folder (lip gap / face width at 12 fps; shut = gap < 0.08) |
+| Punch in below the chin (crop + scale only, no generation) | WORKS on the mouth: a face is found in 0 samples of every punch-in (c007 0/18, c010 0/24, c016 0/18, c017 0/24, c025 0/18, c027 0/18, c028 0/24, c039 0/35). It is a zoom, nothing more: the scene, light, wardrobe and motion are the clip's own pixels, reframed on the clothing | `punchin/<shot>_punchin.mp4` (1080x1920, cut to the slot, silent), `punchin/punchin_sheet.jpg` (original mid-slot frame + five frames of the punch-in per shot), `punchin/make_punchin.py` (the crop rule: lowest chin seen by the scan + one face width of margin, 9:16 window, lanczos) |
+
+The crop line and cost of each punch-in (effective upscale from the 720p montage, so the higher the softer):
+
+| Shot | Crop of the 720x1280 slot clip | Upscale | Reads as |
+|---|---|---|---|
+| c007 | 278x496 at (176,784) | 3.9x | coat and belt detail, soft |
+| c010 | 358x638 at (228,642) | 3.0x | chain and leather jacket, good garment insert |
+| c016 | 468x832 at (100,448) | 2.3x | trench by the lockers, scene still readable |
+| c017 | 528x940 at (4,340) | 2.1x | trench, hands, shoes, mannequins behind |
+| c025 | 620x1102 at (36,178) | 1.7x | NOT usable as is: neck visible at the top, reads headless |
+| c027 | 490x872 at (130,408) | 2.2x | leather coat, luggage cart |
+| c028 | 366x654 at (96,626) | 3.0x | fox cutaway, then a coat detail |
+| c039 | 520x926 at (160,354) | 2.1x | body, hand, jeans and shoes, the penguin on the platform |
+
+Options the Director has, none of which Claude has tried (Grokbot's own tools decide):
+
+- Keep a punch-in where it fits, and have Claudia turn the static crop into a slow push-in or a reframe that moves, so it
+  reads as a camera move. An upscaler on the softer ones (c007, c010, c028) would help.
+- Reframe differently: a crop that keeps more scene but still clears the chin (the rule in `make_punchin.py` is a floor,
+  not the only framing), or a crop that follows him.
+- Hide the mouth rather than cut it off: a foreground element, a whip-pan or motion blur across the frames where the
+  mouth moves, a freeze on a shut-mouth frame with a push (c017 has a 0.25 s run at t=1.08 s; the others less).
+- Replace with a cutaway without him (the Director's lane on c030/c036/c037/c043).
+- Re-render: the Director's Gemini route, or AVT's recipe F still-mouth render on request from Claude (list $2.219 per
+  4 s shot; the wallet is refilled; every paid render is quoted first and goes in the ledger). No silent window exists in
+  the leather-coat/bucket-hat or beanie looks, so a recipe-F re-render wears the black window's outfit.
+
+Whatever the Director picks, the slot's replacement goes back on the board on its shot (rule 2 below) and is named in the
+report back, old asset → new, with the trick used. `punchin/SHA256SUMS_punchin.txt` holds the punch-ins' hashes
+(`sha256sum -c` in that folder prints 9 OK lines).
 
 Measurement behind the lists: `scripts/edit/mouth_scan.py` on every slot clip, lip gap / face width per sample at 12 fps
 (moving = mean > 0.08 with spread > 0.03, confirmed on a face sheet); c043's dressed take and c008's generated him keep
