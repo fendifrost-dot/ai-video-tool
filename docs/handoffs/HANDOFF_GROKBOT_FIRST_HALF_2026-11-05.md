@@ -40,7 +40,7 @@ Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **AP
 | c006 | intro | 10.85–12.32 | 35 | `ba9e6af9` c006_ba9e6af9_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
 | c007 | intro | 12.32–13.80 | 35 | `85101246` c007_85101246_source.mp4 | 1.139 | CANDIDATE 17 Oct montage, dressed intro (board holds the 15 Oct carry) |
 | c008 | verse 1 | 13.80–15.28 | 36 | `44e1adc7` c008_44e1adc7_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
-| c009 | verse 1 | 15.28–16.75 | 35 | `be49e5b0` c009_be49e5b0_source.mp4 | 1.146 | CANDIDATE 23 Oct, his REAL take in the lounge (no jewellery) |
+| c009 | verse 1 | 15.28–16.75 | 35 | `be49e5b0` c009_be49e5b0_source.mp4 | 1.146 | REJECTED by Fendi 5 Nov (him pasted into the lounge, square to camera, unnatural). Do not use the package file. NEXT: Claude re-runs c009 through the composite lane (his real take dressed, face put back, matted, composited over the lounge plate), on Fendi's go; the Director leaves c009 alone until that lands. |
 | c010 | verse 1 | 16.75–18.72 | 47 | `f6ac996b` c010_f6ac996b_source.mp4 | 0.898 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c011 | verse 1 | 18.72–20.69 | 47 | `aacbef7b` c011_aacbef7b_source.mp4 | 0.899 | CANDIDATE 17 Oct montage, nothing selected |
 | c012 | verse 1 | 20.69–22.65 | 47 | `2ddda13a` c012_2ddda13a_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
@@ -101,7 +101,6 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c046 | FINAL: recipe-F b-roll with him, mouth at rest |
 | c044 | PICK ("F is the best"): recipe-F b-roll with him, mouth at rest; not yet final |
 | c033 | APPROVED 18 Oct: the E1 v3 restage, him rapping his own lines (a performance shot; the real-face canonical c033 BODY-ONLY `5482b35b` also exists) |
-| c009 | his REAL take in the lounge (frames 51–79 of the clip), no jewellery; the first second of the slot is the generated him with his mouth shut |
 | c013 | recipe-F calm b-roll `78ed5ca7`, mouth at rest in the slot (swapped in 5 Nov; the 23 Oct render it replaces moved its mouth) |
 
 **Shots with generated mouth movement — do NOT use the clip in the package as it stands:**
@@ -113,6 +112,7 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c037 | `941148e8` | Director cutaway `4247fe23`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
 | c043 | `5f962dd8` (the rejected dressed take; the gap) | Director cutaway `d3b16d0a`, no him | DONE (Director, 4 Nov); primary on the board and in the package; awaits Fendi |
 | c013 | `75efaff6` | recipe-F calm render `78ed5ca7`, mouth at rest | DONE $0 (5 Nov); primary; awaits Fendi |
+| c009 | `be49e5b0` (his real take pasted into the lounge: REJECTED by Fendi 5 Nov, "bad masking with an outline around me like I'm pasted in the scene"; the 17 Oct lounge montage `21b9e18a` is an AI him with his mouth in sync, also unusable; the closet take is not a scene) | the composite lane (`docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` step 6): his real take window dressed in the tool, face put back, matted, composited over the lounge plate; Fendi's four specs: positioned naturally, angled correctly, clothing swapped, mouth on the lyrics | WITH CLAUDE, awaiting Fendi's go and outfit; no primary on the board; the Director does not touch c009 |
 | c007 | `85101246` | Director's call: `punchin/c007_punchin.mp4` (coat and belt detail, soft: 3.9x), a cutaway, or a re-render | OPEN, with the Director (see the next section) |
 | c010 | `f6ac996b` | Director's call: `punchin/c010_punchin.mp4` (chain and leather-jacket detail, 3.0x), a cutaway, or a re-render | OPEN, with the Director |
 | c016 | `2f3061b9` | Director's call: `punchin/c016_punchin.mp4` (trench, 2.3x), a cutaway, or a re-render | OPEN, with the Director |
@@ -127,6 +127,11 @@ files stay in `replacements/`). The eight OPEN slots still hold the moving-mouth
 cutaway without him until a replacement lands.
 
 ### The eight open shots: the Director decides (Fendi, 5 Nov 2026, later)
+
+**c009 (5 Nov, later) is NOT on this list:** Fendi rejected the package's c009 on first sight and the closet take is not a scene, but
+he wants c009 as a performance shot inside the generated lounge: the composite lane, which was never run on c009 (the rejected
+clip came from a different, offline script). Claude runs it on his go. The Director leaves c009 alone; the package file is not
+to be used.
 
 Fendi refilled the provider wallet but does not want to spend on re-renders before free editing tricks have been tried, and
 he wants the Director to decide how each of the eight moves forward: "let's hand off all of this with the option to keep
