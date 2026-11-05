@@ -1,0 +1,106 @@
+# HANDOFF — Grokbot: assemble the YSL first half (c001–c047, 0:00–1:26)
+
+**Date:** 5 Nov 2026 · **From:** Claude (this repo's AVT session) · **For:** the three Grokbot agents · **Spend this round:** $0
+
+## What Fendi decided (5 Nov 2026, verbatim intent)
+
+- "I think we generated enough clips to put together the video … Grokbot will assemble the first half because Grokbot has the ability to do transitions in a smoother way … and After Effects." No assembly from Claude: the hand-off is the clips, their timing and the rules.
+- "Keep in mind every shot does not need a performance shot." A cutaway without him is a valid fill. "If I see somewhere where I wanna perform shot after Grokbot assembles the video I'll go to that specific shot."
+- Three agents work simultaneously:
+  - **Director** reviews every clip against the theme; a clip that does not line up, or that raises a question, is re-rendered with **Gemini** ("by far the best tool"; Grok's images are "not 100 % the realism").
+  - **Claudia** implements transitions, After Effects, motion detail and "any other tricks that will bring the video to life".
+  - **AI video tool agent** oversees the whole production to the finish.
+
+## The package (VERIFIED in AVT storage by a listing after upload)
+
+Folder `project-exports/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/canonical/grokbot_first_half_2026-11-05/` (bucket `project-exports`, read with the owner's session or `avt_signed_url`):
+
+| File | What |
+|---|---|
+| `README.txt` | roles, rules, ids (the same as this document, short form) |
+| `first_half_manifest.csv` | one row per shot: slot on the song, AVT asset id, its original storage path, `source_in_s`, sync offset, status, hashes, camera motion |
+| `sources/` (47) | the full source clips, native size, 24 fps — **use these for transitions**, the frames outside the slot are the handles |
+| `slots/` (47) | the same clips cut to the exact slot (no handles) for quick review |
+| `YSL_first_half_c001-c047.xml` | FCP7 XML: the 47 sources on one video track at their slots, straight cuts, 1080x1920 24 fps, the song on the audio track (song = AVT asset `067a4cbf`, the album master, not in the folder) |
+| `SHA256SUMS.txt` | `sha256sum -c SHA256SUMS.txt` → 94 OK |
+
+Expected counts: 4 files at the root + 47 in `sources/` + 47 in `slots/` = 98 objects. Anything else means a partial upload.
+
+## The 47 slots
+
+Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **APPROVED** = he approved it (c033, 18 Oct, with his one-frame-earlier timing applied). **CANDIDATE** = never judged by him; the Director may replace it. **GAP** = c043 holds only its dressed take; a cutaway is fine.
+
+| Shot | Section | Song in–out (s) | Frames | Clip (AVT asset) | Source in (s) | Status |
+|---|---|---|---|---|---|---|
+| c001 | intro | 0.00–1.50 | 36 | `251c89e1` c001_251c89e1_source.mp4 | 0.000 | ON BOARD 17 Oct, unjudged |
+| c002 | intro | 1.50–2.98 | 36 | `0dae4f6c` c002_0dae4f6c_source.mp4 | 0.000 | ON BOARD 17 Oct (Oak Street chase), unjudged |
+| c003 | intro | 2.98–4.95 | 47 | `56c4e578` c003_56c4e578_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
+| c004 | intro | 4.95–7.90 | 71 | `0db8f045` c004_0db8f045_source.mp4 | 0.000 | CANDIDATE 17 Oct (board still holds the 15 Oct carry) |
+| c005 | intro | 7.90–10.85 | 71 | `5266eab6` c005_5266eab6_source.mp4 | 0.000 | CANDIDATE 17 Oct (board still holds the 15 Oct carry) |
+| c006 | intro | 10.85–12.32 | 35 | `ba9e6af9` c006_ba9e6af9_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
+| c007 | intro | 12.32–13.80 | 35 | `85101246` c007_85101246_source.mp4 | 1.139 | CANDIDATE 17 Oct montage, dressed intro (board holds the 15 Oct carry) |
+| c008 | verse 1 | 13.80–15.28 | 36 | `44e1adc7` c008_44e1adc7_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c009 | verse 1 | 15.28–16.75 | 35 | `be49e5b0` c009_be49e5b0_source.mp4 | 1.146 | CANDIDATE 23 Oct, his REAL take in the lounge (no jewellery) |
+| c010 | verse 1 | 16.75–18.72 | 47 | `f6ac996b` c010_f6ac996b_source.mp4 | 0.898 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
+| c011 | verse 1 | 18.72–20.69 | 47 | `aacbef7b` c011_aacbef7b_source.mp4 | 0.899 | CANDIDATE 17 Oct montage, nothing selected |
+| c012 | verse 1 | 20.69–22.65 | 47 | `2ddda13a` c012_2ddda13a_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c013 | verse 1 | 22.65–25.11 | 59 | `75efaff6` c013_75efaff6_source.mp4 | 0.658 | PICK 23 Oct ('All of those pass'), still-mouth camera car |
+| c014 | verse 1 | 25.11–26.59 | 36 | `0f00ecd5` c014_0f00ecd5_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c015 | verse 1 | 26.59–28.06 | 35 | `f1d0538b` c015_f1d0538b_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
+| c016 | verse 1 | 28.06–29.54 | 36 | `2f3061b9` c016_2f3061b9_source.mp4 | 1.147 | CANDIDATE 17 Oct montage (board holds the rider clip you approved 13 Oct) |
+| c017 | verse 1 | 29.54–31.51 | 47 | `f7ebb204` c017_f7ebb204_source.mp4 | 0.892 | CANDIDATE 17 Oct montage (board holds the mounted clip you approved 13 Oct) |
+| c018 | break | 31.51–32.98 | 35 | `8d93aced` c018_8d93aced_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the rider clip you approved 13 Oct) |
+| c019 | break | 32.98–34.46 | 36 | `fda3c88c` c019_fda3c88c_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
+| c020 | break | 34.46–36.42 | 47 | `c485122e` c020_c485122e_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
+| c021 | break | 36.42–39.37 | 71 | `2d334fd7` c021_2d334fd7_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
+| c022 | verse 2 | 39.37–40.85 | 36 | `c45251ee` c022_c45251ee_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c023 | verse 2 | 40.85–42.33 | 35 | `3643febe` c023_3643febe_source.mp4 | 1.141 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
+| c024 | verse 2 | 42.33–43.80 | 35 | `66b56c6b` c024_66b56c6b_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
+| c025 | verse 2 | 43.80–45.28 | 35 | `90ec4e33` c025_90ec4e33_source.mp4 | 1.138 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
+| c026 | verse 2 | 45.28–46.75 | 35 | `d2ce8f07` c026_d2ce8f07_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c027 | verse 2 | 46.75–48.23 | 35 | `dc32d17c` c027_dc32d17c_source.mp4 | 1.135 | CANDIDATE 17 Oct montage (board holds a 15 Oct pick) |
+| c028 | verse 2 | 48.23–50.19 | 47 | `b7ca925f` c028_b7ca925f_source.mp4 | 0.896 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
+| c029 | verse 2 | 50.19–52.16 | 47 | `a2f302bd` c029_a2f302bd_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
+| c030 | verse 2 | 52.16–54.13 | 47 | `607043dc` c030_607043dc_source.mp4 | 0.906 | CANDIDATE 17 Oct montage, nothing selected |
+| c031 | verse 2 | 54.13–56.10 | 47 | `9da46aa6` c031_9da46aa6_source.mp4 | 0.000 | CANDIDATE 17 Oct b-roll, nothing selected |
+| c032 | verse 2 | 56.10–58.06 | 47 | `746b08a0` c032_746b08a0_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c033 | verse 2 | 58.06–59.54 | 720 | `ce365795` c033_ce365795_source.mp4 | 4.218 | APPROVED 18 Oct restage E1 v3, picture 1 frame earlier as he accepted (slip -1f) |
+| c034 | verse 2 | 59.54–61.01 | 720 | `5aa6f01c` c034_5aa6f01c_source.mp4 | 0.000 | CANDIDATE 17 Oct E4 cutaway (frost on the showroom glass, no him); E2 restage ruled not usable here by Fendi 18 Oct |
+| c035 | hook 1 | 61.01–62.49 | 36 | `a64bfbb6` c035_a64bfbb6_source.mp4 | 0.000 | CANDIDATE 17 Oct E3 whip pan to the platform (board holds the 15 Oct carry) |
+| c036 | hook 1 | 62.49–63.96 | 35 | `b77ef700` c036_b77ef700_source.mp4 | 1.142 | CANDIDATE 17 Oct montage (board holds a 15 Oct pick) |
+| c037 | hook 1 | 63.96–65.93 | 47 | `941148e8` c037_941148e8_source.mp4 | 0.894 | CANDIDATE 17 Oct montage (board holds the Red Line clip you approved 13 Oct) |
+| c038 | hook 1 | 65.93–67.90 | 47 | `c8e50b98` c038_c8e50b98_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
+| c039 | hook 1 | 67.90–70.85 | 70 | `65465c7a` c039_65465c7a_source.mp4 | 0.880 | CANDIDATE 17 Oct montage (board holds the Red Line clip you approved 13 Oct) |
+| c040 | hook 1 | 70.85–72.33 | 36 | `a172ae9b` c040_a172ae9b_source.mp4 | 0.000 | CANDIDATE 17 Oct b-roll (board holds a 15 Oct pick) |
+| c041 | hook 1 | 72.33–73.80 | 35 | `6f4edd50` c041_6f4edd50_source.mp4 | 0.000 | FINAL 4 Nov |
+| c042 | hook 1 | 73.80–75.28 | 36 | `a2d40377` c042_a2d40377_source.mp4 | 0.000 | FINAL 1 Nov |
+| c043 | hook 1 | 75.28–76.75 | 35 | `5f962dd8` c043_5f962dd8_source.mp4 | 1.153 | GAP: only the dressed take, its montage never ran (credits) |
+| c044 | hook 1 | 76.75–78.72 | 47 | `8d34b4d0` c044_8d34b4d0_source.mp4 | 0.000 | PICK 27 Oct ('F is the best'), not yet final |
+| c045 | hook 1 | 78.72–80.69 | 47 | `f17bee00` c045_f17bee00_source.mp4 | 0.000 | FINAL 1 Nov |
+| c046 | hook 1 | 80.69–82.65 | 47 | `221961f4` c046_221961f4_source.mp4 | 0.000 | FINAL 4 Nov |
+| c047 | hook 1 | 82.65–86.10 | 82 | `41d5c1da` c047_41d5c1da_source.mp4 | 0.011 | CANDIDATE 16 Oct montage v2 (nothing selected) |
+
+Frame convention: 24 fps; a clip's frame 0 sits at its sync offset on the song; `source_in_s` is where the slot begins inside the source; slots are exact to the frame (2066 frames = 86.1 s in total).
+
+## The board (VERIFIED by a read after the writes)
+
+`video_variations` `c067efb9` (the active board) now has exactly one primary clip per shot on c001–c047, and it is the clip in this package. Previous picks (the 15 Oct narrative-treatment clips, and the 13 Oct approvals on c016/c017/c018/c037/c039) stay on their shots as alternates. c034: the E2 restage was ruled not usable on this interval by Fendi on 18 Oct ("cover with a cutaway"), so the package and the board carry the E4 frost cutaway there.
+
+## Rules that do not bend
+
+1. **Never** apply generated lip-sync or any face-altering pass to Fendi. A shot with him keeps his real face; the finals c041/c042/c045/c046 were built with [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](../recipes/FACE_PRESERVING_CLOTHING_SWAP.md).
+2. A replacement clip goes back into AVT on its shot (`project_assets` + `shot_asset_assignments` on variation `c067efb9`) with a note saying what it replaced and why. No standalone Supabase: AVT is Lovable-managed; use the AVT MCP (`avt_insert`, `avt_update`) or the app.
+3. Paid renders are quoted before they run and appended to [`docs/LEDGER_YSL_TESTING_BUDGET.md`](../LEDGER_YSL_TESTING_BUDGET.md) in the same commit as the result.
+4. Report back with: the assembled first half (file + hash), the list of shots the Director replaced (old asset → new asset, why), and anything that needs Fendi's eye.
+
+## Verification commands
+
+```
+# the folder is complete
+avt_list_files bucket=project-exports prefix=<folder>/sources   → 47 entries
+avt_list_files bucket=project-exports prefix=<folder>/slots     → 47 entries
+# the files are the ones in this document
+sha256sum -c SHA256SUMS.txt   → 94 lines ending in OK
+# the board matches
+avt_select shot_asset_assignments filters variation_id=c067efb9, is_primary=true, shot_number ≤ 47 → 47 rows, asset ids = the manifest's
+```
