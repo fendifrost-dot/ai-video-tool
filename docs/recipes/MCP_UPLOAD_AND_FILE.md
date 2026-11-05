@@ -4,7 +4,7 @@
 
 The same text is the tool description (`FILE_ASSET_RECIPE` in `supabase/functions/avt-mcp/contract.ts`), which is what an outside client sees. This page is the column-level copy.
 
-Class C (storage + a security-definer ledger). Sign-off before merge. Live steps are at the bottom. The SQL is not applied by this change.
+Class C (storage, a security-definer upload ledger, and a security-invoker filing function). Sign-off before merge. `20261105140000_mcp_upload_events.sql` is already applied. `20261105180000_mcp_file_asset.sql` is not, until it is run in the Lovable SQL editor.
 
 ## Tool
 
@@ -19,7 +19,8 @@ Input:
 | `path` | yes | Must start with the owner's user id and a slash. `..`, a leading slash, encoding, and any other user's prefix are rejected. |
 | `upsert` | no | Default false. Only boolean `true` overwrites. |
 | `content_type` | no | base64 mode. Default `application/octet-stream`. |
-| `data_base64` | base64 only | Decoded size must be ≤ 52428800 bytes. Over that, the error says to use `signed_url`. |
+| `data_base64` | base64 only | Decoded size must be ≤ 52428800 bytes. Over that, the error says to use `signed_url`. The upload stores `sha256` on the object metadata. |
+| `expected_sha256` | no | finalize only. 64 lowercase hex characters. |
 
 Output:
 
@@ -27,13 +28,29 @@ Output:
 |---|---|
 | `signed_url` | `{ bucket, path, signed_url, token, expires_in, audit_id }` and `audit_error` only when the ledger write failed. `expires_in` is 7200 (Storage's signed-upload lifetime). PUT the bytes to `signed_url`, then call `finalize`. |
 | `base64` | `{ bucket, path, size_bytes, sha256, audit_id }` |
-| `finalize` | `{ bucket, path, size_bytes, sha256, audit_id }`. Reads the object back. Stops at 200 MB. |
+| `finalize` | `{ bucket, path, size_bytes, sha256, sha256_source, audit_id }`. When `expected_sha256` equals `metadata.sha256` and the metadata includes a size, the bytes are not downloaded (`sha256_source` is `metadata`). Otherwise the object is read back (`sha256_source` is `bytes`, stop at 200 MB) and a provided `expected_sha256` must match the hash of those bytes. |
 
 `sha256` is computed on the server. The ledger row is `mcp_upload_events`, written only by `record_mcp_upload` (credential id, bucket, path, bytes, sha256, mode, tool `avt_upload_asset`). The table is readable through `avt_select` and not writable through `avt_insert`.
 
 Storage uses the owner's client. The existing insert policy is `auth.uid()` equals the first folder. No service role.
 
-## File the asset
+## `avt_file_asset`
+
+One call. `file_mcp_asset` runs as the owner (security invoker), so row level security still applies. It inserts `project_assets`, sets `is_primary` false on the current primary rows for that `shot_id` and `variation_id`, then inserts or, on unique `(shot_id, asset_id, role)`, updates the assignment with `is_primary` true. The old rows stay. No service role. No provider call.
+
+Required input: `project_id`, `shot_id`, `variation_id`, `asset_type`, `file_url`, `source_tool`, `footage_role`, `role`.
+
+Optional: `approval_status` (default `pending`), `parent_asset_id`, `version_number` (default 1), `metadata_json`, `notes`, `source_in_seconds`, `source_out_seconds`, `sort_order` (default one more than the highest on that shot and variation), `slip_seconds` (default 0, from -30 to 30), `assignment_notes`.
+
+`file_url` uses the same owner-prefix rules as an upload path. Output: `{ asset_id, assignment_id, demoted_ids }`.
+
+The manual calls below are the same columns.
+
+## `avt_delete_object`
+
+`{ bucket, path }` using the upload bucket list and the same path rules, including a rejection of `%` anywhere. Deletes that one object with the owner's storage client. Returns `{ bucket, path, deleted: true, audit_id }`. The ledger row has `mode` `delete` and `tool` `avt_delete_object`.
+
+## File the asset by hand
 
 Reference row, read 5 Nov 2026: `project_assets.id` `6f4edd50-90e1-4d1b-a1d8-297c14b14698` (c041 FINAL).
 
@@ -162,11 +179,8 @@ Then insert the new primary:
 
 `sort_order` is one more than the highest `sort_order` already on that shot. `role` allows only `performance`, `b_roll`, `generated_image`, `generated_clip`, `reference`. A performance take uses `performance` and leaves `source_in_seconds` null. Omit `user_id`; it defaults to the owner. A null `variation_id` is filled from the shot by `shot_asset_assignments_fill_variation`; set it anyway. Unique `(shot_id, asset_id, role)`: on conflict, `avt_update` that existing row to `is_primary` true instead of inserting another.
 
-## Still to do before this is live
+## Still to do before 1.5.0 is live
 
-1. Lovable SQL editor: run `supabase/migrations/20261105140000_mcp_upload_events.sql`.
-2. Lovable Publish (frontend; this change does not alter it, Publish is still the frontend step if anything else shipped).
-3. Lovable → Edge Functions → redeploy `avt-mcp`. No other edge function changed.
-4. `tools/list` on the live endpoint shows `avt_upload_asset`.
-
-Publish is not an edge redeploy.
+1. Lovable SQL editor: run `supabase/migrations/20261105180000_mcp_file_asset.sql`. This replaces `record_mcp_upload` so a `%` anywhere in the path is refused, allows mode `delete`, and adds `file_mcp_asset`.
+2. Lovable → Edge Functions → redeploy **`avt-mcp` only**. The frontend is unchanged, so Publish is not required for this revision. Publish is not an edge redeploy.
+3. `tools/list` should show `avt_upload_asset`, `avt_file_asset`, and `avt_delete_object`. `initialize` reports server version `1.5.0`.

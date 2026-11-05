@@ -11,8 +11,10 @@
 // accounts themselves. Every call is still the owner's own session, audited by batch_credential_mints.
 //
 // avt_upload_asset puts bytes into Storage as that same owner (signed upload URL, or base64 up to 50 MB).
-// It never calls a paid provider. One row per call is written by record_mcp_upload into mcp_upload_events.
-// No service role: storage RLS already lets the owner insert under their own user-id prefix.
+// avt_file_asset files a project_assets row and swaps the shot primary in one transaction (file_mcp_asset).
+// avt_delete_object removes one object under the owner's prefix. None of these call a paid provider.
+// One row per upload or delete is written by record_mcp_upload into mcp_upload_events.
+// No service role: storage RLS already lets the owner insert and delete under their own user-id prefix.
 //
 // The credential may arrive as x-batch-secret, an Authorization bearer, the last path segment
 // (/functions/v1/avt-mcp/<secret>) for clients that only take a URL, or ?key=.
@@ -37,12 +39,16 @@ import {
   initializeResult,
   isRpcRequest,
   namesRowsById,
+  parseDeleteObject,
+  parseFileAsset,
   parseFilters,
   parseUploadRequest,
+  planFinalizeRead,
   rpcError,
   rpcResult,
   sha256HexBytes,
   signedUploadResult,
+  storageMetadataHeader,
   storedObjectResult,
   tableAccess,
   toolText,
@@ -202,9 +208,47 @@ async function bytesOfDownload(data: unknown): Promise<Uint8Array> {
   throw new ToolError("stored object could not be read");
 }
 
+function ownerStorageHeaders(ctx: Ctx, extra: Record<string, string> = {}): Record<string, string> {
+  return { apikey: ctx.anonKey, Authorization: `Bearer ${ctx.session.accessToken}`, ...extra };
+}
+
+async function readObjectInfo(ctx: Ctx, bucket: string, path: string): Promise<unknown | null> {
+  const storage = ctx.user.storage.from(bucket);
+  if (typeof storage.info === "function") {
+    const { data, error } = await storage.info(path);
+    if (!error && data) return data;
+  }
+  const res = await fetch(`${ctx.url}/storage/v1/object/info/${bucket}/${path}`, { headers: ownerStorageHeaders(ctx) });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+
+async function uploadOwnedBytes(ctx: Ctx, bucket: string, path: string, bytes: Uint8Array, contentType: string, upsert: boolean, sha256: string) {
+  const res = await fetch(`${ctx.url}/storage/v1/object/${bucket}/${path}`, {
+    method: "POST",
+    headers: ownerStorageHeaders(ctx, {
+      "content-type": contentType,
+      "cache-control": "max-age=3600",
+      "x-upsert": String(upsert),
+      "x-metadata": storageMetadataHeader(sha256),
+    }),
+    body: bytes,
+  });
+  if (res.ok) return;
+  const text = await res.text();
+  let detail = text.slice(0, 500);
+  try {
+    const parsed = JSON.parse(text) as { message?: string; error?: string };
+    detail = parsed.message ?? parsed.error ?? detail;
+  } catch {
+    /* the body was not JSON */
+  }
+  throw new ToolError(detail || `upload failed (${res.status})`);
+}
+
 async function writeUploadAudit(
   ctx: Ctx,
-  input: { mode: "signed_url" | "base64" | "finalize"; bucket: string; path: string; bytes: number | null; sha256: string | null },
+  input: { mode: "signed_url" | "base64" | "finalize" | "delete"; bucket: string; path: string; bytes: number | null; sha256: string | null },
 ): Promise<{ audit_id: string | null; audit_error?: string }> {
   const args = uploadAuditArgs({ credentialId: ctx.session.credentialId, ...input });
   const { data, error } = await ctx.user.rpc("record_mcp_upload", args);
@@ -240,10 +284,17 @@ async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
 
   if (req.mode === "base64") {
     const sha256 = await sha256HexBytes(req.bytes);
-    const { error } = await ctx.user.storage.from(req.bucket).upload(req.path, req.bytes, { contentType: req.contentType, upsert: req.upsert });
-    if (error) throw new ToolError(error.message);
+    await uploadOwnedBytes(ctx, req.bucket, req.path, req.bytes, req.contentType, req.upsert, sha256);
     const audit = await writeUploadAudit(ctx, { mode: "base64", bucket: req.bucket, path: req.path, bytes: req.bytes.byteLength, sha256 });
     return { ...storedObjectResult(req.bucket, req.path, req.bytes.byteLength, sha256), ...audit };
+  }
+
+  const info = await readObjectInfo(ctx, req.bucket, req.path);
+  const plan = planFinalizeRead({ expectedSha256: req.expectedSha256, info });
+  if (plan.action === "reject") throw new ToolError(plan.error);
+  if (plan.action === "skip") {
+    const audit = await writeUploadAudit(ctx, { mode: "finalize", bucket: req.bucket, path: req.path, bytes: plan.sizeBytes, sha256: plan.sha256 });
+    return { ...storedObjectResult(req.bucket, req.path, plan.sizeBytes, plan.sha256), sha256_source: "metadata", ...audit };
   }
 
   const { data, error } = await ctx.user.storage.from(req.bucket).download(req.path);
@@ -254,8 +305,28 @@ async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
     throw new ToolError(`object is ${bytes.byteLength} bytes; finalize reads it back to hash it and stops at ${FINALIZE_MAX_BYTES}`);
   }
   const sha256 = await sha256HexBytes(bytes);
+  if (req.expectedSha256 && sha256 !== req.expectedSha256) throw new ToolError("downloaded sha256 does not match expected_sha256");
   const audit = await writeUploadAudit(ctx, { mode: "finalize", bucket: req.bucket, path: req.path, bytes: bytes.byteLength, sha256 });
-  return { ...storedObjectResult(req.bucket, req.path, bytes.byteLength, sha256), ...audit };
+  return { ...storedObjectResult(req.bucket, req.path, bytes.byteLength, sha256), sha256_source: "bytes", ...audit };
+}
+
+async function deleteObject(ctx: Ctx, args: Record<string, unknown>) {
+  const parsed = parseDeleteObject(ctx.session.userId, args);
+  if (!parsed.ok) throw new ToolError(parsed.error);
+  const { data, error } = await ctx.user.storage.from(parsed.bucket).remove([parsed.path]);
+  if (error) throw new ToolError(error.message);
+  if (!Array.isArray(data) || data.length === 0) throw new ToolError("object not found");
+  const audit = await writeUploadAudit(ctx, { mode: "delete", bucket: parsed.bucket, path: parsed.path, bytes: null, sha256: null });
+  return { bucket: parsed.bucket, path: parsed.path, deleted: true, ...audit };
+}
+
+async function fileAsset(ctx: Ctx, args: Record<string, unknown>) {
+  const parsed = parseFileAsset(ctx.session.userId, args);
+  if (!parsed.ok) throw new ToolError(parsed.error);
+  const { data, error } = await ctx.user.rpc("file_mcp_asset", parsed.args);
+  if (error) throw new ToolError(error.message);
+  if (!data || typeof data !== "object") throw new ToolError("filing returned nothing");
+  return data;
 }
 
 async function callFunction(ctx: Ctx, args: Record<string, unknown>) {
@@ -385,6 +456,10 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
     }
     case "avt_upload_asset":
       return toolText(await uploadAsset(ctx, args));
+    case "avt_file_asset":
+      return toolText(await fileAsset(ctx, args));
+    case "avt_delete_object":
+      return toolText(await deleteObject(ctx, args));
     case "avt_edit_list":
       return toolText(await editList(ctx.user, String(args.project_id ?? "")));
     case "avt_edit_get":

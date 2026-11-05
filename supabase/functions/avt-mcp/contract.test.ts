@@ -16,12 +16,16 @@ import {
   initializeResult,
   isRpcRequest,
   namesRowsById,
+  parseDeleteObject,
+  parseFileAsset,
   parseFilters,
   parseUploadRequest,
+  planFinalizeRead,
   resolveOwnerStoragePath,
   resolveUploadBucket,
   sha256HexBytes,
   signedUploadResult,
+  storageMetadataHeader,
   storedObjectResult,
   tableAccess,
   uploadAuditArgs,
@@ -109,7 +113,7 @@ describe("functions", () => {
   it("offers no budget, cap or ledger tool", () => {
     expect(TOOLS.map((t) => t.name).filter((n) => /budget|spend|cap/.test(n))).toEqual([]);
     expect(TOOLS.find((t) => t.name === "avt_call")!.inputSchema.properties).not.toHaveProperty("budget_id");
-    expect(TOOLS).toHaveLength(18);
+    expect(TOOLS).toHaveLength(20);
   });
   it("hands a browser an access token only, never a refresh token or a user of the caller's choosing", () => {
     const t = TOOLS.find((t) => t.name === "avt_browser_session")!;
@@ -177,6 +181,7 @@ describe("avt_upload_asset", () => {
     expect(resolveOwnerStoragePath(OWNER, "/tmp/hello.bin")).toMatchObject({ ok: false });
     expect(resolveOwnerStoragePath(OWNER, `${OWNER}/%2e%2e/hello.bin`)).toMatchObject({ ok: false });
     expect(resolveOwnerStoragePath(OWNER, `${OWNER}\\hello.bin`)).toMatchObject({ ok: false });
+    expect(resolveOwnerStoragePath(OWNER, `${OWNER}/hel%lo.bin`)).toMatchObject({ ok: false });
     expect(resolveOwnerStoragePath(OWNER, OWNER)).toMatchObject({ ok: false });
     expect(resolveOwnerStoragePath("not-a-user", HELLO_PATH)).toMatchObject({ ok: false });
   });
@@ -236,8 +241,17 @@ describe("avt_upload_asset", () => {
     });
     expect(parseUploadRequest(OWNER, { mode: "finalize", bucket: "project-clips", path: HELLO_PATH })).toEqual({
       ok: true,
-      request: { mode: "finalize", bucket: "project-clips", path: HELLO_PATH },
+      request: { mode: "finalize", bucket: "project-clips", path: HELLO_PATH, expectedSha256: null },
     });
+    const HASH = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+    expect(parseUploadRequest(OWNER, { mode: "finalize", bucket: "project-clips", path: HELLO_PATH, expected_sha256: HASH }).ok).toBe(true);
+    expect(parseUploadRequest(OWNER, { mode: "finalize", bucket: "project-clips", path: HELLO_PATH, expected_sha256: "abc" }).ok).toBe(false);
+    expect(planFinalizeRead({ expectedSha256: null, info: { size: 5, metadata: { sha256: HASH } } })).toEqual({ action: "download" });
+    expect(planFinalizeRead({ expectedSha256: HASH, info: { size: 5, metadata: { sha256: HASH } } })).toEqual({ action: "skip", sha256: HASH, sizeBytes: 5 });
+    expect(planFinalizeRead({ expectedSha256: HASH, info: { metadata: { sha256: HASH } } })).toEqual({ action: "download" });
+    expect(planFinalizeRead({ expectedSha256: HASH, info: { size: 5, metadata: { sha256: "a".repeat(64) } } }).action).toBe("reject");
+    expect(planFinalizeRead({ expectedSha256: HASH, info: null })).toEqual({ action: "download" });
+    expect(JSON.parse(atob(storageMetadataHeader(HASH)))).toEqual({ sha256: HASH });
     expect(parseUploadRequest(OWNER, { mode: "signed_url", bucket: "artist-assets", path: HELLO_PATH }).ok).toBe(false);
     expect(parseUploadRequest(OTHER, { mode: "finalize", bucket: "project-exports", path: HELLO_PATH }).ok).toBe(false);
     expect(
@@ -261,16 +275,66 @@ describe("avt_upload_asset", () => {
 
   it("uploads with the owner's storage client and records the ledger, never a service role (source-level)", () => {
     const src = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
-    const start = src.indexOf("async function writeUploadAudit(");
+    const start = src.indexOf("function ownerStorageHeaders(");
     expect(start).toBeGreaterThan(0);
     const body = src.slice(start, src.indexOf("\nasync function callFunction(", start));
     expect(body).toContain("async function uploadAsset(");
+    expect(body).toContain("x-metadata");
+    expect(body).toContain("object/info/");
+    expect(body).toContain("file_mcp_asset");
+    expect(body).toContain(".remove(");
+    expect(src).toContain('case "avt_delete_object"');
+    expect(src).toContain('case "avt_file_asset"');
     expect(body).toContain("createSignedUploadUrl");
     expect(body).toContain("record_mcp_upload");
     expect(body).toContain("sha256HexBytes");
     expect(body).not.toMatch(/SERVICE_ROLE|service_role|createClient\(/);
     expect(body).not.toMatch(/functions\/v1\//);
     expect(src).toContain('case "avt_upload_asset"');
+  });
+});
+
+describe("avt_file_asset and avt_delete_object", () => {
+  it("files one asset and swaps the primary without a service role or a generic rpc", () => {
+    const t = TOOLS.find((tool) => tool.name === "avt_file_asset")!;
+    expect(t.description).toMatch(/\$0/);
+    expect(t.description).toMatch(/one database transaction/);
+    expect(t.description).toContain("project_assets");
+    expect(t.description).toContain("is_primary");
+    expect(t.inputSchema.required).toEqual(["project_id", "shot_id", "variation_id", "asset_type", "file_url", "source_tool", "footage_role", "role"]);
+    const filed = parseFileAsset(OWNER, {
+      project_id: "764a63d2-93cd-44f3-905f-292f14ab2f51",
+      shot_id: "0bad80da-e7a4-4edc-a281-8e7cd4a69300",
+      variation_id: "c067efb9-90af-418e-aa6d-58834f6e19de",
+      asset_type: "edited_clip",
+      file_url: HELLO_PATH,
+      source_tool: "manual",
+      footage_role: "b_roll",
+      role: "b_roll",
+      source_in_seconds: 0,
+      source_out_seconds: 1.5,
+      metadata_json: { bucket: "project-exports", sha256: "ab" },
+    });
+    expect(filed.ok).toBe(true);
+    if (filed.ok) {
+      expect(filed.args.p_approval_status).toBe("pending");
+      expect(filed.args.p_source_in_seconds).toBe(0);
+      expect(filed.args.p_source_out_seconds).toBe(1.5);
+      expect(filed.args.p_slip_seconds).toBe(0);
+      expect(filed.args.p_file_url).toBe(HELLO_PATH);
+    }
+    expect(parseFileAsset(OTHER, { ...{ project_id: "764a63d2-93cd-44f3-905f-292f14ab2f51", shot_id: "0bad80da-e7a4-4edc-a281-8e7cd4a69300", variation_id: "c067efb9-90af-418e-aa6d-58834f6e19de", asset_type: "edited_clip", file_url: HELLO_PATH, source_tool: "manual", footage_role: "b_roll", role: "b_roll" } }).ok).toBe(false);
+    expect(parseFileAsset(OWNER, { project_id: "764a63d2-93cd-44f3-905f-292f14ab2f51", shot_id: "0bad80da-e7a4-4edc-a281-8e7cd4a69300", variation_id: "c067efb9-90af-418e-aa6d-58834f6e19de", asset_type: "edited_clip", file_url: `${OWNER}/x.bin`, source_tool: "manual", footage_role: "nope", role: "b_roll" }).ok).toBe(false);
+  });
+
+  it("deletes only under the owner's prefix and the same buckets", () => {
+    const t = TOOLS.find((tool) => tool.name === "avt_delete_object")!;
+    expect(t.description).toMatch(/\$0/);
+    expect(t.description).toMatch(/avt_delete_object/);
+    expect(parseDeleteObject(OWNER, { bucket: "project-exports", path: HELLO_PATH })).toEqual({ ok: true, bucket: "project-exports", path: HELLO_PATH });
+    expect(parseDeleteObject(OWNER, { bucket: "project-exports", path: `${OTHER}/hello.bin` }).ok).toBe(false);
+    expect(parseDeleteObject(OWNER, { bucket: "artist-assets", path: HELLO_PATH }).ok).toBe(false);
+    expect(parseDeleteObject(OWNER, { bucket: "project-exports", path: `${OWNER}/hel%lo.bin` }).ok).toBe(false);
   });
 });
 

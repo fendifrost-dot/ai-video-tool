@@ -95,6 +95,33 @@ exception when others then
   if sqlerrm not like '%bucket%' then raise; end if;
 end $$;
 
+-- a percent sign anywhere in the path is refused (20261105180000). The old like '%\%' check did not catch it.
+do $$
+begin
+  perform public.record_mcp_upload(
+    'b1000000-0000-0000-0000-0000000000a1', 'project-exports',
+    '00000000-0000-0000-0000-0000000000a1/hel%lo.bin', null, null, 'signed_url');
+  raise exception 'a percent sign in the path was accepted';
+exception when others then
+  if sqlerrm not like '%owner id%' then raise; end if;
+end $$;
+
+select public.record_mcp_upload(
+  'b1000000-0000-0000-0000-0000000000a1',
+  'project-exports',
+  '00000000-0000-0000-0000-0000000000a1/_mcp_upload_test/hello.bin',
+  null,
+  null,
+  'delete'
+);
+
+do $$
+declare n int;
+begin
+  select count(*) into n from public.mcp_upload_events where mode = 'delete' and tool = 'avt_delete_object';
+  if n <> 1 then raise exception 'a delete was not audited, saw %', n; end if;
+end $$;
+
 do $$
 begin
   insert into public.mcp_upload_events (owner_user_id, credential_id, bucket, path, mode)
