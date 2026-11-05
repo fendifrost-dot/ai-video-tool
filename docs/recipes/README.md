@@ -15,7 +15,7 @@ quoted, dry-run first, and recorded in `docs/LEDGER_YSL_TESTING_BUDGET.md`.
 | The place and its people, without him | b-roll montage | [`MONTAGE_MUSIC_VIDEO_WORKFLOW.md`](MONTAGE_MUSIC_VIDEO_WORKFLOW.md) step 7 | `montage-shot` | $1.85 per 4 s |
 | A shot whose generated him moves his mouth | not usable as is: replace by one of the rows above, or hide the mouth in the edit (punch-in below the chin, cutaway) | [`../handoffs/HANDOFF_GROKBOT_FIRST_HALF_2026-11-05.md`](../handoffs/HANDOFF_GROKBOT_FIRST_HALF_2026-11-05.md) ("Mouth rule") | `scripts/edit/mouth_scan.py` finds them | $0 |
 
-**Never** apply generated lip-sync or any face-altering pass to Fendi. His mouth in a shot is either his real take's
+**Every shot with him passes [`../SHOT_RULES.md`](../SHOT_RULES.md) before it is posted.** **Never** apply generated lip-sync or any face-altering pass to Fendi. His mouth in a shot is either his real take's
 or at rest.
 
 ## The rest of the shelf
