@@ -57,20 +57,20 @@ Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **AP
 | c023 | verse 2 | 40.85–42.33 | 35 | `3643febe` c023_3643febe_source.mp4 | 1.141 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c024 | verse 2 | 42.33–43.80 | 35 | `66b56c6b` c024_66b56c6b_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
 | c025 | verse 2 | 43.80–45.28 | 35 | `90ec4e33` c025_90ec4e33_source.mp4 | 1.138 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
-| c026 | verse 2 | 45.28–46.75 | 35 | `d2ce8f07` c026_d2ce8f07_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry). 6 Nov: still-mouth re-render **`081a4ddf`** (36 f, same fox-then-him layout) filed unselected on Grokbot's regeneration handoff, awaits Fendi |
+| c026 | verse 2 | 45.28–46.75 | 35 | `081a4ddf` c026_081a4ddf_source.mp4 | 0.000 | FINAL 6 Nov (Fendi: "PERFECT!"): recipe-F still-mouth re-render, fox asleep on the carousel then him seated at the right, mouth at rest. In the package (slot + source replaced). `d2ce8f07` (mouth moving) not to be used |
 | c027 | verse 2 | 46.75–48.23 | 35 | `dc32d17c` c027_dc32d17c_source.mp4 | 1.135 | CANDIDATE 17 Oct montage (board holds a 15 Oct pick) |
 | c028 | verse 2 | 48.23–50.19 | 47 | `b7ca925f` c028_b7ca925f_source.mp4 | 0.896 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c029 | verse 2 | 50.19–52.16 | 47 | `a2f302bd` c029_a2f302bd_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
 | c030 | verse 2 | 52.16–54.13 | 1080 | `ca8bca0b` c030_ca8bca0b_source.mp4 | 1.000 | APPROVED by Fendi 4 Nov ('I like it'): Director cutaway, no him (replaces the generated profile whose mouth opened) |
 | c031 | verse 2 | 54.13–56.10 | 47 | `9da46aa6` c031_9da46aa6_source.mp4 | 0.000 | CANDIDATE 17 Oct b-roll, nothing selected |
 | c032 | verse 2 | 56.10–58.06 | 47 | `746b08a0` c032_746b08a0_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
-| c033 | verse 2 | 58.06–59.54 | 720 | `ce365795` c033_ce365795_source.mp4 | 4.218 | APPROVED 18 Oct restage E1 v3, picture 1 frame earlier as he accepted (slip -1f) |
+| c033 | verse 2 | 58.06–59.54 | 36 | `20b8c185` c033_20b8c185_source.mp4 | 0.000 | FINAL 6 Nov (Fendi: "PERFECT!"): recipe-F still-mouth b-roll of the kitchen, him at the island, mouth at rest. In the package. Replaces the 18 Oct E1 v3 performance restage `ce365795` at Fendi's ask ("regenerated without mouth movement") |
 | c034 | verse 2 | 59.54–61.01 | 720 | `5aa6f01c` c034_5aa6f01c_source.mp4 | 0.000 | CANDIDATE 17 Oct E4 cutaway (frost on the showroom glass, no him); E2 restage ruled not usable here by Fendi 18 Oct |
 | c035 | hook 1 | 61.01–62.49 | 36 | `a64bfbb6` c035_a64bfbb6_source.mp4 | 0.000 | CANDIDATE 17 Oct E3 whip pan to the platform (board holds the 15 Oct carry) |
 | c036 | hook 1 | 62.49–63.96 | 1080 | `7a115d9c` c036_7a115d9c_source.mp4 | 1.600 | Director cutaway 4 Nov, no him (penguins, lights dip); replaces b77ef700 (generated mouth); awaits Fendi |
 | c037 | hook 1 | 63.96–65.93 | 1080 | `4247fe23` c037_4247fe23_source.mp4 | 1.000 | Director cutaway 4 Nov, no him (frosted train); replaces 941148e8 (generated mouth close-up); awaits Fendi |
 | c038 | hook 1 | 65.93–67.90 | 47 | `c8e50b98` c038_c8e50b98_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
-| c039 | hook 1 | 67.90–70.85 | 70 | `65465c7a` c039_65465c7a_source.mp4 | 0.880 | CANDIDATE 17 Oct montage (board holds the Red Line clip you approved 13 Oct) |
+| c039 | hook 1 | 67.90–70.85 | 71 | `d90d6f29` c039_d90d6f29_source.mp4 | 0.000 | FINAL 6 Nov (Fendi: "PERFECT!"): recipe-F still-mouth b-roll, the platform from further back so the Prada America's Cup sneakers read whole. In the package. `65465c7a` (mouth moving, deformed shoes in the zoom) not to be used |
 | c040 | hook 1 | 70.85–72.33 | 36 | `a172ae9b` c040_a172ae9b_source.mp4 | 0.000 | CANDIDATE 17 Oct b-roll (board holds a 15 Oct pick) |
 | c041 | hook 1 | 72.33–73.80 | 35 | `6f4edd50` c041_6f4edd50_source.mp4 | 0.000 | FINAL 4 Nov |
 | c042 | hook 1 | 73.80–75.28 | 36 | `a2d40377` c042_a2d40377_source.mp4 | 0.000 | FINAL 1 Nov |
@@ -100,7 +100,7 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c045 | FINAL: recipe-F b-roll with him, mouth at rest, band fixed |
 | c046 | FINAL: recipe-F b-roll with him, mouth at rest |
 | c044 | PICK ("F is the best"): recipe-F b-roll with him, mouth at rest; not yet final |
-| c033 | APPROVED 18 Oct: the E1 v3 restage, him rapping his own lines (a performance shot; the real-face canonical c033 BODY-ONLY `5482b35b` also exists). 5 Nov, Grokbot's regeneration handoff: Fendi asked for the kitchen "regenerated without mouth movement" as b-roll → still-mouth candidate **`20b8c185`** (36 f) filed unselected 6 Nov, awaits him; the 18 Oct approval stays primary until he accepts it |
+| c033 | FINAL 6 Nov `20b8c185`: recipe-F b-roll of the kitchen, him at the island, mouth at rest (Fendi: "PERFECT!"). It replaces the 18 Oct E1 v3 performance restage at his ask; the real-face canonical c033 BODY-ONLY `5482b35b` still exists as a reference |
 | c013 | recipe-F calm b-roll `78ed5ca7`, mouth at rest in the slot (swapped in 5 Nov; the 23 Oct render it replaces moved its mouth) |
 | c009 | FINAL 5 Nov `b06b32f9`: the two men sitting on the couch (chain up, gold grin), HARD CUT to him alone at the wall rapping — his real IMG_6230 take, YSL denim swap with his face put back, over a moving wall plate (ledger 222–226) |
 
@@ -121,7 +121,7 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c025 | `90ec4e33` | Director's call: `punchin/c025_punchin.mp4` is NOT usable as is (cuts at the neck, reads headless); a lower reframe on the jacket, a cutaway, or a re-render | OPEN, with the Director |
 | c027 | `dc32d17c` (slight) | Director's call: `punchin/c027_punchin.mp4` (coat, 2.2x), a cutaway, or a re-render | OPEN, with the Director |
 | c028 | `b7ca925f` | Director's call: `punchin/c028_punchin.mp4` (mostly the fox cutaway already; his part becomes a coat detail, 3.0x), a cutaway, or a re-render | OPEN, with the Director |
-| c039 | `65465c7a` | Re-rendered 6 Nov on Grokbot's regeneration handoff (wider, Pradas whole, mouth at rest): **`d90d6f29`** (70 f), filed on c039 unselected, in `replacements_claude_2026-11-06/` (see the section below) | CANDIDATE, awaits Fendi; the punch-in and cutaway options stay open if he passes |
+| c039 | `65465c7a` | Re-rendered 6 Nov on Grokbot's regeneration handoff (wider, Pradas whole, mouth at rest): **`d90d6f29`** (70 f) | DONE, FINAL: approved by Fendi 6 Nov ("PERFECT!"), primary on the board, in the package; c039 is off the Director's list |
 
 The package in the folder above carries the Director's four cutaways in `sources/` and `slots/` (and the Director's own
 files stay in `replacements/`). The eight OPEN slots still hold the moving-mouth clip in the package: cover them with a
@@ -189,14 +189,40 @@ without mouth movement, b-roll; c039: wider so the Prada shoes read clean, b-rol
 exact slot length, 1080x1920, 24 fps, SAR 1:1, silent, and sit in
 `canonical/grokbot_first_half_2026-11-05/replacements_claude_2026-11-06/` with a `README.md` carrying the SHA-256s.
 Full note: [`HANDOFF_CLAUDE_c026_c033_c039_DELIVERED_2026-11-06.md`](HANDOFF_CLAUDE_c026_c033_c039_DELIVERED_2026-11-06.md).
-Each is filed on its shot UNSELECTED; nothing is swapped into the package until Fendi accepts it (then
-`apply_replacements.py` swaps the slot). Spend: ledger 227–230, 4 × $2.219 (c026 took two renders).
+Fendi approved all three on 6 Nov ("PERFECT!"): each is PRIMARY on its shot, `approved`, and swapped into the package
+(`apply_replacements.py`: slot + source replaced, manifest / XML / SHA256SUMS rebuilt, 94 OK of 94, old files deleted).
+Spend: ledger 227–231, 4 × $2.219 (c026 took two renders).
 
 | Slot | File | Frames | Asset | State |
 |---|---|---|---|---|
-| c026 | `c026_172abaa2_36f_1080x1920_24.mp4` | 36 | `081a4ddf` | CANDIDATE, posted 6 Nov |
-| c033 | `c033_25cde54d_36f_1080x1920_24.mp4` | 36 | `20b8c185` | CANDIDATE, posted 6 Nov |
-| c039 | `c039_f94848cb_70f_1080x1920_24.mp4` | 70 | `d90d6f29` | CANDIDATE, posted 6 Nov |
+| c026 | `c026_172abaa2_36f_1080x1920_24.mp4` | 36 | `081a4ddf` | FINAL 6 Nov, in the package as `c026_081a4ddf` |
+| c033 | `c033_25cde54d_36f_1080x1920_24.mp4` | 36 | `20b8c185` | FINAL 6 Nov, in the package as `c033_20b8c185` |
+| c039 | `c039_f94848cb_70f_1080x1920_24.mp4` | 70 | `d90d6f29` | FINAL 6 Nov, in the package as `c039_d90d6f29` |
+
+### Hand-back to Brian (the Director), 6 Nov 2026 — Fendi: "let's hand it back to Brian"
+
+The package is the deliverable; the Director continues from it. State at hand-back (every line VERIFIED from a read
+after the write unless marked):
+
+- **Package** `canonical/grokbot_first_half_2026-11-05/`: 47 `slots/`, 47 `sources/`, `first_half_manifest.csv`,
+  `YSL_first_half_c001-c047.xml`, `SHA256SUMS.txt` (94 lines, all OK locally). The three 6 Nov replacements are in it
+  under the names above; the originals they replace are deleted from the folder.
+- **Board** `c067efb9`: one primary per shot on c001–c047; the 6 Nov primaries are `081a4ddf` (c026), `20b8c185`
+  (c033), `d90d6f29` (c039). Alternates stay on their shots.
+- **Closed since the 5 Nov hand-off:** c009 (FINAL 5 Nov), c013 (pick), c026 / c033 / c039 (FINAL 6 Nov).
+- **Still with the Director** (the package holds the moving-mouth clip; cover with a cutaway or a re-render):
+  c007, c016, c017, c025, c027, c028. Options per shot are in "The eight open shots" above.
+- **c010 — check before assembly:** Grokbot's 5 Nov note says c010 is now the polar bear and "already handled", but
+  the package slot is still `c010_f6ac996b` (his mouth moves) and the board primary was not changed by Claude. If the
+  polar bear lives only in Grokbot's own cut, file it on c010 (rule 2 below) and swap the slot, or the package is
+  behind the cut. OBSERVED, not fixed here: that clip is the Director's.
+- **Effects / split-screens:** parked by Grokbot until scenes are locked; nothing was added.
+- **Verify before cutting** (expected values, so a half-done state is caught):
+  `avt_list_files` on `slots/` and `sources/` → 47 each; `sha256sum -c SHA256SUMS.txt` → 94 OK;
+  `ffprobe` on any slot → `1080,1920,1:1,24/1,<frames>` matching `slot_frames` in the manifest.
+- **Report back with** what rule 4 below asks: the assembled first half (file + hash), the shots replaced (old → new,
+  why), anything for Fendi's eye.
+
 
 ## Rules that do not bend
 
