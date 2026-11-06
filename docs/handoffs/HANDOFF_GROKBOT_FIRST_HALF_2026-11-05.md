@@ -100,7 +100,7 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c045 | FINAL: recipe-F b-roll with him, mouth at rest, band fixed |
 | c046 | FINAL: recipe-F b-roll with him, mouth at rest |
 | c044 | PICK ("F is the best"): recipe-F b-roll with him, mouth at rest; not yet final |
-| c033 | APPROVED 18 Oct: the E1 v3 restage, him rapping his own lines (a performance shot; the real-face canonical c033 BODY-ONLY `5482b35b` also exists) |
+| c033 | APPROVED 18 Oct: the E1 v3 restage, him rapping his own lines (a performance shot; the real-face canonical c033 BODY-ONLY `5482b35b` also exists). 5 Nov, Grokbot's regeneration handoff: Fendi asked for the kitchen "regenerated without mouth movement" as b-roll → still-mouth candidate **`20b8c185`** (36 f) filed unselected 6 Nov, awaits him; the 18 Oct approval stays primary until he accepts it |
 | c013 | recipe-F calm b-roll `78ed5ca7`, mouth at rest in the slot (swapped in 5 Nov; the 23 Oct render it replaces moved its mouth) |
 | c009 | FINAL 5 Nov `b06b32f9`: the two men sitting on the couch (chain up, gold grin), HARD CUT to him alone at the wall rapping — his real IMG_6230 take, YSL denim swap with his face put back, over a moving wall plate (ledger 222–226) |
 
@@ -121,7 +121,7 @@ the clothing swap. The hand-off above did not say this per shot. This section do
 | c025 | `90ec4e33` | Director's call: `punchin/c025_punchin.mp4` is NOT usable as is (cuts at the neck, reads headless); a lower reframe on the jacket, a cutaway, or a re-render | OPEN, with the Director |
 | c027 | `dc32d17c` (slight) | Director's call: `punchin/c027_punchin.mp4` (coat, 2.2x), a cutaway, or a re-render | OPEN, with the Director |
 | c028 | `b7ca925f` | Director's call: `punchin/c028_punchin.mp4` (mostly the fox cutaway already; his part becomes a coat detail, 3.0x), a cutaway, or a re-render | OPEN, with the Director |
-| c039 | `65465c7a` | Director's call: `punchin/c039_punchin.mp4` (body, hand, shoes, penguin, 2.1x), a cutaway, or a re-render (recipe F, beige-cap window) | OPEN, with the Director |
+| c039 | `65465c7a` | Re-rendered 6 Nov on Grokbot's regeneration handoff (wider, Pradas whole, mouth at rest): **`d90d6f29`** (70 f), filed on c039 unselected, in `replacements_claude_2026-11-06/` (see the section below) | CANDIDATE, awaits Fendi; the punch-in and cutaway options stay open if he passes |
 
 The package in the folder above carries the Director's four cutaways in `sources/` and `slots/` (and the Director's own
 files stay in `replacements/`). The eight OPEN slots still hold the moving-mouth clip in the package: cover them with a
