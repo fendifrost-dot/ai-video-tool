@@ -126,6 +126,29 @@ Mux the song at the shot's sync if it is a performance shot, post the clip or st
 old primary, insert the `shot_asset_assignments` primary (`docs/recipes/MCP_UPLOAD_AND_FILE.md`). Add the ledger row
 and the result to the approved-results table in `FACE_PRESERVING_CLOTHING_SWAP.md`.
 
+## A STILL of him in a new outfit (album cover, poster, single frame): the short path, $0.26
+
+**Use a photo, not a take.** Fendi, 6 Nov 2026: "taking a video to create an image is the wrong approach, 100%. Use the
+images in AVT." The video recipe above is for footage; a still only needs a still.
+
+1. **Pick the photo** from his `character_features` pictures (`feature_type` `body`: `silhouette_front`
+   `1fd67e48`, `posture_neutral` `2ed75b4d`, `silhouette_side` `91f1b325`; the `face` set) or any filed `project_assets`
+   photo of him. Match the angle the final picture needs (a drone plate wants a photo taken from above).
+2. **Dress the photo with Grok** through `world-still-proxy` (xAI images/edits, refs in `<IMAGE_n>` order):
+   `{projectId, model: "grok-imagine-image-2.0", aspectRatio: the photo's, resolution: "2k", n: 2, prompt, references: [
+   {source: "character_feature", id: <his photo>, role: "cast"}, {source: "character_feature", id: <piece>, role:
+   "garment"} … up to 5 refs ]}`. Prompt as a clothing-replacement edit of the first image: keep the man, face, pose,
+   camera, background pixel for pixel; the other images are garment swatches only. $0.08 per candidate + $0.01 per
+   input picture; dry-run first. Each result is filed in `project-references/…/worlds/`.
+3. **Put his face back, $0:** `python -I scripts/edit/still_face_putback.py original.jpg edit.png out.png $AVT_MODELS`
+   aligns the edit to the photo (ECC on the head), pastes the photo's head (face, beard, glasses, cap) over it and
+   prints `max |out-original| inside the hard head mask: 0`, the proof. A face that is not found at full size is found
+   on an enlarged head crop automatically.
+4. **Place him:** `python -I scripts/edit/compose_cover_from_still.py out.png plate.png cx cy height_px cover.jpg`
+   (RobustVideoMatting, largest body, scale, grade to the plate, contact shadow, grain). For a frame cut from a take,
+   `compose_cover_still.py` instead (it keys the wall panel behind him).
+5. Post with the head sheet; file on his word as in step 7 above.
+
 ## Him in a generated scene without a swap (recipe F)
 When the shot needs him at rest in a place (b-roll), not a wardrobe change: `montage-shot` with a SILENT reference
 window of him, `sync: loose`, `motion: calm`, his lines carrying "his mouth at rest, his face toward the camera", body
