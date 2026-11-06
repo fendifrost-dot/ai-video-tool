@@ -63,13 +63,22 @@ Full detail and the approved results: `docs/recipes/FACE_PRESERVING_CLOTHING_SWA
 ### 0. The garment is in the wardrobe
 A `character_features` row per piece (`feature_type` `wardrobe_outerwear` / `wardrobe_top` / `wardrobe_bottom` /
 `wardrobe_accessory` / `wardrobe_footwear`, `artist_id` `8d4a4d22-41c0-43ab-ba99-92750f81e335`), with the product photo
-uploaded to `artist-assets` under the owner prefix, `source_url`, `dimensions_description` (construction, colour,
-pattern in positive words) and `reference_images` (front, side/three-quarter, detail). Brand sites often block
-automated downloads: ask Fendi for the product shots and upload them. Leave the glasses piece out of every swap.
+uploaded to the **`wardrobe-refs`** bucket under `<user>/<artist>/…` (`dress-clip` signs its pictures from
+`wardrobe-refs` only; a picture in `artist-assets` fails with `reference_sign_failed: Object not found`), `file_url` =
+that path, `source_url`, `dimensions_description` (construction, colour, pattern in positive words) and
+`reference_images` (front, side/three-quarter, detail). `avt_upload_asset` does not take this bucket: `POST
+/storage/v1/object/wardrobe-refs/<path>` with the owner token from `avt_browser_session`. Brand sites often block
+automated downloads (ralphlauren.com does): ask Fendi for the product shots or screenshots, crop the UI off, upload.
+**The swap is given at most 4 pictures**, one per piece in `pieceIds` order; a fifth piece is listed in `notSent`.
+Leave the glasses piece out of every swap. Shoes in a four-piece look go in a second pass.
 
 ### 1. Pick the original
 A real take, cut to a window of ≥ 4 s (whole seconds), filed as `project_assets` on a shot (`shot_id` set) with its
-`sha256`, window and source take in `metadata_json`. He must be at the angle and scale the scene wants (rule 6).
+`sha256`, window and source take in `metadata_json`, **and a `performance_syncs` row** (`performance_asset_id`,
+`offset_seconds`, `status: "confirmed"`, `method: "derived"`): `dress-clip` refuses `clip_not_in_sync` without one. A
+still cover with no song still needs the row; use the window's start in the take as the offset and say so in `notes`.
+A new project also needs a `video_variations` row (set as `active_variation_id`) and a `shots` row (`user_id`,
+`project_id`, `variation_id`, `shot_number`, `spec_key`, `shot_type`, `spec_json`) before anything is filed on it. He must be at the angle and scale the scene wants (rule 6).
 - **Lane A** (he fills the frame): dress the filed clip itself.
 - **Lane B** (small figure in a wide/4K take): also cut an enlarged crop around him from the 4K source
   (`crop=w:h:x:y`), upload it to `project-clips/<user>/<project>/…`, and dress with `crop` (rect as fractions of the
