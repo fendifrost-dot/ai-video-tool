@@ -33,7 +33,23 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## DECISION (Fendi, 6 Nov, later): the still path, not the video path
+## DECISION (Fendi, 6 Nov, latest): Gemini regenerates him INTO the photo at the drone's angle
+
+Fendi, on covers C/D: "the zoom in is still blurry and I look pasted into the image poorly" (cause: at 230 px tall his
+face is 24 px; and an eye-level photo on a 45° plate), then "Gemini or another tool should be able to regenerate me
+into the image, changing the angle and positioning me correctly." So for THIS cover his generated likeness is accepted
+(the real-pixels rule stays for footage). v4 = `7bb2e822` (`project-references …/worlds/scene_76497586-…_1.jpg`,
+2048²): him at the centre of the star, foreshortened from the drone, looking up, the Ralph Lauren look, no cap (the
+model dropped it; Fendi wants the hat changed anyway). Posted, NOT judged. Next on his word: the hat (say which), then
+any pose/size note, then a final at 2048² and the type treatment.
+
+Recipe for the next agent: `world-still-proxy` with `model gemini-nano-banana-2.1`, a queued `provider_jobs` row as
+`jobRowId`, references = the plate (`place`), the dressed photo of him (`cast`, must sit in project-references or
+project-clips, not project-exports), three face pictures (`cast`); prompt = keep the photograph, add one man at the
+centre seen from the drone, foreshortened, outfit named piece by piece, face "the man in images 3–5", scale in car
+lengths, shadow and grain of the photo. $0.27 per try.
+
+## (earlier) DECISION (Fendi, 6 Nov): the still path, not the video path
 
 "Taking a video to create an image is the wrong approach, 100%. Use the images in AVT to create the swap." Also: the
 take used (HALF_SONG_SIDE) sits under the warm diffused ceiling light and reads blurry/pasted; the LED takes are the
