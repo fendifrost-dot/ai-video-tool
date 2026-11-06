@@ -25,11 +25,17 @@ then the cover, then a skill other agents can load.
 | Sync row for the source | DONE | `performance_syncs` `52add98d` (offset 73.5, confirmed; no song in this project) |
 | Cover plate v2 (the cars draw the star, from Fendi's reference `582d6b2a`) | 2 stills, $0.14, posted, **REJECTED with v1** (Fendi: 'I provided a perfectly good image of the vehicles and you produced several worst images') | `6def390c`, `5c0b2b75`; do not use |
 | **Cover plate = Fendi's own photo** `582d6b2a` (22 Rolls-Royces and Bentleys parked as a six-point star, drone, overcast day, industrial lot) | DECISION: the plate is his picture, not a redraw. Two framings posted, his pick pending: (a) $0 square crop of his pixels, 768², centre x=306 of the 1376×768 (`scratchpad/frost/cover/ref_square_crop_768.png`); (b) Gemini extension to 2048² keeping the picture and adding lot below / buildings above, `99e25661` ($0.27, job `63613d13`) — a close regeneration, labelled as such | the star's open centre is where he stands; the camera angle (~45° down) matches his overhead take |
-| Genjutsu dress | **REFUSED at the provider — Higgsfield wallet empty** (job `e32d97a3`, 'credit balance is too low', not billed) | rerun the exact call in "Then, in order" step 1 after a top-up; four pieces (jacket, shirt, bow tie, trousers), loafers in a second pass |
+| Genjutsu dress | DONE (run 2 after Fendi's top-up; run 1 `e32d97a3` was refused on an empty wallet, not billed) | job `a327bf27` → crop result `4a0f8bbf` (712×1294, 97 f, sha `07043593…`): jacket, pleated shirt, bow tie + pocket square, plaid trousers; loafers appeared on one foot unasked; cap kept |
+| Face put-back | DONE, proof `max |out-original| on face/hair/skin: 0`, 237/241 aligned | `scratchpad/frost/swap/out/c033_body_only_swap.mp4` (1080); lifted to 4K `dressed_4k.mp4` (changed area 2.1 %), sha `3bc98ce4…`, in `project-exports …/canonical/cover/dressed_4k_HALF_SONG_SIDE_73.5_4s.mp4` |
+| Cover frame | DONE: frame 120 = 75.5 s of the take | `canonical/cover/cover_frame_4k_f120.png`, sha `faa32b79…` |
+| First composites | DONE, posted, NOT judged: him at the open centre of his star photo, 215 px tall on 2048² (about twice true scale), RVM matte gated by a place-limited key for the wall panel behind his back (`scripts/edit/compose_cover_still.py`), graded to the overcast lot, contact shadow, grain | A on his pixels `canonical/cover/FrostTheBoss_cover_A_hisphoto_crop_2048.jpg` (sha `ff7a4a17…`), B on the extension `…cover_B_hisphoto_extended_2048.jpg` (sha `ecaf6039…`) |
+| Open with Fendi | plate A or B; his size on the cover; cap on or off; loafers on both feet (second `dress-clip` pass, $3.405, pieces: loafers only, or re-run with loafers in the four) | — |
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## Blocked on Fendi: the Higgsfield wallet
+## Nothing blocked: the cover waits on Fendi's picks (plate, size, cap, loafers)
+
+## (6 Nov, earlier) Blocked on Fendi: the Higgsfield wallet — RESOLVED, he topped up
 
 The dress is one call away. The Control Center Higgsfield API wallet (the account `dress-clip` and `montage-shot` bill
 to, managed in Lovable Cloud secrets / the Higgsfield account, never in chat) answered "credit balance is too low".
