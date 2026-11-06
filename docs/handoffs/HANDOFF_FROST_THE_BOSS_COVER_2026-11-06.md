@@ -33,7 +33,24 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## The hat and the overcoat → v6 (6 Nov, latest)
+## Pose and scale → v7 / v8 (6 Nov, latest)
+
+Fendi on v6: "pretty good", but "since the angle is correct, we probably want to cut me out and then paste me back in
+at a smaller scale", and "I don't like the pose. It's not bossed up… I'm a rapper, so it has to have that vibrato to
+it."
+
+| Step | Result | Ledger |
+|---|---|---|
+| v7 stances, Grok edits of v6 `56dbeccb` + 3 face pictures | A pockets `62af9f3a`, B arms crossed `63ac2046`, C lapel `db5d402c` | 245, $0.36 |
+| v8 cut-and-paste smaller, $0: `scripts/edit/cover_cutpaste_smaller.py <grok_cover.png> <plate.png> 1024 1100 <height_px> out.jpg` | B at 520 / 420 / 320 px; A and C at 420 (`$S/frost/cover/cover_v8_*.jpg`) | — |
+
+Findings: Grok re-renders the plate with a small shift (mean abs diff 10–19 against the original), so a cut-out
+goes back onto the ORIGINAL plate `plate_v3_his_photo_extended.jpg` (= `99e25661`), never onto the Grok frame. The
+star's open centre on that plate is (1024, 1100); feet at 1180 land on the green car's roof. At 320 px his face is
+~30 px (the v5 "true scale" problem again); 420 keeps it readable. Posted, NOT judged: stance and size pending, then
+lock, file primary, type.
+
+## The hat and the overcoat → v6 (6 Nov)
 
 Fendi, after v5: the approach is right (hat first on the dressed photo, then placement). The hat is the **Gentleman
 London Stanton leather fur-lined docker cap** ("Use these", two screenshots), filed as `character_features
