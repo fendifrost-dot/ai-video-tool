@@ -57,7 +57,7 @@ Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **AP
 | c023 | verse 2 | 40.85–42.33 | 35 | `3643febe` c023_3643febe_source.mp4 | 1.141 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c024 | verse 2 | 42.33–43.80 | 35 | `66b56c6b` c024_66b56c6b_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds a 15 Oct pick) |
 | c025 | verse 2 | 43.80–45.28 | 35 | `90ec4e33` c025_90ec4e33_source.mp4 | 1.138 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
-| c026 | verse 2 | 45.28–46.75 | 35 | `d2ce8f07` c026_d2ce8f07_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry) |
+| c026 | verse 2 | 45.28–46.75 | 35 | `d2ce8f07` c026_d2ce8f07_source.mp4 | 0.000 | CANDIDATE 17 Oct (board holds the 15 Oct carry). 6 Nov: still-mouth re-render **`081a4ddf`** (36 f, same fox-then-him layout) filed unselected on Grokbot's regeneration handoff, awaits Fendi |
 | c027 | verse 2 | 46.75–48.23 | 35 | `dc32d17c` c027_dc32d17c_source.mp4 | 1.135 | CANDIDATE 17 Oct montage (board holds a 15 Oct pick) |
 | c028 | verse 2 | 48.23–50.19 | 47 | `b7ca925f` c028_b7ca925f_source.mp4 | 0.896 | CANDIDATE 17 Oct montage (board holds the 15 Oct carry) |
 | c029 | verse 2 | 50.19–52.16 | 47 | `a2f302bd` c029_a2f302bd_source.mp4 | 0.000 | CANDIDATE 17 Oct, nothing selected |
@@ -181,6 +181,22 @@ report back, old asset → new, with the trick used. `punchin/SHA256SUMS_punchin
 Measurement behind the lists: `scripts/edit/mouth_scan.py` on every slot clip, lip gap / face width per sample at 12 fps
 (moving = mean > 0.08 with spread > 0.03, confirmed on a face sheet); c043's dressed take and c008's generated him keep
 their mouths shut and stay.
+
+## Grokbot's regeneration handoff (5 Nov): c026 / c033 / c039 delivered 6 Nov
+
+Fendi passed Grokbot's `HANDOFF_CLAUDE_c026_c033_c039_2026-11-05.md` (c026: keep the layout, mouth at rest; c033: kitchen
+without mouth movement, b-roll; c039: wider so the Prada shoes read clean, b-roll, no mouth). All three are cut to the
+exact slot length, 1080x1920, 24 fps, SAR 1:1, silent, and sit in
+`canonical/grokbot_first_half_2026-11-05/replacements_claude_2026-11-06/` with a `README.md` carrying the SHA-256s.
+Full note: [`HANDOFF_CLAUDE_c026_c033_c039_DELIVERED_2026-11-06.md`](HANDOFF_CLAUDE_c026_c033_c039_DELIVERED_2026-11-06.md).
+Each is filed on its shot UNSELECTED; nothing is swapped into the package until Fendi accepts it (then
+`apply_replacements.py` swaps the slot). Spend: ledger 227–230, 4 × $2.219 (c026 took two renders).
+
+| Slot | File | Frames | Asset | State |
+|---|---|---|---|---|
+| c026 | `c026_172abaa2_36f_1080x1920_24.mp4` | 36 | `081a4ddf` | CANDIDATE, posted 6 Nov |
+| c033 | `c033_25cde54d_36f_1080x1920_24.mp4` | 36 | `20b8c185` | CANDIDATE, posted 6 Nov |
+| c039 | `c039_f94848cb_70f_1080x1920_24.mp4` | 70 | `d90d6f29` | CANDIDATE, posted 6 Nov |
 
 ## Rules that do not bend
 
