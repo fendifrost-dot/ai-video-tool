@@ -129,7 +129,7 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 
 ## CANONICAL: clothing swaps on Fendi's real footage keep his real face (approved 18 Oct 2026)
 
-**Read [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md) before any wardrobe change on a performance take.**
+**Read [`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`](docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md) before any wardrobe change on a performance take.** The loadable run-book, with the AVT tool set, is the skill [`.claude/skills/avt-clothing-swap/SKILL.md`](.claude/skills/avt-clothing-swap/SKILL.md).
 - Genjutsu dresses the whole frame, which redraws his face.
 - The canonical method then composites only the garment and cap back over the original frames. The face from the brows down, beard, hands and mouth stay the take's own pixels (proof printed: 0 difference).
 - Approved by Fendi on c033 (final asset `5482b35b`).

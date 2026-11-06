@@ -18,6 +18,12 @@ quoted, dry-run first, and recorded in `docs/LEDGER_YSL_TESTING_BUDGET.md`.
 **Every shot with him passes [`../SHOT_RULES.md`](../SHOT_RULES.md) before it is posted.** **Never** apply generated lip-sync or any face-altering pass to Fendi. His mouth in a shot is either his real take's
 or at rest.
 
+## The skill
+
+[`.claude/skills/avt-clothing-swap/SKILL.md`](../../.claude/skills/avt-clothing-swap/SKILL.md) is the one page an agent
+loads to run a clothing swap end to end and to use the AVT tool set (every `avt_*` MCP tool, the paid functions and
+their bodies, costs, checks, filing). The pages below are the evidence and the detail behind it.
+
 ## The rest of the shelf
 
 | Page | What |
