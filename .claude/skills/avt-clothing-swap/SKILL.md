@@ -149,7 +149,8 @@ images in AVT." The video recipe above is for footage; a still only needs a stil
    `compose_cover_still.py` instead (it keys the wall panel behind him).
 5. Post with the head sheet; file on his word as in step 7 above.
 6. **When the picture needs a different ANGLE than any photo of him** (a drone cover), a paste cannot fix it: with
-   Fendi's say-so for that picture, let Gemini regenerate him INTO the plate (`world-still-proxy`, Gemini, refs = plate
+   Fendi's say-so for that picture, let the model regenerate him INTO the plate (`world-still-proxy`; **Grok
+   `grok-imagine-image-2.0` held his face far better than Gemini on this, 6 Nov 2026**; refs = plate
    as `place`, the dressed photo as `cast` from project-references, three faces as `cast`; prompt names the camera, the
    scale in car lengths, the outfit piece by piece). His likeness is then the model's drawing, checked against his face
    pictures; say so when posting. Never do this for footage (rule 2).

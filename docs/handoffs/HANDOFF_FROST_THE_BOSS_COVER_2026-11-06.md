@@ -33,7 +33,16 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## DECISION (Fendi, 6 Nov, latest): Gemini regenerates him INTO the photo at the drone's angle
+## Fendi on v4: "Gemini did a terrible job" → v5 with Grok (6 Nov, latest)
+
+Same brief and references through `grok-imagine-image-2.0` (images/edits, 5 refs): `ac7fd93b` (him large at the
+centre, no cap, looking up, strong likeness) and `5b51163f` (scene scale, olive cap). OBSERVED: for inserting him at a
+new angle, Grok held his face far better than Gemini; Gemini stayed better at keeping the plate itself. His pick and
+the hat are pending. Likeness answer given to Fendi: the best tool is the one that does not redraw the face (Grok edit
+mode on his own photo); when a new angle forces a redraw, Grok over Gemini on this evidence; the hybrid (paste his real
+face from the `looking_up` picture) stays available.
+
+## (superseded by v5) DECISION (Fendi, 6 Nov): Gemini regenerates him INTO the photo at the drone's angle
 
 Fendi, on covers C/D: "the zoom in is still blurry and I look pasted into the image poorly" (cause: at 230 px tall his
 face is 24 px; and an eye-level photo on a 45° plate), then "Gemini or another tool should be able to regenerate me
