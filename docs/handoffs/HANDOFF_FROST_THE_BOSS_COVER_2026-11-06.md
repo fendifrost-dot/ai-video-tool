@@ -21,12 +21,20 @@ then the cover, then a skill other agents can load.
 | original.mp4 (1080) | uploaded + filed on the shot, primary | `project-clips/<user>/f411e59c…/cover/HALF_SONG_SIDE_73.5_4s_1080.mp4`, asset `06f5fcbb-4480-4aca-8dc5-8910141493dc`, sha256 `a614dcdc…`, assignment `67a5abfb` |
 | Lane-B crop (1100×2000 at (350,1400) of 2160×3840) | uploaded + filed off the shot | `…/cover/HALF_SONG_SIDE_73.5_4s_crop1100x2000.mp4`, asset `9910bbd0-d778-4085-9bb3-a8add39ec072`, sha256 `e14996fc…`; rect as fractions `{x:0.16204, y:0.36458, w:0.50926, h:0.52083}`, window `[0, 4]` |
 | Cover plate drafts | 2 stills, $0.14, posted to Fendi, NOT judged | `project-references/…/worlds/scene_mw4m66lo_1.png` asset `0928901d`, `_2.png` asset `5c50f6c6`, prompt `frost-cover-plate-v1-2026-11-06` (draft 2 = six headlight beams to the centre) |
-| Ralph Lauren jacket in the wardrobe | **NOT DONE — blocked** | ralphlauren.com and its image host refuse automated fetches (HTTP 307 to an access-denied page); the product shots must come from Fendi |
-| Genjutsu dress | not run | needs the wardrobe row above |
+| Ralph Lauren look in the wardrobe | DONE (Fendi sent five product-page screens; pictures cropped and uploaded to `wardrobe-refs/<user>/<artist>/rl_*.jpg`) | `character_features`: jacket `976cc202`, pleated shirt `c030a1bd`, bow tie + pocket square `522d58e3`, Blackwatch trousers `238eefcc`, tassel loafers `62685002`, overcoat `a6b03f64` (optional second look) |
+| Sync row for the source | DONE | `performance_syncs` `52add98d` (offset 73.5, confirmed; no song in this project) |
+| Cover plate v2 (the cars draw the star, from Fendi's reference `582d6b2a`) | 2 stills, $0.14, posted, NOT judged | `6def390c`, `5c0b2b75`, prompt `frost-cover-plate-v2-star-of-cars-2026-11-06` |
+| Genjutsu dress | **REFUSED at the provider — Higgsfield wallet empty** (job `e32d97a3`, 'credit balance is too low', not billed) | rerun the exact call in "Then, in order" step 1 after a top-up; four pieces (jacket, shirt, bow tie, trousers), loafers in a second pass |
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## Blocked on Fendi: the jacket pictures
+## Blocked on Fendi: the Higgsfield wallet
+
+The dress is one call away. The Control Center Higgsfield API wallet (the account `dress-clip` and `montage-shot` bill
+to, managed in Lovable Cloud secrets / the Higgsfield account, never in chat) answered "credit balance is too low".
+After a top-up, rerun step 1 below unchanged ($3.405). Nothing else is blocked.
+
+## Done: the jacket pictures (was blocked)
 
 Ask for the product shots of the jacket (front on the model or flat, side/three-quarter, a lapel and plaid detail), as
 he sent the YSL caps and the Pradas. Then:
@@ -41,7 +49,7 @@ he sent the YSL caps and the Pradas. Then:
 
 ## Then, in order (the skill's steps 2–7)
 
-1. `avt_call dress-clip` `{projectId f411e59c…, assetId 06f5fcbb…, pieceIds [<jacket id>], crop {path
+1. `avt_call dress-clip` `{projectId f411e59c…, assetId 06f5fcbb…, pieceIds [976cc202…, c030a1bd…, 522d58e3…, 238eefcc…], crop {path
    "3ca10935…/f411e59c…/cover/HALF_SONG_SIDE_73.5_4s_crop1100x2000.mp4", rect {x 0.16204, y 0.36458, w 0.50926,
    h 0.52083}, window [0, 4]}, dryRun true}` → expect `estimateUsd` ≈ 3.405 (5 s billed). Then `dryRun false`; poll
    `provider_jobs` by `jobId` until `succeeded`; note `result_asset_id`.
