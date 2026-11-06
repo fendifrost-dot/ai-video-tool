@@ -33,7 +33,21 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## Nothing blocked: the cover waits on Fendi's picks (plate, size, cap, loafers)
+## DECISION (Fendi, 6 Nov, later): the still path, not the video path
+
+"Taking a video to create an image is the wrong approach, 100%. Use the images in AVT to create the swap." Also: the
+take used (HALF_SONG_SIDE) sits under the warm diffused ceiling light and reads blurry/pasted; the LED takes are the
+clean ones. So: covers A/B (from the take) are superseded. The still path (skill: "A STILL of him in a new outfit"):
+
+| Item | State | Id / path |
+|---|---|---|
+| Grok still swap on his `silhouette_front` photo | DONE, $0.26, two candidates | `eca302e1`, `4544ebcc` (`project-references …/worlds/scene_mw568px3_{1,2}.png`, 1776×2368) |
+| Face put-back on the still | DONE, proof 0 on both | `canonical/cover/still_swap{1,2}_putback.png` |
+| Covers C (his pixels) / D (extension) from the still | DONE, posted, NOT judged | `canonical/cover/FrostTheBoss_cover_{C_still_crop,D_still_extended}_2048.jpg` |
+| Open | the photo is eye-level; the plate looks down ~45°. Fendi offered to shoot: brief = phone 40–50° above him (stairs, balcony, a friend on a chair, or a stick), daylight or the LED panels (no warm ceiling light), plain floor with space all round, standing, looking up at the lens, hands at the waist, black mock-neck under, full body with feet, highest resolution still (and a 4 s clip if he likes); upload it to AVT; then steps 2–4 of the skill on that photo | — |
+| Still his calls | plate A-crop or extension; his size; cap on or off (the photo has the cap) | — |
+
+## (earlier) Nothing blocked: the cover waits on Fendi's picks (plate, size, cap, loafers)
 
 ## (6 Nov, earlier) Blocked on Fendi: the Higgsfield wallet — RESOLVED, he topped up
 
