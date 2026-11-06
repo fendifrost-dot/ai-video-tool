@@ -23,7 +23,8 @@ then the cover, then a skill other agents can load.
 | Cover plate drafts | 2 stills, $0.14, posted to Fendi, NOT judged | `project-references/…/worlds/scene_mw4m66lo_1.png` asset `0928901d`, `_2.png` asset `5c50f6c6`, prompt `frost-cover-plate-v1-2026-11-06` (draft 2 = six headlight beams to the centre) |
 | Ralph Lauren look in the wardrobe | DONE (Fendi sent five product-page screens; pictures cropped and uploaded to `wardrobe-refs/<user>/<artist>/rl_*.jpg`) | `character_features`: jacket `976cc202`, pleated shirt `c030a1bd`, bow tie + pocket square `522d58e3`, Blackwatch trousers `238eefcc`, tassel loafers `62685002`, overcoat `a6b03f64` (optional second look) |
 | Sync row for the source | DONE | `performance_syncs` `52add98d` (offset 73.5, confirmed; no song in this project) |
-| Cover plate v2 (the cars draw the star, from Fendi's reference `582d6b2a`) | 2 stills, $0.14, posted, NOT judged | `6def390c`, `5c0b2b75`, prompt `frost-cover-plate-v2-star-of-cars-2026-11-06` |
+| Cover plate v2 (the cars draw the star, from Fendi's reference `582d6b2a`) | 2 stills, $0.14, posted, **REJECTED with v1** (Fendi: 'I provided a perfectly good image of the vehicles and you produced several worst images') | `6def390c`, `5c0b2b75`; do not use |
+| **Cover plate = Fendi's own photo** `582d6b2a` (22 Rolls-Royces and Bentleys parked as a six-point star, drone, overcast day, industrial lot) | DECISION: the plate is his picture, not a redraw. Two framings posted, his pick pending: (a) $0 square crop of his pixels, 768², centre x=306 of the 1376×768 (`scratchpad/frost/cover/ref_square_crop_768.png`); (b) Gemini extension to 2048² keeping the picture and adding lot below / buildings above, `99e25661` ($0.27, job `63613d13`) — a close regeneration, labelled as such | the star's open centre is where he stands; the camera angle (~45° down) matches his overhead take |
 | Genjutsu dress | **REFUSED at the provider — Higgsfield wallet empty** (job `e32d97a3`, 'credit balance is too low', not billed) | rerun the exact call in "Then, in order" step 1 after a top-up; four pieces (jacket, shirt, bow tie, trousers), loafers in a second pass |
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
@@ -58,9 +59,10 @@ he sent the YSL caps and the Pradas. Then:
    proof must read `max |out-original| on face/hair/skin: 0`; `dressed_4k.py` to lift onto the 4K window.
 3. Tile the dressed 4K clip, pick the 75.5 s frame (or the nearest with the mouth closed and the lapels clean), export
    the PNG. Post it with the face sheet; "rules check 1–7 pass" (3 does not apply to a still).
-4. Plate: Fendi picks draft 1 or 2 (or asks for changes; a redraft is $0.07 per still). Matte him, scale to the
-   centre spot (~3 m across in the plate), light from six sides low and cool with warm fill from the hangar side,
-   grain to the plate, compose the 1:1 cover, post. Type/logo treatment is his call afterwards.
+4. Plate: his photo (crop or extension, his pick). Matte him, scale to the open centre of the star (about one car
+   length across), flat overcast daylight from above with the lot's grey bounce, grain and softness to the photo,
+   compose the 1:1 cover, post. Never generate a new plate for this cover again without his ask. Type/logo
+   treatment is his call afterwards.
 5. On his word: file the dressed clip and the cover still in `project-exports/<user>/f411e59c…/canonical/cover/`,
    `project_assets` rows with sha256, demote the source assignment, set the cover primary; ledger rows; PR.
 
