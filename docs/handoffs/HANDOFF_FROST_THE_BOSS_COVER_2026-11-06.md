@@ -33,7 +33,50 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## DECISION (Fendi, 6 Nov, later): the still path, not the video path
+## The hat and the overcoat → v6 (6 Nov, latest)
+
+Fendi, after v5: the approach is right (hat first on the dressed photo, then placement). The hat is the **Gentleman
+London Stanton leather fur-lined docker cap** ("Use these", two screenshots), filed as `character_features
+b6db21e3-d805-49be-bdfb-9c19791703d8` (`wardrobe-refs …/stanton_docker_cap_front.jpg` + `_top.jpg`). "And add the
+long jacket over me as well": the RL overcoat `a6b03f64` now carries his full-look screenshot
+(`rl_full_look_overcoat.jpg`, coat worn open, arms in the sleeves).
+
+| Step | Result | Ledger |
+|---|---|---|
+| Cap + overcoat on the dressed photo `eca302e1` (Grok edit, 3 refs) | `70e283b6` (used), `8f421fdd` | 243, $0.22 |
+| v6 placement into the plate `99e25661` (Grok, 5 refs, 1:1 2k) | `56dbeccb` (in front of the star's centre), `7cd89353` (closer, bigger) | 244, $0.26 |
+| Fedora / bucket-hat guesses made before he named the hat | `44f7e96a`, `f2cbbfdd` (superseded, not posted) | 242, $0.18 |
+
+Posted, NOT judged. On his pick: lock that 2048² as the cover (file in `project-exports …/canonical/cover/` as a
+`project_assets` row on shot `cover` `5da65f1d`, primary via `shot_asset_assignments`), then the type treatment.
+Scratch copies: `$S/frost/cover/cover_v6_grok_{1,2}.png`, `$S/frost/stillswap/hat/hat_coat_{1,2}.png`.
+
+## Fendi on v4: "Gemini did a terrible job" → v5 with Grok (6 Nov)
+
+Same brief and references through `grok-imagine-image-2.0` (images/edits, 5 refs): `ac7fd93b` (him large at the
+centre, no cap, looking up, strong likeness) and `5b51163f` (scene scale, olive cap). OBSERVED: for inserting him at a
+new angle, Grok held his face far better than Gemini; Gemini stayed better at keeping the plate itself. His pick and
+the hat are pending. Likeness answer given to Fendi: the best tool is the one that does not redraw the face (Grok edit
+mode on his own photo); when a new angle forces a redraw, Grok over Gemini on this evidence; the hybrid (paste his real
+face from the `looking_up` picture) stays available.
+
+## (superseded by v5) DECISION (Fendi, 6 Nov): Gemini regenerates him INTO the photo at the drone's angle
+
+Fendi, on covers C/D: "the zoom in is still blurry and I look pasted into the image poorly" (cause: at 230 px tall his
+face is 24 px; and an eye-level photo on a 45° plate), then "Gemini or another tool should be able to regenerate me
+into the image, changing the angle and positioning me correctly." So for THIS cover his generated likeness is accepted
+(the real-pixels rule stays for footage). v4 = `7bb2e822` (`project-references …/worlds/scene_76497586-…_1.jpg`,
+2048²): him at the centre of the star, foreshortened from the drone, looking up, the Ralph Lauren look, no cap (the
+model dropped it; Fendi wants the hat changed anyway). Posted, NOT judged. Next on his word: the hat (say which), then
+any pose/size note, then a final at 2048² and the type treatment.
+
+Recipe for the next agent: `world-still-proxy` with `model gemini-nano-banana-2.1`, a queued `provider_jobs` row as
+`jobRowId`, references = the plate (`place`), the dressed photo of him (`cast`, must sit in project-references or
+project-clips, not project-exports), three face pictures (`cast`); prompt = keep the photograph, add one man at the
+centre seen from the drone, foreshortened, outfit named piece by piece, face "the man in images 3–5", scale in car
+lengths, shadow and grain of the photo. $0.27 per try.
+
+## (earlier) DECISION (Fendi, 6 Nov): the still path, not the video path
 
 "Taking a video to create an image is the wrong approach, 100%. Use the images in AVT to create the swap." Also: the
 take used (HALF_SONG_SIDE) sits under the warm diffused ceiling light and reads blurry/pasted; the LED takes are the
