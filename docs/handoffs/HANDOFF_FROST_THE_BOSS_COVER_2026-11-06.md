@@ -33,7 +33,25 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## Fendi on v4: "Gemini did a terrible job" → v5 with Grok (6 Nov, latest)
+## The hat and the overcoat → v6 (6 Nov, latest)
+
+Fendi, after v5: the approach is right (hat first on the dressed photo, then placement). The hat is the **Gentleman
+London Stanton leather fur-lined docker cap** ("Use these", two screenshots), filed as `character_features
+b6db21e3-d805-49be-bdfb-9c19791703d8` (`wardrobe-refs …/stanton_docker_cap_front.jpg` + `_top.jpg`). "And add the
+long jacket over me as well": the RL overcoat `a6b03f64` now carries his full-look screenshot
+(`rl_full_look_overcoat.jpg`, coat worn open, arms in the sleeves).
+
+| Step | Result | Ledger |
+|---|---|---|
+| Cap + overcoat on the dressed photo `eca302e1` (Grok edit, 3 refs) | `70e283b6` (used), `8f421fdd` | 243, $0.22 |
+| v6 placement into the plate `99e25661` (Grok, 5 refs, 1:1 2k) | `56dbeccb` (in front of the star's centre), `7cd89353` (closer, bigger) | 244, $0.26 |
+| Fedora / bucket-hat guesses made before he named the hat | `44f7e96a`, `f2cbbfdd` (superseded, not posted) | 242, $0.18 |
+
+Posted, NOT judged. On his pick: lock that 2048² as the cover (file in `project-exports …/canonical/cover/` as a
+`project_assets` row on shot `cover` `5da65f1d`, primary via `shot_asset_assignments`), then the type treatment.
+Scratch copies: `$S/frost/cover/cover_v6_grok_{1,2}.png`, `$S/frost/stillswap/hat/hat_coat_{1,2}.png`.
+
+## Fendi on v4: "Gemini did a terrible job" → v5 with Grok (6 Nov)
 
 Same brief and references through `grok-imagine-image-2.0` (images/edits, 5 refs): `ac7fd93b` (him large at the
 centre, no cap, looking up, strong likeness) and `5b51163f` (scene scale, olive cap). OBSERVED: for inserting him at a
