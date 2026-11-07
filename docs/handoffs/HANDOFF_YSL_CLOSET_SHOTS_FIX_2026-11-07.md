@@ -109,7 +109,7 @@ wrong and not a constraint; the ledger keeps counting list price regardless.
 |---|---|---|---|
 | c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll submitted (ledger 261). |
 | c017 | `58e7ac51` | `24e0ecf1` | OBSERVED: on the lockers, jacket right, wordmark correct, mouth at rest. FLAG: darker lenses. Posted. |
-| c023 | `de5191f9` | pending | |
+| c023 | `de5191f9` | `8705741e` | OBSERVED: seated by the window, jacket right, wordmark correct, mouth at rest. Posted. |
 | c025 | `ea8407e5` | `093fdcf6` | OBSERVED: behind the rail, wordmark correct, mouth at rest. FLAG: a navy hem band. Posted. |
 | c028 | `f2771ecb` | `75cd814a` | OBSERVED: profile at the window, jacket right, wordmark correct, mouth at rest. Posted. |
 | c030 | `5d524cf5` | `a45df650` | OBSERVED: calm at the pillar, jacket right, wordmark correct, mouth at rest. Posted. |
