@@ -26,8 +26,12 @@ The paid c017 Gemini still was refused `reference_forbidden` after a passing dry
 2. **Tool.** `world-still-proxy`'s Gemini dry run sent `references: []` downstream, so the rule never ran before
    the paid call. Fixed in `supabase/functions/world-still-proxy/gemini.ts`: the dry run signs every picture as
    the caller and sends the signed URLs with `dryRun: true`; CC validates them and sends nothing to Google. Tests
-   25/25. Merged to `main` as `af4130f5` (PR #450). **CODED, not LIVE until Lovable redeploys `world-still-proxy`**
-   (asked of Lovable at 02:17 UTC, message `umsg_01m6swp41ye19t971f58vae2ar`; see "Verify live" below).
+   25/25. Merged to `main` as `af4130f5` (PR #450). **LIVE:** Lovable redeployed `world-still-proxy` at
+   2026-11-07T02:17:00Z from `af4130f5` (byte-identical worktree, source_sha256 `4013b51b…`, message
+   `umsg_01m6swp41ye19t971f58vae2ar`). **VERIFIED live at 02:23 UTC** through `avt_call` (Gemini dry runs, $0):
+   a reference under the caller's folder (`b1b27020`) → `ok: true, referencesChecked: 1, modelAccessVerified: true`;
+   a reference under a legacy folder (`af458e03`, `08ae347a-…/…/hero-frames/…`) → `ok: false, error:
+   "reference_forbidden", billed: false` — the refusal that previously only came from the paid call.
 
 ## The re-shoot (DECISION: the approved recipe, not the stills-plus-animation plan)
 
@@ -76,10 +80,9 @@ Untouched, as required: the nine approved performance shots c009, c026, c033, c0
 
 ## Verify live (the next agent, after Lovable)
 
-1. `world-still-proxy` redeployed: run a Gemini **dry run** (`avt_call world-still-proxy`, `model
-   gemini-nano-banana-2.1`, `dryRun: true`, one `project_asset` reference that is NOT under the caller's folder).
-   Expected after redeploy: `ok: false, error: "reference_forbidden"`. Before: `ok: true`. A reference under the
-   caller's folder keeps answering `ok: true, referencesChecked: 1`.
+1. `world-still-proxy`: DONE and VERIFIED (above). To re-check at any time: a Gemini dry run with a
+   `project_asset` reference under a legacy folder answers `reference_forbidden`; one under the caller's folder
+   answers `ok: true, referencesChecked: 1`.
 2. Each pending job: `avt_select provider_jobs filters id eq <job>` → `status: succeeded`, `result_asset_id` set;
    the clip is `project-clips/<user>/<project>/<job>/generated_higgsfield_*.mp4` (720×1280, 4.04 s).
 3. Nothing in this handoff is verified by anyone's say-so: a clip is accepted only when Fendi says so on the posted
