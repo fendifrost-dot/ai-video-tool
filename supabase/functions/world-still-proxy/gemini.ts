@@ -49,10 +49,31 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   const call = deps.call ?? callControlCenter;
   const sentRefs = input.references.map(({ ref }) => ref);
   const request = { model: GEMINI_MODEL, n: 1, prompt: input.prompt, resolution: input.resolution, aspectRatio: input.aspectRatio, maxCostUsd: input.maxCostUsd, avt_user_id: input.userId, avt_project_id: input.projectId, jobRowId: input.jobRowId };
+  // Every picture is signed AS THE CALLER (storage RLS decides, never the service role); the paid call and the dry
+  // run sign the same way, so a dry run that says yes has passed every check the paid call makes on a picture.
+  const signReferences = async () => {
+    const references: { url: string; label: string; role: string }[] = [];
+    for (const r of input.references) {
+      const { data, error } = await deps.userClient.storage.from(r.buckets[0]).createSignedUrl(r.path, 600);
+      if (error || !data?.signedUrl) throw new Error("reference_sign_failed");
+      references.push({ url: data.signedUrl, label: r.ref.label, role: r.ref.role });
+    }
+    return references;
+  };
   if (input.dryRun) {
+    // The signed URLs go to Control Center's dry run too, so its reference rule (contract.ts referenceUrlAllowed:
+    // bucket, owner folder, project folder) runs before anything is paid for. Until 7 Nov 2026 the dry run sent
+    // `references: []` and passed where the paid call was then refused (c017, ledger 193: reference_forbidden on a
+    // wardrobe picture filed under another user's folder). Control Center's dry run sends no picture to Google.
+    let references: { url: string; label: string; role: string }[];
+    try { references = await signReferences(); } catch { return { ok: false, billed: false, error: "reference_sign_failed", detail: "A reference picture could not be signed as you. Nothing was generated.", referencesChecked: input.references.length }; }
     try {
-      const checked = await call(cc, { endpoint: "image-providers-gemini-generate", body: { ...request, dryRun: true, references: [] }, timeoutMs: 20_000 });
-      if (checked.httpStatus !== 200 || checked.payload.ok !== true) return { ok: false, billed: false, error: "gemini_not_ready", detail: checked.payload.errorCode ?? "Control Center probe failed", modelAccessVerified: checked.payload.modelAccessVerified ?? false, googleError: checked.payload.googleError ?? null };
+      const checked = await call(cc, { endpoint: "image-providers-gemini-generate", body: { ...request, dryRun: true, references }, timeoutMs: 20_000 });
+      if (checked.httpStatus !== 200 || checked.payload.ok !== true) {
+        const said = [checked.payload.errorMessage, checked.payload.error, checked.payload.detail].find((v) => typeof v === "string") as string | undefined;
+        if (said === "reference_forbidden") return { ok: false, billed: false, error: "reference_forbidden", detail: "Control Center refused a reference picture: it is not stored under your folder (bucket, owner, project). Move the picture under your folder and point the record at it. Nothing was generated.", referencesSent: 0, referencesChecked: input.references.length };
+        return { ok: false, billed: false, error: "gemini_not_ready", detail: checked.payload.errorCode ?? "Control Center probe failed", modelAccessVerified: checked.payload.modelAccessVerified ?? false, googleError: checked.payload.googleError ?? null };
+      }
       return { ...checked.payload, dryRun: true, referencesSent: 0, referencesChecked: input.references.length };
     } catch { return { ok: false, billed: false, error: "control_center_unreachable" }; }
   }
@@ -74,12 +95,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   const stages: Record<string, string> = { generation: "not_started", upload: "not_started", filing: "not_started", decode: "unknown", finalize: "not_started" };
   let submittedAt: string | null = null;
   try {
-    const references: { url: string; label: string; role: string }[] = [];
-    for (const r of input.references) {
-      const { data, error } = await deps.userClient.storage.from(r.buckets[0]).createSignedUrl(r.path, 600);
-      if (error || !data?.signedUrl) throw new Error("reference_sign_failed");
-      references.push({ url: data.signedUrl, label: r.ref.label, role: r.ref.role });
-    }
+    const references = await signReferences();
     // Submission intent is on the row BEFORE the billable call: a worker killed mid-call leaves a job that says
     // "submitted, billing unknown", not a silent "running". If this write fails, nothing is sent.
     submittedAt = new Date().toISOString();
