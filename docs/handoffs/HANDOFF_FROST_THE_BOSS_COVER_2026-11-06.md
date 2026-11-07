@@ -33,7 +33,19 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
-## Pose and scale → v7 / v8 (6 Nov, latest)
+## Scale to the cars, centre, proportions → v9 / v10 / v11 (7 Nov, latest)
+
+Fendi: "I need to be scaled down even more I'm 6'2"" → v9: measured on the plate (a Rolls ≈ 5.5 m; the star's
+squash puts the drone ≈ 24° above the ground; ≈ 60 px/m at the centre) a 6'2" man is **110–160 px** tall at 2048²;
+160 reads right. "Place me more in the center" → v10 at the open patch's middle (1040, 1010). Then: "I'm too far back
+now… scooted up a little… I look smushed… same proportions, not squished" → v11: the v7 stances were drawn up close to
+the drone (near-subject foreshortening: big head, short legs), wrong for a far figure, so the three stances were
+redone on the straight-on dressed photo `70e283b6` (ledger 246, $0.33: A `72dddf7a`, B `b88b5081`, C `8e816852`)
+and cut out at (1040, 1070), 160 px: `scripts/edit/cover_cutpaste_smaller.py <photo_pose.png> plate.png 1040 1070
+160 out.jpg`. Open patch of the star on the plate: x 830–1250, y 870–1105 (navy car's nose above, green car's roof
+below). Posted, NOT judged: stance pending, then lock, file primary, type.
+
+## Pose and scale → v7 / v8 (6 Nov)
 
 Fendi on v6: "pretty good", but "since the angle is correct, we probably want to cut me out and then paste me back in
 at a smaller scale", and "I don't like the pose. It's not bossed up… I'm a rapper, so it has to have that vibrato to
