@@ -753,11 +753,42 @@ export type Database = {
           },
         ]
       }
+      edit_render_workers: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          last_seen_at: string | null
+          revoked_at: string | null
+          secret_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          secret_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          secret_hash?: string
+        }
+        Relationships: []
+      }
       edit_renders: {
         Row: {
+          attempts: number
+          claimed_at: string | null
           cost_usd: number
           created_at: string
+          duration_seconds: number | null
           error: string | null
+          finished_at: string | null
           id: string
           kind: string
           output_asset_id: string | null
@@ -765,14 +796,20 @@ export type Database = {
           output_path: string | null
           plan: Json
           sequence_id: string
+          started_at: string | null
           status: string
           updated_at: string
           user_id: string
+          worker_id: string | null
         }
         Insert: {
+          attempts?: number
+          claimed_at?: string | null
           cost_usd?: number
           created_at?: string
+          duration_seconds?: number | null
           error?: string | null
+          finished_at?: string | null
           id?: string
           kind: string
           output_asset_id?: string | null
@@ -780,14 +817,20 @@ export type Database = {
           output_path?: string | null
           plan: Json
           sequence_id: string
+          started_at?: string | null
           status?: string
           updated_at?: string
           user_id: string
+          worker_id?: string | null
         }
         Update: {
+          attempts?: number
+          claimed_at?: string | null
           cost_usd?: number
           created_at?: string
+          duration_seconds?: number | null
           error?: string | null
+          finished_at?: string | null
           id?: string
           kind?: string
           output_asset_id?: string | null
@@ -795,9 +838,11 @@ export type Database = {
           output_path?: string | null
           plan?: Json
           sequence_id?: string
+          started_at?: string | null
           status?: string
           updated_at?: string
           user_id?: string
+          worker_id?: string | null
         }
         Relationships: [
           {
@@ -1234,6 +1279,53 @@ export type Database = {
             columns: ["tech_pack_id"]
             isOneToOne: false
             referencedRelation: "tech_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_upload_events: {
+        Row: {
+          bucket: string
+          bytes: number | null
+          created_at: string
+          credential_id: string
+          id: string
+          mode: string
+          owner_user_id: string
+          path: string
+          sha256: string | null
+          tool: string
+        }
+        Insert: {
+          bucket: string
+          bytes?: number | null
+          created_at?: string
+          credential_id: string
+          id?: string
+          mode: string
+          owner_user_id: string
+          path: string
+          sha256?: string | null
+          tool?: string
+        }
+        Update: {
+          bucket?: string
+          bytes?: number | null
+          created_at?: string
+          credential_id?: string
+          id?: string
+          mode?: string
+          owner_user_id?: string
+          path?: string
+          sha256?: string | null
+          tool?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_upload_events_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "batch_credentials"
             referencedColumns: ["id"]
           },
         ]
@@ -3283,6 +3375,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_edit_render: {
+        Args: { p_worker: string }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          cost_usd: number
+          created_at: string
+          duration_seconds: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          output_asset_id: string | null
+          output_bucket: string | null
+          output_path: string | null
+          plan: Json
+          sequence_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "edit_renders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_provider_jobs: {
         Args: { p_limit?: number; p_user?: string }
         Returns: {
@@ -3342,7 +3464,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      reap_stale_edit_renders: { Args: { p_minutes?: number }; Returns: number }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
+      record_mcp_upload: {
+        Args: {
+          p_bucket: string
+          p_bytes: number
+          p_credential_id: string
+          p_mode: string
+          p_path: string
+          p_sha256: string
+        }
+        Returns: string
+      }
       storage_legacy_folder_access: {
         Args: { bucket: string; object_name: string }
         Returns: boolean
