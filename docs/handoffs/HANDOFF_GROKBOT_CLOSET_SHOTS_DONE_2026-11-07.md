@@ -104,3 +104,21 @@ FINAL, c013 / c044 picks, c036 / c037 Director cutaways awaiting Fendi.
 
 Which of the eight you dropped into the cut and at what frame, whether you want the package re-cut, and anything in the eight
 that reads wrong in motion that the stills did not show.
+
+## Added 7 Nov, later: c044 and c047 closed, the first half is done
+
+- **c047** `41d5c1da` (the 16 Oct bear montage v2, slot 0.614–4.064 s of the source, no him): FINAL, Fendi 7 Nov: "the bear
+  shot is fine grokbot actually used that clip already so it's good". Asset approved.
+- **c044** re-shot WITHOUT him as b-roll (Fendi: "Remove me from C044 and have the fashion show going while the trains are
+  moving in fast speed in the background"; "the gambling scene is totally separate from this shot"; "We need more than 2
+  models and some black ones as well"; the puffer in the line rejected). Shot type set to `b_roll`. The scene "Chicago, the
+  runway" now has a clean plate (`8cac92d0`, crew/dice/money/penguin removed) and the six-model long-coat plate `c84505e9`
+  (three Black women, one East Asian, the original two) as its plate. **FINAL = roll 6 `97f95c9a`** (job `990be43d`,
+  assignment `66377562`; Fendi: "It's fine … it'll do I don't want to burn another cycle on a b roll shot"), `8d34b4d0` (the
+  27 Oct pick with him) demoted. Storage: `project-clips/…/990be43d-adfa-43d2-87b1-80142bafe907/generated_higgsfield_01a1b776-792.mp4`,
+  720x1280 24 fps, 97 frames; the slot is frames 0–46 (1.97 s), `source_in_s = 0`.
+- Rolls 1–5 (`8340164c` `65a36524` `961cb700` `e2f79f32` `6912e77e`) are alternates on c044, never to be used. Ledger 270–278.
+
+**Every slot c001–c047 now carries a clip Fendi accepted or a FINAL.** Verify: `avt_select shot_asset_assignments` on
+shot `01903ea9…` with `is_primary eq true` → one row, asset `97f95c9a…`.
+
