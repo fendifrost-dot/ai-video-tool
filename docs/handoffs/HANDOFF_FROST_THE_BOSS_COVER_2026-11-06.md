@@ -33,6 +33,24 @@ then the cover, then a skill other agents can load.
 | Face put-back, still, placement | not run | — |
 | Ledger | row 232 ($0.14) | `docs/LEDGER_YSL_TESTING_BUDGET.md` |
 
+## v12 (7 Nov, latest): his grade and grain matched to the plate — FINAL
+
+Fendi on v11 C 160: "the color grade of me in the Ralph Lauren outfit seems to be slightly darker grade then the rest of
+the image" and "Is there any of the same film grain over me like the rest of the image". Both measured true: his figure
+sat at a mean luma of 21 against asphalt at 116 (crushed), and carried none of the plate's grain (the paste downscaled
+Grok's grain away; residual std on flat asphalt 8.31, lag-1 0.39).
+
+`scripts/edit/cover_regrade_figure.py` (new, $0): RVM matte on a 3x crop of him, then on his pixels only a lift of 0.55
+stops +10, 12 % of the asphalt's cast, and the plate's grain at 1.3x (weaker in the deep blacks). The plate is untouched.
+Fendi saw lift a/b/c × grain g1/g2 at 3x and chose **lift b, g2**: "Ok I like lift b g2".
+
+| | |
+|--|--|
+| Asset | `5b825de7-bb0e-4fd5-9ba6-0e1911194165`, `approved`, v2 of `0cdcb83a` |
+| File | `project-exports/…/f411e59c…/canonical/cover/FrostTheBoss_cover_FINAL_v12_liftB_g2_2048.jpg`, 2048x2048, sha256 `60d52a2f…955d`, 1 850 198 bytes |
+| Board | primary on the cover shot `5da65f1d` (assignment `f7515e0e`); `0cdcb83a` (v11) demoted, kept |
+| Reproduce | `python -I scripts/edit/cover_regrade_figure.py <v11 C 160> out.jpg` with the defaults; prints `him: mean luma 21.0, ring 116.0` then `him mean luma now 40.3` |
+
 ## Scale to the cars, centre, proportions → v9 / v10 / v11 (7 Nov, latest)
 
 Fendi: "I need to be scaled down even more I'm 6'2"" → v9: measured on the plate (a Rolls ≈ 5.5 m; the star's
