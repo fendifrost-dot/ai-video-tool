@@ -142,3 +142,28 @@ wrong and not a constraint; the ledger keeps counting list price regardless.
 - Do not send the literal Seedance phrase "no mouth movement" (freezes the clip); the recipe's "mouth at rest" line is
   the one that works.
 - Do not edit the legacy `65cf99cb-…` files or delete them; the records now point at the copies.
+
+## Fendi's verdict on the eight, 7 Nov 05:10 UTC
+
+Fendi: "C016 r6 is the winner" · "C025r2 is still too zesty, C027 looks unnatural and the hem does look a little funny" ·
+"The rest will work. And in C027 Arrivals is spelled wrong but if that can't be fixed it's not a big deal".
+
+**Made primary on their shots** (the old primary demoted, never deleted; `shot_asset_assignments` ids in brackets):
+
+| Slot | Asset | Assignment | Demoted |
+|------|-------|------------|---------|
+| c016 | `19885553` (round 6) | `9765e8af` | `82689f6e` |
+| c017 | `24e0ecf1` (round 2) | `42c0853c` | `b496ecbc` |
+| c023 | `8705741e` (round 2) | `38b4323c` | `3643febe` |
+| c028 | `75cd814a` (round 2) | `b80ca5a4` | `60f4715d` |
+| c030 | `a45df650` (round 2) | `cc707a4d` | `ca8bca0b` |
+| c043 | `583d61e1` (round 1) | `425359c8` | `d3b16d0a` |
+
+**Re-rolled** (ledger 266–269, two stagings each; 269 was REFUSED by Higgsfield for a low API-wallet balance, not charged — the Control Center API wallet needs a top-up before any further roll; results of 266–268 pending): c025 (`093fdcf6` rejected: too zesty, hem band) and
+c027 (`ddf22dfa` rejected: unnatural, ARRIVALS misspelled in the cutaway). The jacket line now ends "no other band anywhere
+on it, the hem and the waist plain beige"; the c027 cutaway line spells the sign A-R-R-I-V-A-L-S. Their old primaries stay
+until Fendi picks a re-roll.
+
+Verify: `avt_select shot_asset_assignments` filtered on each shot id above with `is_primary eq true` returns exactly one
+row, the asset in the table. Expected: 6 shots, 6 rows.
+
