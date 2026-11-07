@@ -107,7 +107,7 @@ wrong and not a constraint; the ledger keeps counting list price regardless.
 
 | Slot | Re-roll job | Result | Check |
 |---|---|---|---|
-| c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll submitted (ledger 261). |
+| c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll `def38a1b` → `d629e40b`: mirrored AGAIN (three-quarter staging, right chest nearest the lens). Fourth roll `12c1a339` (ledger 262): square to camera, left shoulder forward, the line names the viewer's-right side of the zip and a plain band on the other side. |
 | c017 | `58e7ac51` | `24e0ecf1` | OBSERVED: on the lockers, jacket right, wordmark correct, mouth at rest. FLAG: darker lenses. Posted. |
 | c023 | `de5191f9` | `8705741e` | OBSERVED: seated by the window, jacket right, wordmark correct, mouth at rest. Posted. |
 | c025 | `ea8407e5` | `093fdcf6` | OBSERVED: behind the rail, wordmark correct, mouth at rest. FLAG: a navy hem band. Posted. |
