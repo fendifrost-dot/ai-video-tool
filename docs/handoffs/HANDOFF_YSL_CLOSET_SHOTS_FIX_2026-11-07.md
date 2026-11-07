@@ -91,6 +91,29 @@ RECOMMENDATION, for Fendi's call (budget: $17.75 of the $22.76 left on this task
    at any size).
 3. The brand layer, properly anchored (an hour of measurement per clip), if re-rolls keep mirroring.
 
+## Fendi's verdict on the first roll and the re-roll (02:40 UTC)
+
+Fendi: "C030 dancing is too freaky it looks weird, C016 jacket doesn't look remotely close and logo is bogus, C028
+added pin stripes to the jacket same as C016. These need new renders and I have more than enough credits to complete
+them your numbers are wrong on what's available please don't worry about the money let's get the shots correct. You
+should know what's acceptable and what's not at this point lets lock in and get these shots right."
+
+DECISION: the standard is the window's jacket exactly (plain beige, one straight navy band, the wordmark on his LEFT
+chest reading left to right), his face, mouth at rest, and nothing strange in the body. A mirrored wordmark is not
+acceptable. Re-rolled six: c016, c017, c023, c025, c028, c030 (ledger 255–260, $13.31); c027 and c043 stand. Changes
+from the first roll: every line carries the jacket spelled out (above), and c030 drops from `motion: lively` to
+`calm` with "standing still against a concrete pillar". Budget: Fendi says the credit numbers I was working from are
+wrong and not a constraint; the ledger keeps counting list price regardless.
+
+| Slot | Re-roll job | Result | Check |
+|---|---|---|---|
+| c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll `def38a1b` → `d629e40b`: mirrored AGAIN (three-quarter staging, right chest nearest the lens). Fourth roll `12c1a339` (ledger 262): square to camera, left shoulder forward, the line names the viewer's-right side of the zip and a plain band on the other side. |
+| c017 | `58e7ac51` | `24e0ecf1` | OBSERVED: on the lockers, jacket right, wordmark correct, mouth at rest. FLAG: darker lenses. Posted. |
+| c023 | `de5191f9` | `8705741e` | OBSERVED: seated by the window, jacket right, wordmark correct, mouth at rest. Posted. |
+| c025 | `ea8407e5` | `093fdcf6` | OBSERVED: behind the rail, wordmark correct, mouth at rest. FLAG: a navy hem band. Posted. |
+| c028 | `f2771ecb` | `75cd814a` | OBSERVED: profile at the window, jacket right, wordmark correct, mouth at rest. Posted. |
+| c030 | `5d524cf5` | `a45df650` | OBSERVED: calm at the pillar, jacket right, wordmark correct, mouth at rest. Posted. |
+
 ## Checks on each render ($0, offline), before anyone looks at it
 
 - Strip: `ffmpeg -i render.mp4 -vf "fps=2.5,scale=216:-2,tile=10x1" strip.jpg`.
