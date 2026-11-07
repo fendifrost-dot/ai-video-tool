@@ -54,12 +54,12 @@ the corner"` ($0). All 8 dry runs passed before any spend (price $2.219 list eac
 |---|---|---|---|---|---|
 | c017 | `8c513159` | hallway `b1b27020` | `ef84b4d0` | `cfdb5b4d` | OBSERVED: in the hallway on the lockers, mouth at rest at every sampled frame (face sheet 1.6–3.9 s), glasses his; the jacket's gold script garbled. Posted 02:15 UTC. |
 | c016 | `d495d6d4` | hallway `b1b27020` | `3df3a496` | pending | |
-| c023 | `3100e78d` | carousel `ad934c70` | `5d9a76c6` | pending | |
+| c023 | `3100e78d` | carousel `ad934c70` | `5d9a76c6` | `82df88cb` | OBSERVED: seated on the carousel rail by the window, fox cutaway first, mouth at rest at every sampled frame. Posted. |
 | c025 | `9379d0c6` | carousel `ad934c70` | `532f3b90` | pending | |
 | c027 | `9d53180d` | carousel `ad934c70` | `0fae15d5` | pending | |
-| c028 | `ff3bcb4e` | carousel `ad934c70` | `07c86756` | pending | |
+| c028 | `ff3bcb4e` | carousel `ad934c70` | `07c86756` | `c77da9fe` | OBSERVED: in profile at the window turning to camera, the fox behind him, mouth at rest. Posted. |
 | c030 | `454015fb` | Lower Wacker `c950a7ee` | `8e0c0742` | pending | |
-| c043 | `ad991d14` | the corner `dfcc35f3` | `cf8125e2` | pending | |
+| c043 | `ad991d14` | the corner `dfcc35f3` | `cf8125e2` | `583d61e1` | OBSERVED: at the station entrance square to camera (centre-front per the montage rules; the slot's spec asked for it), the woman behind his shoulder, mouth at rest. Posted; Fendi's call. |
 
 Ledger rows 247–254 (`docs/LEDGER_YSL_TESTING_BUDGET.md`): 8 × $2.219 = $17.75 list against the $22.76 Fendi had
 left on this task's $50. Results are filed on their shots UNSELECTED by `provider-jobs-tick` (nothing in cut v1.9 is
