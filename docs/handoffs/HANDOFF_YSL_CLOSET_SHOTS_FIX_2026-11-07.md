@@ -52,13 +52,13 @@ the corner"` ($0). All 8 dry runs passed before any spend (price $2.219 list eac
 
 | Slot | Shot id | Plate | Job | Result asset | Check |
 |---|---|---|---|---|---|
-| c017 | `8c513159` | hallway `b1b27020` | `ef84b4d0` | `cfdb5b4d` | OBSERVED: in the hallway on the lockers, mouth at rest at every sampled frame (face sheet 1.6–3.9 s), glasses his; the jacket's gold script garbled. Posted 02:15 UTC. |
-| c016 | `d495d6d4` | hallway `b1b27020` | `3df3a496` | pending | |
-| c023 | `3100e78d` | carousel `ad934c70` | `5d9a76c6` | `82df88cb` | OBSERVED: seated on the carousel rail by the window, fox cutaway first, mouth at rest at every sampled frame. Posted. |
-| c025 | `9379d0c6` | carousel `ad934c70` | `532f3b90` | pending | |
-| c027 | `9d53180d` | carousel `ad934c70` | `0fae15d5` | pending | |
-| c028 | `ff3bcb4e` | carousel `ad934c70` | `07c86756` | `c77da9fe` | OBSERVED: in profile at the window turning to camera, the fox behind him, mouth at rest. Posted. |
-| c030 | `454015fb` | Lower Wacker `c950a7ee` | `8e0c0742` | pending | |
+| c017 | `8c513159` | hallway `b1b27020` | `ef84b4d0` | `cfdb5b4d` | OBSERVED: in the hallway on the lockers, mouth at rest at every sampled frame (face sheet 1.6–3.9 s), glasses his. FLAW: the wordmark mirrored on his right chest (Fendi, 02:24: 'Logo regression on 017'). Posted 02:15 UTC. |
+| c016 | `d495d6d4` | hallway `b1b27020` | `3df3a496` | `1833c3c9` | OBSERVED: on the lockers, penguin and janitor behind, mouth at rest. FLAW: band drawn diagonally. Posted. |
+| c023 | `3100e78d` | carousel `ad934c70` | `5d9a76c6` | `82df88cb` | OBSERVED: seated on the carousel rail by the window, fox cutaway first, mouth at rest. FLAW: wordmark mirrored. Posted. |
+| c025 | `9379d0c6` | carousel `ad934c70` | `532f3b90` | `849543fa` | OBSERVED: behind the carousel rail, mouth at rest. FLAW: wordmark mirrored. Posted. |
+| c027 | `9d53180d` | carousel `ad934c70` | `0fae15d5` | `ddf22dfa` | OBSERVED: under the arrivals board, the woman passes, mouth at rest, wordmark correct. Posted. |
+| c028 | `ff3bcb4e` | carousel `ad934c70` | `07c86756` | `c77da9fe` | OBSERVED: in profile at the window turning to camera, the fox behind him, mouth at rest. FLAW: wordmark mirrored. Posted. |
+| c030 | `454015fb` | Lower Wacker `c950a7ee` | `8e0c0742` | `20c9cf31` | OBSERVED: at the Lower Wacker pillar, lively, mouth at rest, wordmark correct. Posted. |
 | c043 | `ad991d14` | the corner `dfcc35f3` | `cf8125e2` | `583d61e1` | OBSERVED: at the station entrance square to camera (centre-front per the montage rules; the slot's spec asked for it), the woman behind his shoulder, mouth at rest. Posted; Fendi's call. |
 
 Ledger rows 247–254 (`docs/LEDGER_YSL_TESTING_BUDGET.md`): 8 × $2.219 = $17.75 list against the $22.76 Fendi had
@@ -66,6 +66,30 @@ left on this task's $50. Results are filed on their shots UNSELECTED by `provide
 changed by a render; the cut's `overrides.csv` picks them up when Fendi accepts them).
 
 Untouched, as required: the nine approved performance shots c009, c026, c033, c039, c041, c042, c044, c045, c046.
+
+## The wordmark regression (Fendi, 02:24 UTC: "Logo regression on 017") and what was tried
+
+Audit of all eight (chest crops `logo_check.jpg`, `logo_check2.jpg`): the SAINT LAURENT script reads correctly on
+c027, c030, c043; it is MIRRORED (and on his right chest instead of his left) on c017, c023, c025, c028; on c016 the
+band itself is drawn diagonally. The silent window `d6750713` reads correctly, so this is the generator mirroring the
+figure, not the reference. The slot prompts did not name the wordmark or its side.
+
+Tried, $0: the deterministic brand layer `scripts/edit/garment_graphic_track.py` on c017 (two passes: the plain band
+segment from the product photo over the mirrored segment, the wordmark segment on his left chest; anchor frame 67).
+Three attempts with hand-read and then pixel-fitted anchor quads all landed as a hard-edged sticker beside the band
+(`ysl/brand/c017_chest_before_after.jpg` in the session scratch): on this 720p generated clip the band is tilted and
+folded and my quads were 15–30 px off, and the graphic crops carried a beige margin. Stopped there rather than keep
+iterating; the earlier record of this tool (WARDROBE_SWAP_RECIPE.md: "the jacket still alters") says it is a
+multi-iteration job per clip.
+
+RECOMMENDATION, for Fendi's call (budget: $17.75 of the $22.76 left on this task is spent, $5.01 remains):
+1. Re-roll the five flawed slots with one added line naming the mark ("the gold SAINT LAURENT script on the navy
+   chest band at his LEFT chest, reading left to right"), $2.22 each, $11.10 for five: needs his authorisation.
+   Three of eight came out right with no such line, so a roll is not a guarantee.
+2. Keep c027, c030, c043 as they are (wordmark correct), and c016/c017/c023/c025/c028 only if the slot's frames
+   keep the chest out of frame or the mark is too small to read at the cut's speed (c016's diagonal band is visible
+   at any size).
+3. The brand layer, properly anchored (an hour of measurement per clip), if re-rolls keep mirroring.
 
 ## Checks on each render ($0, offline), before anyone looks at it
 
