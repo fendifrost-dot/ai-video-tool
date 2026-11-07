@@ -108,11 +108,11 @@ wrong and not a constraint; the ledger keeps counting list price regardless.
 | Slot | Re-roll job | Result | Check |
 |---|---|---|---|
 | c016 | `bcc365b8` | pending | |
-| c017 | `58e7ac51` | pending | |
+| c017 | `58e7ac51` | `24e0ecf1` | OBSERVED: on the lockers, jacket right, wordmark correct, mouth at rest. FLAG: darker lenses. Posted. |
 | c023 | `de5191f9` | pending | |
-| c025 | `ea8407e5` | pending | |
-| c028 | `f2771ecb` | pending | |
-| c030 | `5d524cf5` | pending | |
+| c025 | `ea8407e5` | `093fdcf6` | OBSERVED: behind the rail, wordmark correct, mouth at rest. FLAG: a navy hem band. Posted. |
+| c028 | `f2771ecb` | `75cd814a` | OBSERVED: profile at the window, jacket right, wordmark correct, mouth at rest. Posted. |
+| c030 | `5d524cf5` | `a45df650` | OBSERVED: calm at the pillar, jacket right, wordmark correct, mouth at rest. Posted. |
 
 ## Checks on each render ($0, offline), before anyone looks at it
 
