@@ -55,17 +55,28 @@ describe("unit: explicit Gemini still planning", () => {
 });
 
 describe("mocked integration: Gemini job ownership and result filing", () => {
-  it("dry-run probes CC without signing, writing rows or generating", async () => {
+  it("dry-run signs the references as the caller and probes CC with them, writing no rows and generating nothing", async () => {
     const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 200, payload: { ok: true, model: GEMINI_MODEL, actualCostUsd: null, credentialsConfigured: true, modelAccessVerified: false } } as never);
     expect(await geminiStill({ ...input, jobRowId: undefined, dryRun: true }, d)).toMatchObject({ ok: true, dryRun: true, referencesSent: 0, referencesChecked: 1, modelAccessVerified: false });
-    expect(d.sign).not.toHaveBeenCalled(); expect(d.admin.from).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
-    expect(d.call.mock.calls[0][1].body).toMatchObject({ dryRun: true, references: [] });
+    expect(d.sign).toHaveBeenCalledTimes(1); expect(d.admin.from).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
+    // the same signed URLs the paid call would send, so CC's reference rule (owner folder, bucket, project) runs now
+    expect(d.call.mock.calls[0][1].body).toMatchObject({ dryRun: true, references: [{ url: "https://example.invalid/signed?token=private", label: "The rider", role: "cast" }] });
+  });
+  it("a dry-run CC refuses on a reference says so, before any spend (c017, 6 Nov 2026)", async () => {
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 400, payload: { ok: false, errorCode: "INVALID_REQUEST", errorMessage: "reference_forbidden", retryable: false } } as never);
+    expect(await geminiStill({ ...input, jobRowId: undefined, dryRun: true }, d)).toMatchObject({ ok: false, billed: false, error: "reference_forbidden", referencesSent: 0, referencesChecked: 1 });
+    expect(d.admin.from).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
+  });
+  it("a dry-run whose reference cannot be signed as the caller spends nothing and says so", async () => {
+    const d = deps(); d.sign.mockResolvedValueOnce({ data: null, error: { message: "denied" } } as never);
+    expect(await geminiStill({ ...input, jobRowId: undefined, dryRun: true }, d)).toMatchObject({ ok: false, billed: false, error: "reference_sign_failed", referencesChecked: 1 });
+    expect(d.call).not.toHaveBeenCalled(); expect(d.admin.from).not.toHaveBeenCalled();
   });
   it("a failed dry-run keeps Google's refusal visible and never falls back", async () => {
     const d = deps(); const googleError = { httpStatus: 403, status: "PERMISSION_DENIED", reason: "BILLING_DISABLED" };
     d.call.mockResolvedValueOnce({ httpStatus: 200, payload: { ok: false, errorCode: "model_access_failed", modelAccessVerified: false, googleError } } as never);
     expect(await geminiStill({ ...input, jobRowId: undefined, dryRun: true }, d)).toEqual({ ok: false, billed: false, error: "gemini_not_ready", detail: "model_access_failed", modelAccessVerified: false, googleError });
-    expect(d.sign).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
+    expect(d.admin.from).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
   });
   it("won't claim foreign, wrong-provider, running or finalized jobs", async () => {
     for (const change of [{ user_id: project }, { project_id: user }, { provider: "grok" }, { status: "running" }, { finalized_at: "yesterday" }, { external_job_id: "already-submitted" }]) {
