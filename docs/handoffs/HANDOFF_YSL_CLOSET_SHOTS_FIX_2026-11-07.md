@@ -107,7 +107,7 @@ wrong and not a constraint; the ledger keeps counting list price regardless.
 
 | Slot | Re-roll job | Result | Check |
 |---|---|---|---|
-| c016 | `bcc365b8` | pending | |
+| c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll submitted (ledger 261). |
 | c017 | `58e7ac51` | `24e0ecf1` | OBSERVED: on the lockers, jacket right, wordmark correct, mouth at rest. FLAG: darker lenses. Posted. |
 | c023 | `de5191f9` | pending | |
 | c025 | `ea8407e5` | `093fdcf6` | OBSERVED: behind the rail, wordmark correct, mouth at rest. FLAG: a navy hem band. Posted. |
