@@ -158,12 +158,13 @@ Fendi: "C016 r6 is the winner" · "C025r2 is still too zesty, C027 looks unnatur
 | c028 | `75cd814a` (round 2) | `b80ca5a4` | `60f4715d` |
 | c030 | `a45df650` (round 2) | `cc707a4d` | `ca8bca0b` |
 | c043 | `583d61e1` (round 1) | `425359c8` | `d3b16d0a` |
+| c025 | `f75de040` (round 3A) | `ca3c3a1b` | `14c31349` |
+| c027 | `f1716179` (round 2A) | `a22eec9a` | `7b2caabc` |
 
 **Re-rolled** (ledger 266–269, two stagings each; 269 was REFUSED by Higgsfield for a low API-wallet balance, not charged — the Control Center API wallet needs a top-up before any further roll; results: **c025 roll A `f75de040` PASSES** (calm at the rail, mark on his left chest, hem plain), c025 roll B `030affcc` mirrored, **c027 roll A `f1716179` PASSES** (ARRIVALS spelled right, leaning on the rail, mark correct)): c025 (`093fdcf6` rejected: too zesty, hem band) and
 c027 (`ddf22dfa` rejected: unnatural, ARRIVALS misspelled in the cutaway). The jacket line now ends "no other band anywhere
-on it, the hem and the waist plain beige"; the c027 cutaway line spells the sign A-R-R-I-V-A-L-S. Their old primaries stay
-until Fendi picks a re-roll.
+on it, the hem and the waist plain beige"; the c027 cutaway line spells the sign A-R-R-I-V-A-L-S. Fendi, 05:27: "Both are good to go" — c025 roll A and c027 roll A are now primary (rows added to the table above).
 
 Verify: `avt_select shot_asset_assignments` filtered on each shot id above with `is_primary eq true` returns exactly one
-row, the asset in the table. Expected: 6 shots, 6 rows.
+row, the asset in the table. Expected: 8 shots, 8 rows. **All eight closet slots are done: Fendi's accepted clip is primary on each.**
 
