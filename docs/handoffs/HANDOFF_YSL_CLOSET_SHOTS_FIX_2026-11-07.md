@@ -107,7 +107,7 @@ wrong and not a constraint; the ledger keeps counting list price regardless.
 
 | Slot | Re-roll job | Result | Check |
 |---|---|---|---|
-| c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll `def38a1b` → `d629e40b`: mirrored AGAIN (three-quarter staging, right chest nearest the lens). Fourth roll `12c1a339` (ledger 262): square to camera, left shoulder forward, the line names the viewer's-right side of the zip and a plain band on the other side. |
+| c016 | `bcc365b8` | `5be5fa5c` | OBSERVED: construction right now, mouth at rest. FAIL: wordmark mirrored on his right chest again. Third roll `def38a1b` → `d629e40b`: mirrored AGAIN (three-quarter staging, right chest nearest the lens). Fourth roll `12c1a339` → `83a6f39e`: square to camera, the script STILL on his right chest (4/4). Rolls 5-7 in parallel (ledger 263-265): **roll 5 `bc185610` → `158a926d` PASSES** (the c017 staging: leaning on the lockers, shoulder to the metal; script on his LEFT chest reading left to right, face and mouth right). Roll 6 `19885553` correct mark but a paler cream jacket; roll 7 `69c736d5` a profile that hides the mark. Pick: `158a926d`, unselected until Fendi accepts. |
 | c017 | `58e7ac51` | `24e0ecf1` | OBSERVED: on the lockers, jacket right, wordmark correct, mouth at rest. FLAG: darker lenses. Posted. |
 | c023 | `de5191f9` | `8705741e` | OBSERVED: seated by the window, jacket right, wordmark correct, mouth at rest. Posted. |
 | c025 | `ea8407e5` | `093fdcf6` | OBSERVED: behind the rail, wordmark correct, mouth at rest. FLAG: a navy hem band. Posted. |
