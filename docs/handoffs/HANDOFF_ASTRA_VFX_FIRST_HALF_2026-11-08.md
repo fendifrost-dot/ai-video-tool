@@ -34,6 +34,19 @@ Two problems, two fixes:
 | Time map | **preview seconds = song seconds − 13.80** (the picture starts at c008 = song 13.80 s). Frame = round(preview s × 24). |
 | Audio | Untouched. The audio track in the deliverable must be bit-identical to the source. |
 
+### Where the file lives (filed 8 Nov, $0)
+
+The preview is **not** in the repo (the repo is public and never carries footage of him or the song). It is in AVT, project YSL (`764a63d2-93cd-44f3-905f-292f14ab2f51`), bucket `project-exports`:
+
+| Copy | project_assets id | Path under the owner prefix `3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-…/previews/` | Size | sha256 (first 16) |
+|------|-------------------|------|------|------|
+| **Full-res 1080x1920** (render the deliverables from this one) | `4ef3c805-cceb-466b-ac76-4a71a92f6252` | `ysl_v1.12_grokbot_c008-c047_1080x1920.mp4` | 24,262,586 B | `696676a1ce56509a` |
+| **Proxy 720x1280** (for ingest where 24 MB is too large) | `ad709a00-74c5-46df-8976-8a1f260cbd59` | `ysl_v1.12_grokbot_c008-c047_proxy_720x1280.mp4` | 13,542,395 B | `4b918b338cbf8f91` |
+
+Both copies have **exactly 1735 frames at 24 fps and byte-identical audio** (audio md5 `4227cfbc3fd73c05f0e8944827edb349` on both, VERIFIED with ffmpeg), so every frame number in §3–§5 applies to either file. Plan on the proxy if you must; **render the final from the full-res copy.**
+
+How to get a copy out of AVT: the owner downloads it from the app, or an agent with the AVT MCP calls `avt_signed_url` with bucket `project-exports` and the path above (a time-limited link; never paste it into a chat or a document).
+
 Source clips for every slot exist in AVT (asset ids in `HANDOFF_GROKBOT_FIRST_HALF_v2_2026-11-07.md`) but Astra does **not** need them: every treatment below works on the preview itself. Do not ask Fendi to re-export clips.
 
 ---
