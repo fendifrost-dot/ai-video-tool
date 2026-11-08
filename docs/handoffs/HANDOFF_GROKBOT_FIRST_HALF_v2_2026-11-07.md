@@ -8,6 +8,17 @@ slot list; those two still hold the rules, the package layout and the history.
 that we created, so all of those B-roll and performance shots can be included and the video can be extended to where it
 was intended to be extended to." That end is **c047 / 1:26.10**; Grokbot's last assembly stopped at ~1:11 (c040).
 
+## Read this first: there is NO intro
+
+Fendi, 23 Oct 2026: "the whole scene of the men running out the store is cut and we will have no intro." The c001–c007
+montages (the store robbery, him in c007) are dead. The previous cut you built had them out already; keep them out.
+**The picture starts at c008 (13.80 s, verse 1).** How the first 13.8 s of the song is handled (trim the audio to start at
+13.80 s, or hold black / a title over it) is the Director's call, the same as in your last cut; nothing from c001–c007
+goes on screen. The seven slots are listed below only so the table stays complete; their rows say SCRAPPED. On the board
+their primaries have been demoted (no primary on c001–c007), so a board read cannot hand them back to you.
+
+Earlier handoffs that listed c001–c007 as candidates or package files were wrong to; this one replaces them on that point.
+
 ## The one rule for this pass
 
 **The board is the truth, not the 5 Nov package.** `video_variations` `c067efb9` (the active board) carries exactly one
@@ -27,13 +38,13 @@ first frame.
 
 | Slot | Song (s) | Frames | Asset (primary) | Where | src_in | Status |
 |---|---|---|---|---|---|---|
-| c001 | 0.00–1.50 | 36 | `251c89e1` | package | 0.000 | PICK (intro, 17 Oct) |
-| c002 | 1.50–2.98 | 36 | `0dae4f6c` | package | 0.000 | PICK (Oak Street chase) |
-| c003 | 2.98–4.95 | 47 | `56c4e578` | package | 0.000 | PICK |
-| c004 | 4.95–7.90 | 71 | `0db8f045` | package | 0.000 | PICK |
-| c005 | 7.90–10.85 | 71 | `5266eab6` | package | 0.000 | PICK |
-| c006 | 10.85–12.32 | 35 | `ba9e6af9` | package | 0.000 | PICK |
-| c007 | 12.32–13.80 | 35 | `85101246` | package | 1.139 | **OPEN**: generated him moving his mouth; the Director's call (punch-in `punchin/c007_punchin.mp4`, a cutaway, or ask Claude for a recipe-F re-render) |
+| c001 | 0.00–1.50 | 36 | — | — | — | **SCRAPPED — NO INTRO** (Fendi, 23 Oct: "the whole scene of the men running out the store is cut and we will have no intro"). Do not use `251c89e1` or anything in `sources/c001_*` |
+| c002 | 1.50–2.98 | 36 | — | — | — | SCRAPPED — NO INTRO. Do not use `0dae4f6c` |
+| c003 | 2.98–4.95 | 47 | — | — | — | SCRAPPED — NO INTRO. Do not use `56c4e578` |
+| c004 | 4.95–7.90 | 71 | — | — | — | SCRAPPED — NO INTRO. Do not use `0db8f045` |
+| c005 | 7.90–10.85 | 71 | — | — | — | SCRAPPED — NO INTRO. Do not use `5266eab6` |
+| c006 | 10.85–12.32 | 35 | — | — | — | SCRAPPED — NO INTRO. Do not use `ba9e6af9` |
+| c007 | 12.32–13.80 | 35 | — | — | — | SCRAPPED — NO INTRO (and the clip `85101246` moves his mouth). Do not use it; the "OPEN" note on c007 in earlier handoffs is moot |
 | c008 | 13.80–15.28 | 36 | `44e1adc7` | package | 0.000 | PICK (his mouth stays shut) |
 | c009 | 15.28–16.75 | 35 | `b06b32f9` | package | 0.000 | FINAL 5 Nov: crew sitting, chain up, gold grin → him rapping at the wall (his real take, face put back) |
 | c010 | 16.75–18.72 | 47 | `bafb13c5` | `project-exports/…/canonical/grokbot_first_half_2026-11-05/replacements/c010_bear_t1_1080x1920.mp4` (47 f, 1080x1920) | 0.000 | ACCEPTED 5 Nov: polar-bear YSL pendant b-roll from his own still. **Not the package's `f6ac996b`** |
@@ -75,7 +86,7 @@ first frame.
 | c046 | 80.69–82.65 | 47 | `221961f4` | package | 0.000 | FINAL 4 Nov |
 | c047 | 82.65–86.10 | 82 | `41d5c1da` | package | 0.614 | FINAL 7 Nov: the polar bear outside the liquor store, the child at the pole, no him ("grokbot actually used that clip already") |
 
-Total 2066 frames = 86.10 s. The c047 slot is frames 15–96 of its 4 s source (0.614 s in); the flash at the very end of
+Total on screen: c008–c047 = 1735 frames = 72.30 s (13.80–86.10 s on the song); the 331 intro frames are not cut. The c047 slot is frames 15–96 of its 4 s source (0.614 s in); the flash at the very end of
 that source falls outside the slot.
 
 **Changed since the 5 Nov package (pull these ten from the paths above, not from `sources/`):** c010, c016, c017, c023,
@@ -90,8 +101,7 @@ c045, c046). c044 and c047 have no him. That is by Fendi's rules: no generated v
 
 ## Rules that hold
 
-- Never a generated him with his mouth moving (`docs/SHOT_RULES.md`). c007 is the one slot that still breaks it: cover
-  it (the Director's call) before the cut goes to Fendi.
+- Never a generated him with his mouth moving (`docs/SHOT_RULES.md`). With the intro gone, no slot on screen breaks it.
 - Do not replace any FINAL or ACCEPTED clip with a re-render or a punch-in; Fendi accepted each by name.
 - Use the `sources/` files (full clips, handles) for transitions and the paths above for the ten changed slots; the
   frames outside the slot are the handles.
@@ -101,12 +111,13 @@ c045, c046). c044 and c047 have no him. That is by Fendi's rules: no generated v
 ## Verify before you cut
 
 1. `avt_select shot_asset_assignments`, filters `variation_id eq c067efb9-90af-418e-aa6d-58834f6e19de` and `is_primary eq true`,
-   columns `shot_id,asset_id` → the 47 first-half shots each have exactly one row, the asset ids in the table above.
+   columns `shot_id,asset_id` → c008–c047 each have exactly one row, the asset ids in the table above, and **c001–c007 have
+   none** (40 rows in the first half).
 2. For the ten changed slots, `ffprobe … -show_entries stream=width,height,r_frame_rate,nb_frames` → `720,1280,24/1,97`
    (c010 is `1080,1920,24/1,47`).
 3. After assembly: the cut runs 2066 frames at 24 fps and every cut lands on the slot boundaries above.
 
 ## Report back
 
-The assembled cut to 1:26 as a file in `project-exports/…/canonical/`, what you did with c007, and anything in the ten
-new clips that reads wrong in motion.
+The assembled cut from c008 to 1:26 as a file in `project-exports/…/canonical/`, how you handled the first 13.8 s of the
+song, and anything in the ten new clips that reads wrong in motion.

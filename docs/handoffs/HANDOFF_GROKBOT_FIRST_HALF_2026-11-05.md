@@ -26,6 +26,10 @@ Folder `project-exports/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-
 
 Expected counts: 4 files at the root + 47 in `sources/` + 47 in `slots/` = 98 objects. Anything else means a partial upload.
 
+> **Correction, 8 Nov 2026:** c001–c007 below are SCRAPPED (Fendi, 23 Oct: "the whole scene of the men running out the store is
+> cut and we will have no intro"). This table should never have carried them. The current slot list is
+> `HANDOFF_GROKBOT_FIRST_HALF_v2_2026-11-07.md`; the picture starts at c008.
+
 ## The 47 slots
 
 Status: **FINAL** = approved by Fendi, do not replace. **PICK** = his pick. **APPROVED** = he approved it (c033, 18 Oct, with his one-frame-earlier timing applied). **CANDIDATE** = never judged by him; the Director may replace it. **GAP** = c043 holds only its dressed take; a cutaway is fine.

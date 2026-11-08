@@ -122,3 +122,6 @@ that reads wrong in motion that the stills did not show.
 **Every slot c001–c047 now carries a clip Fendi accepted or a FINAL.** Verify: `avt_select shot_asset_assignments` on
 shot `01903ea9…` with `is_primary eq true` → one row, asset `97f95c9a…`.
 
+**Correction, 8 Nov:** the first-half tables in this file and in `HANDOFF_GROKBOT_FIRST_HALF_2026-11-05.md` list c001–c007 as
+candidates. They are SCRAPPED (Fendi, 23 Oct: "we will have no intro"); see `HANDOFF_GROKBOT_FIRST_HALF_v2_2026-11-07.md`,
+which is the current slot list. The picture starts at c008.
