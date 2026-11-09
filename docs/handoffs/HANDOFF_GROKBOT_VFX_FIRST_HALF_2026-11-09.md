@@ -87,6 +87,34 @@ Claudia's After Effects equivalents: Time Remap / Posterize Time (step-print, st
 
 ---
 
+## ADDED 9 Nov: put the dice game back (c040/c041)
+
+Fendi, 9 Nov: the platform dice game "was one of my favorite shots" and it is not in v1.12. Claude's earlier slot handoffs are at fault, not Grokbot: they listed c041 as 35 frames from `6f4edd50` without saying that clip holds four beats and the slot can only hold one.
+
+The approved c041 clip `6f4edd50` (97 frames at 24 fps, 720x1280; VERIFIED by frame strip 9 Nov):
+
+| Source frames | Beat |
+|---|---|
+| 0–38 | **the dice game**: the crew crouched over the dice on the 79th St platform, the penguin in the fur coat among them |
+| 39–53 | him wide at the train, black leather coat + bucket hat |
+| 54–74 | penguin close-up |
+| 75–96 | him close in the bucket hat (his real face put back) |
+
+v1.12 cuts c041 from **source frames 62–96** (penguin close → him close), so frames 0–38 never reach the screen.
+
+**Fix (RECOMMENDATION, Director's call on the exact in/out, Fendi judges the result):**
+
+| Slot | Song (s) | Frames | Now | Use instead |
+|------|----------|--------|-----|-------------|
+| c040 | 70.85–72.33 | 36 | `a172ae9b` (17 Oct PICK, never judged by Fendi; the split-screen platform/penguin in v1.12) | **`6f4edd50` source frames 0–35: the dice game**, scaled to 1080x1920 like the other montage renders |
+| c041 | 72.33–73.80 | 35 | `6f4edd50` frames 62–96 | keep as is (penguin close → him close), **or** frames 39–53 + 75–96 (him wide → him close, 37 f, trim 2) if the Director wants him in both halves |
+
+This replaces a PICK, not a FINAL, so rule 7 below is not broken. The dice game then leads straight into him on the same platform at 72.33 s, which is how the 16 Oct scene was designed (Fendi's reference: "a dice game on the 79th St Red Line platform, a penguin in a fur coat among the players — the background for c041").
+
+Check before cutting: if the standing man with the chain in frames 0–38 is a generated him with a moving mouth (HYPOTHESIS, not checked at full size), end the c040 window before he stands (about frame 24) and hold the last frame, or let the Director pick another 36-frame window inside 0–38. Nothing of him with a moving mouth goes on screen.
+
+Update the deliverable check: with this change frame 1370 (c040) and frame 1405 (c041, if its window moves) in A and B will differ from v1.12, and that is expected; everything in §"Deliver and verify" else stands.
+
 ## Rules that hold (non-negotiable)
 
 1. **Never a generated him with his mouth moving** (`docs/SHOT_RULES.md`). No face-altering pass, no AI regeneration of him. Time effects and overlays only.
@@ -119,7 +147,7 @@ Expected values that catch a half-done job: in version B, **preview frame 1605 m
 | v1.12 reviewed, timecodes derived, diagnosis | DONE (this doc, from the v1.12 file Fendi uploaded) |
 | Any VFX applied | **NOT DONE**, by anyone. Astra's attempt produced nothing. |
 | Fendi's pick between A and B | NOT DONE. Deliver both. |
-| Second half (c048 →) | Separate round. c048–c066 and c085–c090/c092/c093 have no clip; c067–c084, c091, c094–c100 hold 15 Oct placeholders he has never judged. |
+| Second half (c048 →) | Separate round, not part of this brief (and not what Fendi meant by "the clips we generated": those are c041–c047, all in v1.12). c048–c066 and c085–c090/c092/c093 have no clip; c067–c084, c091, c094–c100 hold 15 Oct placeholders he has never judged. |
 
 Mark nothing in this document as verified. Verification is Fendi watching A and B.
 
