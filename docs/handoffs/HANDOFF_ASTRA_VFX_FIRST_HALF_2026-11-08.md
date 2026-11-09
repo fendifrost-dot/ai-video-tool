@@ -1,6 +1,7 @@
 # HANDOFF — Astra: VFX pass on the YSL first-half preview (v1.12)
 
 **Date:** 8 Nov 2026 · **For:** ChatGPT Astra (Fendi pastes this in). **Fallback:** the same brief goes to Claudia (After Effects) tomorrow afternoon if Astra cannot execute it.
+**SUPERSEDED 9 Nov 2026:** Astra did not deliver. The brief now goes to Grokbot as `HANDOFF_GROKBOT_VFX_FIRST_HALF_2026-11-09.md`; this file is kept for the record.
 **Status of this pass:** NOTHING APPLIED. This document is a brief, not a report. Every treatment below is a RECOMMENDATION / HYPOTHESIS until Fendi sees it.
 
 ---
