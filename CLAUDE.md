@@ -121,6 +121,10 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 
 **Show every output (Fendi, 14 Oct 2026):** post each generated clip and still into the chat as soon as it exists (inline file), not just a path or asset id.
 
+## Building a video: load the skill first
+
+`.claude/skills/avt-music-video-build/SKILL.md` is the run-book for any new video, any cutter handoff and any review of a delivered cut (the YSL lessons, 9 Nov 2026). Performance shots obey its motion budget (§3); photoreal stills go to Gemini (§4); the tool gaps we are looking to close are in `docs/capability/GAPS.md`.
+
 ## Hard product rules (wardrobe)
 
 1. Asset processing runs through AVT / its edge functions — no ad-hoc local image pipelines in the agent sandbox.
