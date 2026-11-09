@@ -77,8 +77,8 @@ first frame.
 | c037 | 63.96–65.93 | 47 | `4247fe23` | package (`replacements/c037_v1_1080x1920_silent.mp4`) | 1.000 | DIRECTOR 4 Nov: frosted train, no him; awaits Fendi |
 | c038 | 65.93–67.90 | 47 | `c8e50b98` | package | 0.000 | PICK |
 | c039 | 67.90–70.85 | 71 | `d90d6f29` | package | 0.000 | FINAL 6 Nov: the platform from further back, the Pradas whole |
-| c040 | 70.85–72.33 | 36 | `a172ae9b` | package | 0.000 | PICK |
-| c041 | 72.33–73.80 | 35 | `6f4edd50` | package | 0.000 | FINAL 4 Nov: his real take, bucket hat + car coat, face put back (performance) |
+| c040 | 70.85–72.33 | 36 | `a172ae9b` | package | 0.000 | PICK. **9 Nov: Fendi wants the dice game here**: use `6f4edd50` source frames 0–35 instead (see `HANDOFF_GROKBOT_VFX_FIRST_HALF_2026-11-09.md`, "put the dice game back") |
+| c041 | 72.33–73.80 | 35 | `6f4edd50` | package | 2.583 | FINAL 4 Nov: his real take, bucket hat + car coat, face put back (performance). **9 Nov correction:** the 97-frame clip holds four beats (dice game 0–38, him wide 39–53, penguin 54–74, him close 75–96); v1.12 uses frames 62–96, and that is right for this slot. The dice game moves to c040. |
 | c042 | 73.80–75.28 | 36 | `a2d40377` | package | 0.000 | FINAL 1 Nov: him by the orca window, mouth at rest |
 | c043 | 75.28–76.75 | 35 | `583d61e1` | `project-clips/…/cf8125e2-64f8-4397-bb09-cfa8123ae8dc/generated_higgsfield_01a1b3ca-e74.mp4` | 0.000 | ACCEPTED 7 Nov: the corner → him at the station entrance. **Not the package's `d3b16d0a`** |
 | c044 | 76.75–78.72 | 47 | `97f95c9a` | `project-clips/…/990be43d-adfa-43d2-87b1-80142bafe907/generated_higgsfield_01a1b776-792.mp4` | 0.000 | FINAL 7 Nov: the runway on the elevated platform, six models in long coats, trains both sides, **no him**. **Not the package's `8d34b4d0`** |
