@@ -1,0 +1,13 @@
+block,angle,song_in,song_out,length,shots,section,take_file,take_in,take_out,look,avt_assets,switch_on
+1,left,0.0,12.25,12.25,c001-c002,intro,PERFORMANCE/SIDE SHOTS/IMG_6358_left.mov,2.9994,15.2494,Look 2: universe,"b002e13d (4K), 011ad13d (1080p)",start
+2,front,12.25,23.62,11.37,c003-c005,verse 1 starts,PERFORMANCE/IMG_6353_passC.mov,15.2824,26.6524,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)",Grok v4 cut at 12.25 s (was 11.62 s)
+3,right,23.62,34.54,10.92,c006-c008,verse 1,PERFORMANCE/SIDE SHOTS/IMG_6358_right.mov,26.6196,37.5396,Look 2: universe,"c27faf9d (4K), 81605461 (1080p)",Grok v4 cut at 23.62 s (was 22.58 s)
+4,front,34.54,46.54,12.0,c009-c011,verse 1,PERFORMANCE/IMG_6353_passC.mov,37.5724,49.5724,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)",Grok v4 cut at 34.54 s (was 33.54 s)
+5,left,46.54,56.04,9.5,c012-c014,verse 1,PERFORMANCE/SIDE SHOTS/IMG_6358_left.mov,49.5394,59.0394,Look 2: universe,"b002e13d (4K), 011ad13d (1080p)",Grok v4 cut at 46.54 s (was 45.66 s)
+6,front,56.04,67.75,11.71,c015-c018,verse 1,PERFORMANCE/IMG_6353_passC.mov,59.0724,70.7824,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)",Grok v4 cut at 56.04 s (was 55.46 s)
+7,right,67.75,79.33,11.58,c019-c021,verse 2 starts,PERFORMANCE/SIDE SHOTS/IMG_6358_right.mov,70.7496,82.3296,Look 2: universe,"c27faf9d (4K), 81605461 (1080p)",Grok v4 cut at 67.75 s (was 67.58 s)
+8,front,79.33,93.12,13.79,c022-c025,verse 2,PERFORMANCE/IMG_6353_passC.mov,82.3624,96.1524,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)",Grok v4 cut at 79.33 s (was 80.27 s)
+9,left,93.12,104.58,11.46,c026-c028,hook 1,PERFORMANCE/SIDE SHOTS/IMG_6358_left.mov,96.1194,107.5794,Look 2: universe,"b002e13d (4K), 011ad13d (1080p)",Grok v4 cut at 93.12 s (was 93.54 s)
+10,front,104.58,116.58,12.0,c029-c031,"hook 1, full frame",PERFORMANCE/IMG_6353_passC.mov,107.6124,119.6124,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)",Grok v4 cut at 104.58 s (was 104.50 s)
+11,right,116.58,130.54,13.96,c032-c033,hook 2,PERFORMANCE/SIDE SHOTS/IMG_6358_right.mov,119.5796,133.5396,Look 2: universe,"c27faf9d (4K), 81605461 (1080p)",Grok v4 cut at 116.58 s (was 116.62 s)
+12,front,130.54,137.54,7.0,c034,outro (front take ends at song 133.55 s),PERFORMANCE/IMG_6353_passC.mov,133.5724,140.5724,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)",Grok v4 cut at 130.54 s (was 129.31 s)

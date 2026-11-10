@@ -46,3 +46,26 @@ The side takes are landscape 3840x2160; the front take is portrait.
 - `head_angles_edl.csv` / `.json`: the same schedule, machine-readable.
 - `PL_head_angles_animatic.mp4`: the raw takes cut to this schedule on the song. No effects, hard cuts, and a
   label in the corner with the block number and angle. Timing reference only.
+
+
+## Revision 2: switches land on your v4 cuts (Claude, 10 Nov 2026, after watching `PL_Ledger_head_full_v4.mp4`)
+
+Your v4 changes the picture inside his head about every 2.3 s (one bar at 104 BPM). Each angle switch now sits on the v4 cut nearest the original block boundary, so the angle change and the picture change hit together. Where two v4 cuts were close, I picked the one where the background changes too (79.33 s and 104.58 s). Block 12 now starts at 130.54 s, the start of the dark c034 plate. Your head exit at 2:13 stays in the front view.
+
+| # | Angle | Song in-out (s) | Length | Switches on | Take in-out (s) |
+|---|---|---|---|---|---|
+| 1 | left | 0.00-12.25 | 12.25 | start | 2.999-15.249 |
+| 2 | front | 12.25-23.62 | 11.37 | Grok v4 cut at 12.25 s (was 11.62 s) | 15.282-26.652 |
+| 3 | right | 23.62-34.54 | 10.92 | Grok v4 cut at 23.62 s (was 22.58 s) | 26.620-37.540 |
+| 4 | front | 34.54-46.54 | 12.00 | Grok v4 cut at 34.54 s (was 33.54 s) | 37.572-49.572 |
+| 5 | left | 46.54-56.04 | 9.50 | Grok v4 cut at 46.54 s (was 45.66 s) | 49.539-59.039 |
+| 6 | front | 56.04-67.75 | 11.71 | Grok v4 cut at 56.04 s (was 55.46 s) | 59.072-70.782 |
+| 7 | right | 67.75-79.33 | 11.58 | Grok v4 cut at 67.75 s (was 67.58 s) | 70.750-82.330 |
+| 8 | front | 79.33-93.12 | 13.79 | Grok v4 cut at 79.33 s (was 80.27 s) | 82.362-96.152 |
+| 9 | left | 93.12-104.58 | 11.46 | Grok v4 cut at 93.12 s (was 93.54 s) | 96.119-107.579 |
+| 10 | front | 104.58-116.58 | 12.00 | Grok v4 cut at 104.58 s (was 104.50 s) | 107.612-119.612 |
+| 11 | right | 116.58-130.54 | 13.96 | Grok v4 cut at 116.58 s (was 116.62 s) | 119.580-133.540 |
+| 12 | front | 130.54-137.54 | 7.00 | Grok v4 cut at 130.54 s (was 129.31 s) | 133.572-140.572 |
+
+Files: `head_angles_edl_v2.csv` / `.json`. Use these instead of v1.
+`PL_head_angles_preview_v2.mp4` shows the structure: your v4 render in the front blocks, and the raw side take (labelled) in the side blocks where the universe look goes. Every switch is a hard cut there, so put your transitions on them.
