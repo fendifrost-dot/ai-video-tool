@@ -1,0 +1,13 @@
+block,angle,song_in,song_out,length,shots,section,take_file,take_in,take_out,look,avt_assets
+1,left,0.0,11.62,11.62,c001-c002,intro,PERFORMANCE/SIDE SHOTS/IMG_6358_left.mov,2.9994,14.6194,Look 2: universe,"b002e13d (4K), 011ad13d (1080p)"
+2,front,11.62,22.58,10.96,c003-c005,verse 1 starts,PERFORMANCE/IMG_6353_passC.mov,14.6524,25.6124,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)"
+3,right,22.58,33.54,10.96,c006-c008,verse 1,PERFORMANCE/SIDE SHOTS/IMG_6358_right.mov,25.5796,36.5396,Look 2: universe,"c27faf9d (4K), 81605461 (1080p)"
+4,front,33.54,45.66,12.12,c009-c011,verse 1,PERFORMANCE/IMG_6353_passC.mov,36.5724,48.6924,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)"
+5,left,45.66,55.46,9.8,c012-c014,verse 1,PERFORMANCE/SIDE SHOTS/IMG_6358_left.mov,48.6594,58.4594,Look 2: universe,"b002e13d (4K), 011ad13d (1080p)"
+6,front,55.46,67.58,12.12,c015-c018,verse 1,PERFORMANCE/IMG_6353_passC.mov,58.4924,70.6124,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)"
+7,right,67.58,80.27,12.69,c019-c021,verse 2 starts,PERFORMANCE/SIDE SHOTS/IMG_6358_right.mov,70.5796,83.2696,Look 2: universe,"c27faf9d (4K), 81605461 (1080p)"
+8,front,80.27,93.54,13.27,c022-c025,verse 2,PERFORMANCE/IMG_6353_passC.mov,83.3024,96.5724,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)"
+9,left,93.54,104.5,10.96,c026-c028,hook 1,PERFORMANCE/SIDE SHOTS/IMG_6358_left.mov,96.5394,107.4994,Look 2: universe,"b002e13d (4K), 011ad13d (1080p)"
+10,front,104.5,116.62,12.12,c029-c031,"hook 1, full frame",PERFORMANCE/IMG_6353_passC.mov,107.5324,119.6524,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)"
+11,right,116.62,129.31,12.69,c032-c033,hook 2,PERFORMANCE/SIDE SHOTS/IMG_6358_right.mov,119.6196,132.3096,Look 2: universe,"c27faf9d (4K), 81605461 (1080p)"
+12,front,129.31,137.54,8.23,c034,outro (front take ends at song 133.55 s),PERFORMANCE/IMG_6353_passC.mov,132.3424,140.5724,Look 1: blend (the front look kept),"0d7f6997 (4K), ea895b82 (1080p)"
