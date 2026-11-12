@@ -4,6 +4,8 @@ The methods Fendi approved, one page each, written so any agent (Claude, Grokbot
 them from the repo and the AVT tool without this session. Read the page before the first paid call. Every paid call is
 quoted, dry-run first, and recorded in `docs/LEDGER_YSL_TESTING_BUDGET.md`.
 
+**Start here for anything with his face: [`HIS_FACE_IN_ANY_SCENE.md`](HIS_FACE_IN_ANY_SCENE.md)** (the face-safe pipeline: shoot, change the clothes, put him in the place, check). The table below is the detail.
+
 ## Is he in the shot?
 
 | The shot needs | Method | Page | Where it runs | Cost |

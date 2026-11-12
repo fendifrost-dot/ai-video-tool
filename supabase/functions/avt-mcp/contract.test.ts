@@ -13,6 +13,8 @@ import {
   credentialFrom,
   decodeUploadBase64,
   functionPolicy,
+  grokGate,
+  GROK_GENERATION_FUNCTIONS,
   initializeResult,
   isRpcRequest,
   namesRowsById,
@@ -372,5 +374,39 @@ describe("the function can actually boot", () => {
     const indexSource = readFileSync(resolve(here, "./index.ts"), "utf8");
     expect(indexSource).not.toContain("refreshSession");
     expect(indexSource).toContain("batch-token-proxy");
+  });
+});
+
+describe("grokGate (Fendi, 9 and 12 Nov 2026: Grok is his call)", () => {
+  const ok = "Fendi, 12 Nov: use Grok for the hyena plate";
+  it("refuses a Grok b-roll without his words, names the Gemini and Seedance routes and Grok Imagine", () => {
+    const why = grokGate("grok-broll-proxy", { projectId: "p", prompt: "x" }, undefined);
+    expect(why).toMatch(/gemini-nano-banana-2\.1/);
+    expect(why).toMatch(/montage-shot/);
+    expect(why).toMatch(/Grok Imagine/);
+  });
+  it("refuses world-still-proxy without the Gemini model, and with a Grok model", () => {
+    expect(grokGate("world-still-proxy", { prompt: "x" }, undefined)).not.toBeNull();
+    expect(grokGate("world-still-proxy", { prompt: "x", model: "grok-imagine-image-2.0" }, undefined)).not.toBeNull();
+  });
+  it("lets Gemini stills, Seedance, Genjutsu and every non-Grok function through", () => {
+    expect(grokGate("world-still-proxy", { prompt: "x", model: "gemini-nano-banana-2.1" }, undefined)).toBeNull();
+    expect(grokGate("montage-shot", {}, undefined)).toBeNull();
+    expect(grokGate("dress-clip", {}, undefined)).toBeNull();
+    expect(grokGate("grok-voice-director-proxy", {}, undefined)).toBeNull();
+  });
+  it("keeps Grok possible: a dry run, a poll of a running job, a Gemini recovery, or his quoted approval", () => {
+    expect(grokGate("grok-broll-proxy", { dryRun: true }, undefined)).toBeNull();
+    expect(grokGate("grok-broll-proxy", { mode: "poll", requestId: "r" }, undefined)).toBeNull();
+    expect(grokGate("world-still-proxy", { recoverJobRowId: "j" }, undefined)).toBeNull();
+    for (const fn of GROK_GENERATION_FUNCTIONS) expect(grokGate(fn, {}, ok)).toBeNull();
+    expect(grokGate("world-still-proxy", { prompt: "x" }, ok)).toBeNull();
+  });
+  it("does not take a token for his words", () => {
+    expect(grokGate("grok-broll-proxy", {}, "yes")).not.toBeNull();
+    expect(grokGate("grok-broll-proxy", {}, "   ")).not.toBeNull();
+  });
+  it("every gated name is a real AVT function", () => {
+    for (const fn of GROK_GENERATION_FUNCTIONS) expect(FUNCTION_DOCS.map((f) => f.name)).toContain(fn);
   });
 });

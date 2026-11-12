@@ -62,7 +62,8 @@ shot has to say before it is built), `docs/capability/GAPS.md` (what the tools c
 13. **Posting "for the record" is still posting.** A clip with something Fendi excluded (the gamblers) is never posted, even as context.
 14. **Options, not fixes, on anything with him.** The c046 pose got an A (cut) and a B (staged hit); Fendi chose. A single "fix" on a shot with him is a decision taken from him.
 15. **A policy that lives only in an open PR does not exist.** The Gemini decision of 9 Nov sat in an unmerged PR; the Hyenas agent started from `main` and made 19 Grok stills and 11 Grok clips ($4.57) before switching. Rule: a decision Fendi makes goes into `CLAUDE.md` on `main` the same day.
-16. **The outfit is not the likeness.** A generated him in the right clothes with the wrong face is a stranger (Hyenas, 12 Nov). Rule: §3b; his face comes from his footage, never from a generated still.
+16. **The outfit is not the likeness.** A generated him in the right clothes with the wrong face is a stranger (Hyenas, 12 Nov). Rule: §3b; his face comes from his photos and footage, never from a generated still.
+17. **A rule that blocks the work is a bad rule.** A "200 px face" minimum (written 12 Nov, no evidence) made the Hyenas agent refuse b-roll that the approved YSL method makes every day. Rules carry the evidence they rest on; a threshold without evidence is a guide, never a gate.
 
 ## 3. Performance shots: scenery and motion budget (DECISION, Fendi 9 Nov 2026)
 
@@ -88,30 +89,22 @@ Until `docs/capability/GAPS.md` G1 is closed, every performance shot obeys this 
 Write it into the storyboard before the plate is made (`docs/STORYBOARD_INTENT.md`). A performance shot that needs a
 busy scene is two shots: the busy cutaway, then him alone in a calm frame of the same place.
 
-## 3b. His likeness in b-roll: the ladder (DECISION, Fendi 12 Nov 2026)
+## 3b. Him in generated b-roll (DECISION, Fendi 12 Nov 2026)
 
-"I shot one performance shot but wanted to use my likeness, same outfit, face etc in generated b-roll shots. The
-outfit looked pretty consistent but the person was clearly not me in the face."
+"I shot one performance shot but wanted to use my likeness, same outfit, face etc in generated b-roll shots" and,
+the same day, "the face redraw isn't an issue". The full technique: `docs/recipes/HIS_FACE_IN_ANY_SCENE.md`.
 
-What failed (VERIFIED on the Hyenas board, 12 Nov): Gemini stills of him from three frames of a phone take, his face
-about 100 px wide in those frames. The outfit carried; the face did not, worst where the face is small in frame. A
-video model fed such a still can only drift further from him.
-
-Use the highest rung that exists for the shot:
-
-| Rung | Method | Face | When |
-|---|---|---|---|
-| 1 | **His real footage**: the b-roll he shot, or a mouth-at-rest window of his take, used as the shot, or matted and placed in a calm moving plate (`scripts/edit/replace_him_in_clip.py`, SHOT_RULES 3–6) | his pixels | always first. Ask him for the b-roll section of the shoot before generating anything with him |
-| 2 | **Recipe F** (`montage-shot`, `docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`): `@Video1` = a 4 s mouth-at-rest window of his real footage in the same outfit, plus his face photographs from `character_features` | close, approved by him on YSL | when the shot needs a place or an action he did not film. The window must show his face at ≥ ~200 px wide; a full-body phone frame is not enough |
-| 3 | Shot rewritten without his face: from behind, hands, the outfit in close-up, a cutaway | not shown | when neither rung 1 nor 2 exists |
-| ✗ | A generated still of him (any model) animated or used as his face; text-to-video of him | a stranger | **never**. A generated still of him is a layout sketch only |
-
-Before a shoot, ask for the footage rung 1 and 2 need: 30–60 s of him in the outfit, mouth closed, face to camera
-and three-quarter, standing, walking, sitting, close enough that his face fills a fifth of the frame width, in the
-light of the scenes. Ten minutes of phone footage saves every generated face.
-
-Check every clip with him: `scripts/edit/face_check.py` against his face set, `scripts/edit/mouth_scan.py`. A face
-that does not read as him at phone size is a reject, whatever the outfit does.
+1. **Generate the shots he never filmed.** Missing footage of an action is never a reason to refuse a shot.
+   Approved "PERFECT!" (6 Nov): c026 seated on a carousel rail, c033 leaning at a kitchen island, c039 at a platform
+   pillar, none of them filmed.
+2. **Route:** recipe F (`montage-shot`): the lines give the action; his face pictures from the tool (sent by default)
+   plus `@Video1` = a non-rapping window of his real footage in the outfit give the face. Cut the window from the 4K
+   original, waist-up. No minimum face size, no "strict" lip-gap gate on the window: the render is what gets checked.
+3. **Real footage of the action exists** → use it instead (his pixels, placed with `place_him_over_plate.py`).
+4. **The put-back keeps the face of the clip it runs on** (his pixels on a real take; the render's face on a render).
+5. **Never** a generated still of him as the face source for a video (the Hyenas failure, 12 Nov).
+6. **Check every render:** `face_check.py` sheet + `mouth_scan.py`, posted with it; Fendi judges the face. A rejected
+   face is re-rolled with another window or staging.
 
 ## 4. Models: Gemini for stills, Seedance and Genjutsu for motion, Grok for nothing that ships (DECISION, Fendi 9 and 12 Nov 2026)
 
@@ -125,11 +118,15 @@ that does not read as him at phone size is a reject, whatever the outfit does.
 | Clothing on his real footage | **Genjutsu** via `dress-clip`, then the face put-back (`.claude/skills/avt-clothing-swap/SKILL.md`) | | ~$0.68 per source second |
 | Kling, Gemini video, others | **not a production route**: candidates in `docs/capability/GAPS.md`, used only after a benchmark passes and Fendi accepts it | | |
 | A video clip with him | **§3b, the likeness ladder.** Never a model given only stills of him | | |
-| A throwaway draft he will never see | Grok, labelled DRAFT in the notes | | $0.07 still, ~$0.28 clip |
+| Grok, when it is the right tool | Fendi's call: he makes it in Grok Imagine, or approves it in words (`grok_approval`) | name why Grok fits this picture | his subscription, or $0.07 still / ~$0.28 clip |
 
-The tool's defaults are still Grok (`world-still-proxy` `DEFAULT_MODEL`, the whole `grok-broll-proxy`). Until the code
-guard in `docs/handoffs/HANDOFF_HYENAS_RESET_2026-11-12.md` lands, an agent names the Gemini model on every still
-request and never calls `grok-broll-proxy`. If a Grok output is found on a project, mark it `approval_status: rejected`.
+Grok is Fendi's call, not an agent's default ("grok is good for certain things so I don't want to make it impossible
+to use", 12 Nov). When Grok is the right tool for a picture, say so and why; he makes it himself in Grok Imagine on his
+subscription and you file it with `avt_upload_asset`, or he approves it in words and you pass them as `grok_approval`.
+The AVT MCP server enforces this: `avt_call` refuses a Grok generation (the `grok-*` functions, or `world-still-proxy`
+without `model: "gemini-nano-banana-2.1"`) unless `grok_approval` carries his words; a dry run is always allowed. The
+app's own buttons are unaffected. If a Grok output he did not approve is found on a project, mark it
+`approval_status: rejected`.
 
 ## 5. The handoff to the cutter (Grokbot or anyone)
 

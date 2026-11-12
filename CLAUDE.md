@@ -35,17 +35,19 @@ Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supab
 |---|---|---|
 | A still that must read as a photograph (plate, scene, cutaway, reference) | **Gemini** `gemini-nano-banana-2.1` via `world-still-proxy` (`model` named on every request: the tool's default is still Grok) | `grok-imagine-image*` |
 | Animating a still, or any generated clip | **Seedance** (`montage-shot`, the storyboard's Animate the plate) and **Genjutsu** (`dress-clip`, clothing on real footage): the routes Fendi approved on YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
-| A video clip with him in it | the likeness ladder below | any model given only stills of him |
+| A video clip with him in it | his real footage where it exists; otherwise recipe F (point 2 below) | any model given only stills of him |
 
-Grok is allowed only for a throwaway draft that Fendi will never see, labelled DRAFT in its notes. If you are about to call `grok-broll-proxy` or `world-still-proxy` without `model`, stop.
+Grok is Fendi's call, not yours ("grok is good for certain things so I don't want to make it impossible to use", 12 Nov). If Grok is the right tool, say so: he makes it in Grok Imagine on his subscription and you file it, or he approves it in words and you pass them as `grok_approval` on `avt_call` (the MCP server refuses a Grok generation without them; dry runs are free).
 
-**2. His likeness in b-roll: use the highest rung that exists.** A video model shown a still of him invents a stranger in his clothes (Hyenas, 12 Nov: "the outfit looked pretty consistent but the person was clearly not me in the face").
+**2. Him in generated b-roll: generate it, with his face built from HIS sources** (Fendi, 12 Nov: "the face redraw isn't an issue").
 
-1. **His real footage** (b-roll he shot, or a mouth-at-rest window of his take), used as the shot or composited into a calm plate. His face is his pixels.
-2. **Recipe F** (`docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`, `montage-shot`): `@Video1` = a mouth-at-rest window of his real footage **in the same outfit**, plus his face photographs from the tool. Approved by him on YSL. Needs real footage where his face is at least ~200 px wide.
-3. **Never:** a generated still of him (Gemini, Grok or any) as the source of his face for a video, or a video of him from text. A generated still of him is a layout sketch only.
+- **Generating him doing things he never filmed is allowed and expected.** Approved, all "PERFECT!" (6 Nov): c026 seated on the carousel rail (`081a4ddf`), c033 leaning at the kitchen island (`20b8c185`), c039 at the platform pillar (`d90d6f29`). He filmed none of those actions. Missing footage of an action is **never** a reason to refuse a shot.
+- **The route is recipe F** (`montage-shot`, `docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`): the action comes from the lines; his face comes from **his face photographs in the tool** (the `character_features` face set, sent by default) plus `@Video1` = a stretch of **his real footage** in the outfit where he is not rapping. Bigger is better: cut the window from the 4K original, cropped waist-up. There is no minimum face size; the result is judged, not the input.
+- **The face put-back keeps the face of the clip it runs on.** On his real take that is his real pixels; on a generated render it is the render's face. It does not paste his real face onto a pose he never filmed. So: real footage of the action exists → use it (his pixels, `place_him_over_plate.py`); it does not → recipe F (his likeness from his photos), then the clothing swap + put-back if the outfit changes.
+- **Never the source of his face:** a generated still of him (Gemini, Grok or any) fed to a video model, or text-to-video of him. That is what failed on Hyenas ("the person was clearly not me in the face").
+- **Judge the output:** `scripts/edit/face_check.py` sheet against his face pictures + `scripts/edit/mouth_scan.py` (mouth at rest) on every render, posted with the clip. Fendi decides whether the face is him. A rejected face is re-rolled (different window, different staging), not argued.
 
-No real footage for a shot → the shot is rewritten without his face (from behind, hands, a cutaway), or Fendi shoots it. Run `scripts/edit/face_check.py` on every clip with him before it is posted. Full run-book: `.claude/skills/avt-music-video-build/SKILL.md` §3–§4.
+**The exact technique (clothes, face put-back, placing him in any scene): [`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`](docs/recipes/HIS_FACE_IN_ANY_SCENE.md).** Full run-book: `.claude/skills/avt-music-video-build/SKILL.md` §3–§4.
 
 ---
 

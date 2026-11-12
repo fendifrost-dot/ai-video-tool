@@ -165,6 +165,40 @@ export function functionPolicy(name: string, known: readonly string[]): Function
   return why ? { name, access: "blocked", why } : { name, access: "callable" };
 }
 
+// ---------------------------------------------------------------------------------------------------- grok gate
+
+/**
+ * Grok is Fendi's call, not an agent's default (Fendi, 9 and 12 Nov 2026: "demote grok image creator and replace with
+ * gemini"; "grok is good for certain things so I don't want to make it impossible to use"). An agent reaching AVT
+ * through this server may run a Grok generation only with `grok_approval` carrying his words for that request; a dry
+ * run is free and always allowed. The app's own buttons do not pass through here and are unaffected.
+ */
+export const GROK_GENERATION_FUNCTIONS = [
+  "grok-broll-proxy",
+  "grok-image-garment-proxy",
+  "grok-image-look-composite",
+  "grok-video-edit-proxy",
+  "grok-video-research-proxy",
+  "grok-resolution-test",
+] as const;
+/** The still model a photoreal request uses on world-still-proxy (its default is a Grok model). */
+export const GEMINI_STILL_MODEL = "gemini-nano-banana-2.1";
+/** Shortest approval accepted: his quoted words, not a token like "yes". */
+const GROK_APPROVAL_MIN_CHARS = 12;
+
+export function grokGate(fn: string, body: Record<string, unknown>, approval: unknown): string | null {
+  const isGrok = (GROK_GENERATION_FUNCTIONS as readonly string[]).includes(fn) ||
+    (fn === "world-still-proxy" && body.model !== GEMINI_STILL_MODEL && body.recoverJobRowId === undefined);
+  if (!isGrok) return null;
+  if (body.dryRun === true) return null;
+  if (fn === "grok-broll-proxy" && body.mode === "poll") return null;
+  if (typeof approval === "string" && approval.trim().length >= GROK_APPROVAL_MIN_CHARS) return null;
+  return `"${fn}"${fn === "world-still-proxy" ? " without model \"" + GEMINI_STILL_MODEL + "\"" : ""} is a Grok generation, and Grok is Fendi's call (9 and 12 Nov 2026). ` +
+    `Photoreal stills: world-still-proxy with model "${GEMINI_STILL_MODEL}". Motion: montage-shot (Seedance) or dress-clip (Genjutsu). ` +
+    `If Grok is the right tool, say so to Fendi: he can make it himself in Grok Imagine and you file it with avt_upload_asset, ` +
+    `or call again with grok_approval set to his words approving Grok for this request. A dryRun is always allowed.`;
+}
+
 // ---------------------------------------------------------------------------------------------------- uploads
 
 /** Buckets an MCP upload may write. upload-asset also allows artist-assets and product-assets; this tool does not. */
@@ -585,13 +619,17 @@ export const TOOLS = [
   },
   {
     name: "avt_call",
-    description: "Call an AVT edge function as the owner. Returns the function's own answer (HTTP status + body). Generation is billed to the owner's provider accounts.",
+    description: "Call an AVT edge function as the owner. Returns the function's own answer (HTTP status + body). Generation is billed to the owner's provider accounts. Stills: world-still-proxy with model gemini-nano-banana-2.1. Motion: montage-shot (Seedance) or dress-clip (Genjutsu). A Grok generation needs grok_approval (Fendi's words).",
     inputSchema: {
       type: "object",
       properties: {
         function: { type: "string" },
         body: { type: "object" },
         method: { type: "string", enum: ["POST", "GET"], description: "default POST" },
+        grok_approval: {
+          type: "string",
+          description: "Fendi's own words approving a Grok generation for this request. Required for any Grok generation (the grok-* functions, or world-still-proxy without model gemini-nano-banana-2.1) except a dryRun. Grok is his call; Gemini is the still model, Seedance/Genjutsu the motion.",
+        },
       },
       required: ["function"],
     },
