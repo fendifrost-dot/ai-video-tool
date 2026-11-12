@@ -91,7 +91,7 @@ Agents run authorized SQL / publish / redeploy themselves via Lovable — do not
 | Supabase | `wkzwcfmvnwolgrdpnygc` |
 | Holds | `FAL_KEY` (AVT never holds Fal) |
 
-AVT reaches Fal via CC `switchx-restyle` (`fal-run`) + `fal-queue-poll`. Grok image uses `XAI_API_KEY` on **AVT**. Do not edit CC while thinking you are in AVT.
+AVT reaches Fal via CC `switchx-restyle` (`fal-run`) + `fal-queue-poll`. Grok image uses `XAI_API_KEY` on **AVT** (drafts only; Grok ships nothing, see the block above). Do not edit CC while thinking you are in AVT.
 
 ### Other Lovable apps (do not mix IDs)
 
@@ -174,16 +174,18 @@ Never use generated lip-sync or a face-altering pass on Fendi.
 
 **Provenance:** Confirmed **unanimously** by Grok + Gemini + ChatGPT (2026-07-27). Matches the repo's own earlier pivot handoff [`CURSOR_HANDOFF_video_clothing_swap_pivot.md`](CURSOR_HANDOFF_video_clothing_swap_pivot.md) (**2026-06-21**, commit `228226f`) — the decision Phase 2b drifted from. This re-lock exists so that drift does not recur.
 
-**PRODUCTION PATH = Grok keyframe generation + temporal propagation.** Do **NOT** scale independent per-frame VTON / `switchx-restyle` to full-length videos.
+**Amended by Fendi, 9 and 12 Nov 2026: keyframes are made in Gemini, never Grok** (see "MODELS AND HIS LIKENESS" above). Where this section says Grok, read Gemini.
+
+**PRODUCTION PATH = Gemini keyframe generation + temporal propagation.** Do **NOT** scale independent per-frame VTON / `switchx-restyle` to full-length videos.
 
 **WHY:** Single-image engines (`switchx-restyle`, `vton-frame`) have **no temporal state** → independent per-frame sampling produces **"boiling"/flicker**. "Reference-lock" fixes only the *target garment*, **not** temporal consistency. Masked-lock (**Phase 2c**) is **ORIGINAL-FOOTAGE PRESERVATION** (pins face/scene/body), **NOT** garment-region stabilization.
 
-**THE LANE:** approve a few product-accurate Grok **hero keyframes** (every ~12–24 frames + at pose changes / scene cuts) → **propagate** the approved garment across intermediate frames via optical flow (RAFT / EbSynth-style) **or** a video-native VTON / video-to-video model → **re-anchor** a new Grok keyframe when flow confidence breaks (large rotations / occlusions) → **composite onto the ORIGINAL footage** + keep the deterministic brand/logo composite for stripe/logo + **face-restore** as safety net.
+**THE LANE:** approve a few product-accurate Gemini **hero keyframes** (every ~12–24 frames + at pose changes / scene cuts) → **propagate** the approved garment across intermediate frames via optical flow (RAFT / EbSynth-style) **or** a video-native VTON / video-to-video model → **re-anchor** a new Gemini keyframe when flow confidence breaks (large rotations / occlusions) → **composite onto the ORIGINAL footage** + keep the deterministic brand/logo composite for stripe/logo + **face-restore** as safety net.
 
 **Phase 2b (independent per-frame swap) = BASELINE / DIAGNOSTIC ONLY.** Keep its reusable infra (frame extract, ordered storage, Fal routing, bounded concurrency, status tracking, reassembly); **never** make it the full-length production path.
 
 **BENCHMARK before building full** (pick the winner on a short clip):
-- **(a)** Grok keyframe + optical-flow / EbSynth propagation, vs
+- **(a)** Gemini keyframe + optical-flow / EbSynth propagation, vs
 - **(b)** video-native VTON (`fal-ai/kling/v1-5/kolors-virtual-try-on`, `fal-ai/fashn/v1.5`, Wan2.1 / Kling video-to-video with pose control).
 
 **ENGINEERING PREREQS before any full-length run:**

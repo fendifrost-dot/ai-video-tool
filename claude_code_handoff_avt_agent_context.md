@@ -1,5 +1,8 @@
 # Claude Handoff — AVT Agent Context (What Happened + Where To Look)
 
+> **12 Nov 2026:** the Grok lanes named below still exist in code but ship nothing. Stills in Gemini, motion in Seedance or Genjutsu, his face from his real footage (`CLAUDE.md`, "MODELS AND HIS LIKENESS").
+
+
 **Date:** 2026-07-05  
 **Audience:** Claude (or any new agent session on AVT wardrobe / Hero Frame work)  
 **Repo:** https://github.com/fendifrost-dot/ai-video-tool (`main`)  

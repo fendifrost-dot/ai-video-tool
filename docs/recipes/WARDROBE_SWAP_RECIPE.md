@@ -1,5 +1,8 @@
 # Wardrobe swap on a performance take: the recipe (living record, started 15 Oct 2026)
 
+> **History page.** The Grok lanes below were tested in Sept–Oct 2026 and are retired from production (Fendi, 9 and 12 Nov 2026). Current route: Genjutsu + the face put-back on footage, Gemini for stills, Seedance for motion (`CLAUDE.md`, "MODELS AND HIS LIKENESS").
+
+
 > **SUPERSEDED IN PART (18 Oct 2026):** the canonical method is [`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md).
 > - Genjutsu (this page's run C) is still the swap engine.
 > - Its whole-frame output is now an **intermediate**. The final picture is the body-only put-back: the garment goes over the original frames, and his face, mouth and hands stay the take's own pixels.

@@ -73,20 +73,22 @@ Read `AVT_MEMORY_HANDOFF.md` for full context. Summary:
 
 ### Wardrobe pipeline (locked architecture)
 
+> **Superseded in part (Fendi, 18 Oct, 9 and 12 Nov 2026).** Clothing on his real footage is Genjutsu (`dress-clip`) + the face put-back (`.claude/skills/avt-clothing-swap/SKILL.md`). Stills and hero frames are made in **Gemini**; Grok ships nothing. Motion is Seedance or Genjutsu. See `CLAUDE.md` "MODELS AND HIS LIKENESS". The lines below are the July architecture, kept for history.
+
 ```
 Hero still: SAM-3 mask (SwitchX segment) → Grok outfit swap → lock onto hero → face restore → (pose restore TBD)
 Video:      approved hero → SwitchX / i2v propagation (Phase 2) → FFmpeg reassembly
 ```
 
 - SAM-3 owns masking only — never wardrobe generation.
-- Grok owns outfit appearance (the only engine that won live swap tests).
+- ~~Grok owns outfit appearance~~ (July; superseded: Genjutsu on footage, Gemini on stills).
 - Restore tools own face / pose after Grok.
 - SwitchX Beeble wardrobe mode is not the outfit engine.
 
 ### Key edge functions
 
 - `wardrobe-vton-proxy` — IDM-VTON / CatVTON garment transfer
-- `grok-image-garment-proxy` — Grok Image-Edit full-outfit hero frames (`XAI_API_KEY`)
+- `grok-image-garment-proxy` — Grok Image-Edit full-outfit hero frames (`XAI_API_KEY`); **legacy, drafts only**
 - `compose-look-proxy` — compose references, segment, remove-bg (no generative garment truth)
 - `fal-queue-poll-proxy` — poll Fal async jobs
 - `proxy-provider-call` — generic provider proxy

@@ -16,7 +16,7 @@ read as one) or a performance shot fighting a passing train; the storyboard can,
 | `light_on_him` | `constant` / `changing` | `changing` is not allowed on a performance shot today |
 | `staging` | distance, side (profile left/right/three-quarter), action, lens | vary these across shots in the same outfit so they do not read as one |
 | `outfit_key` | the look | continuity |
-| `still_route` | `gemini` for anything photoreal, `grok` for a draft | skill §4 |
+| `still_route` | `gemini` (always for anything Fendi sees); motion: `seedance` or `genjutsu` | skill §4; no Grok |
 | `him_in_frame` | yes/no; if yes, which SHOT_RULES lines are at risk | rule check before the call |
 
 ## How the fields are used
