@@ -36,6 +36,7 @@ import {
   FINALIZE_MAX_BYTES,
   credentialFrom,
   functionPolicy,
+  grokGate,
   initializeResult,
   isRpcRequest,
   namesRowsById,
@@ -336,6 +337,8 @@ async function callFunction(ctx: Ctx, args: Record<string, unknown>) {
   const policy = typeof name === "string" ? functionPolicy(name, FUNCTION_DOCS.map((f) => f.name)) : null;
   if (!policy) throw new ToolError(`no function "${name}" — avt_functions lists them`);
   if (policy.access === "blocked") throw new ToolError(`"${name}" cannot be called from here: ${policy.why}`);
+  const grokRefusal = grokGate(name as string, body, args.grok_approval);
+  if (grokRefusal) throw new ToolError(grokRefusal);
 
   const target = new URL(`${ctx.url}/functions/v1/${name}`);
   if (method === "GET") for (const [k, v] of Object.entries(body)) target.searchParams.set(k, typeof v === "string" ? v : JSON.stringify(v));
@@ -359,7 +362,8 @@ async function callFunction(ctx: Ctx, args: Record<string, unknown>) {
   }
 
   const failed = status < 200 || status >= 300 || (answer && typeof answer === "object" && (answer as { ok?: unknown }).ok === false);
-  return toolText({ function: name, http_status: status, answer }, !!failed);
+  const grokApproval = typeof args.grok_approval === "string" && args.grok_approval.trim() ? { grok_approval: args.grok_approval.trim() } : {};
+  return toolText({ function: name, http_status: status, ...grokApproval, answer }, !!failed);
 }
 
 async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {

@@ -37,7 +37,7 @@ Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supab
 | Animating a still, or any generated clip | **Seedance** (`montage-shot`, the storyboard's Animate the plate) and **Genjutsu** (`dress-clip`, clothing on real footage): the routes Fendi approved on YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
 | A video clip with him in it | the likeness ladder below | any model given only stills of him |
 
-Grok is allowed only for a throwaway draft that Fendi will never see, labelled DRAFT in its notes. If you are about to call `grok-broll-proxy` or `world-still-proxy` without `model`, stop.
+Grok is Fendi's call, not yours ("grok is good for certain things so I don't want to make it impossible to use", 12 Nov). If Grok is the right tool, say so: he makes it in Grok Imagine on his subscription and you file it, or he approves it in words and you pass them as `grok_approval` on `avt_call` (the MCP server refuses a Grok generation without them; dry runs are free).
 
 **2. His likeness in b-roll: use the highest rung that exists.** A video model shown a still of him invents a stranger in his clothes (Hyenas, 12 Nov: "the outfit looked pretty consistent but the person was clearly not me in the face").
 

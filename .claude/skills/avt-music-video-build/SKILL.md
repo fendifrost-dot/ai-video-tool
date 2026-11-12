@@ -125,11 +125,15 @@ that does not read as him at phone size is a reject, whatever the outfit does.
 | Clothing on his real footage | **Genjutsu** via `dress-clip`, then the face put-back (`.claude/skills/avt-clothing-swap/SKILL.md`) | | ~$0.68 per source second |
 | Kling, Gemini video, others | **not a production route**: candidates in `docs/capability/GAPS.md`, used only after a benchmark passes and Fendi accepts it | | |
 | A video clip with him | **§3b, the likeness ladder.** Never a model given only stills of him | | |
-| A throwaway draft he will never see | Grok, labelled DRAFT in the notes | | $0.07 still, ~$0.28 clip |
+| Grok, when it is the right tool | Fendi's call: he makes it in Grok Imagine, or approves it in words (`grok_approval`) | name why Grok fits this picture | his subscription, or $0.07 still / ~$0.28 clip |
 
-The tool's defaults are still Grok (`world-still-proxy` `DEFAULT_MODEL`, the whole `grok-broll-proxy`). Until the code
-guard in `docs/handoffs/HANDOFF_HYENAS_RESET_2026-11-12.md` lands, an agent names the Gemini model on every still
-request and never calls `grok-broll-proxy`. If a Grok output is found on a project, mark it `approval_status: rejected`.
+Grok is Fendi's call, not an agent's default ("grok is good for certain things so I don't want to make it impossible
+to use", 12 Nov). When Grok is the right tool for a picture, say so and why; he makes it himself in Grok Imagine on his
+subscription and you file it with `avt_upload_asset`, or he approves it in words and you pass them as `grok_approval`.
+The AVT MCP server enforces this: `avt_call` refuses a Grok generation (the `grok-*` functions, or `world-still-proxy`
+without `model: "gemini-nano-banana-2.1"`) unless `grok_approval` carries his words; a dry run is always allowed. The
+app's own buttons are unaffected. If a Grok output he did not approve is found on a project, mark it
+`approval_status: rejected`.
 
 ## 5. The handoff to the cutter (Grokbot or anyone)
 

@@ -64,14 +64,20 @@ Gemini still first, then animate it with Seedance (`montage-shot` b-roll or Anim
 elsewhere (the Higgsfield app directly), those clips are not in the project and nobody can check or reuse them. File
 them through `avt_upload_asset` with the model and the source still named.
 
-## Code guard (Class C, not built; needs sign-off)
+## Code guard (Class C: coded and tested, needs sign-off and a redeploy)
 
-So the policy cannot be skipped by an agent that did not read the docs:
+Fendi, 12 Nov: "grok is good for certain things so I don't want to make it impossible to use but I guess if grok is
+the right tool I can use grok imagine to generate for me with my ultimate subscription."
 
-1. `world-still-proxy`: refuse a request without `model` unless `draft: true`; the refusal names
-   `gemini-nano-banana-2.1`. Dry-run test for both paths.
-2. `grok-broll-proxy`: refuse unless `draft: true`, the refusal points to `montage-shot` (Seedance).
-3. Redeploy both in Lovable → Edge Functions after merge. Verify: a dry run without `model` → 400 `model_required`.
+So the guard sits where the mistakes came from, the agents, and leaves the app's buttons alone:
+`supabase/functions/avt-mcp` `avt_call` refuses a Grok generation (the `grok-*` generation functions, or
+`world-still-proxy` without `model: "gemini-nano-banana-2.1"`) unless `grok_approval` carries his words. Dry runs, a
+poll of a running Grok job and a Gemini job recovery pass. The refusal names the Gemini, Seedance and Genjutsu routes
+and Grok Imagine. Tests: `supabase/functions/avt-mcp/contract.test.ts` "grokGate" (6 cases).
+
+After merge: Lovable → Edge Functions → redeploy **`avt-mcp`**. Verify: `avt_call {function: "grok-broll-proxy", body:
+{projectId, prompt: "x"}}` → refused with the routes named; the same with `body.dryRun: true` → the function's own
+dry-run answer.
 
 ## Guardrails
 
