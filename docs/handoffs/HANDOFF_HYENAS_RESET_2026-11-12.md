@@ -50,8 +50,8 @@ three-quarter, standing, walking, sitting at a wheel, his face filling a fifth o
 | Shot (from the Gemini sketches) | Rung | How |
 |---|---|---|
 | Him in the jungle with the cars lined up | 1 | his real b-roll (standing or walking), matted and placed in the Gemini cars plate without him (`v3_car_*` or a new empty line-up plate), plate animated calm (Seedance, Animate the plate). SHOT_RULES 3–6 |
-| Him driving, hyena riding passenger (day and night) | 2, or 1 if he films a seated take | recipe F (`montage-shot`): `@Video1` = a 4 s mouth-at-rest window of his real footage in the outfit, the G-Wagon interior plate without him, his face photographs from the tool. $2.219 per 4 s |
-| Him stepping out of the fridge, granny | 2 | recipe F on the kitchen plate without him (`v3_granny_jungle` style, him removed), `@Video1` = a walking window of his b-roll |
+| Him driving, hyena riding passenger (day and night) | recipe F (E4), now | `montage-shot`: `@Video1` = the 7.3–14.8 s standing window of the dog b-roll (`2274f670`), cut from the 4K original waist-up; the lines put him at the wheel ("hands on the wheel, nothing else in his hands"); his face photographs from the tool. $2.219 per 4 s. No seated footage is needed (c026 was seated and never filmed) |
+| Him stepping out of the fridge, granny | recipe F (E4), now | same window; the lines give the step out of the fridge. No walking footage is needed |
 | v4 face test | ✗ | discard as a face source |
 
 Every clip with him: `scripts/edit/face_check.py` against his face set, `scripts/edit/mouth_scan.py`, posted with the
@@ -82,8 +82,8 @@ dry-run answer.
 ## Guardrails
 
 - Do not re-enable the rejected Grok assets; do not use any generated still of him as his face.
-- Do not generate him from the performance take: there is no mouth-at-rest window in it and his face is too small.
-- Do not start rung-2 renders before the b-roll is uploaded and a window is picked with `mouth_scan.py`.
+- Do not use the performance take as `@Video1`: he raps through all of it. Use a non-rapping window of the dog b-roll.
+- The b-roll is uploaded (`2274f670`); pick the window from its `mouth_scan.py` table, crop it waist-up from the 4K original.
 
 ## Report back
 
@@ -92,3 +92,10 @@ dry-run answer.
 - Spend per paid call in the project ledger.
 
 Nothing in this handoff is verified beyond the rows, the scan and the contact sheet named above.
+
+## Correction (12 Nov, later): the agent may generate him
+
+The first version of this page and of CLAUDE.md said recipe F "needs real footage where his face is at least ~200 px
+wide" and that a shot with no footage of the action is rewritten without his face. Both were wrong (no evidence; the
+approved c026/c033/c039 were actions he never filmed). Fendi: "the face redraw isn't an issue". Proceed with recipe F
+on the dog b-roll window for the driving and fridge shots; E1 for the cars line-up; judge each render with face_check.
