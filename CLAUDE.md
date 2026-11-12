@@ -27,6 +27,26 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 
 Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supabase project" outside Lovable Cloud. If in doubt: everything goes through **Lovable**, never a direct Supabase login. Full deploy/schema chain of command is below.
 
+## ⛔ MODELS AND HIS LIKENESS — decisions by Fendi, binding on every agent (9 and 12 Nov 2026)
+
+**1. No Grok on anything that ships.** "We need to demote grok image creator and replace with gemini" (9 Nov). "We demoted grok for Gemini and kling" and "Gemini is preferred" (12 Nov).
+
+| Need | Use | Never |
+|---|---|---|
+| A still that must read as a photograph (plate, scene, cutaway, reference) | **Gemini** `gemini-nano-banana-2.1` via `world-still-proxy` (`model` named on every request: the tool's default is still Grok) | `grok-imagine-image*` |
+| A generated video clip without him | **Gemini first:** Gemini Omni Flash (1.2 in the Higgsfield catalogue; 1.1 via Runway in `runway-video-edit-proxy`). **Kling second** (Higgsfield catalogue via `proxy-provider-call`). Dry-run to confirm the route | `grok-broll-proxy`, any `grok-imagine-video*` |
+| A video clip with him in it | the likeness ladder below | any model given only stills of him |
+
+Grok is allowed only for a throwaway draft that Fendi will never see, labelled DRAFT in its notes. If you are about to call `grok-broll-proxy` or `world-still-proxy` without `model`, stop.
+
+**2. His likeness in b-roll: use the highest rung that exists.** A video model shown a still of him invents a stranger in his clothes (Hyenas, 12 Nov: "the outfit looked pretty consistent but the person was clearly not me in the face").
+
+1. **His real footage** (b-roll he shot, or a mouth-at-rest window of his take), used as the shot or composited into a calm plate. His face is his pixels.
+2. **Recipe F** (`docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`, `montage-shot`): `@Video1` = a mouth-at-rest window of his real footage **in the same outfit**, plus his face photographs from the tool. Approved by him on YSL. Needs real footage where his face is at least ~200 px wide.
+3. **Never:** a generated still of him (Gemini, Grok or any) as the source of his face for a video, or a video of him from text. A generated still of him is a layout sketch only.
+
+No real footage for a shot → the shot is rewritten without his face (from behind, hands, a cutaway), or Fendi shoots it. Run `scripts/edit/face_check.py` on every clip with him before it is posted. Full run-book: `.claude/skills/avt-music-video-build/SKILL.md` §3–§4.
+
 ---
 
 ## CRITICAL — Chain of command (read every session)
