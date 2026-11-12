@@ -1,0 +1,27 @@
+# Capability gaps: what the workflow needs that the tools cannot do yet
+
+The registry the capability scan (`.claude/skills/avt-capability-scan/SKILL.md`) checks new tools against. One entry
+per desired workflow. A gap closes only when a benchmark on our own footage passes its kill criterion
+(`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`) and Fendi accepts the result; a vendor page never closes a gap.
+
+Status: OPEN (no tool passes) · CANDIDATE (a tool is named, untested) · BENCHMARKING (test designed or running) ·
+CLOSED (passed, method written into the build skill) · PARKED (not pursued now).
+
+| Id | Desired workflow | What fails today (evidence) | Kill criterion for a candidate | Candidates (last scan) | Status |
+|---|---|---|---|---|---|
+| **G1** | **Clothing swap on his real performance take inside a moving scene**: a passing train, headlights sweeping, people crossing behind him, with his face, mouth timing and the background preserved | Genjutsu object swap (`dress-clip`) + matte + put-back: garment smears under changing light, matte flickers at the seam when something crosses behind him, ring on the put-back (c041/c045/c047 rounds, Oct–Nov 2026; Fendi 9 Nov: "we saw the issue mostly from the headlights and from the train going by") | 4 s of his real take with a train passing and a light sweep → garment holds construction and stripe/logo every frame, face proof 0 after put-back, background pixels outside him within re-encode noise of the source, mouth timing unchanged, no flicker on a 6 fps strip. ≤ $5 per candidate per roll | Seedance 2.5 `video_edit` (Higgsfield); Kling 3.0 Omni Edit; Kling 4.0 `video-edit`; Gemini Omni Flash 1.2 `edit` with image references; Runway Aleph 2.0 keyframes (`docs/PROVIDER_CAPABILITY_CHECK_2026-09-23.md`); Genjutsu Lite (Kling 4.0 engine) | CANDIDATE (scan 2026-11-09) |
+| G2 | **Him at rest in a generated moving scene without a paste-up**: real face, mouth at rest, the scene alive around him, light on him matching | recipe F (Seedance reference montage) is the only route; it regenerates him, so each roll varies his look and sometimes his mouth; the composite lane over a plate reads as a paste-up on still plates (SHOT_RULES 3). Hyenas 12 Nov: Gemini stills of him from three phone frames (face ~100 px wide) kept the outfit and lost the face ("clearly not me in the face"); stills of him are now banned as a face source (build skill §3b) | 4 s b-roll with him: face sheet passes against his real face, mouth scan at rest, scene motion present, grade matches; one roll, not six | Seedance 2.5 omni-reference (current, recipe F); Kling 4.0 reference-to-video with `kling_element_ids` built from his real footage (Fendi named Kling, 12 Nov: test first); Wan 3.0 reference-to-video; MiniMax H3 references | OPEN |
+| G3 | **Photoreal plates from the director's pictures** that keep what is in them and nothing else | Grok stills add or mirror things (gamblers in the c044 plate, mirrored wordmark on c016, extra people); six rolls for one plate | one request → a plate with exactly the listed contents and none of the excluded ones, wordmarks correct, at 2k | **Gemini `gemini-nano-banana-2.1` via `world-still-proxy`** (DECISION 9 Nov: default for photoreal); FLUX 3 Image with up to ten references | CANDIDATE → policy set, benchmark pending |
+| G4 | **Garment-accurate stills of him** (wordmark, stripe, hem) as hero references without a redraw of his face | wordmark work stopped by decision 29 Oct (squiggle accepted); mirrored lettering recurs | one still, lettering right, his face his | Gemini with his photograph + the product pictures; FLUX 3 multi-reference | OPEN |
+| G5 | **Temporal propagation of an approved keyframe** across a take (the locked lane in `docs/VIDEO_SWAP_ARCHITECTURE.md`) | `temporal-propagate-proxy` exists; never benchmarked against video-native edit on our footage | the 2–4 s kill test in VIDEO_SWAP_ARCHITECTURE | Runway Aleph 2.0 keyframes; Seedance 2.5 video_edit with the keyframe as image reference | OPEN |
+| G6 | **Variety across shots in one outfit** without extra rolls | eight mastic b-rolls read as one shot; fixed in VFX only partly | storyboard intent row filled; staging differs in two of distance/side/action/lens across the run | not a tool gap: `docs/STORYBOARD_INTENT.md` | CLOSED by process |
+
+## How a candidate is tested
+
+1. One real take of his, 4 s, that shows the failure (for G1: c041-style with the train plate and a light sweep).
+2. Dry-run and quote every candidate; stop at the budget Fendi set.
+3. Run each once with identical inputs (garment pictures, prompt, resolution 720p portrait).
+4. Measure: `scripts/edit/face_check.py`, `scripts/edit/mouth_scan.py`, `scripts/edit/ring_flicker.py`, background PSNR
+   outside his matte against the source, a 6 fps strip. Post everything.
+5. Record in the ledger and in `docs/capability/scans/<date>.md`; a pass moves the gap to CLOSED and the method into
+   `.claude/skills/avt-music-video-build/SKILL.md` in the same PR.

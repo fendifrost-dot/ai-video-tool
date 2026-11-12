@@ -134,12 +134,12 @@ images in AVT." The video recipe above is for footage; a still only needs a stil
 1. **Pick the photo** from his `character_features` pictures (`feature_type` `body`: `silhouette_front`
    `1fd67e48`, `posture_neutral` `2ed75b4d`, `silhouette_side` `91f1b325`; the `face` set) or any filed `project_assets`
    photo of him. Match the angle the final picture needs (a drone plate wants a photo taken from above).
-2. **Dress the photo with Grok** through `world-still-proxy` (xAI images/edits, refs in `<IMAGE_n>` order):
-   `{projectId, model: "grok-imagine-image-2.0", aspectRatio: the photo's, resolution: "2k", n: 2, prompt, references: [
+2. **Dress the photo with Gemini** through `world-still-proxy` (Grok ships nothing, Fendi 9 and 12 Nov 2026):
+   `{projectId, model: "gemini-nano-banana-2.1", aspectRatio: the photo's, resolution: "2k", n: 1, jobRowId, prompt, references: [
    {source: "character_feature", id: <his photo>, role: "cast"}, {source: "character_feature", id: <piece>, role:
-   "garment"} … up to 5 refs ]}`. Prompt as a clothing-replacement edit of the first image: keep the man, face, pose,
-   camera, background pixel for pixel; the other images are garment swatches only. $0.08 per candidate + $0.01 per
-   input picture; dry-run first. Each result is filed in `project-references/…/worlds/`.
+   "garment"} … up to 14 refs ]}`. Prompt as a clothing-replacement edit of the first image: keep the man, face, pose,
+   camera, background pixel for pixel; the other images are garment swatches only. ≈ $0.27 per candidate (conditional
+   estimate); dry-run first. Each result is filed in `project-references/…/worlds/`.
 3. **Put his face back, $0:** `python -I scripts/edit/still_face_putback.py original.jpg edit.png out.png $AVT_MODELS`
    aligns the edit to the photo (ECC on the head), pastes the photo's head (face, beard, glasses, cap) over it and
    prints `max |out-original| inside the hard head mask: 0`, the proof. A face that is not found at full size is found
@@ -149,11 +149,12 @@ images in AVT." The video recipe above is for footage; a still only needs a stil
    `compose_cover_still.py` instead (it keys the wall panel behind him).
 5. Post with the head sheet; file on his word as in step 7 above.
 6. **When the picture needs a different ANGLE than any photo of him** (a drone cover), a paste cannot fix it: with
-   Fendi's say-so for that picture, let the model regenerate him INTO the plate (`world-still-proxy`; **Grok
-   `grok-imagine-image-2.0` held his face far better than Gemini on this, 6 Nov 2026**; refs = plate
+   Fendi's say-so for that picture, let the model regenerate him INTO the plate (`world-still-proxy`, **Gemini** `gemini-nano-banana-2.1`; history: on
+   6 Nov a Grok model held his face better on one cover, but Grok is no longer used, Fendi 9 and 12 Nov); refs = plate
    as `place`, the dressed photo as `cast` from project-references, three faces as `cast`; prompt names the camera, the
    scale in car lengths, the outfit piece by piece). His likeness is then the model's drawing, checked against his face
-   pictures; say so when posting. Never do this for footage (rule 2).
+   pictures; say so when posting. Never do this for footage (rule 2), and **never use such a still as the source of his
+   face for a video** (`.claude/skills/avt-music-video-build/SKILL.md` §3b: a generated still of him animated is a stranger).
 
 ## Him in a generated scene without a swap (recipe F)
 When the shot needs him at rest in a place (b-roll), not a wardrobe change: `montage-shot` with a SILENT reference

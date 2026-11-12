@@ -39,10 +39,10 @@ The recipe, in order of weight:
 
 | model | route | per still | note |
 |---|---|---|---|
-| `grok-imagine-image-quality` | world-still-proxy, xAI | $0.07 list | two variants per call is cheap insurance |
-| `gemini-nano-banana-2.1` | world-still-proxy → CC, Google | ≈ $0.27 conditional estimate | needs a queued `provider_jobs` row (`jobRowId`); n = 1 |
+| `gemini-nano-banana-2.1` | world-still-proxy → CC, Google | ≈ $0.27 conditional estimate | **the plate model** (Fendi, 9 and 12 Nov 2026). Needs a queued `provider_jobs` row (`jobRowId`); n = 1; name `model` on every request |
+| `grok-imagine-image-quality` | world-still-proxy, xAI | $0.07 list | **not for anything that ships**; a throwaway draft only, labelled DRAFT |
 
-Both drew a convincing plate from the realism prompt. Pick by composition, not by model.
+(15 Oct, history: both drew a convincing plate. Since 9 Nov the choice is not by composition: plates are Gemini.)
 
 ## Compositing the take onto a plate (what worked on the 4 s test)
 

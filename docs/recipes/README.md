@@ -18,11 +18,15 @@ quoted, dry-run first, and recorded in `docs/LEDGER_YSL_TESTING_BUDGET.md`.
 **Every shot with him passes [`../SHOT_RULES.md`](../SHOT_RULES.md) before it is posted.** **Never** apply generated lip-sync or any face-altering pass to Fendi. His mouth in a shot is either his real take's
 or at rest.
 
-## The skill
+## The skills
 
-[`.claude/skills/avt-clothing-swap/SKILL.md`](../../.claude/skills/avt-clothing-swap/SKILL.md) is the one page an agent
-loads to run a clothing swap end to end and to use the AVT tool set (every `avt_*` MCP tool, the paid functions and
-their bodies, costs, checks, filing). The pages below are the evidence and the detail behind it.
+| Skill | Load it for |
+|---|---|
+| [`.claude/skills/avt-music-video-build/SKILL.md`](../../.claude/skills/avt-music-video-build/SKILL.md) | building the next video end to end: the YSL lessons, the motion budget for performance shots, Gemini-over-Grok stills, the cutter's handoff format, how a delivered cut is verified |
+| [`.claude/skills/avt-clothing-swap/SKILL.md`](../../.claude/skills/avt-clothing-swap/SKILL.md) | the AVT tool set (every `avt_*` MCP tool, the paid functions, costs, filing) and the face-preserving swap |
+| [`.claude/skills/avt-capability-scan/SKILL.md`](../../.claude/skills/avt-capability-scan/SKILL.md) | the weekly scan of the AI tool catalogs against [`../capability/GAPS.md`](../capability/GAPS.md) |
+
+The pages below are the evidence and the detail behind them.
 
 ## The rest of the shelf
 
