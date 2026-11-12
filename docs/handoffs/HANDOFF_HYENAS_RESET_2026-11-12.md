@@ -10,6 +10,9 @@
 >
 > "Gemini is preferred"
 
+On the workflow in general, not Hyenas (12 Nov): "we generated shot images with Gemini and then animated them with
+genjitsu or seedance not Gemini or kling." That is the standing route: stills in Gemini, motion in Seedance or Genjutsu.
+
 ## What happened (VERIFIED from the project's rows, 12 Nov)
 
 | | Count | Model | Spend (list) | Now |
@@ -46,7 +49,7 @@ three-quarter, standing, walking, sitting at a wheel, his face filling a fifth o
 
 | Shot (from the Gemini sketches) | Rung | How |
 |---|---|---|
-| Him in the jungle with the cars lined up | 1 | his real b-roll (standing or walking), matted and placed in the Gemini cars plate without him (`v3_car_*` or a new empty line-up plate), plate animated calm (Gemini video first). SHOT_RULES 3–6 |
+| Him in the jungle with the cars lined up | 1 | his real b-roll (standing or walking), matted and placed in the Gemini cars plate without him (`v3_car_*` or a new empty line-up plate), plate animated calm (Seedance, Animate the plate). SHOT_RULES 3–6 |
 | Him driving, hyena riding passenger (day and night) | 2, or 1 if he films a seated take | recipe F (`montage-shot`): `@Video1` = a 4 s mouth-at-rest window of his real footage in the outfit, the G-Wagon interior plate without him, his face photographs from the tool. $2.219 per 4 s |
 | Him stepping out of the fridge, granny | 2 | recipe F on the kitchen plate without him (`v3_granny_jungle` style, him removed), `@Video1` = a walking window of his b-roll |
 | v4 face test | ✗ | discard as a face source |
@@ -56,8 +59,10 @@ sheet and the SHOT_RULES check. A face that does not read as him at phone size i
 
 ### Clips without him
 
-Gemini Omni Flash first (image-to-video from the approved Gemini still; 1.2 in the Higgsfield catalogue, 1.1 via
-Runway in `runway-video-edit-proxy`), Kling second. Dry-run each. No `grok-broll-proxy`.
+Gemini still first, then animate it with Seedance (`montage-shot` b-roll or Animate the plate). Dry-run each. No
+`grok-broll-proxy`. Note (VERIFIED 12 Nov): AVT holds no Seedance or Genjutsu job for Hyenas; if stills were animated
+elsewhere (the Higgsfield app directly), those clips are not in the project and nobody can check or reuse them. File
+them through `avt_upload_asset` with the model and the source still named.
 
 ## Code guard (Class C, not built; needs sign-off)
 
@@ -65,7 +70,7 @@ So the policy cannot be skipped by an agent that did not read the docs:
 
 1. `world-still-proxy`: refuse a request without `model` unless `draft: true`; the refusal names
    `gemini-nano-banana-2.1`. Dry-run test for both paths.
-2. `grok-broll-proxy`: refuse unless `draft: true`, the refusal points to the Gemini video route.
+2. `grok-broll-proxy`: refuse unless `draft: true`, the refusal points to `montage-shot` (Seedance).
 3. Redeploy both in Lovable → Edge Functions after merge. Verify: a dry run without `model` → 400 `model_required`.
 
 ## Guardrails

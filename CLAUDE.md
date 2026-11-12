@@ -29,12 +29,12 @@ Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supab
 
 ## ⛔ MODELS AND HIS LIKENESS — decisions by Fendi, binding on every agent (9 and 12 Nov 2026)
 
-**1. No Grok on anything that ships.** "We need to demote grok image creator and replace with gemini" (9 Nov). "We demoted grok for Gemini and kling" and "Gemini is preferred" (12 Nov).
+**1. No Grok on anything that ships.** "We need to demote grok image creator and replace with gemini" (9 Nov). "Gemini is preferred" (12 Nov). The workflow: shot stills in Gemini, animated with Seedance or Genjutsu (Fendi, 12 Nov). Kling is a candidate under test, not a production route.
 
 | Need | Use | Never |
 |---|---|---|
 | A still that must read as a photograph (plate, scene, cutaway, reference) | **Gemini** `gemini-nano-banana-2.1` via `world-still-proxy` (`model` named on every request: the tool's default is still Grok) | `grok-imagine-image*` |
-| A generated video clip without him | **Gemini first:** Gemini Omni Flash (1.2 in the Higgsfield catalogue; 1.1 via Runway in `runway-video-edit-proxy`). **Kling second** (Higgsfield catalogue via `proxy-provider-call`). Dry-run to confirm the route | `grok-broll-proxy`, any `grok-imagine-video*` |
+| Animating a still, or any generated clip | **Seedance** (`montage-shot`, the storyboard's Animate the plate) and **Genjutsu** (`dress-clip`, clothing on real footage): the routes Fendi approved on YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
 | A video clip with him in it | the likeness ladder below | any model given only stills of him |
 
 Grok is allowed only for a throwaway draft that Fendi will never see, labelled DRAFT in its notes. If you are about to call `grok-broll-proxy` or `world-still-proxy` without `model`, stop.
