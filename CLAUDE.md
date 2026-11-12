@@ -45,7 +45,7 @@ Grok is Fendi's call, not yours ("grok is good for certain things so I don't wan
 2. **Recipe F** (`docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`, `montage-shot`): `@Video1` = a mouth-at-rest window of his real footage **in the same outfit**, plus his face photographs from the tool. Approved by him on YSL. Needs real footage where his face is at least ~200 px wide.
 3. **Never:** a generated still of him (Gemini, Grok or any) as the source of his face for a video, or a video of him from text. A generated still of him is a layout sketch only.
 
-No real footage for a shot → the shot is rewritten without his face (from behind, hands, a cutaway), or Fendi shoots it. Run `scripts/edit/face_check.py` on every clip with him before it is posted. Full run-book: `.claude/skills/avt-music-video-build/SKILL.md` §3–§4.
+No real footage for a shot → the shot is rewritten without his face (from behind, hands, a cutaway), or Fendi shoots it. **The exact technique (clothes, face put-back, placing him in any scene): [`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`](docs/recipes/HIS_FACE_IN_ANY_SCENE.md).** Run `scripts/edit/face_check.py` on every clip with him before it is posted. Full run-book: `.claude/skills/avt-music-video-build/SKILL.md` §3–§4.
 
 ---
 

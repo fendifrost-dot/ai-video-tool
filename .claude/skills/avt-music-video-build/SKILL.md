@@ -97,7 +97,7 @@ What failed (VERIFIED on the Hyenas board, 12 Nov): Gemini stills of him from th
 about 100 px wide in those frames. The outfit carried; the face did not, worst where the face is small in frame. A
 video model fed such a still can only drift further from him.
 
-Use the highest rung that exists for the shot:
+The exact technique, step by step with commands: [`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`](../../../docs/recipes/HIS_FACE_IN_ANY_SCENE.md). Use the highest rung that exists for the shot:
 
 | Rung | Method | Face | When |
 |---|---|---|---|
