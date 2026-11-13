@@ -33,7 +33,10 @@ the wrong workflow.
    original. Make the 720p copy that is sent AND the larger working copy from the same cut frames, so frame k is the
    same instant in both. (Hyenas: the two copies were cut separately and four swap frames had to be repeated.)
 2. **One reference still of the creature or prop** in Gemini (`world-still-proxy`, `model: gemini-nano-banana-2.1`),
-   plain background, the pose it holds in the take.
+   plain background, the pose it holds in the take. Same size and place as the original: in the swap prompt, say where it stands relative to
+   him ("at his side, where the dog is, not in front of his legs") and that it is the dog's size. A bigger creature
+   covering him makes the swap redraw the edge where it meets him on every frame (Hyenas, 13 Nov: his legs flickered
+   where the hyena's back met them).
 3. **Genjutsu object swap on the 720p window.** `avt_call proxy-provider-call`, body
    `{endpoint: "video-providers-higgsfield-model", method: "POST", body: {mode: "video_to_video", modelVariant:
    "genjutsu-object-swap", resolution: "720p", duration: <whole seconds>, avt_project_id, avt_user_id, promptText,
@@ -95,6 +98,24 @@ the wrong workflow.
       x0,y0,x1,y1` (matte pixels), per frame, nothing carried between frames. The picture there is the put-back's own
       frame (his jeans, the hyena), so no ghost. Pass: `see-through` in the box falls to near 0, nothing changes
       outside the box (`matte_stability.py <out>_alpha_solidified.mkv --baseline <veed alpha>`: added only inside the box), and Fendi watches it.
+   **Result of 3b (13 Nov): fail.** Fendi: "still a lot of flicker in the legs". The see-through count went to 0, but
+   that count only covers holes enclosed by solid body. The real defect, VERIFIED on the delivered files (alpha
+   `T-8bqi2…_alpha.mp4`, put-back `1d0f7af2`): the veed matte holds his right leg at ~0.55 on every frame and loses its
+   lower half for 3–4 frames at a time (frames 14 and 78–80), while the put-back picture shows black jeans against a
+   white door (jeans V 10–30, wall V 170–200). A fade open to the background is not a hole, so 3b never touched it, and
+   the checker then only counted 1–2 frame dips (it now counts up to 4, `--max-dip`).
+   3c. **Key the dark garment back, per frame** ($0, in the repo): `composite_over_plate.py --key-dark-box
+      x0,y0,x1,y1` (matte pixels; `scripts/edit/matte_repair.py`). Inside the box, a dark region of the put-back picture
+      that touches the matte's solid part becomes solid; everything the matte holds stays; nothing is carried between
+      frames. Only where the background behind the garment is light: check the put-back picture first. Hyenas
+      (`--key-dark-box 215,470,450,720`): flicker where his leg meets the hyena's back 9.84 → 5.28 (up-and-down change
+      per frame, same measure on both renders); removed 0 everywhere; the leg stays solid on 14 and 78–80 in the
+      stills. Fendi's verdict pending.
+   **Why the legs at all (Fendi, 13 Nov):** the dog in the take stood in front of him and off to the side; the hyena
+   is bigger and was generated in front of his legs. Wherever the creature overlaps him, the swap invents the edge
+   between his legs and the creature on every frame, and the matte has to cut along an edge that moves (HYPOTHESIS:
+   not separated from the matte's own weakness by a test). Step 2 now
+   sizes and places the creature like the original.
    4. **A new matte, not a changed one** (HYPOTHESIS, untested): `matte-video-proxy` on a crop of the failing region,
       enlarged, so the model sees the legs bigger; the result is used only inside that region. About $0.07. Measured
       with `matte_stability.py --baseline <veed alpha>`: no added alpha outside the region.
