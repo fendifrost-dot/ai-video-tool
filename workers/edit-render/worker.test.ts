@@ -69,7 +69,7 @@ function fakeApi(render: unknown) {
       given = true;
       return { ok: true, render, signed: {}, upload: { signedUrl: "upload-target" } };
     }
-    return { ok: true, path: "p", assetId: "a" };
+    return { ok: true, path: "p", assetId: "a", sha256_match: true };
   };
   return { api, calls };
 }

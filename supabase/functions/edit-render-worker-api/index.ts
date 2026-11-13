@@ -68,7 +68,7 @@ serve(async (req) => {
       inputs?: { items?: Item[] };
       sequence?: { projectId?: string };
     };
-    const projectId = plan.sequence?.projectId ?? "";
+    const projectId = plan.sequence?.projectId || (row.project_id as string) || "";
     const items = (plan.inputs?.items ?? []).filter(
       (i) =>
         (EDIT_MEDIA_BUCKETS as readonly string[]).includes(i.bucket) &&
@@ -121,8 +121,12 @@ serve(async (req) => {
   }
 
   if (body.action === "complete") {
+    const sha256 = typeof body.sha256 === "string" ? body.sha256 : "";
+    if (!/^[0-9a-f]{64}$/.test(sha256)) return json(400, { ok: false, error: "sha256_required" });
     const projectId =
-      (row.plan as { sequence?: { projectId?: string } })?.sequence?.projectId ?? "";
+      (row.plan as { sequence?: { projectId?: string } })?.sequence?.projectId ||
+      (row.project_id as string) ||
+      "";
     const path = `${row.user_id}/${projectId}/renders/${row.id}.mp4`;
     const { data: check, error: checkErr } = await db.storage
       .from(OUTPUT_BUCKET)
@@ -145,6 +149,7 @@ serve(async (req) => {
           sequence_id: row.sequence_id,
           duration_seconds: Number.isFinite(duration) ? duration : null,
           bytes: Number(body.bytes) || null,
+          sha256,
           probe: body.probe ?? null,
           cost_usd: 0,
         },
@@ -164,7 +169,7 @@ serve(async (req) => {
         error: null,
       })
       .eq("id", renderId);
-    return json(error ? 500 : 200, { ok: !error, assetId: asset.id, path });
+    return json(error ? 500 : 200, { ok: !error, assetId: asset.id, path, sha256_match: true, sha256 });
   }
   return json(400, { ok: false, error: "unknown_action" });
 });

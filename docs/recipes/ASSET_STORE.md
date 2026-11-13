@@ -45,3 +45,11 @@ Every write tool records `mcp_write_events` through `record_mcp_write`. The tabl
 Each clip can carry `asset_version`, `song_zero_offset_seconds`, `timeline_in_frame`, `timeline_out_frame`, `layer_stack`, and `grade`. `time_remap_allowed: false` refuses a speed other than 1. Existing rows default the flag to true so a cut that already uses speed still saves.
 
 Shot list, beat grid, and project rules are versioned assets. Saving a new one tags the previous row `superseded` and sets `parent_asset_id`. It does not delete it.
+
+## Jobs, workers, cache
+
+`avt_job_submit` queues an `edit_renders` row (`edit`, `vfx`, `qc`, `blender`, `beat_cut`). `dry_run` defaults to true and writes nothing. `cost_usd` stays 0. The worker is the existing edit-render process: one job at a time, a disk check first, and only the asset ids the job names. Blender is `AVT_BLENDER` (default `/workspace/tools/blender`), Cycles on CPU, frames in chunks.
+
+`avt_worker_register` stores a hash of the secret plus the tool manifest. `avt_worker_check` compares that manifest to the pinned skill's dependencies before a non-dry-run submit will accept the worker.
+
+`avt_cache_report` records usage against a 20 GB default cap. It returns disposable keys the box may delete locally after 7 days or when over the cap. Locked, approved, camera, original, and unverified files are not in that list. The tool does not delete them. Scratch for a finished job is removed only after the uploaded sha256 matches.

@@ -26,6 +26,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
 import { editGet, editList, editRender, editSave } from "./editTools.ts";
+import { JOB_TOOL_NAMES } from "./jobContract.ts";
+import { runJobTool } from "./jobHandlers.ts";
 import { deleteGuardStatus } from "./storeContract.ts";
 import { lockedPathBlock, runStoreTool, STORE_TOOL_NAMES } from "./storeHandlers.ts";
 import type { EditSequence, RenderAspect, RenderKind } from "../_shared/editModel.ts";
@@ -524,6 +526,13 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
           unlock: args.unlock === true,
         }),
       );
+  }
+  if ((JOB_TOOL_NAMES as readonly string[]).includes(name)) {
+    try {
+      return toolText(await runJobTool(ctx.user, ctx.session.userId, ctx.session.credentialId, name, args));
+    } catch (e) {
+      throw new ToolError(e instanceof Error ? e.message : String(e));
+    }
   }
   if ((STORE_TOOL_NAMES as readonly string[]).includes(name)) {
     try {
