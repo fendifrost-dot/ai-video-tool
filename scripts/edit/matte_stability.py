@@ -7,8 +7,8 @@ usage:
 
 What it counts, per frame and per region (top / middle / bottom third of everything the matte ever covers, plus any
 --box), in matte pixels:
-  dropout  solid (>0.8) on the frames either side, gone (<0.5) on this one, for 1 or 2 frames: a leg that fades and
-           comes back (Hyenas v6, 13 Nov 2026), a chain link that blinks out.
+  dropout  solid (>0.8) on the frames either side, gone (<0.5) on this one, for 1 to --max-dip frames (default 4):
+           a leg that fades and comes back (Hyenas v6, 13 Nov 2026), a chain link that blinks out.
   pop-in   empty (<0.2) either side, solid (>0.5) on this one: a ghost patch.
   see-through  partly transparent (0.1 to 0.9) at least --inset px inside his solid outline and as far from any empty
            (<0.1) pixel, on any frame: the plate showing through him where two foreground things meet (Hyenas v6, 13
@@ -55,15 +55,17 @@ def frame_info(path):
     return n, c.get(cv2.CAP_PROP_FPS), repeats
 
 
-def events(A):
+def events(A, max_dip=4):
     """Per frame: boolean maps of dropout and pop-in pixels."""
     n = len(A); drop = [np.zeros(A[0].shape, bool) for _ in range(n)]; pop = [np.zeros(A[0].shape, bool) for _ in range(n)]
     for k in range(1, n - 1):
         drop[k] |= (A[k - 1] > SOLID) & (A[k + 1] > SOLID) & (A[k] < GONE)
         pop[k] |= (A[k - 1] < EMPTY) & (A[k + 1] < EMPTY) & (A[k] > SHOWN)
-    for k in range(1, n - 2):  # two-frame dips
-        d2 = (A[k - 1] > SOLID) & (A[k + 2] > SOLID) & (A[k] < GONE) & (A[k + 1] < GONE)
-        drop[k] |= d2; drop[k + 1] |= d2
+    for L in range(2, max_dip + 1):  # dips of 2..max_dip frames (Hyenas v6: his lower leg gone for 3-4 frames)
+        for k in range(1, n - L):
+            d = (A[k - 1] > SOLID) & (A[k + L] > SOLID)
+            for j in range(L): d &= A[k + j] < GONE
+            for j in range(L): drop[k + j] |= d
     return drop, pop
 
 
@@ -101,8 +103,8 @@ def count(maps, box):
     return [int(m[y0:y1, x0:x1].sum()) for m in maps]
 
 
-def analyse(A, boxes, flag_px, B=None, inset=6):
-    drop, pop = events(A); seen = see_through(A, inset); R = regions(B if B is not None else A, boxes); rep = {}
+def analyse(A, boxes, flag_px, B=None, inset=6, max_dip=4):
+    drop, pop = events(A, max_dip); seen = see_through(A, inset); R = regions(B if B is not None else A, boxes); rep = {}
     for name, box in R.items():
         d, p = count(drop, box), count(pop, box)
         r = {"box": [int(v) for v in box], "dropout_px": sum(d), "popin_px": sum(p),
@@ -122,6 +124,7 @@ def main(argv=None):
     ap.add_argument("alpha", nargs="?"); ap.add_argument("--baseline"); ap.add_argument("--fg")
     ap.add_argument("--box", action="append", default=[], help="name=x0,y0,x1,y1 in matte pixels")
     ap.add_argument("--flag-px", type=int, default=40, help="dropout+pop-in pixels that flag a frame (default 40)")
+    ap.add_argument("--max-dip", type=int, default=4, help="longest dropout counted, in frames (default 4)")
     ap.add_argument("--inset", type=int, default=6, help="px inside his outline and away from gaps for see-through (default 6)")
     ap.add_argument("--max-flagged", type=int, default=-1); ap.add_argument("--json")
     ap.add_argument("--selftest", action="store_true")
@@ -135,8 +138,8 @@ def main(argv=None):
     out = {"alpha": a.alpha, "frames": len(A)}
     if B is not None:
         if len(B) != len(A) or B[0].shape != A[0].shape: sys.exit(f"baseline {len(B)} frames {B[0].shape} vs {len(A)} {A[0].shape}")
-        out["baseline"] = analyse(B, boxes, a.flag_px, inset=a.inset)
-    out["candidate"] = analyse(A, boxes, a.flag_px, B, a.inset)
+        out["baseline"] = analyse(B, boxes, a.flag_px, inset=a.inset, max_dip=a.max_dip)
+    out["candidate"] = analyse(A, boxes, a.flag_px, B, a.inset, a.max_dip)
     if a.fg:
         n, fps, rep = frame_info(a.fg)
         out["fg"] = {"frames": n, "fps": round(fps, 3), "repeated_frames": len(rep), "first_repeats": rep[:12]}
