@@ -35,6 +35,9 @@ MODELS = os.environ.get("AVT_MODELS", "models")  # selfie_multiclass_256x256.tfl
 ap = argparse.ArgumentParser(description="Body-only clothing swap: clothes from the Genjutsu output, everything else from the ORIGINAL pixels.")
 ap.add_argument("original"); ap.add_argument("swap"); ap.add_argument("out_dir")
 add_segmenter_args(ap)
+ap.add_argument("--base", choices=("original", "swap"), default="original",
+                help="original (default): the scene stays the take, only the clothes come from the swap. swap: the whole swap frame is kept "
+                     "(a creature or prop swapped in beside him) and only his protected face, beard and skin go back from the take.")
 A = ap.parse_args()
 orig_p, swap_p, out_dir = A.original, A.swap, A.out_dir
 SEGMENTER = choose_segmenter(A.segmenter)
@@ -222,7 +225,12 @@ def smooth(v):
     v = np.array(v, np.float32)
     return np.array([np.median(v[max(0, k - 4):k + 5]) for k in range(len(v))], np.float32)
 for s0, s1 in zip(starts, ends):
-    det = [pick_subject(detect_candidates(orig[k], oc_all[k]), changed_at(k)) for k in range(s0, s1)]
+    cands = [detect_candidates(orig[k], oc_all[k]) for k in range(s0, s1)]
+    det = [pick_subject(c, changed_at(s0 + j)) for j, c in enumerate(cands)]
+    if A.base == "swap":
+        # a creature or prop swap changes no clothes, so the swap cannot say which face is his: take the largest face
+        # in the frame (the performer; a second person in such a shot needs a rule of their own)
+        det = [d if d is not None else (max(c, key=lambda f: f[2]) if c else None) for d, c in zip(det, cands)]
     if all(f is None for f in det) and SAM is not None:
         # the landmarker found nobody in this scene (a small or profile face): the face oval, brow and eye rows
         # from a SAM 3 "face" mask inside his matte on the scene's first frame
@@ -413,6 +421,7 @@ for i, o in enumerate(orig):
     protect = refine_silhouette(protect, o, band=4)
     dropped = protect_wide & ~protect
     clothes |= dropped & (cv2.dilate(clothes.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0)
+    if A.base == "swap": clothes = ~protect            # everything but his protected pixels is the swap's
     m = (clothes & ~protect).astype(np.float32)
     m = cv2.GaussianBlur(np.maximum(m, protect.astype(np.float32)), (0, 0), 2.0)
     m[protect] = 0.0                                       # no feather leaks onto the face or hands
