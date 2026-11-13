@@ -10,6 +10,10 @@ the same proof.
 Fendi, 12 Nov 2026: "Just like in the clothing swap we only replace my face pixels and not the body." and "we know
 that the pipeline works … document this workflow so we don't keep relitigating work and wasting time and money."
 
+**Gate before anything else (Hyenas, 13 Nov):** the swapped creature must move like the animal it replaces, frame for
+frame: "my dog is laying down and you have the hyena standing. That is not the mirrored movement." Put the take and
+the swap side by side and check the pose on every second before a put-back, a matte or a composite is made.
+
 ## When to use it
 
 His real performance take holds something that must become something else and must keep moving the way the real thing
@@ -110,8 +114,10 @@ the wrong workflow.
       frames. Only where the background behind the garment is light: check the put-back picture first. Hyenas
       (`--key-dark-box 215,470,450,720`): flicker where his leg meets the hyena's back 9.84 → 5.28 (up-and-down change
       per frame, same measure on both renders); removed 0 everywhere; the leg stays solid on 14 and 78–80 in the
-      stills. **Fendi, 13 Nov, on the test composite and the half-speed side by side: "Perfect".** Use it first on the
-      other sections, with each section's own box and the same measurement; posted one section at a time.
+      stills. Fendi, 13 Nov (about 08:05 UTC), after this test and the plan were sent: "Perfect". His later
+      "That new test looks better but there is still a lot of flicker around the edges and on my shoes" (09:02 UTC)
+      was about the chat session's 11.1 s test (`a602f717`). Every section is now being rebuilt from the swap up:
+      `docs/handoffs/HANDOFF_HYENAS_PERFORMANCE_OVERHAUL_2026-11-13.md`.
    **Why the legs at all (Fendi, 13 Nov):** the dog in the take stood in front of him and off to the side; the hyena
    is bigger and was generated in front of his legs. Wherever the creature overlaps him, the swap invents the edge
    between his legs and the creature on every frame, and the matte has to cut along an edge that moves (HYPOTHESIS:
