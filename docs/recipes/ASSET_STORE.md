@@ -8,11 +8,21 @@ Migration: `supabase/migrations/20261113120000_asset_store_extensions.sql`.
 
 `project_assets` keeps the file. New columns sit beside `metadata_json`: fps, sar, width, height, frame_count, duration_seconds, codec, sha256, size_bytes, source_take_asset_id, song_zero_offset_seconds, provenance, tags, origin, license_id.
 
-Tags are `locked`, `superseded`, `review`, `approved`. A row tagged `locked` cannot be deleted. The same guard rejects a Storage delete of that object's path. `avt_delete` on `project_assets` checks the tag before it deletes. `avt_asset_delete_guard` only reports the status. There is no delete tool that skips the guard, and nothing here deletes a file on the T7.
+Tags are `locked`, `superseded`, `review`, `approved`. A row tagged `locked` cannot be deleted. `public.project_assets` has a before-delete trigger. `avt_delete` on `project_assets` and `avt_delete_object` check the tag before they delete. A restrictive storage policy `locked_objects_no_delete` blocks an authenticated storage delete of that path. `avt_asset_delete_guard` only reports the status. There is no delete tool that skips the guard, and nothing here deletes a file on the T7.
 
 `origin` of `element` or `stock` requires `license_id`. Generated, camera, and edit rows do not.
 
-Bucket `file_size_limit` for `project-exports`, `project-clips`, `project-references`, and `project-audio` is 4 GB, which covers a 245 MB master and a 1.7 GB camera take. Supabase also has a project-wide upload cap that SQL cannot change. If a large PUT returns 413, raise that cap in Lovable. This migration does not do it.
+The migration does not set storage limits. Lovable's storage control must set each of these to **4294967296 bytes (4 GiB)**, which covers a 245 MB master and a 1.7 GB camera take:
+
+| Setting | Limit |
+|---|---|
+| Bucket `project-exports` | 4294967296 |
+| Bucket `project-clips` | 4294967296 |
+| Bucket `project-references` | 4294967296 |
+| Bucket `project-audio` | 4294967296 |
+| Project-wide upload file size | 4294967296 |
+
+The project-wide cap overrides the buckets. A lower cap still returns HTTP 413.
 
 ## Uploads
 
