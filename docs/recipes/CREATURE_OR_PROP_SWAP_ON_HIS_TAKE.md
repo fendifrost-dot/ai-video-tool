@@ -1,7 +1,7 @@
 # A creature or prop swapped into his real take, his face his own pixels
 
 **Status: steps 1 to 4 VERIFIED on Hyenas, 12 Nov 2026 (verse 11.1 to 15.1 s, poodle on a rope → hyena on a chain).
-Step 5 (lifting him and the creature into another set) has a first pass and no verdict yet.**
+Step 5 is the YSL showroom matte and composite; Fendi's verdict on the Hyenas result is still to come.**
 
 This is the clothing swap ([`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md)) without the
 clothes. Do not re-derive it and do not test alternatives first: it is the same engine, the same put-back script and
@@ -58,19 +58,21 @@ the wrong workflow.
    **Pass mark, both printed by the script:** his face found on all, or all but a few, frames; `max |out-original| on
    face/hair/skin: 0`. Then `scripts/edit/face_check.py` for the sheet against his face pictures in the tool, posted
    with the clip. Fendi judges the face.
-5. **Into another set (first pass made 12 Nov 2026, awaiting Fendi's verdict).** Him, the creature and the prop are
-   lifted off the room together from the step-4 result, as one matte:
-   - him: RobustVideoMatting on the step-4 result;
-   - the creature: ONE `sam3-segment-proxy` mask on one frame, carried to every other frame by dense optical flow
-     (OpenCV DIS, frame to frame, re-thresholded each step). Held for 4 s on a slow animal; re-anchor with a second
-     mask if it drifts;
-   - the prop (chain): the pixels the swap changed against the take that differ from the bare room and touch him or
-     the creature.
-   Do NOT key the creature by colour against the room: a brown hyena on a wood floor does not separate (tried, failed).
-   The lift is delivered as a fill, a matte and one ProRes 4444 with alpha, then placed at true scale, off-centre
-   (`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`, the YSL showroom method). Shadows, contact and blending are the
-   finisher's (Grokbot, After Effects). The script for this step is not in the repo yet (GAPS G7). Check the soles of
-   his shoes on every lift-out where they show.
+5. **Into another set: the YSL showroom method, unchanged.** This is recipe E1' of
+   [`HIS_FACE_IN_ANY_SCENE.md`](HIS_FACE_IN_ANY_SCENE.md) (c033 showroom, `8a527bab`). Do not build another cut-out.
+   - File the step-4 result as a `project_assets` row (`metadata_json`: `bucket`, `mime_type` video/mp4,
+     `duration_seconds`), then `avt_call matte-video-proxy {assetId}` and poll `fal-queue-poll-proxy` with the
+     returned `status_url` and `response_url`. About $0.07 per 4 s. The answer holds `alpha.mp4` and `color.mp4`.
+   - The matte keeps him, the creature and the chain together, thin links included (VERIFIED Hyenas verse 0.9 to 4.9,
+     13 Nov 2026).
+   - Use the matte as delivered. Do not choke, median or re-key it: choking erased the chain.
+   - Composite with `scripts/edit/composite_over_plate.py`, at true scale and off-centre.
+
+   **Wrong tools, tried on Hyenas 12 to 13 Nov 2026 and rejected by Fendi. Do not repeat:** RobustVideoMatting for
+   him plus a one-frame SAM mask carried by optical flow for the creature; a SAM 2 tracker; a hand-written rule that
+   keeps "what the swap changed" as the chain. Together they leaked the room's door frame as a box round him, left
+   white wall between his arm and body on every gesture, broke the creature's legs and frayed the chain. Fendi: "We
+   already had a formula that was 100% effective ... refer to the YSL video edit."
 
 ## Costs (Hyenas test)
 
@@ -79,6 +81,7 @@ the wrong workflow.
 | Gemini reference still | $0.27 |
 | Genjutsu object swap, 4 s at 720p | $2.72 |
 | Put-back and face sheet | $0 |
+| Matte (`matte-video-proxy`), 4 s | $0.07 |
 
 ## Mistakes already paid for
 
