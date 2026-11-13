@@ -293,6 +293,12 @@ stays in Control Center; AVT holds no provider credential.
 `mode=edit` models (≤ 5 Omni, ≤ 30 Seedance). Counts, prompt length and input duration are
 validated per model and **fail closed — never truncated**.
 
+`videoUri` in this body is the normalized clip URL between AVT and Control Center. It is
+not Runway's field name for every model. Control Center rebuilds the Runway POST:
+`seedance2_5` sends `promptVideo` (Runway returns HTTP 400 for `videoUri` on that model);
+`aleph2`, `gemini_omni_flash`, and `gemini_omni_flash_1.1` still send `videoUri`
+(SDK `video_to_video` params, read 2026-11-13).
+
 **Cost has two owners, and two field names, deliberately:**
 
 | Field | Owner | Meaning |

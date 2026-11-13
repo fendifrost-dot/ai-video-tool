@@ -34,6 +34,7 @@ import { callerMayReadAny, refusalResponse } from "../_shared/storageAccess.ts";
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callControlCenter, controlCenterConfig, type ControlCenterConfig } from "../_shared/controlCenterClient.ts";
+import { buildRunwayVideoEditRequest } from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,7 +90,7 @@ const MODELS: Record<string, RunwayModel> = {
   seedance2_5: {
     contract: "mode_edit", maxReferences: 30, maxKeyframes: 0, maxInputSeconds: 10, maxPromptChars: 15000,
     creditsPerOutputSecond: 30, creditsPerInputSecond: 15, minCredits: 0,
-    source: "Seedance 2.5 video_to_video mode=edit (duration auto) with up to 30 image references; 720p: 30 credits/s output + 15 credits/s input",
+    source: "Seedance 2.5 video_to_video mode=edit (duration auto) with up to 30 image references; the source clip is promptVideo, not videoUri (Runway SDK video_to_video params, read 2026-11-13; videoUri is HTTP 400); 720p: 30 credits/s output + 15 credits/s input",
   },
 };
 
@@ -349,24 +350,34 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const inputSeconds = typeof body.inputSeconds === "number" && body.inputSeconds > 0 ? body.inputSeconds : 8;
   if (inputSeconds > spec.maxInputSeconds) return json(400, { error: "input_too_long", inputSeconds, maxInputSeconds: spec.maxInputSeconds });
-  const runwayBody: Record<string, unknown> = spec.contract === "aleph2"
-    ? { model: "aleph2", videoUri: videoUrl, promptText: composedPrompt, ...(keyframes.length ? { keyframes } : {}), contentModeration: { publicFigureThreshold: "low" } }
-    : { model: modelId, videoUri: videoUrl, mode: "edit", promptText: composedPrompt, duration: "auto", ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}) };
+  const referencePayload = referenceUrls.map((uri) => ({ uri }));
+  // Wire body for Runway. seedance2_5 takes promptVideo; aleph2 and the Gemini Omni
+  // models still take videoUri. See contract.ts — do not stamp one field on every model.
+  const runwayBody = buildRunwayVideoEditRequest({
+    model: modelId,
+    contract: spec.contract,
+    videoUrl,
+    promptText: composedPrompt,
+    keyframes,
+    references: referencePayload,
+  });
   const promptVersion = body.promptVersion?.trim() || "unspecified";
   const estimatedCostUsd = estimateCostUsd(spec, inputSeconds);
   // AVT owns spend AUTHORIZATION; Control Center forms its own provider estimate and
   // refuses if that exceeds this number. Two numbers, two owners — neither is the other's.
   const avtAuthorizedMaxCents = usdToCents(maxCostUsd);
 
-  // Normalised fields, not Runway's wire shape: Control Center re-derives the provider
-  // request from its own model table, so the contract between AVT and CC stays stable if
-  // Runway changes a field name.
+  // Normalised fields, not Runway's wire shape. Control Center's validator requires
+  // `videoUri` for every model and rebuilds the Runway POST from it. Renaming this hop
+  // fails that validation. The wire name (promptVideo for seedance2_5, videoUri for
+  // aleph2 and Gemini Omni) is contract.ts for the plan, and Control Center's
+  // buildRunwayRequest for the call Runway actually receives.
   const ccRequestBody: Record<string, unknown> = {
     model: modelId,
     videoUri: videoUrl,
     promptText: composedPrompt,
     ...(keyframes.length ? { keyframes } : {}),
-    ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}),
+    ...(referencePayload.length ? { references: referencePayload } : {}),
     // no `ratio` in edit mode: Runway rejects it ("output orientation follows the input video and
     // resolution is 720p", observed 2026-09-23, unbilled); `ratio` belongs to reference mode only.
     // Runway accepts contentModeration on the aleph2 contract only; mode=edit models reject it
