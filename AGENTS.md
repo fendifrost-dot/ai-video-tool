@@ -3,6 +3,10 @@
 Film production workflow app for artists, looks, wardrobe VTON, timelines, and provider jobs.
 Deployed via Lovable Cloud; local repo path: `/Users/gocrazyglobal/Projects/ai-video-tool`.
 
+**Any agent (Claude, Grokbot, Cursor): before solving a visible problem (flicker, edge, matte, face, mouth, a model
+choice), find its row in [`docs/PROBLEM_INDEX.md`](docs/PROBLEM_INDEX.md) and use the proven tool first.** Claude
+sessions get it printed at start by `.claude/hooks/session-start.sh`; other agents read it themselves.
+
 ## Stack
 
 | Layer | Technology |

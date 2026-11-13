@@ -65,8 +65,42 @@ the wrong workflow.
      returned `status_url` and `response_url`. About $0.07 per 4 s. The answer holds `alpha.mp4` and `color.mp4`.
    - The matte keeps him, the creature and the chain together, thin links included (VERIFIED Hyenas verse 0.9 to 4.9,
      13 Nov 2026).
-   - Use the matte as delivered. Do not choke, median or re-key it: choking erased the chain.
-   - Composite with `scripts/edit/composite_over_plate.py`, at true scale and off-centre.
+   - Use the matte as delivered. Do not choke, median, re-key, hold, fill or colour-gate it: choking erased the chain,
+     and a fill made his legs flicker (below).
+   - Composite with `scripts/edit/composite_over_plate.py`, at true scale and off-centre. Not a scratch compositor: if
+     the script lacks an option, add it to the script with a test (that is how `--occlude-y` got there).
+   - Measure before posting: `python -I scripts/edit/matte_stability.py alpha.mp4 --fg <put-back>.mp4`. It reports
+     dropouts (a part that fades for 1–2 frames) and pop-ins per region, top, middle and **bottom** (legs, feet, the
+     creature), plus repeated frames and a frame-count mismatch. Post the numbers with the clip.
+
+   **When part of the matte still flickers (Hyenas, 13 Nov 2026: the bottom of his legs, where they pass behind the
+   hyena's back, fades for a frame or two in the veed matte, so the plate shows through his jeans; Fendi on v6: "about
+   70% 80% better, but there was drift and flicker on the top of the hyena and slightly on me").** In this order, one per pass, each shown to Fendi as an option:
+   1. **Frame it out.** SHOT_RULES 7 is waist up; the failing part is below it. On Hyenas the knees-up window `296ffe6c`
+      exists. Ask Fendi whether this shot needs his full body.
+   2. **Put the plate in front of it.** `composite_over_plate.py --occlude-y <row>` hides him below that row behind
+      the plate, as `place_him_over_plate.py --couch-y` did on c009 v3 (`b06b32f9`, "I like it"). Only where the
+      plate has something there to stand behind (a table, a car, a railing).
+   3. **Check the cadence.** If `matte_stability.py --fg` reports repeated frames, the outline pops on every new
+      picture; the proven fix is compositing-only (c033 room 2: `edge_tween_px`, `edge_colour_from_inside_px`,
+      `edge_choke` in `scripts/edit/blender/comp_scene.py`), never a change to the matte.
+   4. **A new matte, not a changed one** (HYPOTHESIS, untested): `matte-video-proxy` on a crop of the failing region,
+      enlarged, so the model sees the legs bigger; the result is used only inside that region. About $0.07. Measured
+      with `matte_stability.py --baseline <veed alpha>`: no added alpha outside the region.
+
+   **v7, the regression (13 Nov 2026). Do not repeat.** The agent added a temporal "dip fill" to its own scratch
+   compositor (`lift_comp_clean.py`, not in the repo): a pixel solid on the frames around it was made solid on this
+   one, at the same place on screen. His legs move, so the fill drew alpha where his leg had been, not where it was:
+   white just outside his outline went from 2,504 to 11,930 pixels (its own count, VERIFIED from its log). It then
+   added a per-frame colour gate (skip the fill where the picture is bright and colourless: V > 140, S < 60) to hide
+   that, and judged the result with a count of bright colourless pixels (V > 150, S < 45): the gate removed exactly what
+   the metric counted, so the number passed by construction (2,499). It measured only a box above the hyena, never his
+   legs, and did not watch the final v7. Fendi saw his legs flicker in and out of frame. Why the legs (HYPOTHESIS,
+   untested): the fill shows the swap frame's own room where his leg had just been, and the gate switches pixel by
+   pixel from frame to frame on light denim and highlights. The same class of fix had already failed on YSL: c033
+   room 2 rejected a per-pixel matte hold (ghost trails), a whole-frame hold and a flow-carried matte
+   (`docs/research/results/2026-10-19-blender-showroom/BLENDER_SHOWROOM_C033_2026-10-19.md`, "Rejected on the way").
+   The baseline is v6: the veed matte as delivered.
 
    **Wrong tools, tried on Hyenas 12 to 13 Nov 2026 and rejected by Fendi. Do not repeat:** RobustVideoMatting for
    him plus a one-frame SAM mask carried by optical flow for the creature; a SAM 2 tracker; a hand-written rule that
@@ -89,3 +123,6 @@ the wrong workflow.
 - Put-back at 720p without head zoom on a full-body take: face found on 8 of 96 frames.
 - Original him composited over the swap's creature: two ropes in the shot.
 - Take and swap paired by the clock alone: seams round the face on the frames where the swap ran a frame off.
+- A temporal fill and a colour gate on the delivered matte (v7): his legs flickered in and out. See step 5.
+- Several changes in one pass, through environment toggles in a scratch script, judged on one box: nobody could
+  tell which change did what. One change per pass, in a repo script, measured on every region.
