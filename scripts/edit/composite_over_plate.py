@@ -1,6 +1,6 @@
 """Composite a face-preserved performance (body-only swap output) over a MOVING plate, offline, $0.
 usage: composite_over_plate.py <fg.mp4> <alpha.mp4> <plate.mp4|png> <out.mp4> [--scale S] [--cx X] [--plate-start T]
-       [--exposure E] [--push P] [--seed N]
+       [--exposure E] [--push P] [--seed N] [--occlude-y Y [--occlude-feather PX]]
 
 A port of the composite lane's frame recipe (src/lib/composite/pixels.ts, plate-composite-v3-2026-10-16), so the
 offline result matches what the app's "Composite over plate" does. Added for the moving-environment test:
@@ -22,6 +22,9 @@ ap.add_argument("--scale", type=float, default=0.9); ap.add_argument("--cx", typ
 ap.add_argument("--plate-start", type=float, default=0.0); ap.add_argument("--exposure", type=float, default=1.0)
 ap.add_argument("--push", type=float, default=0.03); ap.add_argument("--seed", type=int, default=33)
 ap.add_argument("--frames", type=int, default=0, help="render only the first N frames (0 = all)")
+ap.add_argument("--occlude-y", type=float, default=-1, help="output row below which he is hidden behind the plate "
+                "(a foreground object in the plate: a table, a car bonnet, a railing); -1 = off. As place_him_over_plate --couch-y")
+ap.add_argument("--occlude-feather", type=float, default=14, help="softness of the occlusion line in px (default 14)")
 A = ap.parse_args()
 
 def probe(p):
@@ -75,6 +78,7 @@ cols = np.where((al[: min(n, 30)].mean(0) > 128).any(0))[0]
 mcx = (cols.min() + cols.max()) / 2 if len(cols) else W / 2
 M = np.float32([[A.scale, 0, A.cx - A.scale * mcx], [0, A.scale, H - A.scale * H]])
 rng = np.random.default_rng(A.seed)
+occl = np.clip((A.occlude_y - yy) / max(A.occlude_feather, 1e-3), 0, 1) if A.occlude_y >= 0 else None  # 1 above, 0 below
 vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
                        "-r", f"{FPS:.6f}", "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
                        "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
@@ -88,6 +92,7 @@ for i in range(n):
     a1 = blur(erode(raw, 1), 1.0); a1[raw < 0.08] = 0
     # 2. inner edge band
     inner = blur(erode(a1, 4), 5.0); edge = blur(np.clip(a1 - inner, 0, 1), 1.5) * a1
+    if occl is not None: a1 = a1 * occl; edge = edge * occl   # the plate's foreground object stands in front of him
     # 2b. decontaminate the feather of the take's background
     out_w = (1 - raw)[..., None]
     bg = blur(f * out_w, 8.0) / np.maximum(blur(out_w[..., 0], 8.0)[..., None], 1e-3)

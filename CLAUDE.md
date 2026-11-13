@@ -6,6 +6,15 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 
 ---
 
+## ⛔ LOOK UP THE SYMPTOM BEFORE YOU SOLVE IT (Fendi, 13 Nov 2026)
+
+**[`docs/PROBLEM_INDEX.md`](docs/PROBLEM_INDEX.md) maps every problem we have already solved (flicker, edges, mattes,
+face, mouth, models, timing) to the tool and setting that fixed it, and lists what failed.** The SessionStart hook
+prints it into every session. Find the symptom's row first and use its tool unchanged; never repeat its "Never" column;
+deviate only after telling Fendi which row failed and what you measured. One change per pass, measured on the whole
+picture (his legs too), and watch the final file before posting. "When I pointed it out, the agent found the notes
+and fixed the issue almost immediately each time, but I still ended up wasting money in hours."
+
 ## ⛔ PROJECT POLICY — violating ANY item requires STOPPING work
 
 **Before doing anything, pass the pre-flight in [`docs/AGENT_BOOTSTRAP.md`](docs/AGENT_BOOTSTRAP.md). Machine-readable source of truth: [`.deployment/manifest.yml`](.deployment/manifest.yml). If you cannot answer the pre-flight from evidence, you do NOT proceed.**

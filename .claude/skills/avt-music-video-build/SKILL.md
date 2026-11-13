@@ -64,6 +64,7 @@ shot has to say before it is built), `docs/capability/GAPS.md` (what the tools c
 15. **A policy that lives only in an open PR does not exist.** The Gemini decision of 9 Nov sat in an unmerged PR; the Hyenas agent started from `main` and made 19 Grok stills and 11 Grok clips ($4.57) before switching. Rule: a decision Fendi makes goes into `CLAUDE.md` on `main` the same day.
 16. **The outfit is not the likeness.** A generated him in the right clothes with the wrong face is a stranger (Hyenas, 12 Nov). Rule: §3b; his face comes from his photos and footage, never from a generated still.
 17. **A rule that blocks the work is a bad rule.** A "200 px face" minimum (written 12 Nov, no evidence) made the Hyenas agent refuse b-roll that the approved YSL method makes every day. Rules carry the evidence they rest on; a threshold without evidence is a guide, never a gate.
+18. **Look up the symptom; the fix may already exist.** On Hyenas (12–13 Nov) the agent re-solved the matte without the YSL notes, then "fixed" a leg dropout with a temporal fill of the matte that YSL c033 room 2 had already rejected; his legs flickered in and out. Each time Fendi pointed to the notes, the fix came almost at once. Rule: `docs/PROBLEM_INDEX.md` first (the SessionStart hook prints it); one change per pass; `scripts/edit/matte_stability.py` on every changed matte, bottom region included; watch the final file before posting.
 
 ## 3. Performance shots: scenery and motion budget (DECISION, Fendi 9 Nov 2026)
 

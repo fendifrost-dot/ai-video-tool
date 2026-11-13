@@ -45,12 +45,15 @@ The pages below are the evidence and the detail behind them.
 
 ## Checks that run before a clip is posted ($0)
 
+A symptom first? Its row in [`../PROBLEM_INDEX.md`](../PROBLEM_INDEX.md) names the proven fix.
+
 | Check | Script | Reads |
 |---|---|---|
 | His face next to his real face | `scripts/edit/face_check.py` | lips, beard, glasses, face shape, row by row |
 | Does his mouth move | `scripts/edit/mouth_scan.py` | lip gap / face width per sample; moving = mean > 0.08, spread > 0.03, confirmed on the sheet |
 | Seam flicker on a put-back | `scripts/edit/ring_flicker.py` | mean change in a ring around his face, candidate vs original |
 | Hat shape on a put-back | `scripts/edit/hat_geometry.py` | shape change per frame |
+| A matte that holds still (him, a creature, a chain) | `scripts/edit/matte_stability.py` | dropouts and pop-ins per region (bottom included), added/removed alpha vs the delivered matte, repeated frames, frame-count match |
 | The proof | `body_only_swap.py` printout | `max |out-original| on face/hair/skin: 0` |
 
 ## Known gap
