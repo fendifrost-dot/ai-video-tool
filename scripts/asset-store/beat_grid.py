@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Beat grid from real audio. ffmpeg decodes; numpy finds onsets. librosa is used when it is installed.
+"""Beat grid from real audio. ffmpeg decodes. Onsets are standard-library. librosa is used when it is installed.
 
 The document is avt.beat_grid (format_version 1). It is stored as a project_assets row.
 This script does not upload and does not delete.
@@ -15,48 +15,63 @@ import struct
 import subprocess
 import wave
 
-import numpy as np
+Samples = list[float]
 
 
-def read_wav(path: str) -> tuple[np.ndarray, int]:
+def _median(values: list[float]) -> float:
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2
+
+
+def read_wav(path: str) -> tuple[Samples, int]:
     with wave.open(path, "rb") as handle:
         rate = handle.getframerate()
         channels = handle.getnchannels()
         width = handle.getsampwidth()
-        raw = handle.readframes(handle.getnframes())
+        count = handle.getnframes()
+        raw = handle.readframes(count)
     if width == 2:
-        samples = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 32768.0
+        samples = [struct.unpack_from("<h", raw, i)[0] / 32768.0 for i in range(0, len(raw), 2)]
     elif width == 4:
-        samples = np.frombuffer(raw, dtype="<i4").astype(np.float64) / 2147483648.0
+        samples = [struct.unpack_from("<i", raw, i)[0] / 2147483648.0 for i in range(0, len(raw), 4)]
     else:
         raise SystemExit(f"unsupported wav width {width}")
     if channels > 1:
-        samples = samples.reshape(-1, channels).mean(axis=1)
+        mixed = []
+        for index in range(0, len(samples), channels):
+            mixed.append(sum(samples[index : index + channels]) / channels)
+        samples = mixed
     return samples, rate
 
 
-def decode_with_ffmpeg(path: str) -> tuple[np.ndarray, int]:
+def decode_with_ffmpeg(path: str) -> tuple[Samples, int]:
     rate = 22050
     proc = subprocess.run(
         ["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", str(rate), "-f", "s16le", "-"],
         check=True,
         capture_output=True,
     )
-    samples = np.frombuffer(proc.stdout, dtype="<i2").astype(np.float64) / 32768.0
+    raw = proc.stdout
+    samples = [struct.unpack_from("<h", raw, i)[0] / 32768.0 for i in range(0, len(raw) - 1, 2)]
     return samples, rate
 
 
-def onsets(samples: np.ndarray, rate: int, hop: int = 512) -> list[int]:
-    if samples.size < hop * 2:
+def onsets(samples: Samples, rate: int, hop: int = 512) -> list[int]:
+    if len(samples) < hop * 2:
         return []
-    energy = np.array([
-        float(np.sqrt(np.mean(samples[i : i + hop] ** 2)))
-        for i in range(0, samples.size - hop, hop)
-    ])
-    if energy.size < 3:
+    energy = []
+    for start in range(0, len(samples) - hop, hop):
+        window = samples[start : start + hop]
+        energy.append(math.sqrt(sum(sample * sample for sample in window) / hop))
+    if len(energy) < 3:
         return []
-    flux = np.maximum(0.0, np.diff(energy, prepend=energy[0]))
-    threshold = max(float(np.median(flux)) * 3.0, float(np.max(flux)) * 0.35, 1e-6)
+    flux = [0.0]
+    for index in range(1, len(energy)):
+        flux.append(max(0.0, energy[index] - energy[index - 1]))
+    threshold = max(_median(flux) * 3.0, max(flux) * 0.35, 1e-6)
     hits: list[int] = []
     refractory = int(rate * 0.25 / hop)
     last = -refractory
@@ -70,8 +85,8 @@ def onsets(samples: np.ndarray, rate: int, hop: int = 512) -> list[int]:
 def grid_from_onsets(hits: list[int], rate: int, fps: float, song_asset_id: str) -> dict:
     if len(hits) < 2:
         raise SystemExit("not enough onsets for a beat grid")
-    intervals = np.diff(np.array(hits, dtype=np.float64)) / rate
-    period = float(np.median(intervals))
+    intervals = [(hits[index + 1] - hits[index]) / rate for index in range(len(hits) - 1)]
+    period = _median(intervals)
     if period <= 0:
         raise SystemExit("beat period is zero")
     bpm = 60.0 / period
@@ -99,7 +114,7 @@ def grid_from_onsets(hits: list[int], rate: int, fps: float, song_asset_id: str)
     }
 
 
-def load_audio(path: str) -> tuple[np.ndarray, int]:
+def load_audio(path: str) -> tuple[Samples, int]:
     if path.lower().endswith(".wav"):
         try:
             return read_wav(path)
@@ -115,18 +130,22 @@ def main() -> None:
     parser.add_argument("--song-asset-id", required=True)
     args = parser.parse_args()
     samples, rate = load_audio(args.wav)
+    doc = grid_from_onsets(onsets(samples, rate), rate, args.fps, args.song_asset_id)
     try:
         import librosa  # type: ignore
+        import numpy as np
 
-        tempo, beat_frames = librosa.beat.beat_track(y=samples, sr=rate, units="frames")
+        audio = np.asarray(samples, dtype=np.float64)
+        tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=rate, units="frames")
         times = librosa.frames_to_time(beat_frames, sr=rate)
         hits = [int(t * rate) for t in times]
-        bpm_lib = float(np.atleast_1d(tempo)[0])
-        doc = grid_from_onsets(hits or onsets(samples, rate), rate, args.fps, args.song_asset_id)
-        if math.isfinite(bpm_lib) and bpm_lib > 0:
-            doc["bpm"] = round(bpm_lib, 3)
+        if len(hits) >= 2:
+            doc = grid_from_onsets(hits, rate, args.fps, args.song_asset_id)
+            bpm_lib = float(np.atleast_1d(tempo)[0])
+            if math.isfinite(bpm_lib) and bpm_lib > 0:
+                doc["bpm"] = round(bpm_lib, 3)
     except Exception:
-        doc = grid_from_onsets(onsets(samples, rate), rate, args.fps, args.song_asset_id)
+        pass
     print(json.dumps(doc))
 
 

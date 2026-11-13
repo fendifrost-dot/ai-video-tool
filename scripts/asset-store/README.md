@@ -8,7 +8,7 @@ Versioned production documents live as `project_assets` rows in Supabase (`qoyxg
 | Beat grid | `avt.beat_grid` | `avt_beat_grid_get`, `avt_beat_grid_save` |
 | Project rules | `avt.project_rules` | `avt_project_rules_get`, `avt_project_rules_save` |
 
-`scripts/asset-store/beat_grid.py` builds a beat grid from a wav. It prefers librosa when that package is installed and otherwise uses a numpy onset detector. ffmpeg is the decoder for anything that is not a wav. The script prints JSON. It does not upload and it does not delete. Store the JSON with `avt_beat_grid_save`.
+`scripts/asset-store/beat_grid.py` builds a beat grid from a wav. The default detector is the standard library. librosa is used when it is installed. ffmpeg decodes anything that is not a wav. The script prints JSON. It does not upload and it does not delete. Store the JSON with `avt_beat_grid_save`.
 
 Review previews in the rules file are 1080×1920, SAR 1:1. Face, mouth, and likeness fields are fixed: real pixels, no mouth alteration, no generated likeness.
 
