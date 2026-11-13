@@ -10,6 +10,10 @@ What it counts, per frame and per region (top / middle / bottom third of everyth
   dropout  solid (>0.8) on the frames either side, gone (<0.5) on this one, for 1 or 2 frames: a leg that fades and
            comes back (Hyenas v6, 13 Nov 2026), a chain link that blinks out.
   pop-in   empty (<0.2) either side, solid (>0.5) on this one: a ghost patch.
+  see-through  partly transparent (0.1 to 0.9) at least --inset px inside his solid outline and as far from any empty
+           (<0.1) pixel, on any frame: the plate showing through him where two foreground things meet (Hyenas v6, 13
+           Nov: the bottom of his right leg over the hyena's back, on every frame looked at). Steady, so dropout and
+           pop-in miss it. A real gap (between arm and body, inside the chain) is empty, so it is not counted.
   With --baseline (the matte as the provider delivered it), what the candidate changed:
   added    candidate >0.5 where the baseline is <0.1: alpha the change invented. Each such pixel shows the fill
            picture where the provider said he is not (the ghost trail of a held or "dip-filled" matte).
@@ -63,6 +67,22 @@ def events(A):
     return drop, pop
 
 
+def see_through(A, inset):
+    """Per frame: boolean map of partly transparent pixels deep inside him (not at an outline, not at a real gap)."""
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * inset + 1, 2 * inset + 1)); out = []
+    for a in A:
+        solid = (a > SHOWN).astype(np.uint8)
+        h, w = solid.shape; flood = solid.copy(); mask = np.zeros((h + 2, w + 2), np.uint8)
+        border = [(x, y) for x in range(0, w, 8) for y in (0, h - 1)] + [(x, y) for y in range(0, h, 8) for x in (0, w - 1)]
+        for x, y in border:
+            if flood[y, x] == 0: cv2.floodFill(flood, mask, (x, y), 2)
+        filled = (flood != 2).astype(np.uint8)                      # his silhouette with its holes filled
+        deep = cv2.erode(filled, k) > 0
+        far = cv2.erode((a >= 0.1).astype(np.uint8), k) > 0       # at least inset px from any empty pixel
+        out.append(deep & far & (a >= 0.1) & (a < 0.9))
+    return out
+
+
 def regions(A, boxes):
     cover = np.max(np.stack(A), 0) > SHOWN
     ys, xs = np.nonzero(cover)
@@ -81,12 +101,14 @@ def count(maps, box):
     return [int(m[y0:y1, x0:x1].sum()) for m in maps]
 
 
-def analyse(A, boxes, flag_px, B=None):
-    drop, pop = events(A); R = regions(B if B is not None else A, boxes); rep = {}
+def analyse(A, boxes, flag_px, B=None, inset=6):
+    drop, pop = events(A); seen = see_through(A, inset); R = regions(B if B is not None else A, boxes); rep = {}
     for name, box in R.items():
         d, p = count(drop, box), count(pop, box)
         r = {"box": [int(v) for v in box], "dropout_px": sum(d), "popin_px": sum(p),
              "flagged_frames": [k for k in range(len(A)) if d[k] + p[k] > flag_px]}
+        st = count(seen, box)
+        r["see_through_px"] = sum(st); r["see_through_frames"] = [k for k in range(len(A)) if st[k] > flag_px]
         if B is not None:
             added = [(a > SHOWN) & (b < 0.1) for a, b in zip(A, B)]
             removed = [(a < 0.1) & (b > SHOWN) for a, b in zip(A, B)]
@@ -100,6 +122,7 @@ def main(argv=None):
     ap.add_argument("alpha", nargs="?"); ap.add_argument("--baseline"); ap.add_argument("--fg")
     ap.add_argument("--box", action="append", default=[], help="name=x0,y0,x1,y1 in matte pixels")
     ap.add_argument("--flag-px", type=int, default=40, help="dropout+pop-in pixels that flag a frame (default 40)")
+    ap.add_argument("--inset", type=int, default=6, help="px inside his outline and away from gaps for see-through (default 6)")
     ap.add_argument("--max-flagged", type=int, default=-1); ap.add_argument("--json")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args(argv)
@@ -112,21 +135,22 @@ def main(argv=None):
     out = {"alpha": a.alpha, "frames": len(A)}
     if B is not None:
         if len(B) != len(A) or B[0].shape != A[0].shape: sys.exit(f"baseline {len(B)} frames {B[0].shape} vs {len(A)} {A[0].shape}")
-        out["baseline"] = analyse(B, boxes, a.flag_px)
-    out["candidate"] = analyse(A, boxes, a.flag_px, B)
+        out["baseline"] = analyse(B, boxes, a.flag_px, inset=a.inset)
+    out["candidate"] = analyse(A, boxes, a.flag_px, B, a.inset)
     if a.fg:
         n, fps, rep = frame_info(a.fg)
         out["fg"] = {"frames": n, "fps": round(fps, 3), "repeated_frames": len(rep), "first_repeats": rep[:12]}
         print(f"fg: {n} frames at {fps:.3f} fps; matte {len(A)} frames" + ("" if n == len(A) else "  <-- MISMATCH: pair frame by frame or the outline lags (c044)"))
         if rep: print(f"fg: {len(rep)} frames repeat the previous picture (first {rep[:12]}): cadence; see PROBLEM_INDEX 'outline pops on a new picture'")
-    print(f"{len(A)} frames. Per region: dropout px / pop-in px / flagged frames" + (" / added px / removed px vs baseline" if B is not None else ""))
+    print(f"{len(A)} frames. Per region: dropout px / pop-in px / flagged frames / see-through frames" + (" / added px / removed px vs baseline" if B is not None else ""))
     worst = 0
     for name, r in out["candidate"].items():
-        line = f"  {name:8s} {r['dropout_px']:8d} {r['popin_px']:8d} {len(r['flagged_frames']):4d} {r['flagged_frames'][:10]}"
+        line = (f"  {name:8s} {r['dropout_px']:8d} {r['popin_px']:8d} {len(r['flagged_frames']):4d} {r['flagged_frames'][:10]}"
+                f"  see-through {len(r['see_through_frames'])} ({r['see_through_px']} px)")
         if B is not None:
             b = out["baseline"][name]
             line += f"  | added {r['added_px']} removed {r['removed_px']}  (baseline flagged {len(b['flagged_frames'])})"
-        print(line); worst = max(worst, len(r["flagged_frames"]))
+        print(line); worst = max(worst, len(r["flagged_frames"]), len(r["see_through_frames"]))
     if a.json: json.dump(out, open(a.json, "w"), indent=1)
     return 1 if (a.max_flagged >= 0 and worst > a.max_flagged) else 0
 
@@ -155,7 +179,18 @@ def selftest():
     added = sum(v["added_px"] for v in r.values())
     assert added > 0, r
     assert sum(v["removed_px"] for v in r.values()) == 0
-    print(f"selftest ok: leg dropout found on frames 8-9 only; fixed-position fill invented {added} px of alpha")
+    # a leg at alpha 0.6 on every frame where it crosses something: steady, so no dropout, but see-through on all frames;
+    # a real gap (alpha 0) between arm and body is not see-through.
+    S = []
+    for k in range(6):
+        a = np.zeros((120, 90), np.float32); a[10:110, 20:70] = 1.0
+        a[80:100, 35:55] = 0.6                                              # the plate shows through his leg
+        a[20:40, 25:35] = 0.0                                               # a real gap, enclosed
+        S.append(a)
+    r = analyse(S, {}, 10)
+    assert sum(len(v["flagged_frames"]) for v in r.values()) == 0, r
+    assert r["bottom"]["see_through_frames"] == list(range(6)) and r["top"]["see_through_frames"] == [], r
+    print(f"selftest ok: leg dropout found on frames 8-9 only; fixed-position fill invented {added} px of alpha; a steady see-through leg found, a real gap not")
     return 0
 
 
