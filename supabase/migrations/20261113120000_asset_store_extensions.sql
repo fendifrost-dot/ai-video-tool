@@ -5,15 +5,10 @@
 -- Do not run this with the Supabase CLI. Idempotent.
 --
 -- Nothing here deletes a camera original, a T7 file, or a locked asset.
--- Bucket file_size_limit is necessary but not sufficient: Supabase also enforces a
--- project-wide upload cap that is not settable from SQL. Lovable must raise that
--- cap to at least 4 GB or a 1.7 GB take still fails with HTTP 413.
-
--- ------------------------------------------------------------------------------------------------ buckets
-
-update storage.buckets
-   set file_size_limit = 4294967296  -- 4 GB: 4K camera takes ~1.7 GB, P&L master ~245 MB
- where id in ('project-exports', 'project-clips', 'project-references', 'project-audio');
+-- This file does not write the storage schema. Lovable sets bucket and project
+-- file-size limits itself. Each of these buckets, and the project-wide upload cap,
+-- must be 4294967296 bytes (4 GiB): project-exports, project-clips,
+-- project-references, project-audio. A lower cap still returns HTTP 413.
 
 -- ------------------------------------------------------------------------------------------------ assets
 
@@ -117,31 +112,28 @@ create trigger project_assets_locked_delete
   before delete on public.project_assets
   for each row execute function public.guard_locked_asset_delete();
 
-create or replace function public.guard_locked_storage_delete()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if exists (
-    select 1 from public.project_assets a
-    where a.file_url = old.name
-      and 'locked' = any (a.tags)
-      and (
-        a.metadata_json->>'bucket' is null
-        or a.metadata_json->>'bucket' = old.bucket_id
-      )
-  ) then
-    raise exception 'locked asset cannot be deleted';
-  end if;
-  return old;
-end $$;
-
-drop trigger if exists guard_locked_storage_delete on storage.objects;
-create trigger guard_locked_storage_delete
-  before delete on storage.objects
-  for each row execute function public.guard_locked_storage_delete();
+-- Object deletes are also refused for a locked asset. This is a restrictive
+-- policy only: no function and no trigger on the storage schema. Permissive
+-- owner policies stay. service_role bypasses RLS; avt_delete_object checks the
+-- tag before it calls storage remove.
+drop policy if exists locked_objects_no_delete on storage.objects;
+create policy locked_objects_no_delete
+  on storage.objects
+  as restrictive
+  for delete
+  to authenticated
+  using (
+    not exists (
+      select 1
+      from public.project_assets a
+      where a.file_url = storage.objects.name
+        and 'locked' = any (a.tags)
+        and (
+          a.metadata_json->>'bucket' is null
+          or a.metadata_json->>'bucket' = storage.objects.bucket_id
+        )
+    )
+  );
 
 -- ------------------------------------------------------------------------------------------------ skills
 

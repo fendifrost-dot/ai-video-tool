@@ -9,11 +9,29 @@ import { checkCompatibility, compareVersions } from "../_shared/skillDeps.ts";
 import { TOOLS } from "./contract.ts";
 import { scratchClearance, tusUploadPlan } from "./contract.ts";
 import { BUCKET_FILE_SIZE_LIMIT_BYTES, STORE_READ_TOOLS, STORE_WRITE_TOOLS, deleteGuardStatus, planAssetTag, planEditLock, planEffectDraft, planPublish, planSkillDraft, planSupersede, preserveLocks, remapReason, renderLockReason } from "./storeContract.ts";
-import { runStoreTool } from "./storeHandlers.ts";
+import { lockedPathBlock, runStoreTool } from "./storeHandlers.ts";
 
 const SONG = "067a4cbf-6fd0-4601-9111-df1119c52fa6";
 const PROJECT = "764a63d2-93cd-44f3-905f-292f14ab2f51";
 const OWNER = "3ca10935-8c3d-4479-9a0c-8bfe8050840c";
+
+describe("Lovable migration rules", () => {
+  it("does not write storage.buckets or put a trigger on storage.objects", () => {
+    const root = new URL("../../..", import.meta.url);
+    const asset = readFileSync(new URL("supabase/migrations/20261113120000_asset_store_extensions.sql", root), "utf8");
+    const worker = readFileSync(new URL("supabase/migrations/20261113140000_worker_capability.sql", root), "utf8");
+    for (const sql of [asset, worker]) {
+      expect(sql).not.toMatch(/update\s+storage\.buckets/i);
+      expect(sql).not.toMatch(/insert\s+into\s+storage\.buckets/i);
+      expect(sql).not.toMatch(/trigger[\s\S]{0,120}storage\.objects/i);
+      expect(sql).not.toMatch(/create\s+(or\s+replace\s+)?function[\s\S]{0,40}storage/i);
+    }
+    expect(asset).toContain("project_assets_locked_delete");
+    expect(asset).toContain("create policy locked_objects_no_delete");
+    expect(asset).toContain("as restrictive");
+    expect(worker).not.toMatch(/storage\./i);
+  });
+});
 
 describe("formats", () => {
   const shot = {
@@ -270,8 +288,21 @@ describe("store handlers", () => {
     expect(tagged.audit_id).toBe("audit-1");
     const guard = await run(mem, "avt_asset_delete_guard", { asset_id: id }) as { deletable: boolean; deleted: boolean };
     expect(guard).toMatchObject({ deletable: false, deleted: false });
+    const path = `${OWNER}/clip.mp4`;
+    const blocked = await lockedPathBlock(
+      { db: mem.client(), userId: OWNER, credentialId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" },
+      "project-clips",
+      path,
+    );
+    expect(blocked).toBe("locked asset cannot be deleted");
     const listed = await run(mem, "avt_asset_list", { project_id: PROJECT, tag: "locked" }) as { assets: { id: string }[] };
     expect(listed.assets.map((row) => row.id)).toEqual([id]);
+    await run(mem, "avt_asset_tag", { asset_id: id, tag: "locked", op: "remove" });
+    expect(await lockedPathBlock(
+      { db: mem.client(), userId: OWNER, credentialId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" },
+      "project-clips",
+      path,
+    )).toBeNull();
     const described = await run(mem, "avt_asset_describe", { asset_id: id, fps: 24, sar: "1:1", sha256: "ab".repeat(32), size_bytes: 10 }) as { fps: number };
     expect(described.fps).toBe(24);
   });

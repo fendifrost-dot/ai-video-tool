@@ -809,7 +809,7 @@ export const TOOLS = [
   {
     name: "avt_delete_object",
     description:
-      "Delete one object from Storage as the owner. Cost is $0. path must start with the owner's user id, with the same rejection of '..', percent signs, and other prefixes as avt_upload_asset. bucket is project-exports, project-clips, project-references, or project-audio. No service role. Writes one mcp_upload_events row with mode delete and tool avt_delete_object. Returns {bucket, path, deleted: true, audit_id}.",
+      "Delete one object from Storage as the owner. Cost is $0. Refuses when a project_assets row for that path is tagged locked. path must start with the owner's user id, with the same rejection of '..', percent signs, and other prefixes as avt_upload_asset. bucket is project-exports, project-clips, project-references, or project-audio. No service role. Writes one mcp_upload_events row with mode delete and tool avt_delete_object. Returns {bucket, path, deleted: true, audit_id}.",
     inputSchema: {
       type: "object",
       properties: {
