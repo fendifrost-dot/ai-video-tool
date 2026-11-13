@@ -124,3 +124,44 @@ of it is in a ledger yet; the Hyenas ledger is still to be written.
   step 2.
 - Whether the gum-sole shoes hold in the veed matte on a moving set. They flickered on the still plate.
 - What Grokbot's part is now. The earlier plan had Grokbot finishing in After Effects.
+
+## Added by the Claude Code session (13 Nov, after the handoff was merged)
+
+**Where to run it.** The working files are on the T7, so the next session is **Claude Code in the desktop app on
+Fendi's Mac, opened in `/Users/gocrazyglobal/Projects/ai-video-tool`** (canonical; the chat session had
+`/Users/gocrazyglobal/ai-video-tool` selected, the second clone). There it loads `CLAUDE.md`, the skills and the
+SessionStart hook that prints `docs/PROBLEM_INDEX.md`. Blender 5.3 must be installed on the Mac first (Fendi has the
+install prompt). A cloud Claude Code session can do the same work only on files uploaded to AVT.
+
+**Clues for "flicker around the edges", measured on verse 0.9 (VERIFIED from the delivered files):**
+- The veed matte held his right leg at about 0.55 on every frame and lost its lower half for 3–4 frames (14, 78–80)
+  where it met the hyena's back. A hyena placed beside him, as the dog was, removes that junction.
+- Every put-back repeats 5–6 picture frames. On YSL c033 room 2, repeated pictures made the outline pop on every
+  new picture, and the fix was compositing-only (`edge_tween_px`, `edge_colour_from_inside_px`, `edge_choke` in
+  `scripts/edit/blender/comp_scene.py`), never a change to the matte. Cut each window once (recipe step 1) so the
+  repeats are not there to begin with, and run `matte_stability.py --fg` to confirm 0 repeated frames.
+- Measure edges the way c033 room 2 did: outline change on frames where the picture changes against frames where it
+  holds, before and after. Post the numbers with the clip.
+
+**His shoes.** `SHOT_RULES.md` rule 7 is "waist up or closer, never his shoes". These sections are full body with
+his shoes in frame. Ask Fendi once whether this shot is the exception before solving the shoes' edges.
+
+**Gates, in order. Each one is posted and waits for Fendi:**
+
+| Gate | What is shown | Pass |
+|---|---|---|
+| 1. The set | the Blender scene moving, empty, 4 s, with the song | Fendi's words |
+| 2. The swap | take and swap side by side, full window, normal speed | the hyena lies when the dog lies, moves when it moves, at the dog's size and place (Fendi) |
+| 3. The put-back | the script's printout | his face found on ≥ 94 of 96 frames; `max \|out-original\| on face/hair/skin: 0` |
+| 4. The matte | `matte_stability.py` with `--fg` and boxes for legs and shoes | 0 repeated frames; flagged frames per region no higher than the delivered matte's; any repair `removed 0` |
+| 5. The shot | the composite in the set, with the song | Fendi watches it |
+
+**Guardrails.**
+- Do not patch the nine existing put-backs or their mattes. They carry hyenas that do not mirror the dog.
+- Do not reuse the still plates as the set.
+- No Grok. Dry-run and state the cost before every paid call: Genjutsu is $0.681 per second; a Gemini still about $0.27.
+- One change per pass; no scratch compositor; nothing marked verified without the printout or file that proves it.
+- If Genjutsu cannot make the hyena lie down on two honest attempts (different reference pose, different wording),
+  stop and bring Fendi the evidence. Do not switch engines without him.
+
+**Report back after each gate:** what was made (asset ids), what it cost, the numbers above, and Fendi's words.
