@@ -22,6 +22,7 @@ import {
   loadProvenance,
   provenanceCounts,
 } from "../_shared/performanceProvenance.ts";
+import { lockedClipMutation, preserveLocks, remapReason, renderLockReason } from "./storeContract.ts";
 
 type Row = Record<string, unknown>;
 type Result<T> = { data: T; error: { message: string } | null };
@@ -109,11 +110,28 @@ export async function editGet(db: Db, sequenceId: string) {
   };
 }
 
-export async function editSave(db: Db, sequence: EditSequence, commit: boolean) {
+export async function editSave(db: Db, sequence: EditSequence, commit: boolean, unlock = false) {
   const { data } = await db.auth.getUser();
   if (!data.user) throw new Error("not signed in");
+  let prior: EditSequence | null = null;
+  try {
+    prior = await readSequence(db, sequence.id);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "sequence not found") throw error;
+  }
+  const kept = preserveLocks(prior, sequence, unlock);
+  if (!kept.ok) throw new Error(kept.error);
+  if (prior) {
+    for (const clip of kept.value.clips) {
+      const before = prior.clips.find((row) => row.id === clip.id);
+      const reason = lockedClipMutation(before as unknown as Record<string, unknown>, clip as unknown as Record<string, unknown>, unlock);
+      if (reason) throw new Error(reason);
+    }
+  }
+  const remap = remapReason(kept.value.clips);
+  if (remap) throw new Error(remap);
   // the label is read from the assets, not taken from the caller
-  const { sequence: labelled } = await withProvenance(db, sequence);
+  const { sequence: labelled } = await withProvenance(db, kept.value);
   const rows = sequenceToRows(labelled, data.user.id);
   const { error } = await db.from("edit_sequences").upsert(rows.sequence);
   if (error) throw new Error(error.message);
@@ -140,9 +158,17 @@ export async function editSave(db: Db, sequence: EditSequence, commit: boolean) 
 
 export async function editRender(
   db: Db,
-  args: { sequenceId: string; dryRun: boolean; kind?: RenderKind; aspect?: RenderAspect },
+  args: { sequenceId: string; dryRun: boolean; kind?: RenderKind; aspect?: RenderAspect; unlock?: boolean },
 ) {
   const seq = await readSequence(db, args.sequenceId);
+  const locked = renderLockReason(
+    seq.locked === true,
+    seq.clips.filter((clip) => clip.locked === true && clip.enabled).map((clip) => clip.id),
+    args.unlock === true,
+  );
+  if (locked) throw new Error(locked);
+  const remap = remapReason(seq.clips);
+  if (remap) throw new Error(remap);
   const rows = await loadStoredAssets(db, seq);
   const plan = await planForSequence(
     seq,

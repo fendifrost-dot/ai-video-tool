@@ -36,6 +36,14 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
 | `avt_montage` | the storyboard's Montage button as a server call (`montage-shot`): a performance shot's DRESSED take re-shot as a fast-cut montage in its scene's plate, one Seedance call, filed on the shot unselected; his shoes (the outfit's footwear picture) go as @Image2 so the model never invents a pair (the dry run's `shoes` names them); `lines` = the scenes one per line, `dry_run` first |
 | `avt_call dress-clip` | swap pieces of his wardrobe on a clip already on a shot (a montage, a take) with Higgsfield's clothing swap (Genjutsu object swap), the footage otherwise untouched: `{projectId, assetId, pieceIds?, dryRun?}` — no `pieceIds` = the shoes he wears in the shot; filed on the shot unselected, a montage still named Montage. ~$3.41 for a 4 s clip |
 | `avt_signed_url`, `avt_list_files` | look at stored files |
+| `avt_upload_asset` | `signed_url`, `tus` (resumable, up to 4 GB), `base64`, `finalize`, `verify` (sha256 compare; never deletes) |
+| `avt_asset_list`, `avt_asset_tag`, `avt_asset_supersede`, `avt_asset_describe` | list, tag, demote onto a new version, set media metadata |
+| `avt_asset_attach_license`, `avt_asset_get_license`, `avt_asset_delete_guard` | license a stock/element asset; report the lock. The guard does not delete |
+| `avt_skill_list`, `avt_skill_get`, `avt_skill_draft`, `avt_skill_publish`, `avt_skill_pin`, `avt_skill_pin_get` | skill catalog. Publish needs a passing validation. A stored skill does not run |
+| `avt_effect_list`, `avt_effect_get`, `avt_effect_draft`, `avt_effect_publish` | effect versions: code ref, params schema, preview |
+| `avt_validation_record`, `avt_validation_list`, `avt_validation_get` | pass/fail of a skill or effect on a named worker |
+| `avt_shot_list_get`, `avt_shot_list_save`, `avt_beat_grid_get`, `avt_beat_grid_save`, `avt_project_rules_get`, `avt_project_rules_save` | versioned documents stored as assets |
+| `avt_edit_lock` | read or set the lock on a cut. `avt_edit_render` takes `unlock: true` to render a locked cut |
 | `avt_browser_session` | a one-hour sign-in (access token only) for a headless browser that presses the app itself — `scripts/agent-browser/README.md`; for an older tool list, `avt_functions {name: "avt_browser_session"}` performs it (a declared argument, which every client forwards; `avt_whoami {browser_session: true}` works only where the client forwards undeclared ones) |
 
 ## Limits, by design

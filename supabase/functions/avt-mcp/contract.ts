@@ -3,7 +3,7 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.5.0";
+export const SERVER_VERSION = "1.6.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -81,7 +81,7 @@ export function toolText(value: unknown, isError = false) {
 /** Never reachable from the generic tools: credentials. */
 export const HIDDEN_TABLES = new Set(["batch_credentials", "batch_credential_mints"]);
 /** Readable, never writable from the generic tools: server-side configuration. */
-export const READ_ONLY_TABLES = new Set(["provider_capabilities", "job_runner_config", "generation_feasibility", "mcp_upload_events"]);
+export const READ_ONLY_TABLES = new Set(["provider_capabilities", "job_runner_config", "generation_feasibility", "mcp_upload_events", "mcp_write_events"]);
 /** RPCs an AI may call. claim_provider_jobs belongs to the job runner, not to a client. */
 export const RPC_ALLOWED = new Set(["duplicate_variation", "lyric_lines_in_window"]);
 
@@ -92,19 +92,26 @@ export const TABLE_NOTES: Record<string, string> = {
   shot_overrides: "per-shot director overrides",
   continuity_entities: "cast (kind=character), continuity (location/prop/lighting) and outfits (kind=outfit: garment_feature_ids, version): description, approved_asset_id, reference_asset_ids",
   variation_scenes: "a video's scenes: a stretch of the song (start_seconds..end_seconds) wearing one outfit (outfit_key)",
-  project_assets: "every file in a project (stills, clips, references): file_url is the storage path; metadata_json.bucket is the bucket",
+  project_assets: "every file in a project. file_url is the storage path. First-class media columns (fps, sar, width, height, frame_count, duration_seconds, codec, sha256, size_bytes, source_take_asset_id, song_zero_offset_seconds, provenance, tags, origin, license_id) sit beside metadata_json. tags: locked, superseded, review, approved. A locked tag cannot be deleted",
   shot_asset_assignments: "which asset is placed on which shot. is_primary true is the one the box shows; false keeps it as an alternate",
   mcp_upload_events: "append-only ledger of avt_upload_asset calls (record_mcp_upload). Readable here, not writable",
+  mcp_write_events: "append-only ledger of catalog and asset write tools (record_mcp_write). Readable here, not writable",
+  production_skills: "a production skill (transitions, blender, QC). Versions live on production_skill_versions. Storing a skill does not run it",
+  production_skill_versions: "one immutable published version of a skill: instructions, tools, dependencies, changelog. is_current moves only on publish",
+  project_skill_pins: "the skill version a project is pinned to",
+  effect_presets: "one version of an effect: code_ref, params schema, defaults, preview asset, skill version",
+  asset_licenses: "license or source record for a stock or element asset. Required when project_assets.origin is element or stock",
+  skill_validations: "a pass/fail of a skill or effect version on a named worker, with tool versions and a QC asset",
   provider_jobs: "every generation job: status, request/response payloads, cost, result_asset_id",
   writer_runs: "treatment-writer runs and their evidence",
   lyric_lines: "the song's lyric lines on the song clock",
   song_analyses: "beat grid / sections",
   performance_syncs: "real takes synced to the song clock",
-  edit_sequences: "an in-app cut of a project: fps, frame size, song offset. Does not write shots or slip_seconds",
-  edit_clips: "clips on a sequence: source in/out, timeline in/out, mouth (performance provenance) camera=recorded|model=generated|lipsync=modified mouth|unknown, placeholder",
+  edit_sequences: "an in-app cut of a project: fps, frame size, song offset, locked. Does not write shots or slip_seconds. Locked refuses re-render unless unlock is explicit",
+  edit_clips: "clips on a sequence: shot id, asset id and asset_version, source in/out plus song_zero_offset_seconds (never a time remap when time_remap_allowed is false), timeline in/out in seconds and song frames, layer_stack, grade, transition, locked",
   edit_markers: "beat, lyric, lipsync and comment markers on a sequence",
   edit_sequence_versions: "a committed snapshot of a sequence",
-  edit_renders: "a queued ffmpeg plan. cost_usd is constrained to 0",
+  edit_renders: "a queued render job (edit, vfx, qc, blender, beat_cut). cost_usd is constrained to 0. Pins skill_version_id and effect_preset_id. Inputs and outputs are asset ids",
   timeline_items: "edit timeline",
   artists: "artist records",
   artist_assets: "artist pictures (faces, looks)",
@@ -217,13 +224,18 @@ export const SIGNED_UPLOAD_EXPIRES_IN = 7200;
 /** finalize downloads the object to hash it. Above this, the caller hashes locally. */
 export const FINALIZE_MAX_BYTES = 200 * 1024 * 1024;
 
-const UPLOAD_MODES = ["signed_url", "base64", "finalize"] as const;
+const UPLOAD_MODES = ["signed_url", "base64", "finalize", "tus", "verify"] as const;
 export type UploadMode = (typeof UPLOAD_MODES)[number];
 
 export type ParsedUpload =
   | { mode: "signed_url"; bucket: UploadBucket; path: string; upsert: boolean }
+  | { mode: "tus"; bucket: UploadBucket; path: string; upsert: boolean; contentType: string; uploadLength: number }
   | { mode: "base64"; bucket: UploadBucket; path: string; upsert: boolean; bytes: Uint8Array; contentType: string }
-  | { mode: "finalize"; bucket: UploadBucket; path: string; expectedSha256: string | null };
+  | { mode: "finalize"; bucket: UploadBucket; path: string; expectedSha256: string | null }
+  | { mode: "verify"; bucket: UploadBucket; path: string; localSha256: string };
+
+/** TUS PATCH size. Six megabytes matches the Storage resumable client. */
+export const TUS_CHUNK_BYTES = 6 * 1024 * 1024;
 
 export type AuditMode = UploadMode | "delete";
 
@@ -335,7 +347,22 @@ export function parseUploadRequest(userId: string, args: Record<string, unknown>
     if (!expected.ok) return expected;
     return { ok: true, request: { mode: "finalize", bucket: bucket.bucket, path: path.path, expectedSha256: expected.sha256 } };
   }
+  if (mode === "verify") {
+    const local = parseExpectedSha256(args.local_sha256);
+    if (!local.ok) return local;
+    if (!local.sha256) return { ok: false, error: "local_sha256 must be 64 lowercase hex characters" };
+    return { ok: true, request: { mode: "verify", bucket: bucket.bucket, path: path.path, localSha256: local.sha256 } };
+  }
   const upsert = resolveUpsert(args.upsert);
+  if (mode === "tus") {
+    const length = args.upload_length;
+    if (typeof length !== "number" || !Number.isInteger(length) || length <= 0 || length > 4 * 1024 * 1024 * 1024) {
+      return { ok: false, error: "upload_length must be a positive integer up to 4 GB" };
+    }
+    const contentType = resolveContentType(args.content_type);
+    if (!contentType.ok) return contentType;
+    return { ok: true, request: { mode: "tus", bucket: bucket.bucket, path: path.path, upsert, contentType: contentType.contentType, uploadLength: length } };
+  }
   if (mode === "signed_url") return { ok: true, request: { mode: "signed_url", bucket: bucket.bucket, path: path.path, upsert } };
   const contentType = resolveContentType(args.content_type);
   if (!contentType.ok) return contentType;
@@ -348,6 +375,63 @@ export function signedUploadResult(bucket: string, path: string, signed: { signe
   if (typeof signed.signedUrl !== "string" || signed.signedUrl.length === 0) throw new Error("signed upload url missing");
   if (typeof signed.token !== "string" || signed.token.length === 0) throw new Error("signed upload token missing");
   return { bucket, path, signed_url: signed.signedUrl, token: signed.token, expires_in: SIGNED_UPLOAD_EXPIRES_IN };
+}
+
+/**
+ * Resumable upload the caller performs. The signed token is the bearer.
+ * This function does not upload and does not delete.
+ */
+export function tusUploadPlan(input: {
+  supabaseUrl: string;
+  bucket: string;
+  path: string;
+  token: string;
+  contentType: string;
+  uploadLength: number;
+  upsert: boolean;
+}) {
+  const base = input.supabaseUrl.replace(/\/$/, "");
+  const metadata = {
+    bucketName: input.bucket,
+    objectName: input.path,
+    contentType: input.contentType,
+    cacheControl: "3600",
+  };
+  return {
+    protocol: "tus-1.0.0",
+    endpoint: `${base}/storage/v1/upload/resumable`,
+    method: "POST",
+    chunk_bytes: TUS_CHUNK_BYTES,
+    upload_length: input.uploadLength,
+    headers: {
+      authorization: `Bearer ${input.token}`,
+      "tus-resumable": "1.0.0",
+      "upload-length": String(input.uploadLength),
+      "x-upsert": String(input.upsert),
+      "x-signature": input.token,
+    },
+    metadata,
+    expires_in: SIGNED_UPLOAD_EXPIRES_IN,
+  };
+}
+
+/**
+ * The caller may delete its own local scratch only when clear_scratch is true.
+ * This result never deletes a remote object and never deletes the local file.
+ */
+export function scratchClearance(localSha256: string, remoteSha256: string | null): {
+  match: boolean;
+  clear_scratch: boolean;
+  deleted: false;
+  reason: string | null;
+} {
+  const match = remoteSha256 !== null && localSha256 === remoteSha256 && /^[0-9a-f]{64}$/.test(localSha256);
+  return {
+    match,
+    clear_scratch: match,
+    deleted: false,
+    reason: match ? null : remoteSha256 ? "sha256 does not match" : "remote sha256 is missing",
+  };
 }
 
 export function storedObjectResult(bucket: string, path: string, sizeBytes: number, sha256: string) {
@@ -672,18 +756,20 @@ export const TOOLS = [
   {
     name: "avt_upload_asset",
     description:
-      "Put a file into Storage as the credential's owner. Cost is $0: this never calls a paid provider. mode signed_url returns {bucket, path, signed_url, token, expires_in} from createSignedUploadUrl on the owner's client (row level security, no service role). PUT the bytes to signed_url, then call mode finalize, which reads the object back and returns {bucket, path, size_bytes, sha256, sha256_source}. mode finalize accepts expected_sha256. When object metadata.sha256 equals it and the metadata includes a size, the bytes are not downloaded (sha256_source metadata). Otherwise the object is read back (sha256_source bytes) and a provided expected_sha256 must match. mode base64 takes data_base64, capped at 52428800 decoded bytes, stores sha256 in object metadata, and returns {bucket, path, size_bytes, sha256}; over the cap the error says to use signed_url. path must start with the owner's user id and a slash. Rejects another user's prefix, '..', percent signs, and absolute paths. bucket is project-exports, project-clips, project-references, or project-audio. upsert defaults to false and is honored only when boolean true. Each call writes one mcp_upload_events row (tool avt_upload_asset, credential id, bucket, path, bytes, sha256) through record_mcp_upload. The result includes audit_id. If that function is not deployed yet, the upload still returns, audit_id is null, and audit_error says why. " +
+      "Put a file into Storage as the credential's owner. Cost is $0: this never calls a paid provider. mode signed_url returns {bucket, path, signed_url, token, expires_in} from createSignedUploadUrl on the owner's client (row level security, no service role). PUT the bytes to signed_url, then call mode finalize, which reads the object back and returns {bucket, path, size_bytes, sha256, sha256_source}. mode finalize accepts expected_sha256. When object metadata.sha256 equals it and the metadata includes a size, the bytes are not downloaded (sha256_source metadata). Otherwise the object is read back (sha256_source bytes) and a provided expected_sha256 must match. mode tus returns a tus 1.0.0 plan (endpoint, headers, metadata, chunk_bytes) for a file up to 4 GB; PATCH the chunks yourself, then finalize. mode verify compares local_sha256 to the stored object's sha256 and returns {match, clear_scratch, deleted: false}. It never deletes. Clear local scratch only when clear_scratch is true. mode base64 takes data_base64, capped at 52428800 decoded bytes, stores sha256 in object metadata, and returns {bucket, path, size_bytes, sha256}; over the cap the error says to use signed_url or tus. path must start with the owner's user id and a slash. Rejects another user's prefix, '..', percent signs, and absolute paths. bucket is project-exports, project-clips, project-references, or project-audio. upsert defaults to false and is honored only when boolean true. Each call writes one mcp_upload_events row (tool avt_upload_asset, credential id, bucket, path, bytes, sha256) through record_mcp_upload. The result includes audit_id. If that function is not deployed yet, the upload still returns, audit_id is null, and audit_error says why. " +
       FILE_ASSET_RECIPE,
     inputSchema: {
       type: "object",
       properties: {
-        mode: { type: "string", enum: ["signed_url", "base64", "finalize"] },
+        mode: { type: "string", enum: ["signed_url", "base64", "finalize", "tus", "verify"] },
         bucket: { type: "string", enum: ["project-exports", "project-clips", "project-references", "project-audio"] },
         path: { type: "string", description: "Must start with the owner's user id and a slash. No '..' and no leading slash." },
         upsert: { type: "boolean", description: "default false. Only boolean true overwrites." },
         content_type: { type: "string", description: "base64 mode. Default application/octet-stream." },
         data_base64: { type: "string", description: "base64 mode only. Decoded size must be ≤ 52428800 bytes." },
         expected_sha256: { type: "string", description: "finalize only. 64 lowercase hex characters. Skips the download when object metadata already has this hash and a size." },
+        upload_length: { type: "integer", description: "tus only. Byte length of the file, up to 4 GB." },
+        local_sha256: { type: "string", description: "verify only. Hash of the local scratch file. The tool compares it to the stored object and deletes nothing." },
       },
       required: ["mode", "bucket", "path"],
     },
@@ -765,6 +851,266 @@ export const TOOLS = [
         dry_run: { type: "boolean", description: "default true" },
         kind: { type: "string", enum: ["proxy", "final"] },
         aspect: { type: "string", enum: ["9:16", "1:1", "16:9"] },
+        unlock: { type: "boolean", description: "Required when the sequence or a clip is locked. Does not clear the lock." },
+      },
+      required: ["sequence_id"],
+    },
+  },
+  {
+    name: "avt_asset_list",
+    description: "List project_assets for this owner, filtered by project_id, shot_id, version_number, or tag (locked, superseded, review, approved). Read only. $0.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string" },
+        shot_id: { type: "string" },
+        version_number: { type: "integer" },
+        tag: { type: "string", enum: ["locked", "superseded", "review", "approved"] },
+      },
+    },
+  },
+  {
+    name: "avt_asset_tag",
+    description: "Add or remove one tag on an asset you own. Tags are locked, superseded, review, approved. Does not delete the asset. Writes one mcp_write_events row. $0.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        asset_id: { type: "string" },
+        tag: { type: "string", enum: ["locked", "superseded", "review", "approved"] },
+        op: { type: "string", enum: ["add", "remove"] },
+      },
+      required: ["asset_id", "tag", "op"],
+    },
+  },
+  {
+    name: "avt_asset_supersede",
+    description: "Point successor_id at asset_id via parent_asset_id, bump its version_number, and tag asset_id superseded. Demotes. Never deletes. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: { asset_id: { type: "string" }, successor_id: { type: "string" } },
+      required: ["asset_id", "successor_id"],
+    },
+  },
+  {
+    name: "avt_asset_describe",
+    description: "Set first-class media metadata on an asset: fps, sar, width, height, frame_count, duration_seconds, codec, sha256, size_bytes, source_take_asset_id, song_zero_offset_seconds, provenance, shot_id. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        asset_id: { type: "string" },
+        fps: { type: "number" },
+        sar: { type: "string" },
+        width: { type: "integer" },
+        height: { type: "integer" },
+        frame_count: { type: "integer" },
+        duration_seconds: { type: "number" },
+        codec: { type: "string" },
+        sha256: { type: "string" },
+        size_bytes: { type: "integer" },
+        source_take_asset_id: { type: "string" },
+        song_zero_offset_seconds: { type: "number" },
+        provenance: { type: "object" },
+        shot_id: { type: "string" },
+      },
+      required: ["asset_id"],
+    },
+  },
+  {
+    name: "avt_asset_attach_license",
+    description: "Attach a license to an asset. Pass license_id or a license object (name, source, license_type, terms) which is inserted first. origin element or stock requires a license. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        asset_id: { type: "string" },
+        license_id: { type: "string" },
+        origin: { type: "string", enum: ["generated", "camera", "element", "stock", "edit"] },
+        license: { type: "object" },
+      },
+      required: ["asset_id"],
+    },
+  },
+  {
+    name: "avt_asset_get_license",
+    description: "The license row linked to an asset, or null. Read only. $0.",
+    inputSchema: { type: "object", properties: { asset_id: { type: "string" } }, required: ["asset_id"] },
+  },
+  {
+    name: "avt_asset_delete_guard",
+    description: "Whether an asset can be deleted. locked tags are not deletable. This tool does not delete. $0.",
+    inputSchema: { type: "object", properties: { asset_id: { type: "string" } }, required: ["asset_id"] },
+  },
+  {
+    name: "avt_skill_list",
+    description: "List production skills you own, with the current version id when one is published. Read only. A skill record does not run the skill. $0.",
+    inputSchema: { type: "object", properties: { slug: { type: "string" } } },
+  },
+  {
+    name: "avt_skill_get",
+    description: "One skill and its versions, or one version by version_id. Includes instructions, supported tools, dependencies, examples, and changelog. Read only. $0.",
+    inputSchema: {
+      type: "object",
+      properties: { skill_id: { type: "string" }, slug: { type: "string" }, version_id: { type: "string" } },
+    },
+  },
+  {
+    name: "avt_skill_draft",
+    description: "Create the next draft version of a skill (the skill row is created on first use of the slug). Published versions stay immutable. Does not change which version is current. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        name: { type: "string" },
+        summary: { type: "string" },
+        instructions: { type: "string" },
+        supported_tools: { type: "array", items: { type: "string" } },
+        dependencies: { type: "array", items: { type: "object" }, description: "[{name, constraint}] such as blender >=4.2" },
+        examples: { type: "array" },
+        changelog: { type: "string" },
+        preview_asset_id: { type: "string" },
+        test_result_asset_id: { type: "string" },
+      },
+      required: ["slug", "name", "instructions", "supported_tools"],
+    },
+  },
+  {
+    name: "avt_skill_publish",
+    description: "Make a draft the current published version. Refuses without a passing skill_validations row for that version (effect_preset_id null). Published body stays immutable. $0. Audited.",
+    inputSchema: { type: "object", properties: { version_id: { type: "string" } }, required: ["version_id"] },
+  },
+  {
+    name: "avt_skill_pin",
+    description: "Pin a skill version on a project so another agent's later draft cannot change this project. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, skill_version_id: { type: "string" } },
+      required: ["project_id", "skill_version_id"],
+    },
+  },
+  {
+    name: "avt_skill_pin_get",
+    description: "The skill version pinned on a project, or the skill_version_id pinned on a render job. Read only. $0.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, skill_id: { type: "string" }, job_id: { type: "string" } },
+    },
+  },
+  {
+    name: "avt_effect_list",
+    description: "List effect preset versions you own. Read only. $0.",
+    inputSchema: { type: "object", properties: { slug: { type: "string" } } },
+  },
+  {
+    name: "avt_effect_get",
+    description: "One effect version: code_ref, params_schema, params_defaults, preview_asset_id, and the skill version it belongs to. Read only. $0.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+  },
+  {
+    name: "avt_effect_draft",
+    description: "Create the next draft version of an effect preset. Does not make it current. params_schema.type must be object. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        name: { type: "string" },
+        code_ref: { type: "string" },
+        skill_version_id: { type: "string" },
+        params_schema: { type: "object" },
+        params_defaults: { type: "object" },
+        preview_asset_id: { type: "string" },
+        changelog: { type: "string" },
+      },
+      required: ["slug", "name", "code_ref", "skill_version_id", "params_schema"],
+    },
+  },
+  {
+    name: "avt_effect_publish",
+    description: "Make an effect draft the current version of its slug. Refuses without a passing validation whose effect_preset_id is that draft. $0. Audited.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+  },
+  {
+    name: "avt_validation_record",
+    description: "Record a pass or fail for a skill version (and optional effect) on a named worker: OS, tool versions, input asset ids, and an optional QC JSON asset. Does not publish. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_version_id: { type: "string" },
+        effect_preset_id: { type: "string" },
+        worker_label: { type: "string" },
+        os_name: { type: "string" },
+        tool_versions: { type: "object" },
+        input_asset_ids: { type: "array", items: { type: "string" } },
+        result: { type: "string", enum: ["pass", "fail"] },
+        qc_asset_id: { type: "string" },
+        notes: { type: "string" },
+      },
+      required: ["skill_version_id", "worker_label", "os_name", "result"],
+    },
+  },
+  {
+    name: "avt_validation_list",
+    description: "Validations for one skill version or one effect preset. Read only. $0.",
+    inputSchema: {
+      type: "object",
+      properties: { skill_version_id: { type: "string" }, effect_preset_id: { type: "string" } },
+    },
+  },
+  {
+    name: "avt_validation_get",
+    description: "One validation row. Read only. $0.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+  },
+  {
+    name: "avt_shot_list_get",
+    description: "The current avt.shot_list asset for a project (the newest row that is not tagged superseded). Read only. $0.",
+    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"] },
+  },
+  {
+    name: "avt_shot_list_save",
+    description: "Validate an avt.shot_list document, store it as a new project_assets version, and tag the previous one superseded. Does not delete. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, document: { type: "object" } },
+      required: ["project_id", "document"],
+    },
+  },
+  {
+    name: "avt_beat_grid_get",
+    description: "The current avt.beat_grid asset for a project. Read only. $0.",
+    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"] },
+  },
+  {
+    name: "avt_beat_grid_save",
+    description: "Validate an avt.beat_grid document (BPM, beat and downbeat frames, sections) and store it as a versioned asset. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, document: { type: "object" } },
+      required: ["project_id", "document"],
+    },
+  },
+  {
+    name: "avt_project_rules_get",
+    description: "The current avt.project_rules asset for a project. QC reads this. Read only. $0.",
+    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"] },
+  },
+  {
+    name: "avt_project_rules_save",
+    description: "Validate an avt.project_rules document. Face, mouth, and likeness are fixed. Preview must be 1080x1920 SAR 1:1. Stored as a versioned asset. $0. Audited.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, document: { type: "object" } },
+      required: ["project_id", "document"],
+    },
+  },
+  {
+    name: "avt_edit_lock",
+    description: "Read or set the lock on an edit_sequences row and its clips. Clearing a lock requires unlock: true. A locked sequence or clip refuses re-render until that flag is passed. Does not render. $0. A write is audited; a read is not.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sequence_id: { type: "string" },
+        locked: { type: "boolean" },
+        clips: { type: "array", items: { type: "object" } },
+        unlock: { type: "boolean" },
       },
       required: ["sequence_id"],
     },

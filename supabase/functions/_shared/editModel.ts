@@ -50,6 +50,19 @@ export type EditClip = {
    * status. Aligned audio does not establish aligned visible articulation.
    */
   mouth: MouthLabel;
+  /** project_assets.version_number for assetId. Null when the clip has no filed version. */
+  assetVersion?: number | null;
+  /** Take time of sourceIn, measured from song zero. Not a remap. */
+  songZeroOffset?: number | null;
+  /** Timeline in/out in song frames. Seconds stay for the player; frames are the cut clock. */
+  timelineInFrame?: number | null;
+  timelineOutFrame?: number | null;
+  layerStack?: unknown[];
+  grade?: Record<string, unknown>;
+  /** Locked entries refuse re-render and body edits unless unlock is explicit. */
+  locked?: boolean;
+  /** False means speed must stay 1. Omitted means a legacy clip, which may already use speed. */
+  timeRemapAllowed?: boolean;
 };
 
 export const MOUTH_LABELS = ["camera", "model", "lipsync", "unknown"] as const;
@@ -92,6 +105,8 @@ export type EditSequence = {
   songFile: string;
   songDuration: number;
   notes: string;
+  /** Whole-cut lock. A locked sequence refuses re-render unless unlock is explicit. */
+  locked?: boolean;
   clips: EditClip[];
   markers: EditMarker[];
 };
@@ -145,6 +160,14 @@ function clip(
     enabled: true,
     mediaDuration: null,
     mouth: null,
+    assetVersion: null,
+    songZeroOffset: null,
+    timelineInFrame: null,
+    timelineOutFrame: null,
+    layerStack: [],
+    grade: {},
+    locked: false,
+    timeRemapAllowed: true,
     ...partial,
   };
 }
@@ -174,6 +197,7 @@ export function emptySequence(input: {
     songFile: "song_master_24bit.wav",
     songDuration: 0,
     notes: "",
+    locked: false,
     clips: [],
     markers: [],
   };
@@ -1007,6 +1031,7 @@ export function sequenceToRows(
       song_file: ready.songFile,
       song_duration_seconds: ready.songDuration,
       notes: ready.notes,
+      locked: ready.locked === true,
     },
     clips: ready.clips.map((c) => ({
       id: c.id,
@@ -1032,6 +1057,14 @@ export function sequenceToRows(
       enabled: c.enabled,
       media_duration_seconds: c.mediaDuration,
       mouth: c.mouth,
+      asset_version: c.assetVersion ?? null,
+      song_zero_offset_seconds: c.songZeroOffset ?? null,
+      timeline_in_frame: c.timelineInFrame ?? secondsToFrames(c.timelineIn, ready.fps),
+      timeline_out_frame: c.timelineOutFrame ?? secondsToFrames(c.timelineOut, ready.fps),
+      layer_stack: c.layerStack ?? [],
+      grade: c.grade ?? {},
+      locked: c.locked === true,
+      time_remap_allowed: c.timeRemapAllowed !== false,
     })),
     markers: ready.markers.map((m) => ({
       id: m.id,
@@ -1070,6 +1103,7 @@ export function sequenceFromRows(sequence: Row, clips: Row[], markers: Row[]): E
     songFile: str(sequence.song_file),
     songDuration: num(sequence.song_duration_seconds),
     notes: str(sequence.notes),
+    locked: sequence.locked === true,
     clips: clips
       .map((c) =>
         clip({
@@ -1099,6 +1133,14 @@ export function sequenceFromRows(sequence: Row, clips: Row[], markers: Row[]): E
           mediaDuration:
             typeof c.media_duration_seconds === "number" ? c.media_duration_seconds : null,
           mouth: isMouthLabel(c.mouth) ? c.mouth : null,
+          assetVersion: typeof c.asset_version === "number" ? c.asset_version : null,
+          songZeroOffset: typeof c.song_zero_offset_seconds === "number" ? c.song_zero_offset_seconds : null,
+          timelineInFrame: typeof c.timeline_in_frame === "number" ? c.timeline_in_frame : secondsToFrames(num(c.timeline_in_seconds), fps),
+          timelineOutFrame: typeof c.timeline_out_frame === "number" ? c.timeline_out_frame : secondsToFrames(num(c.timeline_out_seconds), fps),
+          layerStack: Array.isArray(c.layer_stack) ? c.layer_stack : [],
+          grade: c.grade !== null && typeof c.grade === "object" && !Array.isArray(c.grade) ? (c.grade as Record<string, unknown>) : {},
+          locked: c.locked === true,
+          timeRemapAllowed: c.time_remap_allowed !== false,
         }),
       )
       .sort((a, b) => a.track.localeCompare(b.track) || a.order - b.order),
