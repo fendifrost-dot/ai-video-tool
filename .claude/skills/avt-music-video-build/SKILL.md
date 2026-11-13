@@ -93,6 +93,8 @@ busy scene is two shots: the busy cutaway, then him alone in a calm frame of the
 
 "I shot one performance shot but wanted to use my likeness, same outfit, face etc in generated b-roll shots" and,
 the same day, "the face redraw isn't an issue". The full technique: `docs/recipes/HIS_FACE_IN_ANY_SCENE.md`.
+A creature or prop swapped into his real take (the hyena on the chain, 12 Nov 2026) is the clothing swap without the
+clothes: `docs/recipes/CREATURE_OR_PROP_SWAP_ON_HIS_TAKE.md`. Proven; run it, do not re-test it.
 
 1. **Generate the shots he never filmed.** Missing footage of an action is never a reason to refuse a shot.
    Approved "PERFECT!" (6 Nov): c026 seated on a carousel rail, c033 leaning at a kitchen island, c039 at a platform
