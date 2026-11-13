@@ -48,6 +48,10 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
 | `avt_job_status`, `avt_job_logs`, `avt_job_outputs`, `avt_job_cancel`, `avt_job_list` | progress, logs, outputs, cancel, list. Cancel does not delete assets |
 | `avt_worker_register`, `avt_worker_list`, `avt_worker_check` | capability manifest. The secret is hashed and not returned. Check compares tool versions to a skill |
 | `avt_cache_report` | cache usage and cap. Disposable copies may be dropped locally. Protected files are not |
+| `avt_gpu_worker_list` | GPU workers (lane `gpu`): device, memory, models, nodes. Secret hash is not returned. $0 |
+| `avt_gpu_workflow_list`, `avt_gpu_workflow_register` | ComfyUI graphs stored as effects. Register refuses a generative face or mouth pass. $0 |
+| `avt_gpu_job_submit` | queue a local ComfyUI job (`job_kind` `gpu`). `dry_run` defaults to true. `cost_usd` is 0. Comfy Cloud is disabled |
+| `avt_gpu_job_status`, `avt_gpu_job_cancel` | progress, logs, timing, outputs. Cancel does not delete assets |
 | `avt_browser_session` | a one-hour sign-in (access token only) for a headless browser that presses the app itself — `scripts/agent-browser/README.md`; for an older tool list, `avt_functions {name: "avt_browser_session"}` performs it (a declared argument, which every client forwards; `avt_whoami {browser_session: true}` works only where the client forwards undeclared ones) |
 
 ## Limits, by design
