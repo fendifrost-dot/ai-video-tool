@@ -1,6 +1,7 @@
 """Composite a face-preserved performance (body-only swap output) over a MOVING plate, offline, $0.
 usage: composite_over_plate.py <fg.mp4> <alpha.mp4> <plate.mp4|png> <out.mp4> [--scale S] [--cx X] [--plate-start T]
        [--exposure E] [--push P] [--seed N] [--occlude-y Y [--occlude-feather PX]]
+       [--solidify-box x0,y0,x1,y1 [--solidify-inset PX]]
 
 A port of the composite lane's frame recipe (src/lib/composite/pixels.ts, plate-composite-v3-2026-10-16), so the
 offline result matches what the app's "Composite over plate" does. Added for the moving-environment test:
@@ -25,6 +26,10 @@ ap.add_argument("--frames", type=int, default=0, help="render only the first N f
 ap.add_argument("--occlude-y", type=float, default=-1, help="output row below which he is hidden behind the plate "
                 "(a foreground object in the plate: a table, a car bonnet, a railing); -1 = off. As place_him_over_plate --couch-y")
 ap.add_argument("--occlude-feather", type=float, default=14, help="softness of the occlusion line in px (default 14)")
+ap.add_argument("--solidify-box", default="", help="x0,y0,x1,y1 in matte pixels: inside it, make the matte solid where "
+                "matte_stability.py finds it see-through (partly transparent deep inside him, away from any real gap). "
+                "Per frame, nothing carried between frames. A TEST, off by default; measure it with matte_stability.py --baseline")
+ap.add_argument("--solidify-inset", type=int, default=6)
 A = ap.parse_args()
 
 def probe(p):
@@ -41,6 +46,21 @@ W, H, FPS = probe(A.fg)
 fg = read(A.fg, W, H)
 al = read(A.alpha, W, H, gray=True)
 n = min(len(fg), len(al)) if not A.frames else min(A.frames, len(fg), len(al))
+if A.solidify_box:
+    import os, sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from matte_stability import see_through
+    x0, y0, x1, y1 = (int(v) for v in A.solidify_box.split(","))
+    al = al.copy(); fixed = 0
+    for k in range(n):
+        m = see_through([al[k].astype(np.float32) / 255], A.solidify_inset)[0]
+        box = np.zeros_like(m); box[y0:y1, x0:x1] = True; m &= box
+        al[k][m] = 255; fixed += int(m.sum())
+    alpha_out = A.out.rsplit(".", 1)[0] + "_alpha_solidified.mkv"   # lossless, for matte_stability.py --baseline
+    wa = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s", f"{W}x{H}",
+                           "-r", f"{FPS:.6f}", "-i", "-", "-c:v", "ffv1", alpha_out], stdin=subprocess.PIPE)
+    wa.stdin.write(np.ascontiguousarray(al[:n]).tobytes()); wa.stdin.close(); wa.wait()
+    print("solidify-box", A.solidify_box, "see-through px made solid:", fixed, "| matte written:", alpha_out)
 if A.plate.lower().endswith((".png", ".jpg", ".jpeg")):
     pl = cv2.cvtColor(cv2.resize(cv2.imread(A.plate), (W, H), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)[None]
     PFPS = 1.0

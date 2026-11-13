@@ -84,6 +84,17 @@ the wrong workflow.
    3. **Check the cadence.** If `matte_stability.py --fg` reports repeated frames, the outline pops on every new
       picture; the proven fix is compositing-only (c033 room 2: `edge_tween_px`, `edge_colour_from_inside_px`,
       `edge_choke` in `scripts/edit/blender/comp_scene.py`), never a change to the matte.
+   **Measured on v6 (13 Nov, `matte_stability.py`):** 96/96 frames paired; 5 repeated picture frames (10, 30, 49, 68,
+   88: the put-back's re-timing used five swap frames twice); flagged frames top 31, middle 52, bottom 2. The middle
+   count includes fast arm moves (a hand that moves more than its own width in a frame reads as a pop-in), so compare
+   counts against the baseline, never as absolutes. The defect Fendi saw is steady, not a flicker: in the stills the
+   bottom of his right leg is see-through where it meets the hyena's back on every frame looked at. The
+   `see-through` count (added to the script the same day) measures it. Options 1 and 2 hide the hyena with the legs;
+   on a hyena shot that is Fendi's call before any pass. The matte-side options:
+   3b. **Solidify only the see-through pixels** (HYPOTHESIS, $0): `composite_over_plate.py --solidify-box
+      x0,y0,x1,y1` (matte pixels), per frame, nothing carried between frames. The picture there is the put-back's own
+      frame (his jeans, the hyena), so no ghost. Pass: `see-through` in the box falls to near 0, nothing changes
+      outside the box (`matte_stability.py <out>_alpha_solidified.mkv --baseline <veed alpha>`: added only inside the box), and Fendi watches it.
    4. **A new matte, not a changed one** (HYPOTHESIS, untested): `matte-video-proxy` on a crop of the failing region,
       enlarged, so the model sees the legs bigger; the result is used only inside that region. About $0.07. Measured
       with `matte_stability.py --baseline <veed alpha>`: no added alpha outside the region.
