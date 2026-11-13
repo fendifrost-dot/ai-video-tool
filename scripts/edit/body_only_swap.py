@@ -38,6 +38,10 @@ add_segmenter_args(ap)
 ap.add_argument("--base", choices=("original", "swap"), default="original",
                 help="original (default): the scene stays the take, only the clothes come from the swap. swap: the whole swap frame is kept "
                      "(a creature or prop swapped in beside him) and only his protected face, beard and skin go back from the take.")
+ap.add_argument("--retime", choices=("auto", "on", "off"), default="auto",
+                help="pair each original frame with the swap frame that shows the same instant (searched two frames either side of the "
+                     "clock's frame, never stepping back). auto: on with --base swap, where a head drawn a frame early or late "
+                     "leaves a seam round his real face; off otherwise.")
 A = ap.parse_args()
 orig_p, swap_p, out_dir = A.original, A.swap, A.out_dir
 SEGMENTER = choose_segmenter(A.segmenter)
@@ -178,6 +182,20 @@ if len(starts) == len(s_starts) and len(starts) > 1:
     print("scenes aligned by their cuts: original", starts, "swap", s_starts)
 elif len(starts) != len(s_starts):
     print("WARNING: the original has", len(starts) - 1, "cuts and the swap", len(s_starts) - 1, "- frames mapped by the clock only")
+if A.retime == "on" or (A.retime == "auto" and A.base == "swap"):
+    # the generator's clock drifts against the take's (Hyenas, 12 Nov 2026: 97 frames back for 98 sent, the head up to a
+    # frame off; his real face then sat on a head drawn a moment earlier: a doubled cap edge and a white line by the ear).
+    # Within each scene the swap frame is the one whose picture is nearest the original's, held monotonic.
+    g_o = [gray_small(f) for f in orig]; g_s = [gray_small(f) for f in swap]; moved = 0
+    for o0, o1 in zip(starts, ends):
+        lo, hi = max(0, min(J[o0:o1]) - 2), min(len(swap) - 1, max(J[o0:o1]) + 2); last = lo
+        for i in range(o0, o1):
+            c = [k for k in range(max(lo, last, J[i] - 2), min(hi, J[i] + 2) + 1)] or [min(hi, max(last, J[i]))]
+            k = min(c, key=lambda k: float(np.abs(g_s[k] - g_o[i]).mean()))
+            moved += k != J[i]; J[i] = last = k
+    print("retimed to the take:", moved, "of", len(orig), "frames paired with a neighbouring swap frame;",
+          len(orig) - len(set(J)), "swap frames used twice")
+    del g_o, g_s
 def jof(i): return J[i]
 def scene_of(i): return next(n for n, (a, b) in enumerate(zip(starts, ends)) if a <= i < b)
 swap_cat, warp = {}, {}
