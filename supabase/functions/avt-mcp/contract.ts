@@ -2,8 +2,10 @@
 // outside AI may reach. No network or database here, so all of it
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
+import { JOB_TOOL_DEFS } from "./jobContract.ts";
+
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.6.0";
+export const SERVER_VERSION = "1.7.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -963,7 +965,7 @@ export const TOOLS = [
         summary: { type: "string" },
         instructions: { type: "string" },
         supported_tools: { type: "array", items: { type: "string" } },
-        dependencies: { type: "array", items: { type: "object" }, description: "[{name, constraint}] such as blender >=4.2" },
+        dependencies: { type: "array", items: { type: "object" }, description: "[{name, constraint}] such as blender>=5.2" },
         examples: { type: "array" },
         changelog: { type: "string" },
         preview_asset_id: { type: "string" },
@@ -1115,6 +1117,7 @@ export const TOOLS = [
       required: ["sequence_id"],
     },
   },
+  ...JOB_TOOL_DEFS,
 ] as const;
 
 export type ToolName = (typeof TOOLS)[number]["name"];
