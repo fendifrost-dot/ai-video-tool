@@ -42,10 +42,11 @@ serve(async (req) => {
   const hash = await sha256Hex(secret);
   const { data: worker } = await db
     .from("edit_render_workers")
-    .select("id,label,revoked_at")
+    .select("id,label,revoked_at,lane")
     .eq("secret_hash", hash)
     .maybeSingle();
   if (!worker || worker.revoked_at) return json(401, { ok: false, error: "bad_worker_secret" });
+  if (worker.lane === "gpu") return json(403, { ok: false, error: "gpu_worker_secret" });
   await db
     .from("edit_render_workers")
     .update({ last_seen_at: new Date().toISOString() })

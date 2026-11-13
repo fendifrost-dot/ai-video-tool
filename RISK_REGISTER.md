@@ -517,3 +517,12 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Residual:** a leaked tus token can still PATCH that one object until it expires. A wrong stored sha256 makes `verify` refuse scratch clearing until metadata is corrected.
 - **DoD:** Lovable SQL editor has applied `20261113120000_asset_store_extensions.sql`, and `avt-mcp` 1.6.0 is redeployed. Not done in this change.
 
+## GPU-1 — Local ComfyUI worker and large finalize
+
+- **Severity:** Medium · **Confidence:** Confirmed (design) · **Status:** Open (in review; not deployed) · **Owner:** Platform (AVT) · **Opened:** 2026-11-13
+- **Class:** C (orchestration, storage uploads, a worker secret). Do not merge without architecture, product, and security sign-off.
+- **Summary:** A Mac worker claims `edit_renders` rows with `job_kind` `gpu`, runs a ComfyUI graph on MPS, and uploads outputs with a signed URL plus sha256. The worker secret is a hash on `edit_render_workers` and cannot mint a user session. Comfy Cloud has no client. Workflows with a generative face or mouth pass are refused. `avt_upload_asset` finalize no longer downloads an object over 32 MB: a 157079995-byte pack (asset `ef7c7891-f1ef-4b6c-9021-8d8095c2f8c0`) hit `WORKER_RESOURCE_LIMIT`.
+- **Mitigations:** lane `gpu` cannot claim box jobs, and the box claim skips `gpu`. Submit and claim both run the capability gate. Scratch on the Mac deletes only under `/Volumes/T7/AVT_GPU_Worker/scratch` after the upload hash matches. Finalize of a large object requires matching metadata sha256 and does not read the body.
+- **Residual:** a leaked worker secret can still claim that owner's GPU jobs and upload into their `project-exports` prefix. A wrong metadata hash makes large finalize refuse until the object is uploaded again with the right `x-metadata`.
+- **DoD:** Lovable SQL editor has applied `20261113160000_gpu_worker.sql`, and `avt-mcp` 1.8.0 plus `gpu-worker-api` are redeployed. Not done in this change.
+

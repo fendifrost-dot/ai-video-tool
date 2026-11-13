@@ -2,10 +2,11 @@
 // outside AI may reach. No network or database here, so all of it
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
+import { GPU_TOOL_DEFS } from "./gpuContract.ts";
 import { JOB_TOOL_DEFS } from "./jobContract.ts";
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.7.0";
+export const SERVER_VERSION = "1.8.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -15,6 +16,7 @@ export const INSTRUCTIONS = [
   "Generation is billed to the owner's provider accounts at list price; prefer a dryRun first where a function offers one.",
   "Projects: video_projects; boards: shots (per video_variations); casting/continuity: continuity_entities; generated files: project_assets + provider_jobs.",
   "Put bytes into Storage with avt_upload_asset (a signed upload URL, or base64 up to 50 MB). File a shot primary in one transaction with avt_file_asset. Delete one of your own objects with avt_delete_object. None of these call a paid provider.",
+  "Local ComfyUI jobs are avt_gpu_job_submit (dry_run defaults to true, cost $0). Comfy Cloud is disabled. A workflow that redraws a face or a mouth is refused.",
 ].join("\n");
 
 // ---------------------------------------------------------------------------------------------------- credentials
@@ -223,8 +225,16 @@ export const BASE64_MAX_DECODED_BYTES = 50 * 1024 * 1024;
  */
 export const SIGNED_UPLOAD_EXPIRES_IN = 7200;
 
-/** finalize downloads the object to hash it. Above this, the caller hashes locally. */
+/**
+ * finalize downloads the object to hash it. Above FINALIZE_DOWNLOAD_MAX_BYTES it must not:
+ * a 157079995-byte object (asset ef7c7891, wave2-comfy-compositing.zip) failed the edge
+ * worker with WORKER_RESOURCE_LIMIT before the old 200 MB check could run. Larger files
+ * are finalized from object metadata (x-metadata sha256 plus expected_sha256) and the body
+ * stays in Storage.
+ */
 export const FINALIZE_MAX_BYTES = 200 * 1024 * 1024;
+export const FINALIZE_DOWNLOAD_MAX_BYTES = 32 * 1024 * 1024;
+export const FINALIZE_WORKER_LIMIT_OBSERVED_BYTES = 157_079_995;
 
 const UPLOAD_MODES = ["signed_url", "base64", "finalize", "tus", "verify"] as const;
 export type UploadMode = (typeof UPLOAD_MODES)[number];
@@ -494,6 +504,17 @@ export function planFinalizeRead(input: { expectedSha256: string | null; info: u
   const size = typeof sizeRaw === "number" && Number.isFinite(sizeRaw) ? sizeRaw : typeof sizeRaw === "string" && /^\d+$/.test(sizeRaw) ? Number(sizeRaw) : null;
   if (stored && stored !== input.expectedSha256) return { action: "reject", error: "stored sha256 does not match expected_sha256" };
   if (stored === input.expectedSha256 && size !== null && size > 0) return { action: "skip", sha256: stored, sizeBytes: size };
+  if (size !== null && size > FINALIZE_DOWNLOAD_MAX_BYTES) {
+    return {
+      action: "reject",
+      error:
+        `object is ${size} bytes. Finalize does not download objects over ${FINALIZE_DOWNLOAD_MAX_BYTES} bytes: ` +
+        `avt-mcp hit WORKER_RESOURCE_LIMIT reading ${FINALIZE_WORKER_LIMIT_OBSERVED_BYTES} bytes ` +
+        `(project-references asset ef7c7891-f1ef-4b6c-9021-8d8095c2f8c0). ` +
+        `PUT the object with x-metadata {"sha256":"..."} and pass that same expected_sha256. ` +
+        `Finalize then records the hash from metadata and does not read the body.`,
+    };
+  }
   return { action: "download" };
 }
 
@@ -758,7 +779,7 @@ export const TOOLS = [
   {
     name: "avt_upload_asset",
     description:
-      "Put a file into Storage as the credential's owner. Cost is $0: this never calls a paid provider. mode signed_url returns {bucket, path, signed_url, token, expires_in} from createSignedUploadUrl on the owner's client (row level security, no service role). PUT the bytes to signed_url, then call mode finalize, which reads the object back and returns {bucket, path, size_bytes, sha256, sha256_source}. mode finalize accepts expected_sha256. When object metadata.sha256 equals it and the metadata includes a size, the bytes are not downloaded (sha256_source metadata). Otherwise the object is read back (sha256_source bytes) and a provided expected_sha256 must match. mode tus returns a tus 1.0.0 plan (endpoint, headers, metadata, chunk_bytes) for a file up to 4 GB; PATCH the chunks yourself, then finalize. mode verify compares local_sha256 to the stored object's sha256 and returns {match, clear_scratch, deleted: false}. It never deletes. Clear local scratch only when clear_scratch is true. mode base64 takes data_base64, capped at 52428800 decoded bytes, stores sha256 in object metadata, and returns {bucket, path, size_bytes, sha256}; over the cap the error says to use signed_url or tus. path must start with the owner's user id and a slash. Rejects another user's prefix, '..', percent signs, and absolute paths. bucket is project-exports, project-clips, project-references, or project-audio. upsert defaults to false and is honored only when boolean true. Each call writes one mcp_upload_events row (tool avt_upload_asset, credential id, bucket, path, bytes, sha256) through record_mcp_upload. The result includes audit_id. If that function is not deployed yet, the upload still returns, audit_id is null, and audit_error says why. " +
+      "Put a file into Storage as the credential's owner. Cost is $0: this never calls a paid provider. mode signed_url returns {bucket, path, signed_url, token, expires_in} from createSignedUploadUrl on the owner's client (row level security, no service role). PUT the bytes to signed_url, then call mode finalize, which reads the object back and returns {bucket, path, size_bytes, sha256, sha256_source}. mode finalize accepts expected_sha256. When object metadata.sha256 equals it and the metadata includes a size, the bytes are not downloaded (sha256_source metadata). Otherwise the object is read back only when its size is at most 33554432 bytes (sha256_source bytes) and a provided expected_sha256 must match. A larger object is refused: a 157079995-byte upload hit WORKER_RESOURCE_LIMIT. Put sha256 in upload metadata and pass the same expected_sha256 so finalize does not download the body. mode tus returns a tus 1.0.0 plan (endpoint, headers, metadata, chunk_bytes) for a file up to 4 GB; PATCH the chunks yourself, then finalize. mode verify compares local_sha256 to the stored object's sha256 and returns {match, clear_scratch, deleted: false}. It never deletes. Clear local scratch only when clear_scratch is true. mode base64 takes data_base64, capped at 52428800 decoded bytes, stores sha256 in object metadata, and returns {bucket, path, size_bytes, sha256}; over the cap the error says to use signed_url or tus. path must start with the owner's user id and a slash. Rejects another user's prefix, '..', percent signs, and absolute paths. bucket is project-exports, project-clips, project-references, or project-audio. upsert defaults to false and is honored only when boolean true. Each call writes one mcp_upload_events row (tool avt_upload_asset, credential id, bucket, path, bytes, sha256) through record_mcp_upload. The result includes audit_id. If that function is not deployed yet, the upload still returns, audit_id is null, and audit_error says why. " +
       FILE_ASSET_RECIPE,
     inputSchema: {
       type: "object",
@@ -1118,6 +1139,7 @@ export const TOOLS = [
     },
   },
   ...JOB_TOOL_DEFS,
+  ...GPU_TOOL_DEFS,
 ] as const;
 
 export type ToolName = (typeof TOOLS)[number]["name"];

@@ -181,3 +181,8 @@ verify_jwt = true
 
 [functions.edit-render-worker-api]
 verify_jwt = false
+
+# Local ComfyUI worker. The Mac holds a worker secret, not a user session.
+# verify_jwt = false: the secret is checked inside the function. No paid provider.
+[functions.gpu-worker-api]
+verify_jwt = false

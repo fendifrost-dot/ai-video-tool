@@ -26,6 +26,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
 import { editGet, editList, editRender, editSave } from "./editTools.ts";
+import { GPU_TOOL_NAMES } from "./gpuContract.ts";
+import { runGpuTool } from "./gpuHandlers.ts";
 import { JOB_TOOL_NAMES } from "./jobContract.ts";
 import { runJobTool } from "./jobHandlers.ts";
 import { deleteGuardStatus } from "./storeContract.ts";
@@ -526,6 +528,13 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
           unlock: args.unlock === true,
         }),
       );
+  }
+  if ((GPU_TOOL_NAMES as readonly string[]).includes(name)) {
+    try {
+      return toolText(await runGpuTool(ctx.user, ctx.session.userId, ctx.session.credentialId, name, args));
+    } catch (e) {
+      throw new ToolError(e instanceof Error ? e.message : String(e));
+    }
   }
   if ((JOB_TOOL_NAMES as readonly string[]).includes(name)) {
     try {
