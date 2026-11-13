@@ -48,7 +48,7 @@ def draw_chain(frame: np.ndarray, points: list[tuple[float, float]], link: int =
 
 
 def blender_curve_script(points: list[tuple[float, float]], name: str = "HyenasChain") -> str:
-    """Python Blender 4.2 runs with `blender -b --python`. CPU only. Not executed here."""
+    """Python Blender 5.2 runs with `blender -b --python`. CPU only. Not executed here."""
     coords = ", ".join(f"({x:.3f}, {y:.3f}, 0.0)" for x, y in points)
     return (
         "import bpy\n"

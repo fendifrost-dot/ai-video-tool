@@ -30,7 +30,7 @@ Bucket `file_size_limit` for `project-exports`, `project-clips`, `project-refere
 
 ## Catalog
 
-A skill or an effect row does not run anything. `production_skill_versions.dependencies` says which binary versions a worker must have (`blender>=4.2`, `ffmpeg>=6`). Published rows are immutable. `avt_skill_publish` and `avt_effect_publish` refuse unless a passing `skill_validations` row exists, and only then move `is_current`. Projects pin a version with `avt_skill_pin`. Jobs pin `skill_version_id` on `edit_renders` (the worker tools that submit jobs are the next PR).
+A skill or an effect row does not run anything. `production_skill_versions.dependencies` says which binary versions a worker must have (`blender>=5.2`, `ffmpeg>=6`). Published rows are immutable. `avt_skill_publish` and `avt_effect_publish` refuse unless a passing `skill_validations` row exists, and only then move `is_current`. Projects pin a version with `avt_skill_pin`. Jobs pin `skill_version_id` on `edit_renders` (the worker tools that submit jobs are the next PR).
 
 `effect_presets` holds `code_ref`, a JSON Schema (`type: object`) with defaults, a preview asset, and the skill version.
 
@@ -48,7 +48,7 @@ Shot list, beat grid, and project rules are versioned assets. Saving a new one t
 
 ## Jobs, workers, cache
 
-`avt_job_submit` queues an `edit_renders` row (`edit`, `vfx`, `qc`, `blender`, `beat_cut`). `dry_run` defaults to true and writes nothing. `cost_usd` stays 0. The worker is the existing edit-render process: one job at a time, a disk check first, and only the asset ids the job names. Blender is `AVT_BLENDER` (default `/workspace/tools/blender`), Cycles on CPU, frames in chunks.
+`avt_job_submit` queues an `edit_renders` row (`edit`, `vfx`, `qc`, `blender`, `beat_cut`). `dry_run` defaults to true and writes nothing. `cost_usd` stays 0. The worker is the existing edit-render process: one job at a time, a disk check first, and only the asset ids the job names. Blender is `AVT_BLENDER` (default `/workspace/tools/blender/current/blender`, the 5.2.4 executable). The worker fills `tool_versions.blender` from `blender --version`. Cycles on CPU, frames in chunks.
 
 `avt_worker_register` stores a hash of the secret plus the tool manifest. `avt_worker_check` compares that manifest to the pinned skill's dependencies before a non-dry-run submit will accept the worker.
 

@@ -965,7 +965,7 @@ export const TOOLS = [
         summary: { type: "string" },
         instructions: { type: "string" },
         supported_tools: { type: "array", items: { type: "string" } },
-        dependencies: { type: "array", items: { type: "object" }, description: "[{name, constraint}] such as blender >=4.2" },
+        dependencies: { type: "array", items: { type: "object" }, description: "[{name, constraint}] such as blender>=5.2" },
         examples: { type: "array" },
         changelog: { type: "string" },
         preview_asset_id: { type: "string" },

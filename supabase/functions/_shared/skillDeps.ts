@@ -4,6 +4,9 @@
 export type SkillDependency = { name: string; constraint: string };
 export type ToolManifest = Record<string, string>;
 
+/** Geometry Nodes skills (EL4CTEO, gokayfem) target Blender 5.2 or newer. 4.2.3 stays on disk as a fallback binary, not as this dependency. */
+export const BLENDER_SKILL_DEPENDENCY: SkillDependency = { name: "blender", constraint: ">=5.2" };
+
 const CONSTRAINT = /^(>=|==|<=|>|<)\s*(\d+(?:\.\d+){0,2})$/;
 
 export function parseDependencies(raw: unknown): { ok: true; value: SkillDependency[] } | { ok: false; error: string } {
@@ -16,7 +19,7 @@ export function parseDependencies(raw: unknown): { ok: true; value: SkillDepende
       return { ok: false, error: "dependency name must be a tool name such as blender or ffmpeg" };
     }
     if (typeof row.constraint !== "string" || !CONSTRAINT.test(row.constraint.replace(/\s+/g, ""))) {
-      return { ok: false, error: `${row.name} constraint must look like >=4.2` };
+      return { ok: false, error: `${row.name} constraint must look like >=5.2` };
     }
     value.push({ name: row.name.toLowerCase(), constraint: row.constraint.replace(/\s+/g, "") });
   }

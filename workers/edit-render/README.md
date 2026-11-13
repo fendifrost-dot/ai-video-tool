@@ -14,7 +14,7 @@ values ('box', encode(digest('<secret>', 'sha256'), 'hex'));  -- or compute sha2
 ```
 
 Requirements: Node ≥ 22.6 (`--experimental-strip-types`), ffmpeg/ffprobe on PATH.
-Blender, when a job asks for it, is `AVT_BLENDER` or `/workspace/tools/blender` (4.2.3 on the box). Cycles runs on CPU, one frame chunk at a time.
+Blender, when a job asks for it, is `AVT_BLENDER` or `/workspace/tools/blender/current/blender` (the 5.2.4 LTS executable; 4.2.3 stays on disk as a fallback). The worker reads `blender --version` into its capability manifest. The Blender skill dependency is `blender>=5.2`. Cycles runs on CPU, one frame chunk at a time.
 
 The process runs one job at a time. It checks free disk before each claim. It downloads only the asset ids on the job. The local cache defaults to 20 GB (`AVT_CACHE_CAP_BYTES`) and drops disposable copies after 7 days (`AVT_CACHE_TTL_DAYS`). Originals, camera takes, locked or approved masters, and files whose sha256 is not verified are never evicted. Scratch for a finished job is deleted only after the upload's sha256 matches.
 

@@ -111,6 +111,11 @@ def main() -> None:
     assert cut["width"] == 1080 and cut["height"] == 1920
     assert "edl" not in cut
 
+    os.environ.pop("AVT_BLENDER", None)
+    assert blender_job.blender_bin() == "/workspace/tools/blender/current/blender"
+    assert blender_job.BLENDER_SKILL_CONSTRAINT == ">=5.2"
+    assert blender_job.parse_blender_version("Blender 5.2.4\n\tbuild date: 2026-01-01\n") == "5.2.4"
+    assert blender_job.parse_blender_version("Blender 4.2.3 LTS\n") == "4.2.3"
     os.environ["AVT_BLENDER"] = "/opt/blender"
     assert blender_job.blender_bin() == "/opt/blender"
     argv = blender_job.cycles_argv("scene.blend", 1, 8, "/tmp/frame_")

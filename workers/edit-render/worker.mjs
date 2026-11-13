@@ -10,6 +10,7 @@ import { createReadStream, mkdtempSync, readFileSync, rmSync, statfsSync } from 
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { encodePlan } from "../../scripts/edit-render/encode.mjs";
+import { capabilityManifest } from "./blenderProbe.mjs";
 import { mayClearScratch } from "./cache.mjs";
 import { verifyMp4 } from "./verify.mjs";
 
@@ -156,7 +157,14 @@ async function main() {
       stopping = true;
       log("stopping", { sig });
     });
-  log("start", { workerId, once });
+  const tools = await capabilityManifest();
+  log("start", {
+    workerId,
+    once,
+    blender: tools.tool_versions.blender ?? null,
+    blender_bin: tools.blender_bin,
+    blender_dependency: tools.skill_dependency.constraint,
+  });
   do {
     let handled = null;
     try {

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
+import { BLENDER_SKILL_DEPENDENCY, checkCompatibility } from "../_shared/skillDeps.ts";
 import { JOB_TOOL_NAMES, planCancel, planJobSubmit } from "./jobContract.ts";
 import { runJobTool } from "./jobHandlers.ts";
 import { TOOLS } from "./contract.ts";
@@ -23,11 +24,14 @@ describe("job plans", () => {
     expect(planCancel("queued").ok).toBe(true);
   });
 
-  it("refuses a worker that lacks the skill's blender", () => {
+  it("requires blender 5.2 and refuses 4.2.3", () => {
+    expect(BLENDER_SKILL_DEPENDENCY).toEqual({ name: "blender", constraint: ">=5.2" });
+    expect(checkCompatibility([BLENDER_SKILL_DEPENDENCY], { blender: "4.2.3" }).ok).toBe(false);
+    expect(checkCompatibility([BLENDER_SKILL_DEPENDENCY], { blender: "5.2.4" }).ok).toBe(true);
     const plan = planJobSubmit(
       { job_kind: "blender", project_id: PROJECT, dry_run: false, assigned_worker: "box" },
-      [{ name: "blender", constraint: ">=4.2" }],
-      { ffmpeg: "6.1" },
+      [BLENDER_SKILL_DEPENDENCY],
+      { ffmpeg: "6.1", blender: "4.2.3" },
     );
     expect(plan.ok).toBe(false);
   });
@@ -79,7 +83,7 @@ class Memory {
     edit_renders: [],
     production_skill_versions: [{ id: SKILL, user_id: OWNER, dependencies: [{ name: "ffmpeg", constraint: ">=6" }] }],
   };
-  workers = [{ id: WORKER, label: "box", tool_versions: { ffmpeg: "6.1", blender: "4.2.3" }, os_name: "linux" }];
+  workers = [{ id: WORKER, label: "box", tool_versions: { ffmpeg: "6.1", blender: "5.2.4" }, os_name: "linux" }];
   reports: unknown[] = [];
   client() {
     const mem = this;
@@ -144,7 +148,7 @@ describe("job handlers", () => {
       label: "box",
       secret: "s".repeat(32),
       os_name: "linux",
-      tool_versions: { ffmpeg: "6.1", blender: "4.2.3" },
+      tool_versions: { ffmpeg: "6.1", blender: "5.2.4" },
       capability_manifest: { cpu: true, gpu: false },
     }) as { secret_returned: boolean; id: string };
     expect(registered.secret_returned).toBe(false);

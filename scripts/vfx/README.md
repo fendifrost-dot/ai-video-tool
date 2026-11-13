@@ -5,10 +5,10 @@ Python effects the edit-render worker runs. No After Effects and no paid provide
 | Module | Role |
 |---|---|
 | `library.py` | Transitions and looks. Parameters are frames. Zoom stays between 0.92 and 1.08, the pivot stays off the mouth, and a ceiling hold cannot exceed 4 frames. |
-| `chain.py` | 2D catenary plus a Blender 4.2 curve script. Hyenas is the first use (rope to chain). |
+| `chain.py` | 2D catenary plus a Blender 5.2 curve script. Hyenas is the first use (rope to chain). |
 | `qc.py` | Pass/fail report: 1080×1920 SAR 1:1, audio md5, black frames outside allowed windows, face diff 0, mouth timing, untouched frames, cut register. |
 | `beat_to_cut.py` | Shot list + beat grid → an `edit_sequences` document. Not a new EDL. |
-| `blender_job.py` | Headless Cycles CPU argv. `AVT_BLENDER` defaults to `/workspace/tools/blender`. Frames are chunked. |
+| `blender_job.py` | Headless Cycles CPU argv. `AVT_BLENDER` defaults to `/workspace/tools/blender/current/blender`. Frames are chunked. The skill dependency is `blender>=5.2`. |
 | `limits.py` | The creative limits those modules enforce. |
 
 The worker feeds one chunk of frames at a time. These modules do not load a whole clip.
