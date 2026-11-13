@@ -130,8 +130,10 @@ of it is in a ledger yet; the Hyenas ledger is still to be written.
 **Where to run it.** The working files are on the T7, so the next session is **Claude Code in the desktop app on
 Fendi's Mac, opened in `/Users/gocrazyglobal/Projects/ai-video-tool`** (canonical; the chat session had
 `/Users/gocrazyglobal/ai-video-tool` selected, the second clone). There it loads `CLAUDE.md`, the skills and the
-SessionStart hook that prints `docs/PROBLEM_INDEX.md`. Blender 5.3 must be installed on the Mac first (Fendi has the
-install prompt). A cloud Claude Code session can do the same work only on files uploaded to AVT.
+SessionStart hook that prints `docs/PROBLEM_INDEX.md`. Blender 5.3.0 is installed on the Mac (13 Nov, sha256
+`2d802b54…784720` of `blender-5.3.0-macos-arm64.dmg` matched before install; version check printed `Blender 5.3.0
+(hash 02f0899d78e3)`): `BLENDER="/Applications/Blender 5.3.app/Contents/MacOS/Blender"`. Check with
+`"$BLENDER" -b --version` before gate 1. A cloud Claude Code session can do the same work only on files uploaded to AVT.
 
 **Clues for "flicker around the edges", measured on verse 0.9 (VERIFIED from the delivered files):**
 - The veed matte held his right leg at about 0.55 on every frame and lost its lower half for 3–4 frames (14, 78–80)
