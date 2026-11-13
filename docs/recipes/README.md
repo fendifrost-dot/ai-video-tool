@@ -39,6 +39,7 @@ The pages below are the evidence and the detail behind them.
 | [`WARDROBE_SWAP_RECIPE.md`](WARDROBE_SWAP_RECIPE.md) | the tests that chose Genjutsu as the swap engine and the approved looks (superseded in part by the canonical swap) |
 | [`PLATE_REALISM_PROMPT.md`](PLATE_REALISM_PROMPT.md) | the prompt rules for place stills and plates |
 | [`MCP_UPLOAD_AND_FILE.md`](MCP_UPLOAD_AND_FILE.md) | `avt_upload_asset` and filing a result as the shot's primary (columns, assignment rows) |
+| [`ASSET_STORE.md`](ASSET_STORE.md) | asset metadata, skill/effect catalog, licenses, locks, shot list / beat grid / rules |
 | [`IN_APP_EDITOR.md`](IN_APP_EDITOR.md) | the in-app editor |
 
 ## Checks that run before a clip is posted ($0)

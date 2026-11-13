@@ -35,6 +35,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [PLAYABLE-1](#playable-1--7201280-reconstructed-mp4-without-paid-generation) | First playable Architecture C reconstructed MP4 at 720×1280 | Medium | Confirmed | **In-remediation** | Products (AVT) / Lane H |
 | [DRESS-1](#dress-1--dress-this-shot-paid-swap-server-fetch-of-a-row-carried-url-retimed-files) | "Dress this shot": paid swap per click, server fetch of a row-carried URL, retimed files on the song clock | Medium | Confirmed (design) | Open (new, Class C review pending) | Products (AVT) |
 | [EDIT-1](#edit-1--cut-render-downloads-caller-signed-storage-urls) | Cut render downloads caller-signed storage URLs | Low | Confirmed | Open (mitigated; cost stays 0) | Products (AVT) |
+| [STORE-5](#store-5--catalog-resumable-upload-and-locked-asset-delete) | Catalog, tus upload, locked-asset delete | Medium | Confirmed (design) | Open (in review; not deployed) | Platform (AVT) |
 
 ---
 
@@ -506,4 +507,13 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Mitigations:** no service role. The filing function is security invoker, so row level security still applies, and it refuses a `file_url` that does not start with `auth.uid()` or that contains `%`. Delete uses the same path and bucket checks as upload, then the owner's storage client. `record_mcp_upload` now rejects `%` anywhere in the path (the previous `like '%\%'` check matched a backslash, not a percent sign) and audits deletes as mode `delete`. Direct inserts into `mcp_upload_events` stay ungranted. `file_mcp_asset` is not in the generic `avt_rpc` allowlist.
 - **Residual:** a leaked owner token can still delete or file, which it could already do through Storage and PostgREST. A stored metadata hash that is wrong will make `finalize` reject `expected_sha256` until the caller omits it and the bytes are hashed.
 - **DoD:** Lovable SQL editor has applied `20261105180000_mcp_file_asset.sql`, `avt-mcp` 1.5.0 is redeployed, and `tools/list` shows `avt_file_asset` and `avt_delete_object`.
+
+## STORE-5 — Catalog, resumable upload, and locked-asset delete
+
+- **Severity:** Medium · **Confidence:** Confirmed (design) · **Status:** Open (in review; not deployed) · **Owner:** Platform (AVT) · **Opened:** 2026-11-13
+- **Class:** C (storage limits, a security-definer audit and publish function, a storage delete trigger, timeline locks). Do not merge without architecture, product, and security sign-off.
+- **Summary:** Asset-store tools let a machine credential tag assets, publish skill versions, and start a tus upload with the owner's signed token. `verify` tells the caller when local scratch may be deleted. The server does not delete that scratch, and a `locked` tag refuses both the row delete and the storage object delete.
+- **Mitigations:** writes go through the owner's RLS client plus `record_mcp_write`. Publish RPCs are security invoker and are not on the generic `avt_rpc` allowlist. `edit_render_workers.secret_hash` stays unreadable. Bucket limits rise to 4 GB; the project-wide cap is still a Lovable setting, not SQL. No path deletes anything on the T7.
+- **Residual:** a leaked tus token can still PATCH that one object until it expires. A wrong stored sha256 makes `verify` refuse scratch clearing until metadata is corrected.
+- **DoD:** Lovable SQL editor has applied `20261113120000_asset_store_extensions.sql`, and `avt-mcp` 1.6.0 is redeployed. Not done in this change.
 

@@ -26,6 +26,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
 import { editGet, editList, editRender, editSave } from "./editTools.ts";
+import { deleteGuardStatus } from "./storeContract.ts";
+import { lockedPathBlock, runStoreTool, STORE_TOOL_NAMES } from "./storeHandlers.ts";
 import type { EditSequence, RenderAspect, RenderKind } from "../_shared/editModel.ts";
 import {
   RPC,
@@ -48,9 +50,11 @@ import {
   rpcError,
   rpcResult,
   sha256HexBytes,
+  scratchClearance,
   signedUploadResult,
   storageMetadataHeader,
   storedObjectResult,
+  tusUploadPlan,
   tableAccess,
   toolText,
   uploadAuditArgs,
@@ -249,7 +253,7 @@ async function uploadOwnedBytes(ctx: Ctx, bucket: string, path: string, bytes: U
 
 async function writeUploadAudit(
   ctx: Ctx,
-  input: { mode: "signed_url" | "base64" | "finalize" | "delete"; bucket: string; path: string; bytes: number | null; sha256: string | null },
+  input: { mode: "signed_url" | "base64" | "finalize" | "delete" | "tus" | "verify"; bucket: string; path: string; bytes: number | null; sha256: string | null },
 ): Promise<{ audit_id: string | null; audit_error?: string }> {
   const args = uploadAuditArgs({ credentialId: ctx.session.credentialId, ...input });
   const { data, error } = await ctx.user.rpc("record_mcp_upload", args);
@@ -270,7 +274,7 @@ async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
   if (!parsed.ok) throw new ToolError(parsed.error);
   const req = parsed.request;
 
-  if (req.mode === "signed_url") {
+  if (req.mode === "signed_url" || req.mode === "tus") {
     const { data, error } = await ctx.user.storage.from(req.bucket).createSignedUploadUrl(req.path, { upsert: req.upsert });
     if (error || !data) throw new ToolError(error?.message ?? "signed upload url was not created");
     let shaped: ReturnType<typeof signedUploadResult>;
@@ -279,8 +283,23 @@ async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
     } catch (e) {
       throw new ToolError(e instanceof Error ? e.message : String(e));
     }
-    const audit = await writeUploadAudit(ctx, { mode: "signed_url", bucket: req.bucket, path: req.path, bytes: null, sha256: null });
-    return { ...shaped, ...audit };
+    const audit = await writeUploadAudit(ctx, { mode: req.mode, bucket: req.bucket, path: req.path, bytes: null, sha256: null });
+    if (req.mode === "signed_url") return { ...shaped, ...audit };
+    return {
+      bucket: req.bucket,
+      path: req.path,
+      expires_in: shaped.expires_in,
+      tus: tusUploadPlan({
+        supabaseUrl: ctx.url,
+        bucket: req.bucket,
+        path: req.path,
+        token: shaped.token,
+        contentType: req.contentType,
+        uploadLength: req.uploadLength,
+        upsert: req.upsert,
+      }),
+      ...audit,
+    };
   }
 
   if (req.mode === "base64") {
@@ -288,6 +307,20 @@ async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
     await uploadOwnedBytes(ctx, req.bucket, req.path, req.bytes, req.contentType, req.upsert, sha256);
     const audit = await writeUploadAudit(ctx, { mode: "base64", bucket: req.bucket, path: req.path, bytes: req.bytes.byteLength, sha256 });
     return { ...storedObjectResult(req.bucket, req.path, req.bytes.byteLength, sha256), ...audit };
+  }
+
+  if (req.mode === "verify") {
+    const info = await readObjectInfo(ctx, req.bucket, req.path);
+    const meta = info && typeof info === "object" ? (info as { metadata?: { sha256?: unknown }; size?: unknown }).metadata : null;
+    const remote = typeof meta?.sha256 === "string" ? meta.sha256 : null;
+    const sizeRaw = info && typeof info === "object" ? (info as { size?: unknown }).size : null;
+    const size = typeof sizeRaw === "number" ? sizeRaw : null;
+    const decision = scratchClearance(req.localSha256, remote);
+    const bytes = decision.match && size && size > 0 ? size : null;
+    const audit = decision.match
+      ? await writeUploadAudit(ctx, { mode: "verify", bucket: req.bucket, path: req.path, bytes, sha256: remote })
+      : { audit_id: null as string | null };
+    return { bucket: req.bucket, path: req.path, ...decision, sha256: remote, ...audit };
   }
 
   const info = await readObjectInfo(ctx, req.bucket, req.path);
@@ -314,6 +347,8 @@ async function uploadAsset(ctx: Ctx, args: Record<string, unknown>) {
 async function deleteObject(ctx: Ctx, args: Record<string, unknown>) {
   const parsed = parseDeleteObject(ctx.session.userId, args);
   if (!parsed.ok) throw new ToolError(parsed.error);
+  const blocked = await lockedPathBlock({ db: ctx.user, userId: ctx.session.userId, credentialId: ctx.session.credentialId }, parsed.bucket, parsed.path);
+  if (blocked) throw new ToolError(blocked);
   const { data, error } = await ctx.user.storage.from(parsed.bucket).remove([parsed.path]);
   if (error) throw new ToolError(error.message);
   if (!Array.isArray(data) || data.length === 0) throw new ToolError("object not found");
@@ -412,6 +447,12 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
       if (args.confirm !== true) throw new ToolError("deleting needs confirm: true");
       const filters = filtersOrThrow(args.filters);
       if (!namesRowsById(filters)) throw new ToolError("name the rows by id (a filter on id with eq or in)");
+      if (table === "project_assets") {
+        const peek = dbResult(await applyFilters(ctx.user.from(table).select("id, tags"), filters));
+        const rows = Array.isArray(peek) ? peek : [];
+        const locked = rows.filter((row) => deleteGuardStatus((row as { tags?: string[] }).tags).locked);
+        if (locked.length) throw new ToolError("locked asset cannot be deleted");
+      }
       return toolText({ deleted: dbResult(await applyFilters(ctx.user.from(table).delete(), filters).select("id")) });
     }
     case "avt_rpc": {
@@ -471,7 +512,7 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
     case "avt_edit_save": {
       const sequence = args.sequence as EditSequence;
       if (!sequence || typeof sequence !== "object" || !sequence.projectId) throw new ToolError("sequence.projectId is required");
-      return toolText(await editSave(ctx.user, sequence, args.commit === true));
+      return toolText(await editSave(ctx.user, sequence, args.commit === true, args.unlock === true));
     }
     case "avt_edit_render":
       return toolText(
@@ -480,8 +521,16 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
           dryRun: args.dry_run !== false,
           kind: args.kind as RenderKind | undefined,
           aspect: args.aspect as RenderAspect | undefined,
+          unlock: args.unlock === true,
         }),
       );
+  }
+  if ((STORE_TOOL_NAMES as readonly string[]).includes(name)) {
+    try {
+      return toolText(await runStoreTool(ctx.user, ctx.session.userId, ctx.session.credentialId, name, args));
+    } catch (e) {
+      throw new ToolError(e instanceof Error ? e.message : String(e));
+    }
   }
   throw new ToolError(`unknown tool ${name}`);
 }

@@ -14,7 +14,7 @@ Input:
 
 | Field | Required | Notes |
 |---|---|---|
-| `mode` | yes | `signed_url`, `base64`, or `finalize` |
+| `mode` | yes | `signed_url`, `tus`, `base64`, `finalize`, or `verify` |
 | `bucket` | yes | `project-exports`, `project-clips`, `project-references`, `project-audio` |
 | `path` | yes | Must start with the owner's user id and a slash. `..`, a leading slash, encoding, and any other user's prefix are rejected. |
 | `upsert` | no | Default false. Only boolean `true` overwrites. |
@@ -29,6 +29,8 @@ Output:
 | `signed_url` | `{ bucket, path, signed_url, token, expires_in, audit_id }` and `audit_error` only when the ledger write failed. `expires_in` is 7200 (Storage's signed-upload lifetime). PUT the bytes to `signed_url`, then call `finalize`. |
 | `base64` | `{ bucket, path, size_bytes, sha256, audit_id }` |
 | `finalize` | `{ bucket, path, size_bytes, sha256, sha256_source, audit_id }`. When `expected_sha256` equals `metadata.sha256` and the metadata includes a size, the bytes are not downloaded (`sha256_source` is `metadata`). Otherwise the object is read back (`sha256_source` is `bytes`, stop at 200 MB) and a provided `expected_sha256` must match the hash of those bytes. |
+| `tus` | `{ bucket, path, expires_in, tus, audit_id }`. `tus` is a tus 1.0.0 plan: endpoint, headers (the signed token is the bearer), metadata, and `chunk_bytes` (6291456). `upload_length` is required, up to 4 GB. PATCH the chunks, then `finalize`. |
+| `verify` | `{ bucket, path, match, clear_scratch, deleted: false, sha256, audit_id }`. Compares `local_sha256` to object metadata. `deleted` is always false. Clear local scratch only when `clear_scratch` is true. |
 
 `sha256` is computed on the server. The ledger row is `mcp_upload_events`, written only by `record_mcp_upload` (credential id, bucket, path, bytes, sha256, mode, tool `avt_upload_asset`). The table is readable through `avt_select` and not writable through `avt_insert`.
 
@@ -184,3 +186,5 @@ Then insert the new primary:
 1. Lovable SQL editor: run `supabase/migrations/20261105180000_mcp_file_asset.sql`. This replaces `record_mcp_upload` so a `%` anywhere in the path is refused, allows mode `delete`, and adds `file_mcp_asset`.
 2. Lovable → Edge Functions → redeploy **`avt-mcp` only**. The frontend is unchanged, so Publish is not required for this revision. Publish is not an edge redeploy.
 3. `tools/list` should show `avt_upload_asset`, `avt_file_asset`, and `avt_delete_object`. `initialize` reports server version `1.5.0`.
+
+Server version `1.6.0` adds `tus` and `verify` on `avt_upload_asset`, plus the catalog and asset tools in [`ASSET_STORE.md`](ASSET_STORE.md). Those tools show up in `tools/list` after the `avt-mcp` redeploy. This repo does not redeploy.
