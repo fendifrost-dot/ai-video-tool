@@ -1,7 +1,7 @@
 # A creature or prop swapped into his real take, his face his own pixels
 
 **Status: steps 1 to 4 VERIFIED on Hyenas, 12 Nov 2026 (verse 11.1 to 15.1 s, poodle on a rope → hyena on a chain).
-Step 5 (lifting him and the creature into another set) is not proven yet and is marked so below.**
+Step 5 (lifting him and the creature into another set) has a first pass and no verdict yet.**
 
 This is the clothing swap ([`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md)) without the
 clothes. Do not re-derive it and do not test alternatives first: it is the same engine, the same put-back script and
@@ -58,11 +58,19 @@ the wrong workflow.
    **Pass mark, both printed by the script:** his face found on all, or all but a few, frames; `max |out-original| on
    face/hair/skin: 0`. Then `scripts/edit/face_check.py` for the sheet against his face pictures in the tool, posted
    with the clip. Fendi judges the face.
-5. **Into another set (NOT YET PROVEN).** Him, the creature and the prop are lifted off the room together from the
-   step-4 result and placed in the set at true scale, off-centre, with a shadow from a matched camera
-   (`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`, the YSL showroom method). The person matte (RobustVideoMatting) does not
-   take the creature, thin props or light shoe soles; a per-frame mask of those is the open tool gap
-   (`docs/capability/GAPS.md`). Check the soles of his shoes on every lift-out.
+5. **Into another set (first pass made 12 Nov 2026, awaiting Fendi's verdict).** Him, the creature and the prop are
+   lifted off the room together from the step-4 result, as one matte:
+   - him: RobustVideoMatting on the step-4 result;
+   - the creature: ONE `sam3-segment-proxy` mask on one frame, carried to every other frame by dense optical flow
+     (OpenCV DIS, frame to frame, re-thresholded each step). Held for 4 s on a slow animal; re-anchor with a second
+     mask if it drifts;
+   - the prop (chain): the pixels the swap changed against the take that differ from the bare room and touch him or
+     the creature.
+   Do NOT key the creature by colour against the room: a brown hyena on a wood floor does not separate (tried, failed).
+   The lift is delivered as a fill, a matte and one ProRes 4444 with alpha, then placed at true scale, off-centre
+   (`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`, the YSL showroom method). Shadows, contact and blending are the
+   finisher's (Grokbot, After Effects). The script for this step is not in the repo yet (GAPS G7). Check the soles of
+   his shoes on every lift-out where they show.
 
 ## Costs (Hyenas test)
 
