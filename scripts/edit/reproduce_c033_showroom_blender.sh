@@ -12,9 +12,15 @@
 #   (optional, for the review clips) the album master song_master_24bit.wav (asset 067a4cbf)  -> $IN/song.wav
 # The car and penguin masks are in the repo (scripts/edit/blender/masks/). The v3 versions (Kling plate 256ca1bb,
 # rejected) are rebuilt by this script as it was at commit 75c1279.
+# The scene file now carries the 20 Oct decision to remove the penguin, so this script builds the v9 room (no penguin):
+# compare with c033_BODY_ONLY_blender_showroom_v9_static.mp4 (asset 436ffebe, decoded MD5 22401387639530934a3e5ac3d6c658e5),
+# not the v5 file. Blender 5.3.0 is not bit-identical to 4.5.9 (Cycles sampling and the snow particles land differently):
+# 13 Nov 2026, 5.3.0 vs the 4.5 v9 static: 240 frames, median 45.3 dB (min 44.7), head box 39.6 dB, 0.33 % of pixels
+# differ by more than 8 levels, decoded MD5 5e4f50db6f8915d8a219ffa0e83100a2. Visually identical; his pixels unchanged
+# apart from render grain. A 5.3 render is a new version of the shot, not a reproduction of the approved 4.5 file.
 #
 # usage: IN=dir OUT=dir BLENDER=/path/to/blender PY=python [MOVE=static|dolly|tight] scripts/edit/reproduce_c033_showroom_blender.sh
-# Needs: Blender 4.5 LTS (tested 4.5.9, CPU Cycles), ffmpeg, Python with numpy, scipy, opencv-python (and mediapipe +
+# Needs: Blender 4.5 LTS (tested 4.5.9) or 5.3 (tested 5.3.0, 13 Nov 2026), CPU Cycles, ffmpeg, Python with numpy, scipy, opencv-python (and mediapipe +
 # face_landmarker.task in $MODELS for the verification). Scene: scripts/edit/blender/showroom_c033.json.
 set -euo pipefail
 : "${IN:?set IN}" "${OUT:?set OUT}" "${BLENDER:?set BLENDER to the blender binary}"
