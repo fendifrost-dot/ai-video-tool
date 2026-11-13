@@ -110,7 +110,8 @@ the wrong workflow.
       frames. Only where the background behind the garment is light: check the put-back picture first. Hyenas
       (`--key-dark-box 215,470,450,720`): flicker where his leg meets the hyena's back 9.84 → 5.28 (up-and-down change
       per frame, same measure on both renders); removed 0 everywhere; the leg stays solid on 14 and 78–80 in the
-      stills. Fendi's verdict pending.
+      stills. **Fendi, 13 Nov, on the test composite and the half-speed side by side: "Perfect".** Use it first on the
+      other sections, with each section's own box and the same measurement; posted one section at a time.
    **Why the legs at all (Fendi, 13 Nov):** the dog in the take stood in front of him and off to the side; the hyena
    is bigger and was generated in front of his legs. Wherever the creature overlaps him, the swap invents the edge
    between his legs and the creature on every frame, and the matte has to cut along an edge that moves (HYPOTHESIS:
