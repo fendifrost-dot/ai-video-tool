@@ -1,0 +1,14 @@
+{
+  "frame_count": 120,
+  "identity_drift_outside": 0.0224,
+  "flicker_ratio": 0.9551,
+  "flicker_output": 5.8807,
+  "flicker_source": 6.1571,
+  "edge_halo": 0.3282,
+  "stripe_width_cv": 0.0257,
+  "garment_coverage": 0.2386,
+  "propagation_residual_mean": 3.3093,
+  "propagation_residual_max": 7.7059,
+  "reanchor_count": 0,
+  "reanchor_indices": []
+}

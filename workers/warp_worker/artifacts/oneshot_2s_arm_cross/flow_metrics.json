@@ -1,0 +1,722 @@
+[
+  {
+    "index": 0,
+    "confidence": 1.0,
+    "rotationDeg": 0.0,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 1,
+    "confidence": 0.9692,
+    "rotationDeg": 0.026,
+    "occlusionRatio": 0.0007
+  },
+  {
+    "index": 2,
+    "confidence": 0.9738,
+    "rotationDeg": 0.024,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 3,
+    "confidence": 0.9679,
+    "rotationDeg": 0.025,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 4,
+    "confidence": 0.974,
+    "rotationDeg": 0.021,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 5,
+    "confidence": 0.9742,
+    "rotationDeg": 0.013,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 6,
+    "confidence": 0.9706,
+    "rotationDeg": 0.008,
+    "occlusionRatio": 0.0003
+  },
+  {
+    "index": 7,
+    "confidence": 0.9701,
+    "rotationDeg": 0.004,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 8,
+    "confidence": 0.9703,
+    "rotationDeg": 0.005,
+    "occlusionRatio": 0.0033
+  },
+  {
+    "index": 9,
+    "confidence": 0.9731,
+    "rotationDeg": 0.015,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 10,
+    "confidence": 0.9713,
+    "rotationDeg": 0.02,
+    "occlusionRatio": 0.0002
+  },
+  {
+    "index": 11,
+    "confidence": 0.9657,
+    "rotationDeg": 0.032,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 12,
+    "confidence": 0.9692,
+    "rotationDeg": 0.046,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 13,
+    "confidence": 0.9687,
+    "rotationDeg": 0.055,
+    "occlusionRatio": 0.0008
+  },
+  {
+    "index": 14,
+    "confidence": 0.9707,
+    "rotationDeg": 0.105,
+    "occlusionRatio": 0.0
+  },
+  {
+    "index": 15,
+    "confidence": 0.9631,
+    "rotationDeg": 0.043,
+    "occlusionRatio": 0.0044
+  },
+  {
+    "index": 16,
+    "confidence": 0.9681,
+    "rotationDeg": 0.041,
+    "occlusionRatio": 0.0001
+  },
+  {
+    "index": 17,
+    "confidence": 0.9663,
+    "rotationDeg": 0.092,
+    "occlusionRatio": 0.0005
+  },
+  {
+    "index": 18,
+    "confidence": 0.964,
+    "rotationDeg": 0.031,
+    "occlusionRatio": 0.0016
+  },
+  {
+    "index": 19,
+    "confidence": 0.9536,
+    "rotationDeg": 0.017,
+    "occlusionRatio": 0.0078
+  },
+  {
+    "index": 20,
+    "confidence": 0.9611,
+    "rotationDeg": 0.048,
+    "occlusionRatio": 0.0032
+  },
+  {
+    "index": 21,
+    "confidence": 0.9668,
+    "rotationDeg": 0.039,
+    "occlusionRatio": 0.0002
+  },
+  {
+    "index": 22,
+    "confidence": 0.9625,
+    "rotationDeg": 0.016,
+    "occlusionRatio": 0.0038
+  },
+  {
+    "index": 23,
+    "confidence": 0.9646,
+    "rotationDeg": 0.021,
+    "occlusionRatio": 0.0002
+  },
+  {
+    "index": 24,
+    "confidence": 0.9582,
+    "rotationDeg": 0.127,
+    "occlusionRatio": 0.0097
+  },
+  {
+    "index": 25,
+    "confidence": 0.9582,
+    "rotationDeg": 0.021,
+    "occlusionRatio": 0.0048
+  },
+  {
+    "index": 26,
+    "confidence": 0.9521,
+    "rotationDeg": 0.049,
+    "occlusionRatio": 0.0096
+  },
+  {
+    "index": 27,
+    "confidence": 0.9529,
+    "rotationDeg": 0.042,
+    "occlusionRatio": 0.0089
+  },
+  {
+    "index": 28,
+    "confidence": 0.9487,
+    "rotationDeg": 0.129,
+    "occlusionRatio": 0.0143
+  },
+  {
+    "index": 29,
+    "confidence": 0.9498,
+    "rotationDeg": 0.037,
+    "occlusionRatio": 0.0115
+  },
+  {
+    "index": 30,
+    "confidence": 0.9579,
+    "rotationDeg": 0.027,
+    "occlusionRatio": 0.0043
+  },
+  {
+    "index": 31,
+    "confidence": 0.9508,
+    "rotationDeg": 0.02,
+    "occlusionRatio": 0.0077
+  },
+  {
+    "index": 32,
+    "confidence": 0.9464,
+    "rotationDeg": 0.051,
+    "occlusionRatio": 0.0165
+  },
+  {
+    "index": 33,
+    "confidence": 0.9522,
+    "rotationDeg": 0.35,
+    "occlusionRatio": 0.0104
+  },
+  {
+    "index": 34,
+    "confidence": 0.9528,
+    "rotationDeg": 0.006,
+    "occlusionRatio": 0.0105
+  },
+  {
+    "index": 35,
+    "confidence": 0.9534,
+    "rotationDeg": 0.377,
+    "occlusionRatio": 0.0068
+  },
+  {
+    "index": 36,
+    "confidence": 0.9607,
+    "rotationDeg": 0.035,
+    "occlusionRatio": 0.0032
+  },
+  {
+    "index": 37,
+    "confidence": 0.9652,
+    "rotationDeg": 0.008,
+    "occlusionRatio": 0.0022
+  },
+  {
+    "index": 38,
+    "confidence": 0.9681,
+    "rotationDeg": 0.468,
+    "occlusionRatio": 0.0004
+  },
+  {
+    "index": 39,
+    "confidence": 0.9577,
+    "rotationDeg": 0.506,
+    "occlusionRatio": 0.0037
+  },
+  {
+    "index": 40,
+    "confidence": 0.9645,
+    "rotationDeg": 0.063,
+    "occlusionRatio": 0.0012
+  },
+  {
+    "index": 41,
+    "confidence": 0.9589,
+    "rotationDeg": 0.51,
+    "occlusionRatio": 0.0028
+  },
+  {
+    "index": 42,
+    "confidence": 0.9535,
+    "rotationDeg": 0.475,
+    "occlusionRatio": 0.0082
+  },
+  {
+    "index": 43,
+    "confidence": 0.9416,
+    "rotationDeg": 0.488,
+    "occlusionRatio": 0.0185
+  },
+  {
+    "index": 44,
+    "confidence": 0.9584,
+    "rotationDeg": 0.06,
+    "occlusionRatio": 0.0078
+  },
+  {
+    "index": 45,
+    "confidence": 0.9576,
+    "rotationDeg": 0.066,
+    "occlusionRatio": 0.0092
+  },
+  {
+    "index": 46,
+    "confidence": 0.9496,
+    "rotationDeg": 0.031,
+    "occlusionRatio": 0.012
+  },
+  {
+    "index": 47,
+    "confidence": 0.9541,
+    "rotationDeg": 0.33,
+    "occlusionRatio": 0.0115
+  },
+  {
+    "index": 48,
+    "confidence": 0.9592,
+    "rotationDeg": 0.062,
+    "occlusionRatio": 0.0079
+  },
+  {
+    "index": 49,
+    "confidence": 0.9652,
+    "rotationDeg": 0.056,
+    "occlusionRatio": 0.0018
+  },
+  {
+    "index": 50,
+    "confidence": 0.9624,
+    "rotationDeg": 0.089,
+    "occlusionRatio": 0.0037
+  },
+  {
+    "index": 51,
+    "confidence": 0.9503,
+    "rotationDeg": 0.002,
+    "occlusionRatio": 0.0118
+  },
+  {
+    "index": 52,
+    "confidence": 0.9652,
+    "rotationDeg": 0.1,
+    "occlusionRatio": 0.0056
+  },
+  {
+    "index": 53,
+    "confidence": 0.9676,
+    "rotationDeg": 0.017,
+    "occlusionRatio": 0.0004
+  },
+  {
+    "index": 54,
+    "confidence": 0.949,
+    "rotationDeg": 0.005,
+    "occlusionRatio": 0.0155
+  },
+  {
+    "index": 55,
+    "confidence": 0.961,
+    "rotationDeg": 0.008,
+    "occlusionRatio": 0.0039
+  },
+  {
+    "index": 56,
+    "confidence": 0.9585,
+    "rotationDeg": 0.025,
+    "occlusionRatio": 0.0075
+  },
+  {
+    "index": 57,
+    "confidence": 0.961,
+    "rotationDeg": 0.023,
+    "occlusionRatio": 0.0027
+  },
+  {
+    "index": 58,
+    "confidence": 0.9618,
+    "rotationDeg": 0.017,
+    "occlusionRatio": 0.0018
+  },
+  {
+    "index": 59,
+    "confidence": 0.9475,
+    "rotationDeg": 0.006,
+    "occlusionRatio": 0.0159
+  },
+  {
+    "index": 60,
+    "confidence": 0.9584,
+    "rotationDeg": 0.001,
+    "occlusionRatio": 0.0106
+  },
+  {
+    "index": 61,
+    "confidence": 0.9637,
+    "rotationDeg": 0.005,
+    "occlusionRatio": 0.0043
+  },
+  {
+    "index": 62,
+    "confidence": 0.9644,
+    "rotationDeg": 0.023,
+    "occlusionRatio": 0.0021
+  },
+  {
+    "index": 63,
+    "confidence": 0.9565,
+    "rotationDeg": 0.046,
+    "occlusionRatio": 0.0053
+  },
+  {
+    "index": 64,
+    "confidence": 0.9614,
+    "rotationDeg": 0.065,
+    "occlusionRatio": 0.0054
+  },
+  {
+    "index": 65,
+    "confidence": 0.9613,
+    "rotationDeg": 0.081,
+    "occlusionRatio": 0.0031
+  },
+  {
+    "index": 66,
+    "confidence": 0.9585,
+    "rotationDeg": 0.102,
+    "occlusionRatio": 0.003
+  },
+  {
+    "index": 67,
+    "confidence": 0.9585,
+    "rotationDeg": 0.124,
+    "occlusionRatio": 0.0018
+  },
+  {
+    "index": 68,
+    "confidence": 0.9605,
+    "rotationDeg": 0.125,
+    "occlusionRatio": 0.0042
+  },
+  {
+    "index": 69,
+    "confidence": 0.9559,
+    "rotationDeg": 0.094,
+    "occlusionRatio": 0.0084
+  },
+  {
+    "index": 70,
+    "confidence": 0.9557,
+    "rotationDeg": 0.121,
+    "occlusionRatio": 0.0029
+  },
+  {
+    "index": 71,
+    "confidence": 0.9584,
+    "rotationDeg": 0.08,
+    "occlusionRatio": 0.0007
+  },
+  {
+    "index": 72,
+    "confidence": 0.9654,
+    "rotationDeg": 0.196,
+    "occlusionRatio": 0.002
+  },
+  {
+    "index": 73,
+    "confidence": 0.955,
+    "rotationDeg": 0.073,
+    "occlusionRatio": 0.0082
+  },
+  {
+    "index": 74,
+    "confidence": 0.9556,
+    "rotationDeg": 0.123,
+    "occlusionRatio": 0.0041
+  },
+  {
+    "index": 75,
+    "confidence": 0.9538,
+    "rotationDeg": 0.063,
+    "occlusionRatio": 0.0073
+  },
+  {
+    "index": 76,
+    "confidence": 0.9519,
+    "rotationDeg": 0.054,
+    "occlusionRatio": 0.0144
+  },
+  {
+    "index": 77,
+    "confidence": 0.9559,
+    "rotationDeg": 0.049,
+    "occlusionRatio": 0.0123
+  },
+  {
+    "index": 78,
+    "confidence": 0.9644,
+    "rotationDeg": 0.125,
+    "occlusionRatio": 0.0021
+  },
+  {
+    "index": 79,
+    "confidence": 0.9598,
+    "rotationDeg": 0.077,
+    "occlusionRatio": 0.0039
+  },
+  {
+    "index": 80,
+    "confidence": 0.9626,
+    "rotationDeg": 0.009,
+    "occlusionRatio": 0.0016
+  },
+  {
+    "index": 81,
+    "confidence": 0.9721,
+    "rotationDeg": 0.002,
+    "occlusionRatio": 0.002
+  },
+  {
+    "index": 82,
+    "confidence": 0.9678,
+    "rotationDeg": 0.011,
+    "occlusionRatio": 0.0001
+  },
+  {
+    "index": 83,
+    "confidence": 0.9616,
+    "rotationDeg": 0.032,
+    "occlusionRatio": 0.0017
+  },
+  {
+    "index": 84,
+    "confidence": 0.9633,
+    "rotationDeg": 0.017,
+    "occlusionRatio": 0.0058
+  },
+  {
+    "index": 85,
+    "confidence": 0.9675,
+    "rotationDeg": 0.072,
+    "occlusionRatio": 0.0016
+  },
+  {
+    "index": 86,
+    "confidence": 0.9567,
+    "rotationDeg": 0.089,
+    "occlusionRatio": 0.0082
+  },
+  {
+    "index": 87,
+    "confidence": 0.9594,
+    "rotationDeg": 0.08,
+    "occlusionRatio": 0.0044
+  },
+  {
+    "index": 88,
+    "confidence": 0.9622,
+    "rotationDeg": 0.03,
+    "occlusionRatio": 0.0018
+  },
+  {
+    "index": 89,
+    "confidence": 0.9601,
+    "rotationDeg": 0.099,
+    "occlusionRatio": 0.0056
+  },
+  {
+    "index": 90,
+    "confidence": 0.9497,
+    "rotationDeg": 0.024,
+    "occlusionRatio": 0.0108
+  },
+  {
+    "index": 91,
+    "confidence": 0.9553,
+    "rotationDeg": 0.021,
+    "occlusionRatio": 0.0033
+  },
+  {
+    "index": 92,
+    "confidence": 0.9606,
+    "rotationDeg": 0.007,
+    "occlusionRatio": 0.0046
+  },
+  {
+    "index": 93,
+    "confidence": 0.9599,
+    "rotationDeg": 0.005,
+    "occlusionRatio": 0.0034
+  },
+  {
+    "index": 94,
+    "confidence": 0.9548,
+    "rotationDeg": 0.018,
+    "occlusionRatio": 0.0032
+  },
+  {
+    "index": 95,
+    "confidence": 0.9379,
+    "rotationDeg": 0.035,
+    "occlusionRatio": 0.0157
+  },
+  {
+    "index": 96,
+    "confidence": 0.9558,
+    "rotationDeg": 0.018,
+    "occlusionRatio": 0.0026
+  },
+  {
+    "index": 97,
+    "confidence": 0.9642,
+    "rotationDeg": 0.04,
+    "occlusionRatio": 0.0005
+  },
+  {
+    "index": 98,
+    "confidence": 0.9638,
+    "rotationDeg": 0.037,
+    "occlusionRatio": 0.0011
+  },
+  {
+    "index": 99,
+    "confidence": 0.946,
+    "rotationDeg": 0.034,
+    "occlusionRatio": 0.0058
+  },
+  {
+    "index": 100,
+    "confidence": 0.9529,
+    "rotationDeg": 0.085,
+    "occlusionRatio": 0.0074
+  },
+  {
+    "index": 101,
+    "confidence": 0.9528,
+    "rotationDeg": 0.052,
+    "occlusionRatio": 0.0079
+  },
+  {
+    "index": 102,
+    "confidence": 0.9496,
+    "rotationDeg": 0.117,
+    "occlusionRatio": 0.0114
+  },
+  {
+    "index": 103,
+    "confidence": 0.9503,
+    "rotationDeg": 0.037,
+    "occlusionRatio": 0.0092
+  },
+  {
+    "index": 104,
+    "confidence": 0.9583,
+    "rotationDeg": 0.089,
+    "occlusionRatio": 0.0026
+  },
+  {
+    "index": 105,
+    "confidence": 0.9597,
+    "rotationDeg": 0.049,
+    "occlusionRatio": 0.0014
+  },
+  {
+    "index": 106,
+    "confidence": 0.9423,
+    "rotationDeg": 0.152,
+    "occlusionRatio": 0.0127
+  },
+  {
+    "index": 107,
+    "confidence": 0.9411,
+    "rotationDeg": 0.033,
+    "occlusionRatio": 0.0125
+  },
+  {
+    "index": 108,
+    "confidence": 0.9455,
+    "rotationDeg": 0.004,
+    "occlusionRatio": 0.007
+  },
+  {
+    "index": 109,
+    "confidence": 0.9515,
+    "rotationDeg": 0.018,
+    "occlusionRatio": 0.0058
+  },
+  {
+    "index": 110,
+    "confidence": 0.9548,
+    "rotationDeg": 0.376,
+    "occlusionRatio": 0.0021
+  },
+  {
+    "index": 111,
+    "confidence": 0.9247,
+    "rotationDeg": 0.024,
+    "occlusionRatio": 0.0255
+  },
+  {
+    "index": 112,
+    "confidence": 0.9484,
+    "rotationDeg": 0.006,
+    "occlusionRatio": 0.0092
+  },
+  {
+    "index": 113,
+    "confidence": 0.9442,
+    "rotationDeg": 0.027,
+    "occlusionRatio": 0.0103
+  },
+  {
+    "index": 114,
+    "confidence": 0.9362,
+    "rotationDeg": 0.034,
+    "occlusionRatio": 0.0193
+  },
+  {
+    "index": 115,
+    "confidence": 0.9287,
+    "rotationDeg": 0.05,
+    "occlusionRatio": 0.0205
+  },
+  {
+    "index": 116,
+    "confidence": 0.9453,
+    "rotationDeg": 0.02,
+    "occlusionRatio": 0.0047
+  },
+  {
+    "index": 117,
+    "confidence": 0.938,
+    "rotationDeg": 0.102,
+    "occlusionRatio": 0.0134
+  },
+  {
+    "index": 118,
+    "confidence": 0.9503,
+    "rotationDeg": 0.013,
+    "occlusionRatio": 0.0028
+  },
+  {
+    "index": 119,
+    "confidence": 0.9381,
+    "rotationDeg": 0.23,
+    "occlusionRatio": 0.0111
+  }
+]
