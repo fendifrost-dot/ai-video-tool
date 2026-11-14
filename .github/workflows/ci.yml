@@ -81,4 +81,4 @@ jobs:
         run: python -m pip install --quiet numpy opencv-python-headless pytest
 
       - name: Segmenter tests
-        run: python -m pytest scripts/edit/tests/test_segmenters.py scripts/edit/tests/test_ysl_mask_benchmark.py scripts/edit/tests/test_cli_help.py::test_help_strings_are_percent_safe scripts/edit/tests/test_garment_graphic_band.py scripts/edit/tests/test_matte_stability.py scripts/edit/tests/test_problem_index.py scripts/edit/tests/test_matte_repair.py scripts/edit/tests/test_integration_check.py -q
+        run: python -m pytest scripts/edit/tests/test_segmenters.py scripts/edit/tests/test_ysl_mask_benchmark.py scripts/edit/tests/test_cli_help.py::test_help_strings_are_percent_safe scripts/edit/tests/test_garment_graphic_band.py scripts/edit/tests/test_matte_stability.py scripts/edit/tests/test_problem_index.py scripts/edit/tests/test_matte_repair.py scripts/edit/tests/test_integration_check.py scripts/edit/tests/test_relight_from_passes.py -q

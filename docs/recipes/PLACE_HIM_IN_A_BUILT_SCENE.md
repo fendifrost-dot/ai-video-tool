@@ -6,7 +6,8 @@ scene … This is a standard industry technique … we need to perfect this … 
 The film industry does this on every effects show (actor shot on a stage, environment built in 3D). They do not get it
 right by eye in the comp. They get it right in four places, in this order, and **the first one matters most**:
 
-1. **The shoot is lit for the scene** (the scene is designed first, then he is lit to match it).
+1. **The shoot is lit for the scene** (the scene is designed first, then he is lit to match it). Our route instead, by
+   Fendi's choice: an evenly lit 10-minute shoot, then he is **re-lit** to the scene afterwards (step 3c).
 2. **His footage and the render share one colour space** (both in linear light, one view transform at the end).
 3. **The comp matches by measurement** (black point, white point, the colour of the shadows and of the light, grain, sharpness), then edges, then atmosphere.
 4. **Everything gets the same lens and camera finish at the end** (glare, defocus, vignette, grain, compression), applied to him and the scene together.
@@ -27,39 +28,46 @@ behind him). Where it fell short is items 1-3. Each point below is labelled per 
 | 5 | Grain is added over the finished frame. | He already carries the phone's noise and sharpening, so he ends up with two layers of grain and crisper edges than the clean render. | HYPOTHESIS (test: noise and sharpness rows) |
 | 6 | His edge is EEVEE dithered transparency, with no light wrap in the Hyenas finish (the showroom's `comp_scene.py` had one). | Hard edges with none of the scene's light bleeding round them. | OBSERVED in code |
 
-Items 2-6 can be fixed in our tools. Item 1 can only be fixed by **lighting the shoot** (best), by **re-lighting the
-footage** (the relighting tools below), or by hand in After Effects (Grokbot now).
+Items 2-6 can be fixed in our tools. Item 1 is fixed by **re-lighting the footage** (step 3c, Fendi's choice,
+14 Nov), or by hand in After Effects (Grokbot now). Lighting the shoot to the scene would also fix it, but it is not
+how Fendi shoots.
 
 ---
 
 ## The method, every time
 
-### Step 1: before the shoot (the biggest lever, $0)
+### Step 1: the 10-minute shoot (Fendi's setup, kept as it is)
 
-The scene comes first. Then he is filmed to fit it.
+**DECISION (Fendi, 14 Nov 2026):**
+- No re-lit reshoots, no lighting plans to follow, no backdrop for now.
+- His setup is three LED lights, turned on so he is well visible, and the shoot must stay 10-15 minutes, set-up to upload.
+- The light match is done afterwards, by re-lighting (step 3c), so the shoot only has to hand the re-light good footage.
 
-- **Build the scene in Blender first and write down its light**: where the main light comes from (left/right, high/low,
-  in front/behind), its colour, whether it is hard (flame, streetlamp) or soft (sky, window), and how dark the shadow
-  side is (key-to-fill ratio). The build script can print this from its lamps. Pick the camera height, tilt and lens there too.
-- **Light him to that list on the day.**
-  - Key light from the same side and height, in the same colour (a gel or an RGB light).
-  - The same dark shadow side.
-  - **A rim/back light wherever the scene has bright things behind him**: flares, headlights, a window. On Hyenas that would have been a red-orange light behind him.
-  - One cheap RGB light (a tube or panel) covers most scenes.
-- **Shoot against a plain backdrop close to the scene's darkness**: dark grey, or green set far behind him and kept dim.
-  A bright white wall bounces white light onto his edges and into his blacks. We saw this as "a strip of the take's white wall" (PROBLEM_INDEX).
-- **Phone settings: lock everything.**
-  - Lock exposure and white balance.
-  - 24 fps, with the shutter at 1/48 so motion blur matches the render.
-  - HDR video off (or Apple Log on an iPhone 15 Pro or later).
-  - The free Blackmagic Camera app locks all of these.
-  - Our past cadence and pulsing problems came from 59.94 fps auto-exposure takes.
-- **Two seconds of references at the start of each setup**, in his spot and under his light:
-  - a grey card or grey ball;
-  - a chrome ball, if there is one (it shows where every light is);
-  - a colour chart.
-  - In Blender, a grey ball at his spot under the scene's light is then the **target** his grey ball must match. This removes the guessing in item 4.
-- **Write down the camera height, distance and tilt.** We already match the Blender camera to this (`take_camera`).
+That is what his setup already gives. Beeble's own shooting guide for its re-lighting asks for:
+- soft, even light with no harsh contrast;
+- no blown highlights and no shadows crushed to black;
+- correct exposure and white balance;
+- standard colour (Rec.709/sRGB, not Log);
+- a sharp subject that fills a good part of the frame;
+- a tripod;
+- nothing crossing in front of him.
+
+Flat light is what a re-light wants: it adds the direction later. ([Beeble, shooting for AI relighting](https://beeble.ai/blog/shooting-for-ai-relighting))
+
+The checklist, all done in the first minute, with nothing to buy:
+
+1. **Phone on the tripod**, at about the height the scene's camera will be.
+2. **The three LEDs on him, from the front and both sides**, as now. He is evenly lit: no bright hot spot on his face or cap, no side falling to black.
+3. **Camera app settings, saved once and reused.** In the free Blackmagic Camera app:
+   - 24 fps, shutter 1/48;
+   - exposure and white balance locked after he steps in;
+   - HDR off (SDR / Rec.709).
+   The phone's own camera works too: AE/AF lock, HDR video off, 24 fps.
+4. **Stand a step or two away from the wall.** It stops the wall's bounce and his shadow from landing on him. Any plain wall works; the matte comes from `matte-video-proxy` (or Beeble's alpha), so no backdrop is needed.
+5. **Optional, 2 seconds:** hold a grey or white sheet of paper in front of his chest, then start. It gives the measurement a known white.
+
+Lighting him to the scene (key from the scene's side, a coloured rim) would still be the most exact. It stays an
+option for a hero shot, never a requirement.
 
 ### Step 2: one colour space (in our scripts)
 
@@ -101,6 +109,23 @@ The scene comes first. Then he is filmed to fit it.
   - There is a Blender add-on for importing the passes.
   - There is no documented API, so the step is manual for now.
   - It is a **candidate, not proven on our footage**: hair, his cap brim and face shape on a phone take are the risks.
+- **How we use it (Fendi, 14 Nov: "the beeble re light is the best candidate").**
+  - We take only Beeble's **Normal** and **BaseColor** passes: which way each pixel of him faces, and his colour without light.
+  - `scripts/edit/relight_from_passes.py` turns them into a smooth **gain** on his own pixels: the set's lamps are lit onto
+    his normals and divided by the light already in the take.
+  - The result is brighter where he faces a flare, with a red rim on the edges that turn to it.
+  - No pixel is redrawn. The gain is blurred so it carries light, not detail, and the script prints the gain's sharpness as proof.
+  - Self-test: a synthetic sphere relit within 0.3 % of the truth, its texture kept.
+  - Not yet run on his take.
+- **Which Beeble product, and where it runs:**
+  - The Beeble key we hold (in Control Center, `BEEBLE_API_KEY`) is for **SwitchX**, the only product in Beeble's public API.
+    SwitchX regenerates the picture: it redrew his face on Hyenas (ledger row 29) and turned black trousers into blue denim on YSL (row 58).
+    **Never use SwitchX on him.**
+  - The **VFX Pass Generator** (the passes) is not in the public API.
+  - It runs in the Beeble web app: the Creator plan is $19/month for 540 credits, the passes cost 3 credits per second,
+    so a 4 s shot is 12 credits. The cloud version is limited to 2K and 8-bit PNG/MP4.
+  - Beeble Studio, the desktop app (4K, 16-bit EXR, no credits), runs on an NVIDIA GPU, which the Mac does not have.
+  - Prices come from Beeble's pages on 14 Nov 2026; confirm them at purchase.
 - **Rule for his face:** re-lighting changes the light on his face but must not change its shape or his mouth.
   - The approved test is the put-back logic: face from the brows down and the mouth keep the take's pixels, graded only by a smooth light map. Or use the re-lit face only if `face_check.py` and `mouth_scan.py` pass and Fendi says it is him.
   - Never a generated face.
@@ -144,9 +169,9 @@ The limits in `integration_check.py` are **DECISION starting points** (14 Nov 20
 
 | | What | Cost | Who |
 |---|---|---|---|
-| R1 | Next shoot: light him to the Blender scene's light list, plus a grey ball, chrome ball and colour chart; phone locked at 24 fps, 1/48, HDR off. | $0 + a cheap RGB light | Fendi on set; the agent writes the light list from the .blend |
+| R1 | Next shoot: the 10-minute checklist in step 1 (tripod, three LEDs even, phone locked at 24 fps, 1/48, HDR off, a step off the wall). | $0 | Fendi on set |
 | R2 | Code: composite him in linear *after* the render (not lit as albedo); one finish curve; match grade from `integration_check.py`; light wrap; denoise then one grain. One change per pass, each measured. | $0 | agent (offline scripts) |
-| R3 | Benchmark Beeble SwitchLight 3.0 on one Hyenas shot (verse 26.1, him standing): passes into Blender lit by the set's flares, vs today's card. Judge: `integration_check.py` rows, face proof, Fendi's eye. Kill criterion: face shape or mouth changes, or flicker in the normals across frames. | trial / one plan month (check price before buying) | Fendi approves the spend; agent runs it (desktop app on the Mac) |
+| R3 | Benchmark the Beeble re-light on one Hyenas shot (verse 26.1, him standing): VFX Pass Generator on his take, then `relight_from_passes.py` with the set's flares, then the set build as now; vs today's card. Judge: `integration_check.py` rows, `face_check.py` + `mouth_scan.py`, Fendi's eye. Kill criterion: any change to his face shape or mouth, or the light on him flickering between frames. | Creator plan $19/month (12 credits for the shot) | Fendi signs up or confirms an existing web plan; the upload is a browser step (him, or the agent through Claude in Chrome on the Mac) |
 | R4 | Run `integration_check.py` on the eight delivered Hyenas shots (on the Mac, where the files are) and give Grokbot the printed match grade per shot as his starting point in After Effects. | $0 | agent on the Mac session |
 
 Sources (research 14 Nov 2026):

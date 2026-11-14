@@ -30,7 +30,7 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 | Pale rim / halo round him on a dark plate | edge decontamination (unmix, feather stops at the raw matte), light wrap ≤ 0.15 or 0 | c033 v6 (`lens.wrap` 0.15), `pixels.ts cleanEdges` | wrap 0.5 (pale rim on cap, jaw, shoulders) |
 | The scene is flat, nothing moves (smoke, glare, lights, trees), or room motion looks AI-made | a BUILT scene in Blender: layers, smoke, flicker, sway, camera move with parallax (`room_layers.py`, `snow.py`, `room_motion.py`, `comp_scene.py`) | SHOT_RULES 3; c033 v9 `436ffebe` | a still JPG plate with a 3 % push-in (Hyenas, 13 Nov: "looks 2D") |
 | A swapped creature does not move like the animal it replaces (dog lying, hyena standing) | before any put-back: side by side, take vs swap, pose matched frame by frame; reference still in the animal's pose and size, placed where it is | Hyenas, 13 Nov (failed) | judging the swap from stills; patching the matte of a swap that already fails this |
-| He looks pasted into a built scene (colour, blacks, light) | `integration_check.py final matte`, then [`PLACE_HIM_IN_A_BUILT_SCENE.md`](recipes/PLACE_HIM_IN_A_BUILT_SCENE.md): shoot lit to the scene, linear comp, match grade | 14 Nov | gains by eye; two tone curves on him |
+| He looks pasted into a built scene (colour, blacks, light) | `integration_check.py final matte`, then [`PLACE_HIM_IN_A_BUILT_SCENE.md`](recipes/PLACE_HIM_IN_A_BUILT_SCENE.md): shoot lit to the scene, linear comp, match grade | 14 Nov | gains by eye; 2 tone curves; SwitchX (redraws him) |
 
 ## His face, the put-back and the swap
 
