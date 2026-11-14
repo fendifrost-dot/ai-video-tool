@@ -15,6 +15,7 @@ This replaces `HANDOFF_GROKBOT_HYENAS_PERFORMANCE_FINISH_2026-11-12.md` (the sti
 - The vicious shot: "I do want a scene with the hyena chomping its jaws in the direction of the camera ... as if it's
   trying to get off the leash and attack somebody. We need that grimy, vicious look."
 - The handover: "let's just go ahead and finish the project and get everything ready to pass over to Grokbot."
+- The song: "Before we hand off to Grokbot, can you switch out the audio with the correct master track?"
 
 ## What each shot is (VERIFIED from the files)
 
@@ -40,7 +41,14 @@ Three files per shot, 1080x1920, 24 fps, the same frame count, frame N of one is
 | `hyenas_perf_v<start>_plate.mp4` | the same set and camera with the shadows they throw, without them in the picture; same glare, grade and grain as the final |
 
 `<start>` is the verse time of the file's first frame. Also there: `hyenas_timing_preview_v5.mp4` (the whole verse,
-30 fps, 1402 frames, the approved cutaways untouched, the eight shots in their slots) and this handoff.
+30 fps, 1402 frames, the approved cutaways untouched, the eight shots in their slots), the song
+(`HYENAS_verse_cut_02.06.21_from_45.849.wav`, 24-bit, verse time 0 at its first sample) and this handoff.
+
+**The song is the 02.06.21 master.** Use that WAV, not the audio of any file made before 13 Nov evening and not
+`HYENAS MASTER 12.03.20.mp3` (the December 2020 mix the project was first built on). VERIFIED: the preview's audio is
+that master laid directly (0 samples off at five points across the verse); the two masters' verse cuts are on the
+same clock (beats within 0.2 ms at nine points), so no picture timing moved. In the app the project song is now
+asset `ad358a37` (the same cut as mp3); `38639850` is superseded.
 
 **Two clocks.** Verse time 0 = 45.849 s in `/Volumes/T7/Hyenas AVT edit/HYENAS MASTER 02.06.21.wav`
 (master = verse + 45.849). The preview's clock is the verse clock (VERIFIED: cross-correlation against the master at
@@ -100,7 +108,9 @@ ffmpeg -loglevel error -i hyenas_timing_preview_v5.mp4 -map 0:a -c copy -f md5 -
 ```
 
 - Expected: each shot's three files report the frame count in the table, `1080,1920,24/1`; the preview reports
-  `1080,1920,30/1,1402`; the preview's audio md5 is `c95f026f7586138cac0c16c1f47d9cea` (the same stream as v4).
+  `1080,1920,30/1,1402`; the preview's audio md5 is `6ee44b7bd238732bf9c7454485e36a09` (AAC 320k from the 02.06.21
+  master, 0.5 s fade at the end) and its picture stream md5 is `7233b0cc38560e21124c96956987fac2`
+  (`ffmpeg -loglevel error -i hyenas_timing_preview_v5.mp4 -map 0:v -c copy -f md5 -`).
 - A frame that must change in your version: any frame inside a slot (his light). A frame that must not: any cutaway
   frame, for example preview frame 150 (verse 5.0 s).
 - His face: a zoomed strip at 12 fps for every slot, your version under this one; his face pixels inside the matte
