@@ -1,0 +1,61 @@
+{
+  "_doc": "Hyenas performance set, built in Blender as a 3D scene (Fendi, 13 Nov 2026: 'I wanted a blender 3D build replica of the image we create from Gemini'; 'the look is ideal but the placement of me into the shot looks like a 3D person and hyena into a 2D scene'). Units: metres. World: the camera's foot is (0,0,0), +Y is away from the camera, +X is screen right, +Z is up. Every value is MEASURED (from a file), SPEC (manufacturer figure), ESTIMATE (assumption, with what it rests on) or DECISION.",
+  "look_reference": "project asset bd601f72 (the empty front-lit Gemini plate; its look is the target: black night, red flares and red smoke either side of a black G-Class, pale packed dirt)",
+  "texture_still": {
+    "asset": "93b20e39-dd0d-4429-9347-0b200f4b2a75",
+    "sha256_16": "28fa294167984c9b",
+    "size": [1536, 2752],
+    "_what": "Gemini edit of bd601f72 with smoke, flares and red light removed (prompt version hyenas-set3d-texture-nosmoke-v1). Gemini redrew the scene (an older G-Class, flash-lit): used ONLY as the source of surfaces (car front, bushes, grass, branches, sand); the light, smoke and flares are Blender's",
+    "focal_px": 2860,
+    "_focal": "ESTIMATE: the cabin (body 1.76 m, SPEC W463) reads 427 px/m and the fenders 520 px/m, 1.4 m apart in depth",
+    "camera_height": 2.05,
+    "_height": "ESTIMATE: the roof line sits on the horizon row and 172 px of hood top are visible",
+    "horizon_y": 1100,
+    "car_centre_x": 786,
+    "car_front_depth": 5.3,
+    "tyre_contact_y": 2090,
+    "roof_y": 1104
+  },
+  "car": {
+    "width_m": 1.855,
+    "height_m": 1.95,
+    "length_m": 4.66,
+    "_spec": "SPEC: Mercedes G 63 AMG (W463, 2012-2018) 4,662 x 1,855 x 1,951 mm",
+    "front_centre": [-1.0, 4.6],
+    "_place": "DECISION: behind him and to his left, 2.3 m further from the camera than he is, turned to face the camera"
+  },
+  "take_camera": {
+    "_doc": "The phone that filmed the performance take, from the frame at verse 13.0 s (proxy 15.012 s), 1080x1920",
+    "focal_px": 1250,
+    "_focal": "ESTIMATE: an iPhone main camera in 4K video is about 28 mm equivalent",
+    "pitch_deg": -18.55,
+    "_pitch": "MEASURED: 17 door-frame edges meet at (540, 4685) px, so the roll is 0 and tan(pitch) = focal / 3725",
+    "height": 1.37,
+    "his_distance": 2.33,
+    "_solve": "MEASURED rows (cap top 165, floor contact 1225) with his height 1.905 m (Fendi, 13 Nov: 6 ft 3) + 0.045 m of sole and cap",
+    "his_x_px": 490,
+    "dog_px": [280, 1500],
+    "dog_floor": [-0.43, 1.53],
+    "_dog": "MEASURED on the same frame: the dog lies in front of him and to his left, 1.5 m from the camera"
+  },
+  "render": {
+    "size": [1080, 1920],
+    "fps": 24,
+    "_fps": "DECISION: 24 fps is the rate of the swap's picture of him; the cut can be conformed later",
+    "frames": 96,
+    "scale_him": 0.752,
+    "_scale": "DECISION (Fendi, 13 Nov: 'I do not have to be front and center we can create depth and scale me down'): the set camera stands exactly where the phone stood (same height, pitch and distance to him, so his perspective is true) with a lens 0.752 as long; he is 0.752 of his size in the take",
+    "shift_px": [110, 200],
+    "_shift": "DECISION: lens shift (a crop of the wider picture, perspective unchanged): he sits right of centre, the horizon lower, the trees and smoke above him",
+    "push_in_m": 0.14,
+    "drift_right_m": 0.04,
+    "_move": "DECISION: one slow move (build skill section 3: locked or one slow move)"
+  },
+  "wind": {"base": 0.55, "gusts": [[0.30, 3.1, 0.4], [0.18, 1.27, 2.1], [0.10, 0.61, 4.0]], "_doc": "strength over the shot: base + sum a*sin(2*pi*t/period + phase); shared by the trees and the smoke", "toward_x": 1.0},
+  "flares": [
+    {"name": "left", "pos": [-2.2, 4.2], "power": 420, "seed": 11},
+    {"name": "right", "pos": [1.9, 5.8], "power": 520, "seed": 23}
+  ],
+  "_flares": "DECISION: either side of the car as in bd601f72. Flicker: a burning flare's output wanders about 25 % at 8-20 Hz (ESTIMATE); here a fixed-seed sum of sines per flare, so a rerun renders the same light",
+  "song": {"verse_zero_in_master_s": 45.849, "verse_start_s": 11.1, "_doc": "MEASURED in the handoff: verse time 0 is 45.849 s in the master WAV; the 4 s shown are verse 11.1 to 15.1 (dog lying, the first swap test)"}
+}
