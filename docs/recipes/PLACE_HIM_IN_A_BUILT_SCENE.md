@@ -169,6 +169,28 @@ Caveats, each labelled:
 - **His face is tinted, not redrawn** (OBSERVED in code): the gain's sharpness is p99 0.40 (1.0) and 0.61 (1.5) in log units per pixel, i.e. a smooth light.
 - **`integration_check.py` now floors the black point at linear 0.002** (DECISION): the night sky at 0 had read as "his blacks 6 stops lifted".
 
+**Second run, with Beeble's real normals (14 Nov 2026, 9 Beeble credits).**
+- Beeble's VFX Pass Generator ran on the built shot itself (`c0e59cbe`).
+  - Its Normal pass is camera space: +X right, +Y up, +Z toward the camera.
+  - Checked on his sides, his cap top and his chest.
+- `relight_comp.py --normals <Normal dir>` then relit him the same way as the first run.
+- `scripts/agent-browser/beeble-passes.mjs` repeats the Beeble steps:
+  - sign-in by the code Beeble emails (the agent reads it from his Gmail);
+  - upload, review, generate;
+  - download of all passes as one ZIP.
+- Filed as candidates `4485a62c` (1.0) and `b54c76a5` (1.5). OBSERVED, every 4th frame:
+
+| Version | Light tint, median (max) | Saturation | All rows ok | Jump on him (set 2.45 %) |
+|---|---|---|---|---|
+| Matte normals, 1.0 | 19.4 (23.5) | 0.85–1.23 | 0/15 | 4.87 % |
+| **Beeble normals, 1.0** | 16.0 (21.2) | 0.87–1.30 | 0/15 | **3.57 %** |
+| Matte normals, 1.5 | 4.5 (8.8) | 1.07–1.53 | 7/15 | 5.12 % |
+| Beeble normals, 1.5 | 2.5 (8.5) | 1.11–1.64 | 7/15 | 3.45 % |
+
+What Beeble's normals changed:
+- The light on him steadies: it flickers a third less than with the matte normals, still above the set's own flicker.
+- The light follows his real shape: face, folds, the hyena's head.
+
 ### Step 4: one finish for the whole frame
 
 Glare/bloom from the bright sources goes over him as well as over the set, and so do vignette, the same grain,
