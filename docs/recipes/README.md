@@ -15,6 +15,7 @@ quoted, dry-run first, and recorded in `docs/LEDGER_YSL_TESTING_BUDGET.md`.
 | Him in the scene, not rapping (b-roll with him) | recipe F: a silent window of his footage copied loosely, face exact, mouth at rest | [`BROLL_WITH_HIM_STILL_MOUTH.md`](BROLL_WITH_HIM_STILL_MOUTH.md) | `montage-shot` / `avt_montage` in the tool | $2.219 per 4 s |
 | Him in the scene in a different outfit | recipe F on a window dressed first, or the swap put back over the render (c041 TENTH) | both pages above | tool + offline | both prices |
 | His real take inside a generated scene | matte both, put the real him over the generated him | [`FACE_PRESERVING_CLOTHING_SWAP.md`](FACE_PRESERVING_CLOTHING_SWAP.md) ("Putting the dressed real him into a generated scene") | `scripts/edit/replace_him_in_clip.py` | cents (mattes) |
+| His real take inside a scene we BUILT in Blender (he must look filmed there) | light the shoot to the scene, composite in linear, match grade by measurement, one finish | [`PLACE_HIM_IN_A_BUILT_SCENE.md`](PLACE_HIM_IN_A_BUILT_SCENE.md) | `scripts/edit/blender/` + `scripts/edit/integration_check.py` | $0 |
 | The place and its people, without him | b-roll montage | [`MONTAGE_MUSIC_VIDEO_WORKFLOW.md`](MONTAGE_MUSIC_VIDEO_WORKFLOW.md) step 7 | `montage-shot` | $1.85 per 4 s |
 | A shot whose generated him moves his mouth | not usable as is: replace by one of the rows above, or hide the mouth in the edit (punch-in below the chin, cutaway) | [`../handoffs/HANDOFF_GROKBOT_FIRST_HALF_2026-11-05.md`](../handoffs/HANDOFF_GROKBOT_FIRST_HALF_2026-11-05.md) ("Mouth rule") | `scripts/edit/mouth_scan.py` finds them | $0 |
 
@@ -49,6 +50,7 @@ A symptom first? Its row in [`../PROBLEM_INDEX.md`](../PROBLEM_INDEX.md) names t
 
 | Check | Script | Reads |
 |---|---|---|
+| He sits IN the built scene, not on it | `scripts/edit/integration_check.py` | black/white point, shadow and light colour, saturation, grain, sharpness vs the set; prints a match grade |
 | His face next to his real face | `scripts/edit/face_check.py` | lips, beard, glasses, face shape, row by row |
 | Does his mouth move | `scripts/edit/mouth_scan.py` | lip gap / face width per sample; moving = mean > 0.08, spread > 0.03, confirmed on the sheet |
 | Seam flicker on a put-back | `scripts/edit/ring_flicker.py` | mean change in a ring around his face, candidate vs original |
