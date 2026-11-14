@@ -40,6 +40,15 @@ Three files per shot, 1080x1920, 24 fps, the same frame count, frame N of one is
 | `hyenas_perf_v<start>_matte.mp4` | white = him, the hyena and the chain as they appear in the final. Grass in front of the hyena cuts the matte as it cuts the picture. Smoke that drifts in front of them is NOT in the matte |
 | `hyenas_perf_v<start>_plate.mp4` | the same set and camera with the shadows they throw, without them in the picture; same glare, grade and grain as the final |
 
+- VERIFIED 13 Nov on all eight: the three files have the frame count in the table; the `_final` is the posted shot
+  (identical pictures on seven; `v11.10` re-encoded with its 98th frame, 39 dB); no frame has an empty matte.
+- In the `_plate`, the ground directly under the parts of them that lie on it (the paws, his shoe toes, and most of
+  the hyena on the shots where it is at his feet: `v18.73`, `v26.13`, `v30.13`, `v35.72`, `v41.53`) is in their own
+  shadow: a dark shape the size of that part. They cover it in the final. If you move or shrink them, it shows.
+- The plate also differs from the final by a few hundred pixels a frame away from them, where they block a flare's
+  glow.
+- `layers_check_sheet.jpg`: one frame per shot, final / plate / matte / them alone.
+
 `<start>` is the verse time of the file's first frame. Also there: `hyenas_timing_preview_v5.mp4` (the whole verse,
 30 fps, 1402 frames, the approved cutaways untouched, the eight shots in their slots), the song
 (`HYENAS_verse_cut_02.06.21_from_45.849.wav`, 24-bit, verse time 0 at its first sample) and this handoff.
