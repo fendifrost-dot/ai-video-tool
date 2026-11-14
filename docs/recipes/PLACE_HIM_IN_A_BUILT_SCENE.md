@@ -144,6 +144,31 @@ option for a hero shot, never a requirement.
 - Haze and smoke at his distance in front of him: we have this.
 - Depth of field focused on him.
 
+### First run: Hyenas verse 26.1 (14 Nov 2026, $0, before Beeble)
+
+`scripts/edit/relight_comp.py` relights him inside the finished shot.
+- Its inputs:
+  - the built shot (`c0e59cbe`);
+  - Grokbot's empty-set plate (`a324c8d1`) and matte (`0d60f26a`);
+  - normals made from the matte: an inflated silhouette, the stand-in until Beeble's Normal pass is in (`--normals DIR` takes it).
+- The light comes from the set itself: the red dirt below him, the glow on either side of him, the flares behind him.
+- Filed as candidates, not primaries: `0a6ba27d` (strength 1.0) and `19c15a50` (strength 1.5).
+
+`integration_check.py` on every 4th frame (15 frames), OBSERVED:
+
+| Version | Light tint, median (max) | Saturation, him / ring | Frames with all rows ok | Frame-to-frame jump, him (set 2.45 %) |
+|---|---|---|---|---|
+| As built (`c0e59cbe`) | 57.5 (60.9) | 0.28–0.33 | 0/15 | 3.35 % |
+| Grokbot light pass v3 (`8ba1a6cc`) | 36.6 (39.6) | 0.59–0.95 | 0/15 | 4.85 % |
+| Re-light, strength 1.0 | 19.4 (23.5) | 0.85–1.23 | 0/15 | 4.87 % |
+| Re-light, strength 1.5 | 4.5 (8.8) | 1.07–1.53 | 7/15 | 5.12 % |
+
+Caveats, each labelled:
+- **1.5 was chosen on one frame by this metric** (DECISION, disclosed): it overshoots when the flares dip (frame 50, saturation 1.57). Fendi's eye picks between them.
+- **The light on him jumps more between frames than the set does** (OBSERVED): about 5 % against 2.45 %, the same as Grokbot's pass.
+- **His face is tinted, not redrawn** (OBSERVED in code): the gain's sharpness is p99 0.40 (1.0) and 0.61 (1.5) in log units per pixel, i.e. a smooth light.
+- **`integration_check.py` now floors the black point at linear 0.002** (DECISION): the night sky at 0 had read as "his blacks 6 stops lifted".
+
 ### Step 4: one finish for the whole frame
 
 Glare/bloom from the bright sources goes over him as well as over the set, and so do vignette, the same grain,

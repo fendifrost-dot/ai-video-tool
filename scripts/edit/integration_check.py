@@ -25,6 +25,8 @@ import argparse, json, os, subprocess, sys
 os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
 import numpy as np, cv2
 
+BLACK_FLOOR = 0.002   # linear (~sRGB code 12): darker than this is black on any screen; a night sky at 0 must not
+                      # read as 'his blacks 6 stops lifted' (Hyenas v26.13, 14 Nov: set p1 = 0, his = 3/255)
 LIMITS = dict(black_stops=0.5, white_stops=0.5, shadow_tint=4.0, light_tint=6.0, saturation=(0.75, 1.33),
               noise=(0.7, 1.4), sharpness=(0.7, 1.4))
 
@@ -71,7 +73,7 @@ def measure(img, a, ring_px=60):
     assert core.sum() > 500 and ring.sum() > 500, "matte too small or covers the frame"
     Y = img @ np.array([0.2126, 0.7152, 0.0722], np.float32); L = lab(img)
     pct = lambda m, q: float(np.percentile(Y[m], q))
-    stops = lambda x, y: float(np.log2(max(x, 1e-5) / max(y, 1e-5)))
+    stops = lambda x, y: float(np.log2(max(x, BLACK_FLOOR) / max(y, BLACK_FLOOR)))
     def tint(m, lo, hi):
         sel = m & (Y >= pct(m, lo)) & (Y <= pct(m, hi)); return L[sel][:, 1:].mean(0), img[sel].mean(0)
     hs, hs_rgb = tint(core, 0, 10); ss, ss_rgb = tint(st, 0, 10)
