@@ -47,6 +47,19 @@ the wrong workflow.
    referenceVideoUrl, referenceImageUrls: [<the still>]}}`. $0.681 per second. Poll with
    `{endpoint: "video-providers-job-status", method: "GET", query: {provider: "higgsfield", id}}`. Fendi approves the
    swap before the put-back is run. Work at 720p; enlarging is a finishing step after everything is approved.
+   **The finishing step was never run on Hyenas** (14 Nov 2026): all eight put-backs went into the set at 720×1280, enlarged
+   about 1.2× again in the shot, so he reads soft against the full-resolution set. Fendi: "We were supposed to enhance
+   everything to 4k after the swap was completed and redraw my face pixels exactly".
+   - **YSL's lift (`scripts/edit/dressed_4k.py`, Lane B of the clothing swap) does not carry over** (OBSERVED, verse 26.1):
+     the 4K original everywhere except where the swap changed the picture. A creature swap re-draws every edge (his outline,
+     the stripes, the door frames), so 18–31 % of the frame reads as changed even after aligning the swap to the take.
+     That would leave a patchwork of 4K and 720p. Taking his body from the take instead is the "two ropes" Never.
+   - **The lift for a creature swap (DECISION, Fendi's plan):** enhance the whole put-back to 4K with a video upscaler
+     (Runway `upscale_v1` through Control Center), then `body_only_swap.py --base swap` again at 4K, with the 4K take window
+     as the original and the enhanced put-back as the swap. It returns his face, beard and skin pixels exactly
+     (proof printed: 0) at full resolution. Then the matte, the relight and the set as before.
+   - **Not this:** Real-ESRGAN, frame by frame (tested 14 Nov on verse 26.1). Painterly logo, 3 min per frame on CPU, and
+     frame-by-frame upscalers flicker.
 4. **Put his face back**, swap as the base:
 
    ```
