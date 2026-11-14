@@ -42,6 +42,10 @@ ap.add_argument("--retime", choices=("auto", "on", "off"), default="auto",
                 help="pair each original frame with the swap frame that shows the same instant (searched two frames either side of the "
                      "clock's frame, never stepping back). auto: on with --base swap, where a head drawn a frame early or late "
                      "leaves a seam round his real face; off otherwise.")
+ap.add_argument("--hat-gap-fill", choices=("on", "off"), default="on",
+                help="on (default): the strip between the swap's new hat and his face is filled from the hat. off: for a swap that "
+                     "changes no headwear (a creature or prop beside him): that fill drew dark marks across his forehead on the "
+                     "first frames of Hyenas verse 11.1 and on his cap's edge on verse 5.2 (13 Nov 2026); without it they are gone.")
 A = ap.parse_args()
 orig_p, swap_p, out_dir = A.original, A.swap, A.out_dir
 SEGMENTER = choose_segmenter(A.segmenter)
@@ -106,6 +110,7 @@ HEAD_ZOOM = int(os.environ.get("AVT_HEAD_ZOOM", "0"))
 DUMP = {int(x) for x in os.environ.get("AVT_DUMP", "").split(",") if x.strip()}
 # env AVT_ABLATE="headfit,vote,gap": switch a stage OFF for a controlled comparison (diagnosis only; default all on)
 ABLATE = {x.strip() for x in os.environ.get("AVT_ABLATE", "").split(",") if x.strip()}
+if A.hat_gap_fill == "off": ABLATE.add("gap")
 # env AVT_HEAD_FIT=1 turns the row-wise head re-fit (head_fit.py) ON. Default OFF since 2 Nov 2026: measured on c041 v2,
 # the per-row shift it applied to the hat (up to 24 px on the close-up, 30 px on the wide shot) moved 2-6 px between
 # consecutive frames with spikes of 8-11 px — a time-varying warp that morphed the hat. Its driving edges were not the
