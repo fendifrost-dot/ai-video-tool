@@ -67,6 +67,13 @@ def main():
     ap.add_argument("--set", required=True); ap.add_argument("--rows", required=True); ap.add_argument("--x", type=float, required=True)
     ap.add_argument("--normals"); ap.add_argument("--strength", type=float, default=1.0); ap.add_argument("--smooth", type=float, default=5.0)
     ap.add_argument("--flare_scale", type=float, default=0.002, help="the flares' share against the plate's light (DECISION, by measure)")
+    ap.add_argument("--studio", help="his real lights, kept as the key: 'room' = the 14 Nov room (two LEDs at his front right, "
+                    "1.07 m, 1.96 and 2.13 m high; one near the camera, 2.75 m, 1.88 m high) or 'dx,dz,h,power;...' in metres from him "
+                    "(dx + = his left, dz + = toward the camera)")
+    ap.add_argument("--studio_share", type=float, default=0.85, help="share of the light on him that stays his own white light")
+    ap.add_argument("--env_weight", type=float, default=0.25, help="weight of the set's broad glow (dirt, sides) against its flares")
+    ap.add_argument("--denoise", type=float, default=0.0, help="take the phone's grain off him (NL-means strength, 0 = off)")
+    ap.add_argument("--regrain", type=float, default=0.0, help="then the set's own grain on him (hyenas_set_comp.py: 0.016)")
     ap.add_argument("--rows_frame", type=int, default=28, help="the frame --rows and --x were measured on")
     ap.add_argument("--fixed", action="store_true", help="do not follow the push-in (rows and x as given on every frame)")
     ap.add_argument("--song"); ap.add_argument("--t0", type=float, default=0.0)
@@ -85,6 +92,12 @@ def main():
         ys, xs = np.nonzero(a0 > 0.5); band = ys < ys.min() + 0.25 * (feet - top)
         w_ref = np.percentile(xs[band], 95) - np.percentile(xs[band], 5)
     lights = [dict(pos=[f["pos"][0], f["pos"][1], 0.25], colour=list(FLARE), power=f["power"]) for f in SET.get("flares", [])]
+    studio = []
+    if A.studio:
+        spec = "-0.76,0.76,1.96,100;-0.61,0.76,2.13,100;0.10,2.75,1.88,100" if A.studio == "room" else A.studio
+        for it in spec.split(";"):
+            dx, dz, hh, pw = (float(t) for t in it.split(","))
+            studio.append(dict(pos=[his_x + dx, TC["his_distance"] - dz, hh], colour=[1.0, 1.0, 1.0], power=pw))
     nfiles = sorted(os.listdir(A.normals)) if A.normals else None
     only = int(A.still[0]) if A.still else None
     enc = None
@@ -98,6 +111,13 @@ def main():
     worst = 0.0; i = -1
     for i, (F, Pl, a) in enumerate(zip(frames(A.final, w, h), frames(A.plate, w, h), frames(A.matte, w, h, gray=True))):
         if only is not None and i != only: continue
+        if A.denoise > 0:                                      # the phone's grain off him (only inside his box; the set keeps its own)
+            ys0, xs0 = np.nonzero(a > 0.02)
+            y0, y1, x0, x1 = max(0, ys0.min() - 8), ys0.max() + 9, max(0, xs0.min() - 8), xs0.max() + 9
+            crop = (np.clip(F[y0:y1, x0:x1], 0, 1) * 255 + 0.5).astype(np.uint8)
+            dn = cv2.fastNlMeansDenoisingColored(crop, None, A.denoise, A.denoise, 5, 15).astype(np.float32) / 255
+            F = F.copy(); w8 = a[y0:y1, x0:x1, None]
+            F[y0:y1, x0:x1] = F[y0:y1, x0:x1] * (1 - w8) + dn * w8
         Fl, Pll = lin(F), lin(Pl); aa = a[..., None]
         him = np.clip((Fl - Pll * (1 - aa)) / np.maximum(aa, 1e-3), 0, None)              # his pixels, un-premultiplied
         if track:                                              # follow the camera's push-in: his cap top and width per frame
@@ -113,15 +133,32 @@ def main():
             N = cv2.resize(nm / (65535.0 if nm.max() > 255 else 255.0), (w, h)) * 2 - 1
         else:
             N = matte_normals(a, radius=0.12 * ppm_i)
-        S = light(N, env(Pll, a, (int(tp), int(ft)), int(xc), w), P, lights, A.flare_scale)
+        E = env(Pll, a, (int(tp), int(ft)), int(xc), w)
         m = a > 0.5
         mb = lambda x: blur(x * m[..., None], A.smooth) / np.maximum(blur(m.astype(np.float32), A.smooth), 1e-3)[..., None]
-        g = mb(S)
         Y = lambda x: x @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+        if studio:
+            # his own white light stays the key (it is already in his pixels); the set's light is ADDED to it:
+            # gain = (studio + set) / studio, so where his key falls the picture barely moves and the set's red shows
+            # where his lights did not reach (the side away from the key, the edges that turn to a flare)
+            Es = {k2: v2 * A.env_weight for k2, v2 in E.items()}; Es["front"] = Es["front"] * 0
+            S_sc = light(N, Es, P, lights, A.flare_scale)
+            S_st = light(N, {k2: np.zeros(3, np.float32) for k2 in E}, P, studio, 1.0)
+            S_st += 0.15 * np.median(Y(S_st)[m])                                           # the room's own bounce: no zero
+            r = np.median(Y(S_sc)[m]) / max(np.median(Y(S_st)[m]), 1e-9)
+            kst = r * A.studio_share / max(1 - A.studio_share, 1e-6)                        # studio share of the median light
+            g = mb((kst * S_st + S_sc) / (kst * S_st))
+        else:
+            g = mb(light(N, E, P, lights, A.flare_scale))
         g = g / np.maximum(np.median(Y(g)[m]), 1e-6)                                         # keep his level, take the colour and direction
         g = g ** A.strength
         relit = him * g
         relit *= np.median(Y(him)[m]) / max(np.median(Y(relit)[m]), 1e-6)
+        if A.regrain > 0:                                      # one grain on him, the set's own (hyenas_set_comp.py), in sRGB
+            rs = np.random.default_rng(7000 + i); sr = srgb(np.clip(relit, 0, None))
+            n = rs.normal(0, A.regrain, sr.shape[:2] + (1,)).astype(np.float32) + rs.normal(0, A.regrain * 0.4, sr.shape).astype(np.float32)
+            sr = sr + n * (0.35 + 0.65 * (1 - np.clip(sr.mean(-1, keepdims=True), 0, 1)))
+            relit = lin(np.clip(sr, 0, 1))
         out = Pll * (1 - aa) + relit * aa
         lg = np.log(np.maximum(Y(g), 1e-4)); sharp = np.percentile((np.abs(cv2.Sobel(lg, cv2.CV_32F, 1, 0)) + np.abs(cv2.Sobel(lg, cv2.CV_32F, 0, 1)))[m], 99)
         worst = max(worst, float(sharp))

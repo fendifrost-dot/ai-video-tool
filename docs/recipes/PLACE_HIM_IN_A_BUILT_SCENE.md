@@ -191,6 +191,30 @@ What Beeble's normals changed:
 - The light on him steadies: it flickers a third less than with the matte normals, still above the set's own flicker.
 - The light follows his real shape: face, folds, the hyena's head.
 
+**Third run: his own white light stays the key (Fendi, 14 Nov 2026: "I hate the red flushing me out it makes the shot look low quality").**
+
+DECISION:
+- His real white LEDs stay the key. The set's light is ADDED to them, not swapped in.
+- `relight_comp.py --studio room` models his room: two LEDs at his front right, about 1.07 m away and 1.96 m and 2.13 m high, and one near the camera, about 2.75 m away and 1.88 m high.
+- The gain is (studio + set) / studio. Where his key falls the picture barely moves; the set's red shows only on the side away from his key and on the edges that turn to a flare.
+- `--studio_share` sets how much of the light on him stays his own (0.85 / 0.70).
+- `--env_weight 0.25` keeps the set's broad glow low.
+
+Two checks on that setup:
+- **VERIFIED from Beeble's passes:** his key came from his right (frame left) and above. Surfaces facing it are about 2.4× brighter than the far side (light = Source / BaseColor, grouped by Normal), which matches his description.
+- **Grain:** `--denoise 6` takes the phone's grain off him, and `--regrain 0.009` puts the set's grain back. This is a DECISION by measure: 0.016, the set's own value before encode, made him 1.48× noisier than the set after the h264 encode.
+
+Candidates, OBSERVED every 4th frame:
+
+| Version | Asset | Light tint | Noise, him / set | Sharpness | Jump on him |
+|---|---|---|---|---|---|
+| Studio key 85 % | `39422e7a` | 47.5 | 1.08 | 0.92 | 3.64 % |
+| Studio key 70 % | `194a3f69` | 38.5 | 1.08 | 0.90 | 4.19 % |
+
+Labels on the result:
+- The light tint stays high **by design** (DECISION): a white key in a red set is a look, so Fendi's eye judges it, not that row.
+- Grain and sharpness now match the set (OBSERVED: before, noise 1.09 and sharpness 0.74).
+
 ### Step 4: one finish for the whole frame
 
 Glare/bloom from the bright sources goes over him as well as over the set, and so do vignette, the same grain,
