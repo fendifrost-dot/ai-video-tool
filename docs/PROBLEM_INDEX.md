@@ -38,7 +38,7 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 |---|---|---|---|
 | Face found on few frames | `AVT_HEAD_ZOOM=4` (3 on full body) on `body_only_swap.py` | c033; Hyenas 96/96 (2/96 without) | — |
 | Doubled cap edge, white line by the ear (swap-base put-back) | `--base swap` re-times by itself (`--retime auto`) | Hyenas 12 Nov | pairing take and swap by the clock alone |
-| The old prop still shows (two ropes) | `body_only_swap.py --base swap`: the swap frame is the base | Hyenas 12 Nov | compositing the original him over the swap; cutting the creature out and laying it on the take |
+| Two ropes; he is soft or his body freezes in a creature swap | `reinsert_him.py`: his take's pixels; the swap only for creature, chain, old-leash strip | Hyenas 26.1, 14 Nov | his take over the swap, old leash left in |
 | Cap pulses every ~12 frames | no mp4v intermediate (its GOP pulsed the cap) | c044 v9 `c0619701` | calling it mask jitter |
 | Clothes update slower than he moves | `swap_rate.py` interpolates the swap to the source's rate (inside the put-back) | 24 Oct rule, c033 / c044 | per-frame swaps of the full take |
 | Brim or seam flickers | `ring_flicker.py` and `hat_geometry.py` against the original's own numbers | c041 v2 | `AVT_HEAD_FIT=1` (2–6 px jitter); judging from stills |

@@ -18,6 +18,7 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION. Estimates are list prices; 
 | 20–28 | 15:33–23:47 | nine mattes of the put-backs | `matte-video-proxy` (veed), jobs `508884e3`, `57d914e5`, `2fd728a1`, `b8236809`, `ba11ffaa`, `e82c6aba`, `4c8062db`, `ef9b8c5f`, `5b515436` | $0.66 | used as delivered (verse 35.7: two boxed repairs on top) |
 | 29 | 17:19 | one SwitchX relight test (Beeble) | `switchx-background-proxy`, job `d13dd7a3` | $0.33 | not used: it redrew his face |
 | 30 | 14 Nov 10:56 | Beeble VFX Pass Generator (SwitchLight 3) on the built verse 26.1 shot (57 frames, 1080×1920): all passes, Normal used | Beeble web app, Fendi's personal workspace, signed in by the agent with the emailed code (Fendi's go, 14 Nov) | 9 credits (90 → 81; inside his plan, no purchase) | used: `relight_comp.py --normals`, candidates `4485a62c` (1.0) and `b54c76a5` (1.5) |
+| 31 | 14 Nov 16:36 | matte of the verse 26.1 re-insert (`b7182748`, 98 frames, 1080x1920) | `matte-video-proxy` (veed), job `5715bf48` | $0.07 | used as delivered: candidate `1f274d62` |
 
 **Total at estimate: about $38.24** (7 stills $1.89, 13 swaps $35.36, 9 mattes $0.66, 1 relight test $0.33). Everything else in the session (put-backs, the Blender set and renders, layers,
 previews, checks) ran on the Mac at $0.
