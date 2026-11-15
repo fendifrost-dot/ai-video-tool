@@ -25,6 +25,12 @@ None. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RE
 - Not filed yet: the song master, lyrics, performance takes, the girlfriend's takes, photos of his friend. No shots,
   no treatment, no cast records.
 
+- 14 Nov: Fendi's "war cry" idea is on the board's `notes` in his words (the yell that becomes a hurricane, memories
+  blowing past him as he raps the verse). He has not shot yet.
+- 15 Nov: the build moves to Claude Code. Handoff:
+  `docs/handoffs/HANDOFF_CLAUDE_CODE_PARTNERSHIP_CEASE_DESIST_2026-11-15.md`. It voids the 11 Nov cost estimate
+  (built on Grok animation, which no longer ships).
+
 ## Waiting on Fendi
 
 - The song master and lyrics.
