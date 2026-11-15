@@ -44,7 +44,14 @@ def matte_normals(a, radius):
 def env(plate_lin, a, rows, xc, w):
     """The set's light around him, from the plate (linear RGB means)."""
     top, feet = rows; h = plate_lin.shape[0]; half = int(0.35 * (feet - top))
-    out = lambda y0, y1, x0, x1: plate_lin[max(0, y0):min(h, y1), max(0, x0):min(w, x1)].reshape(-1, 3).mean(0)
+    def out(y0, y1, x0, x1):
+        # a box that falls outside the frame (a waist-up shot: his feet are below it, his sides beyond its edges) is
+        # read from the strip of the frame nearest to it; an empty box gave NaN, a negative end a wrong slice
+        if y0 >= h: y0, y1 = h - 300, h
+        if y1 <= 0: y0, y1 = 0, 300
+        if x0 >= w - 40: x0, x1 = w - 160, w
+        if x1 <= 40: x0, x1 = 0, 160
+        return plate_lin[max(0, y0):min(h, y1), max(0, x0):min(w, x1)].reshape(-1, 3).mean(0)
     return dict(below=out(feet, feet + 300, xc - 250, xc + 250), left=out(top, feet, xc - half - 260, xc - half),
                 right=out(top, feet, xc + half, xc + half + 260), above=out(top - 300, top, xc - 250, xc + 250),
                 front=plate_lin.reshape(-1, 3).mean(0))
@@ -72,6 +79,9 @@ def main():
                     "(dx + = his left, dz + = toward the camera)")
     ap.add_argument("--studio_share", type=float, default=0.85, help="share of the light on him that stays his own white light")
     ap.add_argument("--env_weight", type=float, default=0.25, help="weight of the set's broad glow (dirt, sides) against its flares")
+    ap.add_argument("--level", choices=["auto", "keep", "add"], default="auto",
+                    help="keep = re-scale him to his old median after the relight; add = the set's light is only added, nothing "
+                         "is pulled down; auto = add with --studio, keep without")
     ap.add_argument("--denoise", type=float, default=0.0, help="take the phone's grain off him (NL-means strength, 0 = off)")
     ap.add_argument("--regrain", type=float, default=0.0, help="then the set's own grain on him (hyenas_set_comp.py: 0.016)")
     ap.add_argument("--rows_frame", type=int, default=28, help="the frame --rows and --x were measured on")
@@ -150,10 +160,14 @@ def main():
             g = mb((kst * S_st + S_sc) / (kst * S_st))
         else:
             g = mb(light(N, E, P, lights, A.flare_scale))
-        g = g / np.maximum(np.median(Y(g)[m]), 1e-6)                                         # keep his level, take the colour and direction
+        keep = A.level == "keep" or (A.level == "auto" and not studio)
+        if keep: g = g / np.maximum(np.median(Y(g)[m]), 1e-6)                                # keep his level, take the colour and direction
         g = g ** A.strength
         relit = him * g
-        relit *= np.median(Y(him)[m]) / max(np.median(Y(relit)[m]), 1e-6)
+        # With his own key kept (--studio) the gain is >= 1 everywhere: light is only ADDED. Re-scaling to his old median
+        # then pulled the places his key lights (face, chest: gain ~1) DOWN by the median gain (verse 26.1, 14 Nov: face
+        # 21 % darker at share 0.85, 24 % at 0.70). So --level add (the default with --studio) leaves his level alone.
+        if keep: relit *= np.median(Y(him)[m]) / max(np.median(Y(relit)[m]), 1e-6)
         if A.regrain > 0:                                      # one grain on him, the set's own (hyenas_set_comp.py), in sRGB
             rs = np.random.default_rng(7000 + i); sr = srgb(np.clip(relit, 0, None))
             n = rs.normal(0, A.regrain, sr.shape[:2] + (1,)).astype(np.float32) + rs.normal(0, A.regrain * 0.4, sr.shape).astype(np.float32)

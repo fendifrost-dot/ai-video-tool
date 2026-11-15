@@ -111,6 +111,28 @@ With the new footage:
      height 1.37 m.
 5. With a hyena: Genjutsu swap (4 s minimum, recipe steps 1-4), then `reinsert_him.py`, then the rest as above.
 
+## Update, 14 Nov afternoon (Mac session): the reshoot is in, first shot built
+
+- The footage: `/Volumes/T7/Hyenas AVT edit/Heyenas close up Performance (2 shots-close and closer).mov` (iPhone 14,
+  4K vertical, 24 fps, 134.7 s, one tripod position, no dog). Two shots: the farther one (he calls it 5 ft) and the
+  closer one (3 ft).
+- Clocks (cross-correlation against the 02.06.21 master, 11 windows each): farther shot master = file + 29.70 s;
+  closer shot master = file - 38.863 s. Both cover the whole verse (verse 0 = file 16.15 s and 84.71 s).
+- Working copies and everything else: `_avt_work/closeup_2026-11-14/`. Cut shot windows from the 4K original by its
+  own timestamps, not from the working copies (they were cut with `-r 24`, which can repeat a frame).
+- Verse 26.1 from the closer shot is built: candidates `5af04625` (relit) and `36be755f` (placed), layers `17a50ff8`
+  (plate) and `35c66b15` (matte), window `5072bb53`. Method and numbers: `docs/recipes/PLACE_HIM_IN_A_BUILT_SCENE.md`,
+  "Fourth run". Beeble passes are on the T7 (`closeup_2026-11-14/v26/beeble/passes`).
+- The candidates `39422e7a`, `194a3f69`, `1f274d62` are superseded: made with the re-scale that darkened him.
+- Fendi, 14 Nov: "i'm not here to micro manage you understand the objective let's knock it out". He chose the 3 ft shot
+  for the first test, called it "amazing", and said "yes build them all the same way".
+- **All eight slots are built from the closer shot** (evening, 14 Nov). Files, clocks and checks:
+  `docs/handoffs/HANDOFF_GROKBOT_HYENAS_CLOSEUP_SHOTS_2026-11-14.md`; on the T7 `closeup_2026-11-14/deliver/`.
+- **The 13 Nov wide shots are NOT replaced.** Fendi, 14 Nov: "We aren't fully replacing the older shots they are going to
+  be used on a cut screen with the new shots". The split-screen layout is his to give.
+- `closeup_2026-11-14/hyenas_timing_preview_v6.mp4` has the close-ups alone in the slots: a timing reference, not the cut.
+- Beeble: 3 credits left after the eight shots. Sign-in in his Chrome with the Google button works; one file per upload.
+
 ## Open items
 
 1. **Fendi's pick** for 26.1 (85 vs 70; real pixels). Nothing is a primary yet.

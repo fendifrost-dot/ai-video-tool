@@ -215,6 +215,46 @@ Labels on the result:
 - The light tint stays high **by design** (DECISION): a white key in a red set is a look, so Fendi's eye judges it, not that row.
 - Grain and sharpness now match the set (OBSERVED: before, noise 1.09 and sharpness 0.74).
 
+**Fourth run: the upper-half reshoot, his pixels as filmed (14 Nov 2026, $0.07 + 9 Beeble credits).**
+
+Fendi, 14 Nov, on the third run: "I just don't understand why the swap 85% makes me darker shouldn't we be making the
+background brighter if we are bringing in my lighting."
+
+- **VERIFIED, why it was darker:** with `--studio` the gain is (studio + set) / studio, never below 1, but the script then
+  re-scaled him to his old median. The parts his own key lights (face, chest, white stripes), where nothing was added,
+  were pulled down: face 21 % darker than the 13 Nov build at share 0.85, 24 % at 0.70 (`39422e7a`, `194a3f69`).
+  Fixed: `relight_comp.py --level add` (the default with `--studio`) only adds. `39422e7a`, `194a3f69` and `1f274d62`
+  were made before the fix.
+- **DECISION, the background comes up to him:** the set's white key is raised (`hyenas_set_build.py --key 1800`,
+  was 950), so the ground, grass and trees near him carry the white light he carries.
+- **His pixels are not lit as a surface** (diagnosis rows 2 and 3 above). Build with
+  `--perf_gain 0 --perf_back 0 --perf_emit 1 --passes plate,matte`; `hyenas_set_comp.py <exr_plate> --him <exr_matte>`
+  lays his picture, as filmed, over the plate in linear light before the one finish, with the finish's tone shoulder
+  undone on his pixels. VERIFIED on verse 26.1: his face in the shot is the take's level within 4 % (0.211 vs 0.217).
+- **A take that ends above his feet:** the lens shift puts the take's bottom edge on the frame's bottom edge
+  (`hyenas_set_closeup_3ft.json`: scale 0.75, shift 110,250), and `--perf_legs 0.80` adds a shadow-only box for his legs.
+- **The phone:** `take_camera` re-measured for the tripod (level, 1.40 m high, 0.93 m from him; his eyes 99 px apart).
+- **Cut the window by the original's own timestamps** (`select='gte(t,..)*lt(t,..)',setpts=N/24/TB,fps=24`). A cut with
+  `-r 24` repeated one frame in a 96-frame window.
+
+Candidates (verse 26.139-28.514, 57 frames), OBSERVED:
+
+| Version | Asset | Face vs the take | Held frames | Light jump, his face (set 1.95 %) |
+|---|---|---|---|---|
+| Placed, no relight | `36be755f` | -3 % | none | n/a |
+| Relit, his light 85 % | `5af04625` | +24 % | none (smallest change on him 4.84/255) | 1.61 % |
+
+`integration_check.py` on the relit shot: noise 1.04-1.13 ok, black point ok on 2 of 3 frames; white point +0.9 stops,
+light tint and saturation OFF by design (a white key in a red set); sharpness 0.54-0.60 reads OFF (HYPOTHESIS: his
+black jersey has less texture than the branches and gravel round him; his face is the take's own pixels).
+Fendi, 14 Nov, on `5af04625`: "whatever version that's in the video you sent is amazing"; then "yes build them all the
+same way". The other seven slots were built that way the same day (no held frame on any; face 1.22-1.28 x the placed
+level; files and checks in `docs/handoffs/HANDOFF_GROKBOT_HYENAS_CLOSEUP_SHOTS_2026-11-14.md`). On six of them: "These
+look amazing". The 13 Nov wide shots stay: they go on a split screen with these.
+
+**This Mac has 8 GB of memory:** one Blender render or one light pass at a time. Two renders plus a light pass filled
+the swap and the light pass stalled for 15 minutes.
+
 ### Step 4: one finish for the whole frame
 
 Glare/bloom from the bright sources goes over him as well as over the set, and so do vignette, the same grain,
