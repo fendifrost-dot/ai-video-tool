@@ -88,6 +88,19 @@ him. That is the "his real take inside a generated scene" row of `docs/recipes/R
 - A fan or leaf blower on him from one side, so his clothes move.
 - A plain, evenly lit wall or open sky behind him for a clean cut-out.
 
+## Answered by Fendi, 16 Nov (VERIFIED; details on the project row)
+
+Read `video_projects.notes` on project `0c5c4421` before asking Fendi anything below. Personal details (his friend's
+name, the cars, the circumstances) live on that row in AVT, not in this public repo.
+
+- **Lyrics:** filed verbatim in `video_projects.lyrics` (not timed yet; needs the master). Not in the repo.
+- **War cry placement: confirmed.** The yell sits at "Yo yo yo yo" before the second verse; the storm verse starts at
+  "Ralph umbrellas for the rain".
+- **His friend's name and how to credit him:** answered; see the row.
+- **The cars for the friend shots:** the two Lexuses they drove ("Back to back Lexus"); models and colours on the row.
+- **The car named in the second verse is not a hero car.** Never put his friend in it or feature it unless Fendi asks.
+  Why is on the row.
+
 ## Waiting on Fendi
 
 - The song master and the lyrics.
