@@ -1,0 +1,108 @@
+{
+ "_doc": "Partnership / Cease & Desist: the storm verse set (Fendi, 14 Nov 2026: at 'Yo yo yo yo' he lets off a war cry; 'the yell turns into hurricane-force winds and the picture cuts to him standing centre screen, rapping the verse, while memories and material objects blow past him: silhouettes of pictures of him and his friend, cars, debris, holograms of memories. It's as if I'm trying to hold on to the memories of my friend.'). Fendi, 16 Nov: build the scene now so it sets how he shoots; timing waits for his footage. Units: metres. World: the camera's foot is (0,0,0), +Y away from the camera, +X screen right, +Z up. Every value is MEASURED, SPEC, ESTIMATE or DECISION.",
+ "camera": {
+  "height": 1.35,
+  "_height": "DECISION: phone at his chest height, level (pitch 0); with the lens below the frame runs from his knees to 0.35 m above his head (build skill: knees up or full body, locked off)",
+  "pitch_deg": 0.0,
+  "focal_px": 2450,
+  "_focal": "ESTIMATE: an iPhone at 2x (48 mm equivalent, diagonal field 48.5 deg) on a 1080x1920 frame: 1101.5 px / tan(24.2 deg)",
+  "his_distance": 2.5,
+  "_distance": "DECISION: 2.5 m from lens to him leaves room for debris to pass between camera and him; at 2.5 m the frame is 1.96 m tall at his plane",
+  "move": "locked"
+ },
+ "him": {
+  "x": 0.0,
+  "height": 1.905,
+  "_height": "MEASURED: Fendi, 13 Nov: 6 ft 3 in",
+  "face_box_m": [
+   -0.22,
+   0.22,
+   1.55,
+   2.0
+  ],
+  "_face": "DECISION: debris passing IN FRONT of him never crosses this box (x0, x1, z0, z1 at his plane), so his real mouth stays readable on every lyric"
+ },
+ "key_light": {
+  "side": "camera_left",
+  "azimuth_deg": 45,
+  "elevation_deg": 30,
+  "distance": 3.0,
+  "size": 2.2,
+  "power_w": 170,
+  "kelvin": 6200,
+  "_doc": "DECISION: one big soft cool key from camera-left (his right), 45 deg round and 30 deg up, like a bright overcast break in the storm; he lights himself the same way on set (shooting sheet). The far side of his face falls off one stop: storm light, not a flat front light"
+ },
+ "fill": {
+  "power_w": 25,
+  "kelvin": 7500,
+  "_doc": "DECISION: a weak cool fill from camera-right so the dark side keeps detail"
+ },
+ "lightning": {
+  "times_s": [
+   0.9,
+   3.6,
+   5.2
+  ],
+  "_doc": "DECISION: flashes in the clouds behind him only (the sky and far debris flash); they do NOT light him, so his take never has to match a flash. A rim flash on him is a finishing choice later"
+ },
+ "wind": {
+  "toward_x": 1.0,
+  "_dir": "DECISION: the storm blows from screen left to screen right; on set the fan is camera-left blowing across him to camera-right",
+  "base": 1.0,
+  "gusts": [
+   [
+    0.35,
+    2.3,
+    0.2
+   ],
+   [
+    0.2,
+    0.9,
+    1.7
+   ],
+   [
+    0.1,
+    0.37,
+    3.1
+   ]
+  ],
+  "_doc": "strength over the shot: base + sum a*sin(2*pi*t/period + phase); every object, the dust and the rain ride the same curve"
+ },
+ "debris": {
+  "seed": 1411,
+  "frames_behind": 16,
+  "frames_front": 4,
+  "holograms": 6,
+  "cars": 3,
+  "chunks": 170,
+  "papers": 60,
+  "_doc": "Stand-ins until his photographs of the two of them are supplied: 'frames' are picture frames (later his photos of them, as silhouettes), 'holograms' glow (later memory pictures), 'cars' tumble far behind him (generic shapes; never a white Challenger: project notes), chunks and papers are storm debris. Crossing time across the frame at each object's depth (seconds), so nothing reads as a blur or as a crawl",
+  "cross_s": {
+   "front": [
+    0.45,
+    0.8
+   ],
+   "near": [
+    1.1,
+    2.0
+   ],
+   "mid": [
+    1.6,
+    3.0
+   ],
+   "far": [
+    3.0,
+    6.0
+   ]
+  }
+ },
+ "render": {
+  "size": [
+   1080,
+   1920
+  ],
+  "fps": 24,
+  "frames": 144,
+  "_frames": "DECISION: a 6 s preview; the verse length comes from the master once his footage is in"
+ }
+}
