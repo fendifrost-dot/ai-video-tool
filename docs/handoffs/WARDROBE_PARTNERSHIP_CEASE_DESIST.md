@@ -48,9 +48,15 @@ Product links are in each row's `source_url` and each T7 `source.txt`.
 | Key (`continuity_entities`) | id | Pieces, in swap order | Fendi's words |
 |---|---|---|---|
 | `LOOK_A_POLO_BEARS` | `286f7066-9ee5-471d-ae1d-354e01994739` | 01 sweater, 07 shirt, 08 beanie | "the sweater ... with a dark button up underneath and I do my button ups fully buttoned"; "actually nature brown"; "we can do this hat with the sweater and shirt" |
-| `LAST_SHOT_PRADA_COAT_YELLOW_CAPELET` | `2ab5704c-5ab3-482f-9c12-780b6619d1ff` | 06 coat | "this will be the jacket worn for the last shot if possible"; "I want to wear it exactly like the model with the yellow flap over" |
+| `LOOK_B_PRADA_BLACK_PUFFER` | `43d08108-ff78-4e4d-9d65-72e82e713256` | 04 puffer (zipped, hood down), 03 black beanie | arranged by Claude at his word: "arrange which ones you think go best together I don't think it necessarily matters" |
+| `LOOK_C_PRADA_SUEDE_BOMBER` | `bf6ac698-e49f-43a6-bb58-eddc2bb34016` | 05 bomber (open), 07 brown oxford buttoned up, 02 black cap | arranged by Claude at his word (same quote) |
+| `LAST_SHOT_PRADA_COAT_YELLOW_CAPELET` | `2ab5704c-5ab3-482f-9c12-780b6619d1ff` | 06 coat (+ a hat, see below) | "this will be the jacket worn for the last shot if possible"; "I want to wear it exactly like the model with the yellow flap over" |
 
-Pieces 02, 03, 04, 05 are chosen but **not yet grouped into looks**. Ask Fendi which go together before a swap with them.
+**Open: a hat for the last-shot coat.** Fendi, 16 Nov: "I do think we need a hat for the cotton prada jacket".
+RECOMMENDATION (Claude): a Fendi bucket hat, for the storm-verse line "Fendi bucket hat for the brain"; candidate the
+brown FF jacquard hat `FXQ899ALSGF0QE1` on fendi.com. fendi.com answers automated visits with "Access Denied", so
+the photos are saved from Fendi's own browsing in the pane. Not chosen yet; when it is, add its piece and bump the
+outfit's `version`.
 
 ## Traps already found (read before running a swap)
 
