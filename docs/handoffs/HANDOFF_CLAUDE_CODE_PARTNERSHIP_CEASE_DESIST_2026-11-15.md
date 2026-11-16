@@ -23,6 +23,17 @@ overlooked or misplaced this is extremely important."
 Fendi lines everything up only after his footage is uploaded. All working files go to the T7, never the Mac.
 Free setup work needs no approval from Fendi; anything billed still needs his quote-and-OK.
 
+## The storm verse set is built (16 Nov 2026, $0)
+
+Fendi: build the 3D storm now so it sets how he shoots; timing waits for his footage. Scene:
+`scripts/edit/blender/storm_set_build.py` + `storm_set.json` (every number labelled), finish `storm_set_comp.py`.
+Preview v1 (6 s, grey 1.905 m stand-in, stand-in frames / memory cards / cars / debris): AVT `project_assets`
+`d7ae5951-09c5-4275-bdbe-737977d97d30`; frames, empty plate and `.blend` on the T7 in `storm_scene/preview_v1/`.
+**How he shoots it:** [`SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md`](SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md)
+(iPhone 2x, lens 1.35 m, level, 2.5 m away; soft cool key on his right; fan on his right; nothing behind him).
+Still to do: his photos with his friend replace the stand-in frames and memory cards; time the verse; render at full
+size; split the passes in front of and behind him for his take.
+
 ## Read first, in this order
 
 0. [`WARDROBE_PARTNERSHIP_CEASE_DESIST.md`](WARDROBE_PARTNERSHIP_CEASE_DESIST.md).
