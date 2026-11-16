@@ -10,8 +10,22 @@ claude code."
 differ: it was written before the 12–13 Nov rules (no Grok, the likeness rules, the problem index).
 Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 
+## ⛔ THE WARDROBE IS CHOSEN AND FILED (Fendi, 16 Nov 2026)
+
+**[`WARDROBE_PARTNERSHIP_CEASE_DESIST.md`](WARDROBE_PARTNERSHIP_CEASE_DESIST.md): 8 pieces and 2 looks, filed in AVT
+(`character_features` + `continuity_entities` outfits), in `video_projects.wardrobe_notes` and on the T7.** This video
+has clothing swaps; nearly every shot is upper body; dark jeans if pants show; button-ups fully buttoned. Read it before
+any shot plan, shooting note or swap. Fendi: "the wardrobe should definitely be recorded in a place that can't be
+overlooked or misplaced this is extremely important."
+
+**Also 16 Nov:** the song master is filed (`project_assets` `7c87d8c2-1a7a-48a0-9584-0ac065d79bdd`, 3:50.9, 48 kHz
+24-bit WAV; T7 folder `/Volumes/T7/PARTNERSHIP:CEASE & DESIST AVT Edit/`). Lyrics are **not timed yet on purpose**:
+Fendi lines everything up only after his footage is uploaded. All working files go to the T7, never the Mac.
+Free setup work needs no approval from Fendi; anything billed still needs his quote-and-OK.
+
 ## Read first, in this order
 
+0. [`WARDROBE_PARTNERSHIP_CEASE_DESIST.md`](WARDROBE_PARTNERSHIP_CEASE_DESIST.md).
 1. `CLAUDE.md`, above all "LOOK UP THE SYMPTOM BEFORE YOU SOLVE IT" and "MODELS AND HIS LIKENESS".
 2. `docs/PROBLEM_INDEX.md` (the SessionStart hook prints it).
 3. `.claude/skills/avt-music-video-build/SKILL.md`, whole, before the first paid call.
@@ -103,8 +117,9 @@ name, the cars, the circumstances) live on that row in AVT, not in this public r
 
 ## Waiting on Fendi
 
-- The song master and the lyrics.
-- A folder for this song on the T7, and its path.
+- ~~The song master and the lyrics.~~ Both filed 16 Nov (master `7c87d8c2`; lyrics on the project row).
+- ~~A folder for this song on the T7, and its path.~~ `/Volumes/T7/PARTNERSHIP:CEASE & DESIST AVT Edit/` (16 Nov).
+- Which of the chosen pieces 02–05 (cap, black beanie, puffer, bomber) go together as looks.
 - Photographs of his friend: a clear front-on face, other angles, full body, how he dressed.
 - Photographs of the two of them together, for the storm.
 - His performance takes, the yell, the storm verse, and his girlfriend's takes as the friend.
