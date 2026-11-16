@@ -115,7 +115,7 @@ describe("functions", () => {
   it("offers no budget, cap or ledger tool", () => {
     expect(TOOLS.map((t) => t.name).filter((n) => /budget|spend|cap/.test(n))).toEqual([]);
     expect(TOOLS.find((t) => t.name === "avt_call")!.inputSchema.properties).not.toHaveProperty("budget_id");
-    expect(TOOLS).toHaveLength(57);
+    expect(TOOLS).toHaveLength(63);
   });
   it("hands a browser an access token only, never a refresh token or a user of the caller's choosing", () => {
     const t = TOOLS.find((t) => t.name === "avt_browser_session")!;
@@ -253,6 +253,14 @@ describe("avt_upload_asset", () => {
     expect(planFinalizeRead({ expectedSha256: HASH, info: { metadata: { sha256: HASH } } })).toEqual({ action: "download" });
     expect(planFinalizeRead({ expectedSha256: HASH, info: { size: 5, metadata: { sha256: "a".repeat(64) } } }).action).toBe("reject");
     expect(planFinalizeRead({ expectedSha256: HASH, info: null })).toEqual({ action: "download" });
+    const large = planFinalizeRead({ expectedSha256: HASH, info: { size: 157_079_995, metadata: {} } });
+    expect(large.action).toBe("reject");
+    if (large.action === "reject") expect(large.error).toMatch(/WORKER_RESOURCE_LIMIT/);
+    expect(planFinalizeRead({ expectedSha256: HASH, info: { size: 157_079_995, metadata: { sha256: HASH } } })).toEqual({
+      action: "skip",
+      sha256: HASH,
+      sizeBytes: 157_079_995,
+    });
     expect(JSON.parse(atob(storageMetadataHeader(HASH)))).toEqual({ sha256: HASH });
     expect(parseUploadRequest(OWNER, { mode: "signed_url", bucket: "artist-assets", path: HELLO_PATH }).ok).toBe(false);
     expect(parseUploadRequest(OTHER, { mode: "finalize", bucket: "project-exports", path: HELLO_PATH }).ok).toBe(false);
