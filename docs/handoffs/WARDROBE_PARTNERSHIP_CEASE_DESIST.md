@@ -40,6 +40,7 @@ VERIFIED 16 Nov 2026: all 29 photos were downloaded back from `wardrobe-refs` an
 | 06 | Cotton blend coat **with the yellow capelet** | Prada, Clay Grey | `d3b89147-6356-4203-844f-2f069e9bcfeb` | **front worn with the capelet** |
 | 07 | Garment-Dyed Oxford Shirt, button-down collar | Polo Ralph Lauren, **Nature Brown** | `f85da987-0c62-40ca-9988-5e61b1400cd2` | flat front |
 | 08 | Martini Bear Wool-Cashmere Beanie | Polo Ralph Lauren, Regal Carmine (red) | `81dbd93f-c55d-41ee-868b-c6d3038159be` | flat front |
+| 09 | FF jacquard bucket hat | FENDI, Brown | `d94f1cd4-9a65-4c9e-91a9-4848a8e3252f` | three-quarter front |
 
 Product links are in each row's `source_url` and each T7 `source.txt`.
 
@@ -50,13 +51,12 @@ Product links are in each row's `source_url` and each T7 `source.txt`.
 | `LOOK_A_POLO_BEARS` | `286f7066-9ee5-471d-ae1d-354e01994739` | 01 sweater, 07 shirt, 08 beanie | "the sweater ... with a dark button up underneath and I do my button ups fully buttoned"; "actually nature brown"; "we can do this hat with the sweater and shirt" |
 | `LOOK_B_PRADA_BLACK_PUFFER` | `43d08108-ff78-4e4d-9d65-72e82e713256` | 04 puffer (zipped, hood down), 03 black beanie | arranged by Claude at his word: "arrange which ones you think go best together I don't think it necessarily matters" |
 | `LOOK_C_PRADA_SUEDE_BOMBER` | `bf6ac698-e49f-43a6-bb58-eddc2bb34016` | 05 bomber (open), 07 brown oxford buttoned up, 02 black cap | arranged by Claude at his word (same quote) |
-| `LAST_SHOT_PRADA_COAT_YELLOW_CAPELET` | `2ab5704c-5ab3-482f-9c12-780b6619d1ff` | 06 coat (+ a hat, see below) | "this will be the jacket worn for the last shot if possible"; "I want to wear it exactly like the model with the yellow flap over" |
+| `LAST_SHOT_PRADA_COAT_YELLOW_CAPELET` (v2) | `2ab5704c-5ab3-482f-9c12-780b6619d1ff` | 06 coat with the capelet, 09 Fendi bucket hat | "this will be the jacket worn for the last shot if possible"; "I want to wear it exactly like the model with the yellow flap over"; "I do think we need a hat for the cotton prada jacket" (then opened 09 on fendi.com). The hat plays off the storm-verse line "Fendi bucket hat for the brain" |
 
-**Open: a hat for the last-shot coat.** Fendi, 16 Nov: "I do think we need a hat for the cotton prada jacket".
-RECOMMENDATION (Claude): a Fendi bucket hat, for the storm-verse line "Fendi bucket hat for the brain"; candidate the
-brown FF jacquard hat `FXQ899ALSGF0QE1` on fendi.com. fendi.com answers automated visits with "Access Denied", so
-the photos are saved from Fendi's own browsing in the pane. Not chosen yet; when it is, add its piece and bump the
-outfit's `version`.
+**09 Fendi hat photos:** fendi.com refuses direct downloads (403 outside a browser, "Access Denied" to automated
+visits, CORS on its image server). The two product images were captured from Fendi's own browser session in the pane
+at 1514 px (four screen tiles of the 2000 px image, stitched), uploaded, and matched back by sha256. Only two product
+images exist for this hat.
 
 ## Traps already found (read before running a swap)
 
