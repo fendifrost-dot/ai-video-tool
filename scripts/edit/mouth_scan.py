@@ -1,7 +1,7 @@
 """Lip gap per sample over a whole take, to find the stretches where he is not rapping (Fendi, 24 Oct 2026: "non
 rapping footage should have been used for all b roll shots"). $0, offline.
 usage: mouth_scan.py <take> <out.csv> [fps=6]      models: $AVT_MODELS/selfie_multiclass_256x256.tflite + face_landmarker.task
-Decodes portrait 1080 wide; per sample the selfie segmenter finds his face skin, a box 2.2x the face is cut and
+Decodes portrait 1080 wide (landscape: 1920 wide); per sample the selfie segmenter finds his face skin, a box 2.2x the face is cut and
 enlarged 3x for the landmarker (the face is ~60-100 px wide on a full-body frame, as in body_only_swap AVT_HEAD_ZOOM).
 rows: t_take, lip_gap/face_width (nan when no face), face_w (px at 1080), nose_x, nose_y (px at 1080)"""
 import sys, subprocess, numpy as np, cv2, os
@@ -12,8 +12,13 @@ src, out = sys.argv[1], sys.argv[2]; fps = float(sys.argv[3]) if len(sys.argv) >
 VF = f"fps={fps},scale='if(gt(iw,ih),1920,1080)':-2"
 p2 = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", src, "-vf", "scale='if(gt(iw,ih),1920,1080)':-2", "-vframes", "1",
                      "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
-n = len(p2); W = 1080; H = n // (W * 3)          # every take is portrait (the scale filter makes it 1080 wide)
-if n != W * H * 3 or H < W: raise SystemExit(f"not a portrait frame: {n} bytes")
+dims = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height:stream_side_data=rotation",
+                       "-of", "csv=p=0", src], capture_output=True, text=True).stdout.split()
+iw, ih = (int(v) for v in dims[0].split(",")[:2]); rot = abs(int(float(dims[1]))) if len(dims) > 1 and dims[1].lstrip("-").replace(".", "").isdigit() else 0
+if rot in (90, 270): iw, ih = ih, iw
+W = 1920 if iw > ih else 1080                    # portrait decodes 1080 wide; landscape (16:9 takes, Partnership 17 Nov) 1920 wide
+n = len(p2); H = n // (W * 3)
+if n != W * H * 3: raise SystemExit(f"unexpected frame size: {n} bytes")
 seg = vision.ImageSegmenter.create_from_options(vision.ImageSegmenterOptions(
     base_options=BaseOptions(model_asset_path=os.path.join(M, "selfie_multiclass_256x256.tflite")),
     running_mode=vision.RunningMode.IMAGE, output_category_mask=True))
@@ -29,7 +34,7 @@ with open(out, "w") as f:
         b = proc.stdout.read(W * H * 3)
         if len(b) < W * H * 3: break
         img = np.frombuffer(b, np.uint8).reshape(H, W, 3); t = i / fps; i += 1
-        small = cv2.resize(img, (270, 480), interpolation=cv2.INTER_AREA)
+        small = cv2.resize(img, (W // 4, H // 4), interpolation=cv2.INTER_AREA)
         cat = np.squeeze(seg.segment(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(small))).category_mask.numpy_view())
         fs = (cat == 3).astype(np.uint8); k, lab, st, _ = cv2.connectedComponentsWithStats(fs)
         if k <= 1:

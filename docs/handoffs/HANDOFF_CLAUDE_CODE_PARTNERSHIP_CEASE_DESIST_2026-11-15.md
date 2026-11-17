@@ -45,6 +45,15 @@ starts out of frame and is rejected if it covers his face or passes through him;
 Still to do: his photos with his friend replace the stand-in frames and memory cards; time the verse; render at full
 size; split the passes in front of and behind him for his take.
 
+## His performance takes are in and synced (17 Nov 2026, $0)
+
+**[`PARTNERSHIP_TAKE_COVERAGE.md`](PARTNERSHIP_TAKE_COVERAGE.md)**: every take synced to the master (first half A–E, brown leather
+jacket, five passes incl. a side profile; storm verse S1–S5, trench coat and bucket hat, low angle, fan), and the best
+take per lyric line. Footage is 1080p 30 Cinematic (not 4K; his Cinematic setting), on the T7 in `performance shots/`;
+work files in `work/performance/` (`coverage.json`, `lyric_lines.json` from `scripts/lyrics/align_lyrics.py`, lip scans).
+Photos of him with Allen (20, from his artifact) are on the T7 in `storm_scene/allen_photos/`, for the storm's frames and memory cards.
+Next: match the 3D storm camera to the low angle he shot from; not yet filed in AVT (originals ~0.9 GB each).
+
 ## Read first, in this order
 
 0. [`WARDROBE_PARTNERSHIP_CEASE_DESIST.md`](WARDROBE_PARTNERSHIP_CEASE_DESIST.md).
@@ -143,8 +152,8 @@ name, the cars, the circumstances) live on that row in AVT, not in this public r
 - ~~A folder for this song on the T7, and its path.~~ `/Volumes/T7/PARTNERSHIP:CEASE & DESIST AVT Edit/` (16 Nov).
 - Which of the chosen pieces 02–05 (cap, black beanie, puffer, bomber) go together as looks.
 - Photographs of his friend: a clear front-on face, other angles, full body, how he dressed.
-- Photographs of the two of them together, for the storm.
-- His performance takes, the yell, the storm verse, and his girlfriend's takes as the friend.
+- ~~Photographs of the two of them together, for the storm.~~ 20 photos, 17 Nov (T7 `storm_scene/allen_photos/`).
+- ~~His performance takes~~ (17 Nov, see the coverage sheet); his girlfriend's takes as the friend.
 - Approval, in his words, of any spend.
 
 ## Unknown (ask once, kindly; never guess)
