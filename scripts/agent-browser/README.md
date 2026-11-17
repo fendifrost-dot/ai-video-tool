@@ -99,3 +99,16 @@ node scripts/agent-browser/avt-press.mjs region-swap --session <s.json> --projec
 node scripts/agent-browser/avt-press.mjs region-putback --session <s.json> --project <id> --asset <clip id> \
      --job <provider job id> --chrome <chrome>
 ```
+
+## Beeble passes (`beeble-passes.mjs`)
+
+Beeble's VFX Pass Generator (Normal, BaseColor, Alpha, Depth, ...) is web-only. Its public API is SwitchX, which is never used on him.
+The script presses the web app as Fendi:
+1. sign in with the code Beeble emails;
+2. upload;
+3. review (0 credits);
+4. generate (about 3 credits per source second);
+5. download every pass as one ZIP.
+
+Run it from a scratch folder: `state.json` (the signed-in browser) and the ZIP land there and must never be committed.
+Use: [`../../docs/recipes/PLACE_HIM_IN_A_BUILT_SCENE.md`](../../docs/recipes/PLACE_HIM_IN_A_BUILT_SCENE.md) step 3c, then `scripts/edit/relight_comp.py --normals`.

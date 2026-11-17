@@ -1,0 +1,121 @@
+{
+  "_doc": "Hyenas performance set, built in Blender as a 3D scene (Fendi, 13 Nov 2026: 'I wanted a blender 3D build replica of the image we create from Gemini'; 'the look is ideal but the placement of me into the shot looks like a 3D person and hyena into a 2D scene'). Units: metres. World: the camera's foot is (0,0,0), +Y is away from the camera, +X is screen right, +Z is up. Every value is MEASURED (from a file), SPEC (manufacturer figure), ESTIMATE (assumption, with what it rests on) or DECISION.",
+  "look_reference": "project asset bd601f72 (the empty front-lit Gemini plate; its look is the target: black night, red flares and red smoke either side of a black G-Class, pale packed dirt)",
+  "texture_still": {
+    "asset": "93b20e39-dd0d-4429-9347-0b200f4b2a75",
+    "sha256_16": "28fa294167984c9b",
+    "size": [
+      1536,
+      2752
+    ],
+    "_what": "Gemini edit of bd601f72 with smoke, flares and red light removed (prompt version hyenas-set3d-texture-nosmoke-v1). Gemini redrew the scene (an older G-Class, flash-lit): used ONLY as the source of surfaces (car front, bushes, grass, branches, sand); the light, smoke and flares are Blender's",
+    "focal_px": 2860,
+    "_focal": "ESTIMATE: the cabin (body 1.76 m, SPEC W463) reads 427 px/m and the fenders 520 px/m, 1.4 m apart in depth",
+    "camera_height": 2.05,
+    "_height": "ESTIMATE: the roof line sits on the horizon row and 172 px of hood top are visible",
+    "horizon_y": 1100,
+    "car_centre_x": 786,
+    "car_front_depth": 5.3,
+    "tyre_contact_y": 2090,
+    "roof_y": 1104
+  },
+  "car": {
+    "width_m": 1.855,
+    "height_m": 1.95,
+    "length_m": 4.66,
+    "_spec": "SPEC: Mercedes G 63 AMG (W463, 2012-2018) 4,662 x 1,855 x 1,951 mm",
+    "front_centre": [
+      -1.0,
+      4.6
+    ],
+    "_place": "DECISION: behind him and to his left, 2.3 m further from the camera than he is, turned to face the camera"
+  },
+  "take_camera": {
+    "_doc": "The iPhone 14 on a tripod for 'Heyenas close up Performance (2 shots-close and closer).mov', the closer shot, measured on the verse 25.31 window (1080x1920)",
+    "focal_px": 1440,
+    "_focal": "ESTIMATE: iPhone 14 main camera, 26 mm equivalent on the frame's long side; it puts him 0.93 m away, which agrees with his own 'about 3 ft'",
+    "pitch_deg": 0.0,
+    "_pitch": "MEASURED: the closer and the farther shot (same tripod) give the same lens height (1.40 and 1.40 m) only with a level phone",
+    "height": 1.4,
+    "his_distance": 0.93,
+    "_solve": "MEASURED: his eyes are 99 px apart (median of 23 frames, MediaPipe iris centres) and sit on row 372 when he stands upright. ESTIMATE: eye distance 64 mm, eye height 0.936 of 1.905 m",
+    "his_x_px": 520,
+    "dog_px": [
+      280,
+      1500
+    ],
+    "dog_floor": [
+      -0.43,
+      1.53
+    ],
+    "_dog": "unused: no dog in this take"
+  },
+  "render": {
+    "size": [
+      1080,
+      1920
+    ],
+    "fps": 24,
+    "_fps": "DECISION: 24 fps is the rate of the swap's picture of him; the cut can be conformed later",
+    "frames": 57,
+    "scale_him": 0.75,
+    "_scale": "DECISION: the take ends at his hips, so the lens shift puts the take's bottom edge on the frame's bottom edge (0.75 x 960 + 250 = 970 > 960) and he stands right of centre, the car behind him on the left, trees and smoke above",
+    "shift_px": [
+      110,
+      250
+    ],
+    "_shift": "DECISION: lens shift (a crop of the wider picture, perspective unchanged): he sits right of centre, the horizon lower, the trees and smoke above him",
+    "push_in_m": 0.05,
+    "drift_right_m": 0.015,
+    "_move": "DECISION: the same slow push-in, scaled to his distance (0.14 m at 2.33 m was 6 %; 0.05 m at 0.93 m is 5 %)"
+  },
+  "wind": {
+    "base": 0.55,
+    "gusts": [
+      [
+        0.3,
+        3.1,
+        0.4
+      ],
+      [
+        0.18,
+        1.27,
+        2.1
+      ],
+      [
+        0.1,
+        0.61,
+        4.0
+      ]
+    ],
+    "_doc": "strength over the shot: base + sum a*sin(2*pi*t/period + phase); shared by the trees and the smoke",
+    "toward_x": 1.0
+  },
+  "flares": [
+    {
+      "name": "left",
+      "pos": [
+        -2.2,
+        4.2
+      ],
+      "power": 420,
+      "seed": 11
+    },
+    {
+      "name": "right",
+      "pos": [
+        1.9,
+        5.8
+      ],
+      "power": 520,
+      "seed": 23
+    }
+  ],
+  "_flares": "DECISION: either side of the car as in bd601f72. Flicker: a burning flare's output wanders about 25 % at 8-20 Hz (ESTIMATE); here a fixed-seed sum of sines per flare, so a rerun renders the same light",
+  "song": {
+    "verse_zero_in_master_s": 45.849,
+    "verse_start_s": 26.139,
+    "_doc": "MEASURED in the handoff: verse time 0 is 45.849 s in the master WAV; the 4 s shown are verse 11.1 to 15.1 (dog lying, the first swap test)"
+  },
+  "_doc_closeup": "Hyenas upper-half reshoot (Fendi, 14 Nov 2026), the closer shot (about 3 ft): the same set, the phone's new position. Everything not listed here is hyenas_set.json unchanged."
+}

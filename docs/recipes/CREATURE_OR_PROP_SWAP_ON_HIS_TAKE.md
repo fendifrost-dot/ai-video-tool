@@ -27,9 +27,42 @@ his face and mouth must stay the take's pixels.
 | His face from the brows down, beard, ears, visible skin | the take (proof printed: difference 0) |
 | Everything else: creature, prop, his body, clothes, hands on the prop, shoes, the room | the swap frame |
 
-The swap frame is the base. Do NOT composite the original him over the swap, and do NOT cut the creature out of the
-swap and lay it on the take: the take still holds the old prop (two ropes in one shot, 12 Nov) and patching it out is
-the wrong workflow.
+**12 Nov rule, superseded 14 Nov** (see the next section): the swap frame was the base, because the take still holds the
+old prop (two ropes in one shot). The old prop is now replaced by `reinsert_him.py`, and his pixels come from the take.
+
+## His real pixels back (Fendi, 14 Nov 2026): read this before the steps
+
+**DECISION (Fendi, 14 Nov 2026):** "we have a 4k version of me and my movements don't change so we probably should ... re
+insert my actual pixels and just upscale the hyena". On the old leash: "That seems like a fairly easy thing to fix."
+
+Why: the swap redraws all of him at 720p and repeats 5-11 frames per shot. In the set he read soft and "low quality"
+next to a full-resolution scene, and his body froze while his face moved. The take has him sharp and moving on every frame.
+
+The workflow (verse 26.1, candidate `1f274d62`; steps 1-4 below are unchanged and still make the swap and the put-back):
+
+1. **The take window at delivery size.** The shots are 1080x1920, so a 1080 copy of the take is enough (he is scaled
+   about 0.77 into the shot). Use the same frames as the 720p window: match each 720p frame to its source frame
+   (verse 26.1: every one matched, mse < 1). The 4K original is only needed for a punch-in.
+2. **`scripts/edit/reinsert_him.py take put-back put-back-alpha out.mp4`.** The take everywhere; the swap only for
+   - the creature (put-back alpha minus the put-back's own person region, largest piece plus chain links);
+   - the strip of his clothes the OLD leash crossed, below his hands (the swap painted his jeans without it and with
+     the new chain: that is the whole "two ropes" fix);
+   - the room where the swap changed it (the dog on the floor; it is matted out anyway).
+   It prints the share of him that stayed his own pixels (26.1: 88.5 %, min 79.7 %).
+3. **Matte the result** with `matte-video-proxy`, used as delivered ($0.07). Then `blender/prep_performer.py --roll 0 --scale 1`.
+4. **Into the set.**
+   - A new shot: `hyenas_set_build.py --performer` as before.
+   - A shot already built with the old cut-out: `scripts/edit/place_in_built_shot.py` puts the new cut-out through the
+     map the set's camera made (fitted from the old matte onto the built matte; 26.1: residual 0.12 % of the frame)
+     over the built shot's own plate. No re-render. `--wrap 0`; `--edge_from_inside` stays off (it darkened the chain).
+   - OBSERVED limit: the fit is one map for the whole picture. The three shots built with `--perf_depth` (the hyena
+     lying away from his feet: v01.40, v06.62, v11.10) have two depths and are not tested this way yet.
+5. **Light:** `relight_comp.py --normals <Beeble> --studio room --studio_share 0.85 --denoise 6 --regrain 0.012`
+   ([`PLACE_HIM_IN_A_BUILT_SCENE.md`](PLACE_HIM_IN_A_BUILT_SCENE.md)).
+
+Measured on verse 26.1 (OBSERVED, every 4th frame): detail on him 15.6 -> 20.1 (Laplacian), sharpness him/ring 0.91,
+noise him/set 1.04, light jump on him frame to frame 3.64 % -> 2.28 % (the set: 2.45 %), smallest frame-to-frame change on
+him 3.5 -> 6.6 (no held frames). The hyena is still the swap's 720p picture; upscaling it alone is open.
 
 ## Steps
 
@@ -47,6 +80,8 @@ the wrong workflow.
    referenceVideoUrl, referenceImageUrls: [<the still>]}}`. $0.681 per second. Poll with
    `{endpoint: "video-providers-job-status", method: "GET", query: {provider: "higgsfield", id}}`. Fendi approves the
    swap before the put-back is run. Work at 720p; enlarging is a finishing step after everything is approved.
+   **Superseded on 14 Nov 2026 by the section "His real pixels back" below**: the 720p put-back is no longer what goes
+   into the set, so nothing is enlarged.
 4. **Put his face back**, swap as the base:
 
    ```

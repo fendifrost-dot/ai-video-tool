@@ -31,6 +31,11 @@ the set's lamps, throw shadows on its ground and stay put as the camera moves):
   --flicker_rate R     flare flicker speed (0.25 = no jump on every picture at 24 fps)
   --clear_litter PX    no stones or leaves under the picture laid on the ground
   --passes full,plate,matte   the layers for a finisher (see the end of this file)
+  --perf_legs Z        a waist-up take: a shadow-only box from the ground to Z metres where he stands (his legs' shadow)
+His own pixels, not lit as a surface (docs/recipes/PLACE_HIM_IN_A_BUILT_SCENE.md, step 2): build with
+  --perf_gain 0 --perf_back 0 --perf_emit 1 --passes plate,matte
+The matte pass is then his picture as filmed (linear, with alpha, the set's grass in front of him cut out) and
+hyenas_set_comp.py --him <exr_matte> lays it into the plate before the one finish.
 The eight Hyenas shots and their settings: docs/handoffs/HANDOFF_GROKBOT_HYENAS_PERFORMANCE_IN_SET_2026-11-13.md."""
 import json, math, os, random, sys
 import bpy, bmesh
@@ -569,6 +574,13 @@ if "--performer" in opt:
     for kind, ch in ((("him", 0), ("ramp", 1), ("creature", 2)) if mimg else (("ramp", None),)):
         if mimg and kind not in only: continue
         pv, puv, pf = surface(kind); mesh_obj("performer_" + kind, pv, pf, material("performer_" + kind, ch), uvs=puv); quads += len(pf)
+    # --perf_legs Z (metres): a take that ends above his feet (a waist-up shot) leaves nothing below its bottom edge, so
+    # the ground behind him would get the shadow of a floating torso. A box from the ground up to Z, where he stands,
+    # throws the legs' shadow; the camera never sees it (the frame's bottom edge is the take's bottom edge).
+    if opt.get("--perf_legs"):
+        lg = box("performer_legs_shadow", HIM.x - 0.17, HIM.x + 0.17, HIM.y - 0.10, HIM.y + 0.10, 0.0, float(opt["--perf_legs"]),
+                 scatter_mat("legs_shadow", (0.02, 0.02, 0.02)))
+        lg.visible_camera = False
     PERF = {"frames_from": files[off], "frames": NFR, "creature_depth_m": round(tg, 3), "creature_ground_m": [round(v, 3) for v in (Cc + tg * dg)],
             "his_depth_m": HIM.y, "quads": quads, "surfaces": list(laid), "points_laid_on_the_ground": laid}
     print("PERFORMER", json.dumps(PERF))
@@ -600,7 +612,7 @@ ims.file_format = "OPEN_EXR"; ims.color_depth = "16"; ims.exr_codec = "DWAA"; im
 #   matte  only them: everything else holds them out (the grass in front of the hyena cuts the matte as it cuts the
 #          picture), no smoke, transparent film; alpha = where they are in the finished frame (exr_matte/, RGBA)
 PASSES = opt.get("--passes", "full").split(",")
-PERF_OBS = [o for o in sc.objects if o.name.startswith("performer_")]
+PERF_OBS = [o for o in sc.objects if o.name.startswith("performer_") and o.name != "performer_legs_shadow"]
 VOL_OBS = [o for o in sc.objects if o.type == "MESH" and any(m and m.node_tree and any(n.bl_idname == "ShaderNodeVolumePrincipled" for n in m.node_tree.nodes) for m in o.data.materials)]
 def set_pass(name):
     for o in PERF_OBS: o.visible_camera = name != "plate"

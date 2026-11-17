@@ -1,6 +1,12 @@
 """Finish the Hyenas set's Blender frames: lens glare, exposure and tone, vignette, grain. $0 and deterministic.
 usage: hyenas_set_comp.py <hyenas_set.json> <exr_dir> <out.mp4> [--song master.wav] [--exposure 1.0] [--only FRAME --still out.jpg]
+                          [--him <exr_matte_dir> --him_gain 1.0]
   exr_dir   from hyenas_set_build.py (set_0001.exr ..., scene-linear)
+  --him     his own pixels, not lit as a surface: exr_dir is then the PLATE pass (exr_plate) and --him the matte pass
+            built with --perf_gain 0 --perf_back 0 --perf_emit 1 (his picture as filmed, linear, with alpha). He is laid
+            over the plate in linear light BEFORE the one finish, so the glare, vignette and grain are on him and the set
+            alike; the finish's tone shoulder is undone on his pixels first, so his picture gets the phone's curve only,
+            not the phone's and ours (PLACE_HIM_IN_A_BUILT_SCENE.md, step 2). --him_gain is his exposure against the set.
 Glare is made from the picture's own light above white (the flames, the running lights), so it flickers with the
 flares because the flares flicker; nothing is painted on. The song, when given, is laid from the verse time in the
 params (song.verse_zero_in_master_s + song.verse_start_s)."""
@@ -14,6 +20,7 @@ ap.add_argument("params"); ap.add_argument("exr"); ap.add_argument("out")
 ap.add_argument("--song", default=""); ap.add_argument("--exposure", type=float, default=0.85)
 ap.add_argument("--only", type=int, default=0); ap.add_argument("--still", default="")
 ap.add_argument("--glare", type=float, default=1.0); ap.add_argument("--grain", type=float, default=0.016)
+ap.add_argument("--him", default=""); ap.add_argument("--him_gain", type=float, default=1.0)
 ap.add_argument("--verse_start", type=float, default=None, help="verse time of the first frame, when it is not the params' song.verse_start_s")
 A = ap.parse_args()
 P = json.load(open(A.params)); FPS = P["render"]["fps"]
@@ -26,7 +33,15 @@ srgb = lambda v: np.where(v <= 0.0031308, v * 12.92, 1.055 * np.power(np.clip(v,
 def finish(path, idx):
     lin = np.clip(cv2.imread(path, cv2.IMREAD_UNCHANGED)[..., :3].astype(np.float32), 0, 4000) * A.exposure   # BGR, linear
     h, w = lin.shape[:2]; k = w / 1080.0
+    aa = None
+    if A.him:
+        m4 = cv2.imread(os.path.join(A.him, os.path.basename(path)), cv2.IMREAD_UNCHANGED).astype(np.float32)
+        aa = np.clip(m4[..., 3:], 0, 1)
+        c = np.where(aa > 1e-4, m4[..., :3] / np.maximum(aa, 1e-4), 0) * A.him_gain      # his picture as filmed (linear)
+        lc = np.clip(c @ np.array([0.0722, 0.7152, 0.2126], np.float32), 0, 1.5)[..., None]
+        lin = lin * (1 - aa) + (c / (1.0 - 0.55 * lc)) * aa             # the tone shoulder below returns c
     hot = np.clip(lin - 1.6, 0, 250)                                    # light above white: flame, running lights
+    if aa is not None: hot = hot * (1 - aa)                             # he is not a light source
     small = cv2.resize(hot, (w // 4, h // 4), interpolation=cv2.INTER_AREA); ks = k / 4
     g = 0.50 * blur(small, 3 * ks) + 0.30 * blur(small, 12 * ks) + 0.20 * blur(small, 40 * ks) + 0.10 * blur(small, 110 * ks)
     g += 0.14 * blur(small, 90 * ks, 1.6 * ks)                          # the phone lens's horizontal streak
