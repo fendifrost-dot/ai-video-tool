@@ -30,9 +30,15 @@ Fendi: build the 3D storm now so it sets how he shoots; timing waits for his foo
 Preview **v2** (6 s, grey 1.905 m stand-in, stand-in frames / memory cards / cars / debris): AVT `project_assets`
 `c83a92fe-49b0-4167-af66-b51292eb8da0`; frames, empty plate and `.blend` on the T7 in `storm_scene/preview_v2/`.
 (v1 `d7ae5951` blew left to right and is marked rejected.)
-**How he shoots it:** [`SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md`](SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md)
-(iPhone 2x, lens 1.35 m, level, 2.5 m away; soft cool key on his right; fan beside the camera blowing straight at him;
-nothing behind him).
+**16:9 (Fendi, 16 Nov 2026):** "I want to actually post this one on YouTube and run it as a single for the new
+project" — the master is 16:9; a 9:16 cut comes second (cropped from his horizontal 4K take). `video_projects.aspect_ratio` is "16:9".
+**Framing (Fendi, 17 Nov, after the A–D options on the T7 in `storm_scene/framing_options_16x9/`):** "c or d will
+work maybe cuts or camera movement from D into C and then back to D whichever is smoother." The 3D camera is option C/D
+(6 m back, 1.0 m up, tilted 7.7°) and slides sideways D → C → D (`camera.move`). Preview **v3** has the slide.
+**How he shoots it:** [`SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md`](SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md).
+He has 5–6 ft of room (17 Nov), so he shoots close (iPhone 1x, horizontal 4K 24 fps, lens 1.2 m, level, centred, knees
+or mid-thigh up) and the comp scales him onto his mark at 6 m and does the slide; soft cool key on his right; blower
+beside the tripod blowing straight at him; nothing behind him.
 **Wind direction, Fendi 16 Nov, after preview v1 (which blew left to right): "I wanted the debris coming from the
 direction of the camera going past me" / "Front to back".** Preview v2 does that; v1 is superseded. Each debris path
 starts out of frame and is rejected if it covers his face or passes through him; `--dry 1` lists any piece that hangs still on screen.
@@ -83,7 +89,7 @@ him. That is the "his real take inside a generated scene" row of `docs/recipes/R
 
 ## State (VERIFIED from the rows, 15 Nov)
 
-- Project and board rows exist; the board is the active one. Aspect ratio is 9:16 by assumption, not confirmed.
+- Project and board rows exist; the board is the active one. Aspect ratio: 16:9 (Fendi, 16 Nov), 9:16 cut second.
 - No assets, no shots, no treatment, no lyrics, no cast records. The song master has not been sent.
 - Nothing generated. $0.00.
 - Fendi has not shot yet. On 14 Nov he said he would shoot within a day or two and send the takes.
@@ -146,7 +152,7 @@ name, the cars, the circumstances) live on that row in AVT, not in this public r
 - His friend's name, and how he is to be named or credited.
 - How his friend's build compares with his girlfriend's.
 - Whether his friend's family has weighed in. Asked twice on 11 Nov; not answered.
-- Song length, BPM, release date. Whether 9:16 is right.
+- Song length, BPM, release date.
 
 ## First steps
 
