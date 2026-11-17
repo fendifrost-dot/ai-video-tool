@@ -2,18 +2,20 @@
 $0 and deterministic (fixed seeds; every object rides one wind curve, no simulation cache).
 usage (Blender 5.3, headless):
   blender -b --factory-startup -P storm_set_build.py -- <storm_set.json> <out_dir>
-        [--frames N] [--only FRAME] [--pct 50] [--samples 16] [--standin 1] [--passes full,plate] [--save 1]
+        [--frames N] [--only FRAME] [--pct 50] [--samples 16] [--standin 1] [--passes full,plate] [--save 1] [--dry 1]
 Writes <out_dir>/png[_<pass>]/storm_0001.png ... (8-bit sRGB); storm_set_comp.py adds rain, grain and the mp4.
 
 What is in it (params: storm_set.json; every number there is labelled MEASURED / SPEC / ESTIMATE / DECISION):
   camera      a phone at 2x, level, at his chest height, 2.5 m from him, locked off (knees to above his head)
-  sky         storm clouds that run with the wind; lightning flashes seen by the camera only (they never light him)
+  sky         storm clouds rolling away from the camera; lightning flashes seen by the camera only (they never light him)
   ground      wet dark ground to the horizon, far silhouettes fading into the storm haze
   light       one big soft cool key from camera-left (his right) and a weak fill: the light he copies on set
   dust        a volume whose noise the wind carries
   debris      picture frames (stand-ins for his photos of the two of them), glowing hologram cards (memories), cars
-              tumbling far behind, chunks and paper; each crosses the frame left to right on the wind curve, tumbling.
-              Frames passing IN FRONT of him stay below his face box (params him.face_box_m): his real mouth stays readable
+              tumbling far off, chunks and paper. Fendi, 16 Nov: the debris comes FROM THE CAMERA'S DIRECTION and goes past
+              him. Every object starts out of the picture (behind or beside the camera), rides the wind curve past him
+              (beside him or over his head, never through him) and away into the storm. Its path is rejected unless,
+              all the way, it never covers his face box as the lens sees it (him.face_box_m): his real mouth stays readable
   standin     --standin 1 (default): a 1.905 m grey figure where he stands, for scale and light only
 Passes: full (everything), plate (no stand-in). The in-front / behind split for his take comes with the footage."""
 import json, math, os, random, sys
@@ -124,7 +126,7 @@ def flash(t):                                                           # a stri
             if u >= 0: v += a * math.exp(-u / k)
     return v
 for f, t in zip(range(1, NFR + 1), TIMES):
-    mp.inputs["Location"].default_value = (-0.045 * WD["toward_x"] * run_at(t), 0.0, 0.0); mp.inputs["Location"].keyframe_insert("default_value", frame=f)
+    mp.inputs["Location"].default_value = (0.0, 0.0, 0.03 * run_at(t))   # cloud tops roll down toward the horizon: away from us; mp.inputs["Location"].keyframe_insert("default_value", frame=f)
     bg_cam.inputs["Strength"].default_value = 1.0 + flash(t); bg_cam.inputs["Strength"].keyframe_insert("default_value", frame=f)
 
 # ---------------------------------------------------------------- ground and far silhouettes
@@ -174,34 +176,58 @@ link(dnt, dr.outputs[0], pv.inputs["Density"])
 dout = N(dnt, "ShaderNodeOutputMaterial"); link(dnt, pv.outputs[0], dout.inputs["Volume"])
 dust = box_mesh("dust", 60, 58, 9, dm, center=(0, 31, 4.5))
 for f, t in zip(range(1, NFR + 1), TIMES):
-    dmp.inputs["Location"].default_value = (-9.0 * WD["toward_x"] * run_at(t), 0, -0.6 * t); dmp.inputs["Location"].keyframe_insert("default_value", frame=f)
+    dmp.inputs["Location"].default_value = (0, -9.0 * run_at(t), -0.6 * t)   # dust carried away from the camera; dmp.inputs["Location"].keyframe_insert("default_value", frame=f)
 
-# ---------------------------------------------------------------- debris on the wind
-FACE = HM["face_box_m"]
-def path_obj(ob, y, z, cross, t0, size, tumble, bob=0.25, avoid_face=False):
-    """Crosses the frame at depth y, left to right, entering at t0, taking `cross` s at base wind."""
-    hw = HW * y + size; span = 2 * hw; v = span / cross
-    w = [rng.uniform(-1, 1) * tumble for _ in range(3)]; r0 = [rng.uniform(0, 6.283) for _ in range(3)]
+# ---------------------------------------------------------------- debris on the wind: from behind the camera, past him, into the storm
+D = C["his_distance"]; CH = C["height"]; FACE = HM["face_box_m"]; BODY = HM["body_half_width_m"]; TOP = HM["height"] + 0.12
+FU = max(-FACE[0], FACE[1]) / D; FW0 = (FACE[2] - CH) / D; FW1 = (FACE[3] - CH) / D    # his face box as the lens sees it
+LN = DB["lanes"]; END = DB["end"]; MAXF = DB["max_screen_frac"]
+def clear(x, y, z, size, solid):
+    """True when an object here keeps his face readable, does not go through him or the ground, and is not a wall.
+    size: its reach including the wobble (for his face and body); solid: its own size (for the ground)."""
+    r = 0.6 * size
+    if z - 0.35 * solid < 0.0: return False
+    if y > 0.06:
+        a = r / y; u = x / y; w = (z - CH) / y
+        if y < D + r and abs(u) - a < FU + 0.012 and w + a > FW0 - 0.012 and w - a < FW1 + 0.012: return False  # in front of his face
+        b = 0.6 * solid / y
+        if abs(u) - b < HW and abs(w) - b < HH and b > MAXF * HW: return False   # so close to the lens it would fill the frame
+    if abs(y - D) < 0.3 + r and abs(x) - r < BODY and z - r < TOP: return False  # passes beside him or over his head, never through
+    return True
+def in_frame(x, y, z): return y > 0.1 and abs(x / y) < HW and abs((z - CH) / y) < HH
+def fly(make, size, lane, frac, tumble, bob=0.2):
+    """Find a path from off-frame (behind or beside the camera) past him into the distance that obeys clear() all the
+    way, then key it on the wind curve: depth speed V m/s at base wind. Returns None when no path is found."""
+    L = LN[lane]; eff = size + 1.7 * bob
+    for _ in range(800):
+        y0 = rng.uniform(*L["y0"]); V = rng.uniform(*L["speed"])
+        x0 = rng.uniform(*L["x0"]) if "x0" in L else rng.choice((-1, 1)) * rng.uniform(*L["x0_abs"])
+        z0 = rng.uniform(*L["z0"]); y1 = max(y0 + 5, rng.uniform(*L.get("y1", END["y1"])))
+        x1 = rng.uniform(*END["u"]) * HW * y1; z1 = max(0.3 + size, CH + rng.uniform(*END["w"]) * HH * y1)
+        def at(y, y0=y0, x0=x0, z0=z0, y1=y1, x1=x1, z1=z1):
+            f = (y - y0) / (y1 - y0); return x0 + (x1 - x0) * f, y, z0 + (z1 - z0) * f
+        sx, sy, sz = at(y0); b = 0.6 * eff / max(sy, 1e-3)               # it waits there, so all of it must be out of the picture
+        if sy > 0.05 and abs(sx / sy) - b < HW and abs((sz - CH) / sy) - b < HH: continue
+        ys = [y0 + 0.04 * k for k in range(int((y1 - y0) / 0.04) + 1)]
+        if not all(clear(*at(y), eff, size) for y in ys): continue
+        if not any(in_frame(*at(y)) for y in ys if y < D + 4 or lane == "far"): continue  # and be seen on its way past him (cars: anywhere)
+        uv = [(q[0] / q[1], (q[2] - CH) / q[1]) for q in map(at, ys) if q[1] > 0.1 and in_frame(*q)]
+        if sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(uv, uv[1:])) < DB["min_screen_travel"] * HW: continue  # no hanging in the air
+        break
+    else:
+        return None
+    life = max(0.4, (D + 4 - y0) / V); t0 = -life + (T_END + life) * frac
+    ob = make(); w = [rng.uniform(-1, 1) * tumble for _ in range(3)]; r0 = [rng.uniform(0, 6.283) for _ in range(3)]
     ph = rng.uniform(0, 6.283); r_enter = run_at(t0)
     for f, t in zip(range(1, NFR + 1), TIMES):
-        s = run_at(t) - r_enter
-        x = WD["toward_x"] * (-hw + v * s)
-        zz = z + bob * math.sin(1.7 * s + ph) + 0.05 * y * math.sin(0.6 * s + 2 * ph)
-        if avoid_face:                                                   # its shadow on his plane stays under his face box
-            top = C["height"] + (zz + size * 0.6 - C["height"]) * C["his_distance"] / y
-            if top > FACE[2] - 0.05: zz -= (top - (FACE[2] - 0.05)) * y / C["his_distance"]
-        ob.location = (x, y, zz); ob.keyframe_insert("location", frame=f)
+        s = max(0.0, run_at(t) - r_enter)                                # waits off-frame until its moment
+        x, y, z = at(y0 + V * s)
+        ob.location = (x + 0.5 * bob * math.sin(1.1 * s + 2 * ph), y, z + bob * math.sin(1.7 * s + ph)); ob.keyframe_insert("location", frame=f)
         ob.rotation_euler = tuple(r + wi * s for r, wi in zip(r0, w)); ob.keyframe_insert("rotation_euler", frame=f)
-def schedule(n, cross_lo, cross_hi):
-    """n entry times spread over the shot so the stream is steady from frame 1 (some entered before it)."""
-    out = []
-    for i in range(n):
-        cross = rng.uniform(cross_lo, cross_hi)
-        t0 = -cross + (T_END + cross) * (i + rng.uniform(0.15, 0.85)) / n
-        out.append((cross, t0))
-    rng.shuffle(out); return out
-def band(y):                                                              # visible height range at depth y
-    return C["height"] - HH * y, C["height"] + HH * y
+    return ob
+def fracs(n):
+    out = [(i + rng.uniform(0.1, 0.9)) / n for i in range(n)]; rng.shuffle(out); return out
+MISSED = []
 
 frame_mats = [principled(f"frame_{c}", rgb, rough=0.45) for c, rgb in (("black", (0.015, 0.014, 0.013)), ("gold", (0.45, 0.33, 0.12)), ("white", (0.75, 0.74, 0.7)), ("wood", (0.16, 0.08, 0.035)))]
 photo_mat = principled("photo_standin", (0.36, 0.35, 0.33), rough=0.25)   # until his photos of the two of them arrive
@@ -212,13 +238,14 @@ def picture_frame(name, w_, h_):
     ph_ = quad(f"{name}_photo", w_ - 2 * t, h_ - 2 * t, photo_mat, y=-0.004); ph_.parent = e
     back = quad(f"{name}_back", w_, h_, frame_mats[3], y=0.012); back.parent = e
     return e
-T = DB["cross_s"]
-for i, (cross, t0) in enumerate(schedule(DB["frames_behind"], *T["mid"])):
-    y = rng.uniform(3.4, 12.0); lo, hi = band(y); w_ = rng.uniform(0.3, 0.6); h_ = w_ * rng.choice((1.25, 1.5, 0.8))
-    path_obj(picture_frame(f"frame_b{i}", w_, h_), y, rng.uniform(max(lo, 0.4), hi), cross, t0, max(w_, h_), tumble=rng.uniform(0.6, 2.2))
-for i, (cross, t0) in enumerate(schedule(DB["frames_front"], *T["front"])):
-    y = rng.uniform(0.9, 1.7); lo, _ = band(y); w_ = rng.uniform(0.22, 0.4); h_ = w_ * 1.3
-    path_obj(picture_frame(f"frame_f{i}", w_, h_), y, rng.uniform(lo + 0.1, C["height"] - 0.15), cross, t0, max(w_, h_), tumble=rng.uniform(1.0, 2.5), avoid_face=True)
+def put(name, make, size, lane, frac, tumble, bob=0.2):
+    if fly(make, size, lane, frac, tumble, bob) is None: MISSED.append(name)
+for i, fr_ in enumerate(fracs(DB["frames_side"])):
+    w_ = rng.uniform(0.3, 0.6); h_ = w_ * rng.choice((1.25, 1.5, 0.8))
+    put(f"frame_s{i}", lambda i=i, w_=w_, h_=h_: picture_frame(f"frame_s{i}", w_, h_), max(w_, h_), "side", fr_, rng.uniform(0.6, 2.2))
+for i, fr_ in enumerate(fracs(DB["frames_front"])):
+    w_ = rng.uniform(0.22, 0.4); h_ = w_ * 1.3
+    put(f"frame_f{i}", lambda i=i, w_=w_, h_=h_: picture_frame(f"frame_f{i}", w_, h_), max(w_, h_), "front", fr_, rng.uniform(1.0, 2.5))
 hm, hnt = new_mat("hologram")                                             # memories: glowing, see-through, flickering
 he = N(hnt, "ShaderNodeEmission"); he.inputs["Color"].default_value = (0.35, 0.75, 1.0, 1)
 htc = N(hnt, "ShaderNodeTexCoord"); hw_ = N(hnt, "ShaderNodeTexWave"); hw_.inputs["Scale"].default_value = 40; link(hnt, htc.outputs["Object"], hw_.inputs["Vector"])                    # scan lines across the card
@@ -228,26 +255,26 @@ htr = N(hnt, "ShaderNodeBsdfTransparent"); hmx = N(hnt, "ShaderNodeMixShader"); 
 link(hnt, htr.outputs[0], hmx.inputs[1]); link(hnt, he.outputs[0], hmx.inputs[2])
 hout = N(hnt, "ShaderNodeOutputMaterial"); link(hnt, hmx.outputs[0], hout.inputs["Surface"])
 if hasattr(hm, "surface_render_method"): hm.surface_render_method = "BLENDED"
-for i, (cross, t0) in enumerate(schedule(DB["holograms"], *T["near"])):
-    y = rng.uniform(3.2, 6.0); lo, hi = band(y); w_ = rng.uniform(0.5, 0.9)
-    path_obj(quad(f"holo_{i}", w_, w_ * 1.25, hm), y, rng.uniform(max(lo, 0.7), hi - 0.2), cross * 1.4, t0, w_, tumble=0.35, bob=0.15)
+for i, fr_ in enumerate(fracs(DB["holograms"])):
+    w_ = rng.uniform(0.5, 0.9)
+    put(f"holo_{i}", lambda i=i, w_=w_: quad(f"holo_{i}", w_, w_ * 1.25, hm), w_ * 1.25, "holo", fr_, 0.35, bob=0.15)
 car_mats = [principled(f"car_{i}", rgb, rough=0.3, metal=0.6) for i, rgb in enumerate(((0.02, 0.02, 0.022), (0.18, 0.18, 0.19), (0.05, 0.12, 0.06)))]
-for i, (cross, t0) in enumerate(schedule(DB["cars"], *T["far"])):
-    y = rng.uniform(28, 55); e = empty(f"car_{i}"); m_ = car_mats[i % len(car_mats)]
+def car(i):
+    e = empty(f"car_{i}"); m_ = car_mats[i % len(car_mats)]
     body = box_mesh(f"car_{i}_body", 4.6, 1.8, 0.75, m_, center=(0, 0, 0.0)); body.parent = e
     cab = box_mesh(f"car_{i}_cab", 2.4, 1.6, 0.55, m_, center=(-0.2, 0, 0.62)); cab.parent = e
-    lo, hi = band(y); path_obj(e, y, rng.uniform(2.5, min(hi - 3, 14)), cross, t0, 4.6, tumble=rng.uniform(0.25, 0.7), bob=0.8)
+    return e
+for i, fr_ in enumerate(fracs(DB["cars"])):
+    put(f"car_{i}", lambda i=i: car(i), 4.6, "far", fr_, rng.uniform(0.25, 0.7), bob=0.8)
 chunk_mats = [principled(f"chunk_{i}", rgb, rough=0.8) for i, rgb in enumerate(((0.05, 0.045, 0.04), (0.12, 0.1, 0.08), (0.2, 0.19, 0.17), (0.03, 0.03, 0.035)))]
-for i, (cross, t0) in enumerate(schedule(DB["chunks"], *T["mid"])):
-    y = rng.choice((rng.uniform(1.4, 2.2), rng.uniform(3.0, 9.0), rng.uniform(9.0, 30.0)))
-    s = rng.uniform(0.02, 0.07) * (1 + y / 6); lo, hi = band(y)
-    ob = box_mesh(f"chunk_{i}", s * rng.uniform(0.5, 2.5), s * rng.uniform(0.3, 1.5), s * rng.uniform(0.2, 1.2), rng.choice(chunk_mats))
-    k = 0.45 if y < 2.4 else 1.0
-    path_obj(ob, y, rng.uniform(max(lo, 0.05), hi), cross * k * (0.6 + y / 25), t0, s, tumble=rng.uniform(2, 7), avoid_face=y < 2.4)
+for i, fr_ in enumerate(fracs(DB["chunks"])):
+    s = rng.uniform(0.03, 0.12); dims = (s * rng.uniform(0.5, 2.5), s * rng.uniform(0.3, 1.5), s * rng.uniform(0.2, 1.2)); m_ = rng.choice(chunk_mats)
+    lane = "front" if rng.random() < DB["front_share"] else "side"
+    put(f"chunk_{i}", lambda i=i, dims=dims, m_=m_: box_mesh(f"chunk_{i}", *dims, m_), max(dims), lane, fr_, rng.uniform(2, 7), bob=0.1)
 paper_mats = [principled(f"paper_{i}", rgb, rough=0.7) for i, rgb in enumerate(((0.7, 0.69, 0.65), (0.55, 0.52, 0.45), (0.8, 0.8, 0.78)))]
-for i, (cross, t0) in enumerate(schedule(DB["papers"], *T["near"])):
-    y = rng.uniform(2.9, 14.0); lo, hi = band(y); s = rng.uniform(0.15, 0.3)
-    path_obj(quad(f"paper_{i}", s, s * 1.3, rng.choice(paper_mats)), y, rng.uniform(max(lo, 0.1), hi), cross, t0, s, tumble=rng.uniform(2.5, 6), bob=0.4)
+for i, fr_ in enumerate(fracs(DB["papers"])):
+    s = rng.uniform(0.15, 0.3); m_ = rng.choice(paper_mats); lane = "front" if rng.random() < DB["front_share"] else "side"
+    put(f"paper_{i}", lambda i=i, s=s, m_=m_: quad(f"paper_{i}", s, s * 1.3, m_), s * 1.3, lane, fr_, rng.uniform(2.5, 6), bob=0.3)
 
 # ---------------------------------------------------------------- the stand-in: him, for scale and light only
 STAND = []
@@ -273,8 +300,19 @@ def to_px(p):
 meta = {"lens_mm_on_36mm_vertical": round(cd.lens, 2), "his_feet_px": to_px(HIM), "his_head_top_px": to_px(HIM + Vector((0, 0, 1.905))),
         "frame_at_his_plane_m": [round(2 * HW * C["his_distance"], 3), round(2 * HH * C["his_distance"], 3)],
         "frame_bottom_at_his_plane_m": round(C["height"] - HH * C["his_distance"], 3), "frame_top_at_his_plane_m": round(C["height"] + HH * C["his_distance"], 3),
-        "key_light_pos": [round(v, 2) for v in key.location], "objects": len(sc.objects), "frames": NFR, "fps": FPS}
+        "key_light_pos": [round(v, 2) for v in key.location], "debris_without_a_clear_path": MISSED, "objects": len(sc.objects), "frames": NFR, "fps": FPS}
 os.makedirs(od, exist_ok=True); json.dump(meta, open(f"{od}/storm_set_meta.json", "w"), indent=1); print("META", json.dumps(meta))
+if opt.get("--dry") == "1":
+    still = []                                                           # anything in the picture that barely moves for > 1/3 s
+    for ob in [o for o in sc.objects if o.animation_data and o.parent is None and o.name not in ("StormCam",)]:
+        run_ = 0
+        for f in range(1, NFR + 1):
+            sc.frame_set(f); a = ob.matrix_world.translation.copy(); sc.frame_set(min(f + 1, NFR)); b = ob.matrix_world.translation.copy()
+            if a.y > 0.1 and abs(a.x / a.y) < HW and abs((a.z - CH) / a.y) < HH and (Vector((b.x / b.y, b.z / b.y)) - Vector((a.x / a.y, a.z / a.y))).length < 0.004 * HW and not ob.name.startswith("car"):
+                run_ += 1
+                if run_ == 8: still.append((ob.name, f, round(a.y, 1)))
+            else: run_ = 0
+    print("STILL", still); print("DRY", len(MISSED), "without a path"); raise SystemExit
 if opt.get("--save") == "1":
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(f"{od}/storm_set.blend")); print("saved", f"{od}/storm_set.blend")
 ims = sc.render.image_settings

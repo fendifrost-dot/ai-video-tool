@@ -27,10 +27,15 @@ Free setup work needs no approval from Fendi; anything billed still needs his qu
 
 Fendi: build the 3D storm now so it sets how he shoots; timing waits for his footage. Scene:
 `scripts/edit/blender/storm_set_build.py` + `storm_set.json` (every number labelled), finish `storm_set_comp.py`.
-Preview v1 (6 s, grey 1.905 m stand-in, stand-in frames / memory cards / cars / debris): AVT `project_assets`
-`d7ae5951-09c5-4275-bdbe-737977d97d30`; frames, empty plate and `.blend` on the T7 in `storm_scene/preview_v1/`.
+Preview **v2** (6 s, grey 1.905 m stand-in, stand-in frames / memory cards / cars / debris): AVT `project_assets`
+`c83a92fe-49b0-4167-af66-b51292eb8da0`; frames, empty plate and `.blend` on the T7 in `storm_scene/preview_v2/`.
+(v1 `d7ae5951` blew left to right and is marked rejected.)
 **How he shoots it:** [`SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md`](SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md)
-(iPhone 2x, lens 1.35 m, level, 2.5 m away; soft cool key on his right; fan on his right; nothing behind him).
+(iPhone 2x, lens 1.35 m, level, 2.5 m away; soft cool key on his right; fan beside the camera blowing straight at him;
+nothing behind him).
+**Wind direction, Fendi 16 Nov, after preview v1 (which blew left to right): "I wanted the debris coming from the
+direction of the camera going past me" / "Front to back".** Preview v2 does that; v1 is superseded. Each debris path
+starts out of frame and is rejected if it covers his face or passes through him; `--dry 1` lists any piece that hangs still on screen.
 Still to do: his photos with his friend replace the stand-in frames and memory cards; time the verse; render at full
 size; split the passes in front of and behind him for his take.
 
