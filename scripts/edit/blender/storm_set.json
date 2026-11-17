@@ -5,7 +5,7 @@
   "_height": "DECISION: phone at his chest height, level (pitch 0); with the lens below the frame runs from his knees to 0.35 m above his head (build skill: knees up or full body, locked off)",
   "pitch_deg": 0.0,
   "focal_px": 2450,
-  "_focal": "ESTIMATE: an iPhone at 2x (48 mm equivalent, diagonal field 48.5 deg) on a 1080x1920 frame: 1101.5 px / tan(24.2 deg)",
+  "_focal": "ESTIMATE: an iPhone at 2x (48 mm equivalent, diagonal field 48.5 deg): 1101.5 px half-diagonal / tan(24.2 deg); the same on 1920x1080 (16:9) as on 1080x1920",
   "his_distance": 2.5,
   "_distance": "DECISION: 2.5 m from lens to him leaves room for debris to pass between camera and him; at 2.5 m the frame is 1.96 m tall at his plane",
   "move": "locked"
@@ -183,11 +183,12 @@
  },
  "render": {
   "size": [
-   1080,
-   1920
+   1920,
+   1080
   ],
   "fps": 24,
   "frames": 144,
-  "_frames": "DECISION: a 6 s preview; the verse length comes from the master once his footage is in"
+  "_frames": "DECISION: a 6 s preview; the verse length comes from the master once his footage is in",
+  "_size": "DECISION by Fendi, 16 Nov 2026: 16:9 is the master ('I want to actually post this one on YouTube and run it as a single'); a 9:16 cut comes second"
  }
 }
