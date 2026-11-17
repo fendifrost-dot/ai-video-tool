@@ -52,7 +52,15 @@ jacket, five passes incl. a side profile; storm verse S1–S5, trench coat and b
 take per lyric line. Footage is 1080p 30 Cinematic (not 4K; his Cinematic setting), on the T7 in `performance shots/`;
 work files in `work/performance/` (`coverage.json`, `lyric_lines.json` from `scripts/lyrics/align_lyrics.py`, lip scans).
 Photos of him with Allen (20, from his artifact) are on the T7 in `storm_scene/allen_photos/`, for the storm's frames and memory cards.
-Next: match the 3D storm camera to the low angle he shot from; not yet filed in AVT (originals ~0.9 GB each).
+**The 3D storm camera now stands where his phone stood (17 Nov, Fendi: "use your best judgement" on technical matters).**
+Measured from the room's lines in his storm takes (`storm_set.json` `camera.footage`): lens 0.38 m up, tilted up 24.5°,
+rolled 6°, him 1.67 m away, focal 1629 px. The 3D lens is wider (900 px) and tilted 40° from the same spot, and the
+D → C → D move is a camera TURN (yaw), so his take re-projects exactly (one homography per frame, no parallax).
+This low angle sees storm sky and debris, not the ground. `storm_set_build.py --passes back,front` + `storm_him_comp.py`
+lay back pass → him → front pass. First test with the real him: T7 `storm_scene/preview_v4/storm_v4_him_test.mp4`
+(take S5, song 2:16.5–2:22.5). Its matte is the local segmenter (preview only); the shipping matte is `matte-video-proxy`
+(PROBLEM_INDEX), a paid call to quote. The 16:9 shooting sheet's C/D camera is superseded by this.
+Not yet filed in AVT: the take originals (~0.9 GB each).
 
 ## Read first, in this order
 
