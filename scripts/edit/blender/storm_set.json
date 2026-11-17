@@ -1,14 +1,38 @@
 {
  "_doc": "Partnership / Cease & Desist: the storm verse set (Fendi, 14 Nov 2026: at 'Yo yo yo yo' he lets off a war cry; 'the yell turns into hurricane-force winds and the picture cuts to him standing centre screen, rapping the verse, while memories and material objects blow past him: silhouettes of pictures of him and his friend, cars, debris, holograms of memories. It's as if I'm trying to hold on to the memories of my friend.'). Fendi, 16 Nov: build the scene now so it sets how he shoots; timing waits for his footage. Units: metres. World: the camera's foot is (0,0,0), +Y away from the camera, +X screen right, +Z up. Every value is MEASURED, SPEC, ESTIMATE or DECISION.",
  "camera": {
-  "height": 1.35,
-  "_height": "DECISION: phone at his chest height, level (pitch 0); with the lens below the frame runs from his knees to 0.35 m above his head (build skill: knees up or full body, locked off)",
-  "pitch_deg": 0.0,
+  "height": 1.0,
+  "_height": "DECISION by Fendi, 17 Nov 2026 (16:9 option C/D): lens 1.0 m up, tilted up 7.7 deg: knees just in at the bottom, his head about half way up, storm sky above",
+  "pitch_deg": 7.7,
   "focal_px": 2450,
-  "_focal": "ESTIMATE: an iPhone at 2x (48 mm equivalent, diagonal field 48.5 deg) on a 1080x1920 frame: 1101.5 px / tan(24.2 deg)",
-  "his_distance": 2.5,
-  "_distance": "DECISION: 2.5 m from lens to him leaves room for debris to pass between camera and him; at 2.5 m the frame is 1.96 m tall at his plane",
-  "move": "locked"
+  "_focal": "ESTIMATE: an iPhone at 2x (48 mm equivalent, diagonal field 48.5 deg): 1101.5 px half-diagonal / tan(24.2 deg); the same on 1920x1080 (16:9) as on 1080x1920",
+  "his_distance": 6.0,
+  "_distance": "DECISION by Fendi, 17 Nov 2026: 6 m from lens to him ('more in the distance not front and center', knees up at most); frame 4.70 x 2.70 m at his plane, 0.50 to 3.20 m above the floor",
+  "move": {
+   "keys": [
+    [
+     0.0,
+     -0.75
+    ],
+    [
+     1.0,
+     -0.75
+    ],
+    [
+     3.0,
+     0.0
+    ],
+    [
+     4.0,
+     0.0
+    ],
+    [
+     6.0,
+     -0.75
+    ]
+   ],
+   "_doc": "DECISION (Fendi, 17 Nov: 'cuts or camera movement from D into C and then back to D whichever is smoother'): a slow sideways slide, eased. camera x -0.75 = option D (him right of centre), 0 = option C (centred). He shoots ONE take, centred and locked off; his matted take is placed at his mark in the edit, so the slide costs nothing on set. Preview timing; the real moves follow the lyrics once his footage is in"
+  }
  },
  "him": {
   "x": 0.0,
@@ -179,15 +203,16 @@
    "_doc": "where each path is aimed, as a fraction of the half frame at its end depth"
   },
   "min_screen_travel": 1.0,
-  "_min_screen_travel": "DECISION (preview v1 → v2 check, 16 Nov: a frame hung still by his hip for half a second, receding along its own line of sight): every object crosses at least this many half-frame widths on screen while in the picture"
+  "_min_screen_travel": "DECISION (preview v1 \u2192 v2 check, 16 Nov: a frame hung still by his hip for half a second, receding along its own line of sight): every object crosses at least this many half-frame widths on screen while in the picture"
  },
  "render": {
   "size": [
-   1080,
-   1920
+   1920,
+   1080
   ],
   "fps": 24,
   "frames": 144,
-  "_frames": "DECISION: a 6 s preview; the verse length comes from the master once his footage is in"
+  "_frames": "DECISION: a 6 s preview; the verse length comes from the master once his footage is in",
+  "_size": "DECISION by Fendi, 16 Nov 2026: 16:9 is the master ('I want to actually post this one on YouTube and run it as a single'); a 9:16 cut comes second"
  }
 }

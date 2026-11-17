@@ -15,12 +15,12 @@ ap.add_argument("--grain", type=float, default=0.018); ap.add_argument("--still"
 A = ap.parse_args()
 P = json.load(open(A.params)); WD = P["wind"]; FPS = P["render"]["fps"]
 files = sorted(glob.glob(os.path.join(A.png, "storm_*.png"))); assert files, "no frames"
-h, w = cv2.imread(files[0]).shape[:2]; k = w / 1080.0
+h, w = cv2.imread(files[0]).shape[:2]; k = min(w, h) / 1080.0          # rain scales with the short side (16:9 or 9:16)
 def gust(t): return WD["base"] + sum(a * math.sin(2 * math.pi * t / p + ph) for a, p, ph in WD["gusts"])
 
 rs = np.random.RandomState(A.seed)
 LAYERS = [  # count, length px, thickness, brightness, fall speed px/frame, pull toward the vanishing point per frame
-    dict(n=int(900 * A.rain), L=26 * k, th=1, a=0.10, v=70 * k, pull=0.018, x=rs.rand(int(900 * A.rain)) * w * 1.6 - 0.3 * w, y=rs.rand(int(900 * A.rain)) * h),
+    dict(n=int(900 * A.rain * max(w, h) / 1920), L=26 * k, th=1, a=0.10, v=70 * k, pull=0.018, x=rs.rand(int(900 * A.rain * max(w, h) / 1920)) * w * 1.6 - 0.3 * w, y=rs.rand(int(900 * A.rain * max(w, h) / 1920)) * h),
     dict(n=int(160 * A.rain), L=95 * k, th=2, a=0.13, v=150 * k, pull=0.03, x=rs.rand(int(160 * A.rain)) * w * 1.6 - 0.3 * w, y=rs.rand(int(160 * A.rain)) * h),
 ]
 yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)

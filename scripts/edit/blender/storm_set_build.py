@@ -6,7 +6,8 @@ usage (Blender 5.3, headless):
 Writes <out_dir>/png[_<pass>]/storm_0001.png ... (8-bit sRGB); storm_set_comp.py adds rain, grain and the mp4.
 
 What is in it (params: storm_set.json; every number there is labelled MEASURED / SPEC / ESTIMATE / DECISION):
-  camera      a phone at 2x, level, at his chest height, 2.5 m from him, locked off (knees to above his head)
+  camera      a phone at 2x (height, tilt, distance: storm_set.json); camera.move slides it sideways over the shot
+              (Fendi, 17 Nov: D into C and back; his take is shot once, centred, and placed in the edit)
   sky         storm clouds rolling away from the camera; lightning flashes seen by the camera only (they never light him)
   ground      wet dark ground to the horizon, far silhouettes fading into the storm haze
   light       one big soft cool key from camera-left (his right) and a weak fill: the light he copies on set
@@ -26,6 +27,9 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 pp, od = argv[:2]
 opt = dict(zip(argv[2::2], argv[3::2]))
 P = json.load(open(pp)); C, HM, KL, WD, DB, R = P["camera"], P["him"], P["key_light"], P["wind"], P["debris"], P["render"]
+if "--cam" in opt:                                                       # framing test: focal_px,his_distance,pitch_deg,height,him_x
+    for k, v in zip(("focal_px", "his_distance", "pitch_deg", "height"), opt["--cam"].split(",")[:4]): C[k] = float(v)
+    if len(opt["--cam"].split(",")) > 4: HM["x"] = float(opt["--cam"].split(",")[4])
 W, H = R["size"]; FPS = R["fps"]; NFR = int(opt.get("--frames", R["frames"]))
 ONLY = int(opt.get("--only", 0)); PCT = int(opt.get("--pct", 50))
 rng = random.Random(DB["seed"])
@@ -97,7 +101,24 @@ cd.lens = C["focal_px"] * 36.0 / H
 cd.clip_start, cd.clip_end = 0.05, 600
 cam = bpy.data.objects.new("StormCam", cd); coll.objects.link(cam); sc.camera = cam
 cam.location = (0, 0, C["height"]); cam.rotation_euler = (math.pi / 2 + math.radians(C["pitch_deg"]), 0, 0)
+MOVE = C.get("move", {}).get("keys") or [[0.0, 0.0]]                      # [[t_s, camera x m], ...]: a slow sideways slide
+if "--cam" in opt and len(opt["--cam"].split(",")) > 4: MOVE = [[0.0, 0.0]]
+def cam_x(t):
+    """Camera x at time t: holds before the first key and after the last, eases (smoothstep) between keys."""
+    if t <= MOVE[0][0]: return MOVE[0][1]
+    for (ta, xa), (tb, xb) in zip(MOVE, MOVE[1:]):
+        if t <= tb: f = (t - ta) / max(tb - ta, 1e-6); return xa + (xb - xa) * f * f * (3 - 2 * f)
+    return MOVE[-1][1]
+for f, t in zip(range(1, NFR + 1), TIMES):
+    cam.location.x = cam_x(t); cam.keyframe_insert("location", index=0, frame=f)
+_xs = [cam_x(t) for t in TIMES]; CXS = sorted({round(min(_xs) + (max(_xs) - min(_xs)) * k / 8, 4) for k in range(9)})  # every place the camera visits
 HW = (W / 2) / C["focal_px"]; HH = (H / 2) / C["focal_px"]           # half-width / half-height per metre of depth
+_P = math.radians(C["pitch_deg"]); _CP, _SP = math.cos(_P), math.sin(_P)
+def proj(x, y, z, cx=None):
+    """(depth, u, w) as the phone sees a point: u right, w up, both per metre of depth; the phone may be tilted (pitch).
+    cx: the camera's x (default: where it starts)."""
+    dz = z - C["height"]; d = y * _CP + dz * _SP; x = x - (MOVE[0][1] if cx is None else cx)
+    return d, x / d if d > 1e-6 else 1e9, (-y * _SP + dz * _CP) / d if d > 1e-6 else 1e9
 
 # ---------------------------------------------------------------- sky: clouds on the wind, lightning for the camera only
 world = bpy.data.worlds.new("storm"); world.use_nodes = True; sc.world = world
@@ -180,21 +201,28 @@ for f, t in zip(range(1, NFR + 1), TIMES):
 
 # ---------------------------------------------------------------- debris on the wind: from behind the camera, past him, into the storm
 D = C["his_distance"]; CH = C["height"]; FACE = HM["face_box_m"]; BODY = HM["body_half_width_m"]; TOP = HM["height"] + 0.12
-FU = max(-FACE[0], FACE[1]) / D; FW0 = (FACE[2] - CH) / D; FW1 = (FACE[3] - CH) / D    # his face box as the lens sees it
+HX = HM["x"]
+def face_box(cx):                                                        # his face box as the lens sees it from camera x
+    fc = [proj(HX + fx, D, fz, cx)[1:] for fx in FACE[:2] for fz in FACE[2:]]
+    return min(c[0] for c in fc), max(c[0] for c in fc), min(c[1] for c in fc), max(c[1] for c in fc)
+FACES = [(cx, face_box(cx)) for cx in CXS]
 LN = DB["lanes"]; END = DB["end"]; MAXF = DB["max_screen_frac"]
 def clear(x, y, z, size, solid):
     """True when an object here keeps his face readable, does not go through him or the ground, and is not a wall.
     size: its reach including the wobble (for his face and body); solid: its own size (for the ground)."""
     r = 0.6 * size
     if z - 0.35 * solid < 0.0: return False
-    if y > 0.06:
-        a = r / y; u = x / y; w = (z - CH) / y
-        if y < D + r and abs(u) - a < FU + 0.012 and w + a > FW0 - 0.012 and w - a < FW1 + 0.012: return False  # in front of his face
-        b = 0.6 * solid / y
-        if abs(u) - b < HW and abs(w) - b < HH and b > MAXF * HW: return False   # so close to the lens it would fill the frame
-    if abs(y - D) < 0.3 + r and abs(x) - r < BODY and z - r < TOP: return False  # passes beside him or over his head, never through
+    for cx, (FU0, FU1, FW0, FW1) in FACES:                               # wherever the camera is when it passes
+        dp, u, w = proj(x, y, z, cx)
+        if dp > 0.06:
+            a = r / dp
+            if y < D + r and u + a > FU0 - 0.012 and u - a < FU1 + 0.012 and w + a > FW0 - 0.012 and w - a < FW1 + 0.012: return False  # in front of his face
+            b = 0.6 * solid / dp
+            if abs(u) - b < HW and abs(w) - b < HH and b > MAXF * HW: return False   # so close to the lens it would fill the frame
+    if abs(y - D) < 0.3 + r and abs(x - HX) - r < BODY and z - r < TOP: return False  # passes beside him or over his head, never through
     return True
-def in_frame(x, y, z): return y > 0.1 and abs(x / y) < HW and abs((z - CH) / y) < HH
+def in_frame(x, y, z):
+    dp, u, w = proj(x, y, z); return dp > 0.1 and abs(u) < HW and abs(w) < HH
 def fly(make, size, lane, frac, tumble, bob=0.2):
     """Find a path from off-frame (behind or beside the camera) past him into the distance that obeys clear() all the
     way, then key it on the wind curve: depth speed V m/s at base wind. Returns None when no path is found."""
@@ -206,12 +234,13 @@ def fly(make, size, lane, frac, tumble, bob=0.2):
         x1 = rng.uniform(*END["u"]) * HW * y1; z1 = max(0.3 + size, CH + rng.uniform(*END["w"]) * HH * y1)
         def at(y, y0=y0, x0=x0, z0=z0, y1=y1, x1=x1, z1=z1):
             f = (y - y0) / (y1 - y0); return x0 + (x1 - x0) * f, y, z0 + (z1 - z0) * f
-        sx, sy, sz = at(y0); b = 0.6 * eff / max(sy, 1e-3)               # it waits there, so all of it must be out of the picture
-        if sy > 0.05 and abs(sx / sy) - b < HW and abs((sz - CH) / sy) - b < HH: continue
+        def seen_at_start(cx):                                           # it waits there, so all of it must be out of the picture
+            sd, su, sw = proj(*at(y0), cx); b = 0.6 * eff / max(sd, 1e-3); return sd > 0.05 and abs(su) - b < HW and abs(sw) - b < HH
+        if any(seen_at_start(cx) for cx in CXS): continue
         ys = [y0 + 0.04 * k for k in range(int((y1 - y0) / 0.04) + 1)]
         if not all(clear(*at(y), eff, size) for y in ys): continue
         if not any(in_frame(*at(y)) for y in ys if y < D + 4 or lane == "far"): continue  # and be seen on its way past him (cars: anywhere)
-        uv = [(q[0] / q[1], (q[2] - CH) / q[1]) for q in map(at, ys) if q[1] > 0.1 and in_frame(*q)]
+        uv = [proj(*q)[1:] for q in map(at, ys) if in_frame(*q)]
         if sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(uv, uv[1:])) < DB["min_screen_travel"] * HW: continue  # no hanging in the air
         break
     else:
@@ -295,11 +324,13 @@ if opt.get("--standin", "1") == "1":
         for poly in o.data.polygons: poly.use_smooth = True
 
 # ---------------------------------------------------------------- record and render
-def to_px(p):
-    d = p.y; return [round(W / 2 + C["focal_px"] * p.x / d, 1), round(H / 2 - C["focal_px"] * (p.z - C["height"]) / d, 1)]
+def to_px(p, cx=None):
+    _, u, w = proj(p.x, p.y, p.z, cx); return [round(W / 2 + C["focal_px"] * u, 1), round(H / 2 - C["focal_px"] * w, 1)]
 meta = {"lens_mm_on_36mm_vertical": round(cd.lens, 2), "his_feet_px": to_px(HIM), "his_head_top_px": to_px(HIM + Vector((0, 0, 1.905))),
         "frame_at_his_plane_m": [round(2 * HW * C["his_distance"], 3), round(2 * HH * C["his_distance"], 3)],
-        "frame_bottom_at_his_plane_m": round(C["height"] - HH * C["his_distance"], 3), "frame_top_at_his_plane_m": round(C["height"] + HH * C["his_distance"], 3),
+        "frame_bottom_at_his_plane_m": round(C["height"] + D * math.tan(_P - math.atan(HH)), 3), "frame_top_at_his_plane_m": round(C["height"] + D * math.tan(_P + math.atan(HH)), 3),
+        "camera": {k: C[k] for k in ("focal_px", "his_distance", "pitch_deg", "height")}, "him_x": HX, "camera_move_keys": MOVE,
+        "his_feet_px_at_each_key": [[t, to_px(HIM, x)] for t, x in MOVE],
         "key_light_pos": [round(v, 2) for v in key.location], "debris_without_a_clear_path": MISSED, "objects": len(sc.objects), "frames": NFR, "fps": FPS}
 os.makedirs(od, exist_ok=True); json.dump(meta, open(f"{od}/storm_set_meta.json", "w"), indent=1); print("META", json.dumps(meta))
 if opt.get("--dry") == "1":
@@ -308,7 +339,8 @@ if opt.get("--dry") == "1":
         run_ = 0
         for f in range(1, NFR + 1):
             sc.frame_set(f); a = ob.matrix_world.translation.copy(); sc.frame_set(min(f + 1, NFR)); b = ob.matrix_world.translation.copy()
-            if a.y > 0.1 and abs(a.x / a.y) < HW and abs((a.z - CH) / a.y) < HH and (Vector((b.x / b.y, b.z / b.y)) - Vector((a.x / a.y, a.z / a.y))).length < 0.004 * HW and not ob.name.startswith("car"):
+            cx = cam_x(TIMES[f - 1]); _, ua, wa = proj(*a, cx)
+            if proj(*a, cx)[0] > 0.1 and abs(ua) < HW and abs(wa) < HH and (Vector(proj(*b, cx)[1:]) - Vector((ua, wa))).length < 0.004 * HW and not ob.name.startswith("car"):
                 run_ += 1
                 if run_ == 8: still.append((ob.name, f, round(a.y, 1)))
             else: run_ = 0
