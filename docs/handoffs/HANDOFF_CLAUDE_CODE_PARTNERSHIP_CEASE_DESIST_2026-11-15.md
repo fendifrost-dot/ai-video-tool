@@ -34,7 +34,7 @@ Preview **v2** (6 s, grey 1.905 m stand-in, stand-in frames / memory cards / car
 project" — the master is 16:9; a 9:16 cut comes second (cropped from his horizontal 4K take). `video_projects.aspect_ratio` is "16:9".
 **Framing (Fendi, 17 Nov, after the A–D options on the T7 in `storm_scene/framing_options_16x9/`):** "c or d will
 work maybe cuts or camera movement from D into C and then back to D whichever is smoother." The 3D camera is option C/D
-(6 m back, 1.0 m up, tilted 7.7°) and slides sideways D → C → D (`camera.move`). Preview **v3** has the slide.
+(6 m back, 1.0 m up, tilted 7.7°) and slides sideways D → C → D (`camera.move`). Preview **v3** has the slide: AVT `project_assets` `53c0b80c-28a8-40a3-a9ee-d45d74257f70` (parent v2 `c83a92fe`); frames, empty plate and `.blend` on the T7 in `storm_scene/preview_v3/`.
 **How he shoots it:** [`SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md`](SHOOTING_SHEET_PARTNERSHIP_STORM_VERSE.md).
 He has 5–6 ft of room (17 Nov), so he shoots close (iPhone 1x, horizontal 4K 24 fps, lens 1.2 m, level, centred, knees
 or mid-thigh up) and the comp scales him onto his mark at 6 m and does the slide; soft cool key on his right; blower
