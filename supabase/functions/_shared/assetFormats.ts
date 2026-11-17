@@ -1,5 +1,6 @@
 // Versioned production documents stored as project_assets. Not an EDL.
-// edit_sequences remains the cut. These three are the shot list, the beat grid, and the rules QC reads.
+// edit_sequences remains the cut. These are the shot list, the beat grid, the rules QC reads,
+// and (via styleLearn.ts) the style profile.
 
 export const FORMAT_VERSION = 1;
 export const FORMAT_SHOT_LIST = "avt.shot_list";

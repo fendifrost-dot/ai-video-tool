@@ -1,6 +1,8 @@
 // Asset-store tools. Every write goes through the owner's RLS client and record_mcp_write.
 // Nothing here deletes a locked asset, a remote object, or a local file.
 import { resolveOwnerStoragePath } from "./contract.ts";
+import { parseStyleProfile, planStyleFromToolArgs } from "../_shared/styleLearn.ts";
+import { composeStyle, parseStyleEffects, searchEffects, type StyleEffect } from "../_shared/styleLibrary.ts";
 import {
   attachAllows,
   deleteGuardStatus,
@@ -364,8 +366,17 @@ const FORMAT_KIND = {
   avt_shot_list_save: "shot_list",
   avt_beat_grid_get: "beat_grid",
   avt_beat_grid_save: "beat_grid",
+  avt_style_profile_get: "style_profile",
+  avt_style_profile_save: "style_profile",
   avt_project_rules_get: "project_rules",
   avt_project_rules_save: "project_rules",
+} as const;
+
+const FORMAT_NAME = {
+  shot_list: "avt.shot_list",
+  beat_grid: "avt.beat_grid",
+  style_profile: "avt.style_profile",
+  project_rules: "avt.project_rules",
 } as const;
 
 async function currentFormat(ctx: Ctx, projectId: string, format: string) {
@@ -377,7 +388,7 @@ async function currentFormat(ctx: Ctx, projectId: string, format: string) {
   return { asset: current, document: (current?.metadata_json as { document?: unknown } | null)?.document ?? null };
 }
 
-async function saveFormat(ctx: Ctx, tool: string, kind: "shot_list" | "beat_grid" | "project_rules", args: Record<string, unknown>) {
+async function saveFormat(ctx: Ctx, tool: string, kind: "shot_list" | "beat_grid" | "project_rules" | "style_profile", args: Record<string, unknown>) {
   const plan = planFormatSave(kind, args);
   if (!plan.ok) throw new Error(plan.error);
   const previous = await currentFormat(ctx, plan.value.project_id, plan.value.format);
@@ -438,6 +449,128 @@ async function editLock(ctx: Ctx, args: Record<string, unknown>) {
   return { sequence_id: sequence.id, locked: plan.value.sequenceLocked ?? sequence.locked === true, clips: plan.value.clips, ...logged };
 }
 
+async function libraryRows(ctx: Ctx, projectId: string): Promise<Row[]> {
+  return (bang(
+    await ctx.db.from("style_learn_effects").select("*").eq("user_id", ctx.userId).eq("project_id", projectId),
+    "read failed",
+  ) ?? []) as Row[];
+}
+
+function effectOf(row: Row): StyleEffect | null {
+  const doc = row.document;
+  if (!doc || typeof doc !== "object") return null;
+  const parsed = parseStyleEffects([doc]);
+  return parsed.ok ? parsed.value[0] ?? null : null;
+}
+
+async function libraryList(ctx: Ctx, args: Record<string, unknown>) {
+  if (!isUuid(args.project_id)) throw new Error("project_id must be a uuid");
+  const effects = (await libraryRows(ctx, args.project_id)).map(effectOf).filter((effect): effect is StyleEffect => !!effect && !effect.variant_of);
+  return { effects, cost_usd: 0 };
+}
+
+async function librarySearch(ctx: Ctx, args: Record<string, unknown>) {
+  if (!isUuid(args.project_id)) throw new Error("project_id must be a uuid");
+  if (typeof args.query !== "string" || args.query.length === 0) throw new Error("query is required");
+  const effects = (await libraryRows(ctx, args.project_id)).map(effectOf).filter((effect): effect is StyleEffect => !!effect);
+  return { effects: searchEffects(effects, args.query), cost_usd: 0 };
+}
+
+async function libraryGet(ctx: Ctx, args: Record<string, unknown>) {
+  if (!isUuid(args.id)) throw new Error("id must be a uuid");
+  const row = bang(await ctx.db.from("style_learn_effects").select("*").eq("id", args.id).eq("user_id", ctx.userId).maybeSingle(), "read failed") as Row | null;
+  if (!row) throw new Error("effect not found");
+  return { effect: effectOf(row), cost_usd: 0 };
+}
+
+async function librarySave(ctx: Ctx, args: Record<string, unknown>) {
+  if (!isUuid(args.project_id)) throw new Error("project_id must be a uuid");
+  const parsed = parseStyleProfile(args.profile ?? args.document);
+  if (!parsed.ok) throw new Error(parsed.error);
+  const profile = parsed.value;
+  const saved = bang(
+    await ctx.db.from("style_learn_profiles").insert({
+      user_id: ctx.userId,
+      project_id: args.project_id,
+      label: profile.source.label,
+      summary: profile.summary,
+      document: profile,
+      superseded: false,
+    }).select("id").single(),
+    "insert failed",
+  ) as Row;
+  const existing = await libraryRows(ctx, args.project_id);
+  let merged = 0;
+  for (const effect of profile.effects) {
+    const canonical = existing.find((row) => row.effect_key === effect.effect_key && !row.variant_of);
+    const variantOf = canonical ? (canonical.id as string) : null;
+    if (variantOf) merged += 1;
+    const inserted = bang(
+      await ctx.db.from("style_learn_effects").insert({
+        user_id: ctx.userId,
+        project_id: args.project_id,
+        profile_id: saved.id,
+        effect_key: effect.effect_key,
+        taxonomy_id: effect.taxonomy_id,
+        plain: effect.plain,
+        variant_of: variantOf,
+        document: { ...effect, variant_of: variantOf },
+      }).select("id").single(),
+      "insert failed",
+    ) as Row;
+    existing.push({ id: inserted.id, effect_key: effect.effect_key, variant_of: variantOf, document: { ...effect, variant_of: variantOf } });
+  }
+  const logged = await audit(ctx, {
+    tool: "avt_style_library_save",
+    action: "save",
+    subject_table: "style_learn_profiles",
+    subject_id: saved.id as string,
+    summary: { effects: profile.effects.length, merged, resolution: profile.resolution },
+  });
+  return { profile_id: saved.id, effects: profile.effects.length, merged, resolution: profile.resolution, cost_usd: 0, ...logged };
+}
+
+async function libraryApply(ctx: Ctx, args: Record<string, unknown>) {
+  if (!isUuid(args.project_id)) throw new Error("project_id must be a uuid");
+  let rhythm = args.profile ?? args.document;
+  if (!rhythm && isUuid(args.rhythm_profile_id)) {
+    const row = bang(
+      await ctx.db.from("style_learn_profiles").select("*").eq("id", args.rhythm_profile_id).eq("user_id", ctx.userId).maybeSingle(),
+      "read failed",
+    ) as Row | null;
+    if (!row) throw new Error("style profile not found");
+    rhythm = row.document;
+  }
+  const parsed = parseStyleProfile(rhythm);
+  if (!parsed.ok) throw new Error(parsed.error);
+  let picked = parsed.value.effects;
+  if (Array.isArray(args.effects)) {
+    const inline = parseStyleEffects(args.effects);
+    if (!inline.ok) throw new Error(inline.error);
+    picked = inline.value;
+  } else if (Array.isArray(args.effect_ids)) {
+    const rows = await libraryRows(ctx, args.project_id);
+    picked = args.effect_ids.map((id) => effectOf(rows.find((row) => row.id === id) ?? {})).filter((effect): effect is StyleEffect => !!effect);
+  }
+  const composed = composeStyle(parsed.value, picked);
+  const tier3 = picked
+    .filter((effect) => effect.recipe.tier === "generative")
+    .map((effect) => ({
+      effect_id: effect.id,
+      plain: effect.plain,
+      avt_function: effect.recipe.avt_function,
+      avt_route: effect.recipe.avt_route,
+      why: effect.recipe.why,
+      called: false,
+    }));
+  if (!Array.isArray(args.clips)) {
+    return { profile: composed, tier3_routes: tier3, reanalyzed: false, rendered: false, cost_usd: 0 };
+  }
+  const planned = planStyleFromToolArgs({ ...args, profile: composed });
+  if (!planned.ok) throw new Error(planned.error);
+  return { ...planned.value, tier3_routes: tier3, reanalyzed: false };
+}
+
 const HANDLERS: Record<string, (ctx: Ctx, args: Record<string, unknown>) => Promise<unknown>> = {
   avt_asset_list: listAssets,
   avt_asset_tag: tagAsset,
@@ -460,6 +593,11 @@ const HANDLERS: Record<string, (ctx: Ctx, args: Record<string, unknown>) => Prom
   avt_validation_list: validationList,
   avt_validation_get: validationGet,
   avt_edit_lock: editLock,
+  avt_style_library_list: libraryList,
+  avt_style_library_search: librarySearch,
+  avt_style_library_get: libraryGet,
+  avt_style_library_save: librarySave,
+  avt_style_library_apply: libraryApply,
 };
 
 export async function runStoreTool(db: StoreDb, userId: string, credentialId: string, name: string, args: Record<string, unknown>) {
@@ -467,7 +605,7 @@ export async function runStoreTool(db: StoreDb, userId: string, credentialId: st
   const formatKind = FORMAT_KIND[name as keyof typeof FORMAT_KIND];
   if (formatKind && name.endsWith("_get")) {
     if (!isUuid(args.project_id)) throw new Error("project_id must be a uuid");
-    const format = formatKind === "shot_list" ? "avt.shot_list" : formatKind === "beat_grid" ? "avt.beat_grid" : "avt.project_rules";
+    const format = FORMAT_NAME[formatKind];
     return currentFormat(ctx, args.project_id, format);
   }
   if (formatKind && name.endsWith("_save")) return saveFormat(ctx, name, formatKind, args);

@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseBeatGrid, parseProjectRules, parseShotList, REVIEW_PREVIEW } from "../_shared/assetFormats.ts";
+import { STYLE_APPROXIMATED, STYLE_MATCHED } from "../_shared/styleLearn.ts";
+import { effectsFromSignals } from "../_shared/styleLibrary.ts";
 import { checkCompatibility, compareVersions } from "../_shared/skillDeps.ts";
 import { TOOLS } from "./contract.ts";
 import { scratchClearance, tusUploadPlan } from "./contract.ts";
@@ -426,6 +428,55 @@ describe("store handlers", () => {
     const rules = await run(mem, "avt_project_rules_get", { project_id: PROJECT }) as { document: { preview: { width: number } } };
     expect(rules.document.preview.width).toBe(1080);
     await expect(run(mem, "avt_project_rules_save", { project_id: PROJECT, document: { format: "avt.project_rules", format_version: 1, face: "generated", mouth: "no_alteration", likeness: "no_generated_likeness", preview: REVIEW_PREVIEW, locked_looks: [], plates: [], allowed_black_windows: [] } })).rejects.toThrow(/real_pixels_only/);
+    const grade = { contrast: 1, saturation: 1, grain: 0, vignette: 0, lift: 0, gamma: 1, gain: 1 };
+    const style = {
+      format: "avt.style_profile",
+      format_version: 1,
+      cost_usd: 0,
+      summary: "Two hard cuts, a flat grade, and no paid call.",
+      source: { label: "fixture", duration_seconds: 2, width: 320, height: 240, fps: 24 },
+      shots: [{ index: 0, start: 0, end: 2, transition_out: "hard_cut", speed: 1, motion: { zoom: 0, shake: 0, intensity: 0 }, grade, fx: [] }],
+      shot_length: { count: 1, mean: 2, median: 2, p10: 2, p90: 2 },
+      cut_timing: { on_beat_ratio: 0, median_offset_seconds: 0, prefer: "free" },
+      transitions: { hard_cut: 1, crossfade: 0, flash: 0, whip: 0 },
+      speed: { slow_motion_ratio: 0, fast_ratio: 0 },
+      camera: { zoom: 0, shake: 0, intensity: 0 },
+      grade,
+      frame: { aspect: "4:3", letterbox: false, bar_top: 0, bar_bottom: 0, bar_left: 0, bar_right: 0 },
+      overlays: { text_presence: 0 },
+      fx: { strobe: false, rgb_split: false, glitch: false },
+      vision: { enabled: false, labels: [], status: "off" },
+      fidelity: { matched: [...STYLE_MATCHED], approximated: [...STYLE_APPROXIMATED] },
+      detectors: { scenes: "chroma-distance", audio: "none", vision: "off", sample_fps: 24 },
+    };
+    const savedStyle = await run(mem, "avt_style_profile_save", { project_id: PROJECT, document: style }) as { version_number: number; format: string };
+    expect(savedStyle.format).toBe("avt.style_profile");
+    expect(savedStyle.version_number).toBe(1);
+    const currentStyle = await run(mem, "avt_style_profile_get", { project_id: PROJECT }) as { document: { summary: string } };
+    expect(currentStyle.document.summary).toContain("flat grade");
+    await expect(run(mem, "avt_style_profile_save", { project_id: PROJECT, document: { ...style, cost_usd: 3 } })).rejects.toThrow(/cost_usd/);
+    const flash = effectsFromSignals([{ start: 0.4, end: 0.5, signals: { luma_spike: 0.9 } }]);
+    const learned = { ...style, effects: flash };
+    const savedLib = await run(mem, "avt_style_library_save", { project_id: PROJECT, profile: learned }) as { effects: number; resolution: { counts: { generative: number } } };
+    expect(savedLib.effects).toBe(1);
+    expect(savedLib.resolution.counts.generative).toBe(0);
+    const second = await run(mem, "avt_style_library_save", { project_id: PROJECT, profile: learned }) as { merged: number };
+    expect(second.merged).toBe(1);
+    const found = await run(mem, "avt_style_library_search", { project_id: PROJECT, query: "the screen flashes white" }) as { effects: { taxonomy_id: string }[] };
+    expect(found.effects[0].taxonomy_id).toBe("flash");
+    const timed = await run(mem, "avt_style_library_search", { project_id: PROJECT, query: "the thing at 0.4" }) as { effects: { taxonomy_id: string }[] };
+    expect(timed.effects[0].taxonomy_id).toBe("flash");
+    const applied = await run(mem, "avt_style_library_apply", {
+      project_id: PROJECT,
+      profile: learned,
+      effects: flash,
+      beats: [0, 1, 2],
+      clips: [{ id: "take", duration: 2, subject: "fendi_performance" }],
+    }) as { reanalyzed: boolean; cost_usd: number; tier3_routes: unknown[]; edl: { clips: { speed: number }[] } };
+    expect(applied.reanalyzed).toBe(false);
+    expect(applied.cost_usd).toBe(0);
+    expect(applied.tier3_routes).toEqual([]);
+    expect(applied.edl.clips.every((clip) => clip.speed === 1)).toBe(true);
   });
 
   it("locks a sequence and refuses to clear it without unlock", async () => {

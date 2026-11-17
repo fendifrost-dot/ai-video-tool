@@ -36,6 +36,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [DRESS-1](#dress-1--dress-this-shot-paid-swap-server-fetch-of-a-row-carried-url-retimed-files) | "Dress this shot": paid swap per click, server fetch of a row-carried URL, retimed files on the song clock | Medium | Confirmed (design) | Open (new, Class C review pending) | Products (AVT) |
 | [EDIT-1](#edit-1--cut-render-downloads-caller-signed-storage-urls) | Cut render downloads caller-signed storage URLs | Low | Confirmed | Open (mitigated; cost stays 0) | Products (AVT) |
 | [STORE-5](#store-5--catalog-resumable-upload-and-locked-asset-delete) | Catalog, tus upload, locked-asset delete | Medium | Confirmed (design) | Open (in review; not deployed) | Platform (AVT) |
+| [STYLE-1](#style-1--style-learn-draft-is-not-a-finished-cut) | Style Learn draft is not a finished cut | Low | Confirmed (design) | Open (in review; not deployed) | Products (AVT) |
 
 ---
 
@@ -516,4 +517,13 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Mitigations:** writes go through the owner's RLS client plus `record_mcp_write`. Publish RPCs are security invoker and are not on the generic `avt_rpc` allowlist. `edit_render_workers.secret_hash` stays unreadable. Bucket limits are a Lovable storage setting (4294967296 bytes on project-exports, project-clips, project-references, project-audio, and the project-wide cap), not SQL. No path deletes anything on the T7.
 - **Residual:** a leaked tus token can still PATCH that one object until it expires. A wrong stored sha256 makes `verify` refuse scratch clearing until metadata is corrected.
 - **DoD:** Lovable SQL editor has applied `20261113120000_asset_store_extensions.sql`, and `avt-mcp` 1.6.0 is redeployed. Not done in this change.
+
+## STYLE-1 — Style Learn draft is not a finished cut
+
+- **Severity:** Low · **Confidence:** Confirmed (design) · **Status:** Open (in review; not deployed) · **Owner:** Products (AVT) · **Opened:** 2026-11-17
+- **Class:** C (a new assembly EDL and an ffmpeg draft beside the timeline). Do not merge without architecture, product, and security sign-off. This change does not touch the locked garment-swap, keyframe, or face-restore path, and it does not ship.
+- **Summary:** Style Learn measures a reference on the machine and plans a cut. Effects are recreated in code first (ffmpeg or `scripts/style/recipes.py`). A cutout can name MediaPipe, local and free. An effect that invents something that was not filmed stores the existing AVT function (`world-still-proxy` + Gemini, `dress-clip`, `montage-shot`, `runway-video-edit-proxy`, `wardrobe-vton-proxy`, `compose-look-proxy`, `faceswap-proxy`) and does not call it. `avt_style_library_save` writes `style_learn_profiles` and `style_learn_effects` once the migration is applied. This PR does not apply it and does not deploy.
+- **Mitigations:** performance speed stays 1. RGB split, glitch, and heavy shake stay off that take. The migration grants `authenticated` only, owner RLS, no `service_role`. It does not touch `style_profiles`. Vision stays off and makes no network call. Generative rows are mappings, not new integrations.
+- **Residual:** a global grade, grain, vignette, letterbox, and a mild zoom do change the pixels of a performance take. They do not redraw his face. A draft can still be mistaken for a delivered cut if someone posts it without the shot-rule check.
+- **DoD:** not deployed. No Lovable publish, no edge redeploy, no SQL. Merge waits on the three sign-offs.
 
