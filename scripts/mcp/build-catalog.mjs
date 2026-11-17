@@ -30,6 +30,8 @@ const EXTRA_TABLES = [
   "effect_presets",
   "asset_licenses",
   "skill_validations",
+  "style_learn_profiles",
+  "style_learn_effects",
 ];
 const HEADER_MAX = 3000;
 const TYPE_MAX = 4000;

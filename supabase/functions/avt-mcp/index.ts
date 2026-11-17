@@ -30,6 +30,7 @@ import { JOB_TOOL_NAMES } from "./jobContract.ts";
 import { runJobTool } from "./jobHandlers.ts";
 import { deleteGuardStatus } from "./storeContract.ts";
 import { lockedPathBlock, runStoreTool, STORE_TOOL_NAMES } from "./storeHandlers.ts";
+import { planStyleFromToolArgs } from "../_shared/styleLearn.ts";
 import type { EditSequence, RenderAspect, RenderKind } from "../_shared/editModel.ts";
 import {
   RPC,
@@ -526,6 +527,11 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
           unlock: args.unlock === true,
         }),
       );
+    case "avt_style_plan": {
+      const planned = planStyleFromToolArgs(args);
+      if (!planned.ok) throw new ToolError(planned.error);
+      return toolText(planned.value);
+    }
   }
   if ((JOB_TOOL_NAMES as readonly string[]).includes(name)) {
     try {

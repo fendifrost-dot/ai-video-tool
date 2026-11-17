@@ -7,6 +7,7 @@ import {
   parseProjectRules,
   parseShotList,
 } from "../_shared/assetFormats.ts";
+import { FORMAT_STYLE_PROFILE, parseStyleProfile } from "../_shared/styleLearn.ts";
 import { parseDependencies } from "../_shared/skillDeps.ts";
 
 export const ASSET_TAGS = ["locked", "superseded", "review", "approved"] as const;
@@ -363,8 +364,13 @@ export function planValidation(args: Record<string, unknown>): StoreResult<Valid
   };
 }
 
-export function planFormatSave(kind: "shot_list" | "beat_grid" | "project_rules", args: Record<string, unknown>): StoreResult<{ format: string; project_id: string; document: unknown }> {
+export function planFormatSave(kind: "shot_list" | "beat_grid" | "project_rules" | "style_profile", args: Record<string, unknown>): StoreResult<{ format: string; project_id: string; document: unknown }> {
   if (!isUuid(args.project_id)) return fail("project_id must be a uuid");
+  if (kind === "style_profile") {
+    const parsed = parseStyleProfile(args.document);
+    if (!parsed.ok) return parsed;
+    return { ok: true, value: { format: FORMAT_STYLE_PROFILE, project_id: args.project_id, document: parsed.value } };
+  }
   if (kind === "beat_grid") {
     const parsed = parseBeatGrid(args.document);
     if (!parsed.ok) return parsed;
@@ -496,6 +502,8 @@ export const STORE_WRITE_TOOLS = [
   "avt_validation_record",
   "avt_shot_list_save",
   "avt_beat_grid_save",
+  "avt_style_profile_save",
+  "avt_style_library_save",
   "avt_project_rules_save",
   "avt_edit_lock",
 ] as const;
@@ -513,5 +521,9 @@ export const STORE_READ_TOOLS = [
   "avt_validation_get",
   "avt_shot_list_get",
   "avt_beat_grid_get",
+  "avt_style_profile_get",
+  "avt_style_library_list",
+  "avt_style_library_search",
+  "avt_style_library_get",
   "avt_project_rules_get",
 ] as const;

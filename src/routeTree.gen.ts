@@ -52,6 +52,7 @@ import { Route as ProjectsIdScorecardsRouteImport } from './routes/projects.$id.
 import { Route as ProjectsIdSetupRouteImport } from './routes/projects.$id.setup'
 import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
 import { Route as ProjectsIdStoryboardRouteImport } from './routes/projects.$id.storyboard'
+import { Route as ProjectsIdStyleRouteImport } from './routes/projects.$id.style'
 import { Route as ProjectsIdSwapRouteImport } from './routes/projects.$id.swap'
 import { Route as ProjectsIdTimelineRouteImport } from './routes/projects.$id.timeline'
 import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
@@ -276,6 +277,11 @@ const ProjectsIdStoryboardRoute = ProjectsIdStoryboardRouteImport.update({
   path: '/storyboard',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdStyleRoute = ProjectsIdStyleRouteImport.update({
+  id: '/style',
+  path: '/style',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdSwapRoute = ProjectsIdSwapRouteImport.update({
   id: '/swap',
   path: '/swap',
@@ -359,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/projects/$id/setup': typeof ProjectsIdSetupRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/storyboard': typeof ProjectsIdStoryboardRoute
+  '/projects/$id/style': typeof ProjectsIdStyleRoute
   '/projects/$id/swap': typeof ProjectsIdSwapRoute
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
@@ -403,6 +410,7 @@ export interface FileRoutesByTo {
   '/projects/$id/setup': typeof ProjectsIdSetupRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/storyboard': typeof ProjectsIdStoryboardRoute
+  '/projects/$id/style': typeof ProjectsIdStyleRoute
   '/projects/$id/swap': typeof ProjectsIdSwapRoute
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
@@ -457,6 +465,7 @@ export interface FileRoutesById {
   '/projects/$id/setup': typeof ProjectsIdSetupRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/storyboard': typeof ProjectsIdStoryboardRoute
+  '/projects/$id/style': typeof ProjectsIdStyleRoute
   '/projects/$id/swap': typeof ProjectsIdSwapRoute
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
@@ -512,6 +521,7 @@ export interface FileRouteTypes {
     | '/projects/$id/setup'
     | '/projects/$id/shots'
     | '/projects/$id/storyboard'
+    | '/projects/$id/style'
     | '/projects/$id/swap'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
@@ -556,6 +566,7 @@ export interface FileRouteTypes {
     | '/projects/$id/setup'
     | '/projects/$id/shots'
     | '/projects/$id/storyboard'
+    | '/projects/$id/style'
     | '/projects/$id/swap'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
@@ -609,6 +620,7 @@ export interface FileRouteTypes {
     | '/projects/$id/setup'
     | '/projects/$id/shots'
     | '/projects/$id/storyboard'
+    | '/projects/$id/style'
     | '/projects/$id/swap'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
@@ -938,6 +950,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdStoryboardRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/projects/$id/style': {
+      id: '/projects/$id/style'
+      path: '/style'
+      fullPath: '/projects/$id/style'
+      preLoaderRoute: typeof ProjectsIdStyleRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
     '/projects/$id/swap': {
       id: '/projects/$id/swap'
       path: '/swap'
@@ -1136,6 +1155,7 @@ interface ProjectsIdRouteChildren {
   ProjectsIdSetupRoute: typeof ProjectsIdSetupRoute
   ProjectsIdShotsRoute: typeof ProjectsIdShotsRouteWithChildren
   ProjectsIdStoryboardRoute: typeof ProjectsIdStoryboardRoute
+  ProjectsIdStyleRoute: typeof ProjectsIdStyleRoute
   ProjectsIdSwapRoute: typeof ProjectsIdSwapRoute
   ProjectsIdTimelineRoute: typeof ProjectsIdTimelineRoute
   ProjectsIdTreatmentRoute: typeof ProjectsIdTreatmentRoute
@@ -1157,6 +1177,7 @@ const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdSetupRoute: ProjectsIdSetupRoute,
   ProjectsIdShotsRoute: ProjectsIdShotsRouteWithChildren,
   ProjectsIdStoryboardRoute: ProjectsIdStoryboardRoute,
+  ProjectsIdStyleRoute: ProjectsIdStyleRoute,
   ProjectsIdSwapRoute: ProjectsIdSwapRoute,
   ProjectsIdTimelineRoute: ProjectsIdTimelineRoute,
   ProjectsIdTreatmentRoute: ProjectsIdTreatmentRoute,

@@ -5,7 +5,7 @@
 import { JOB_TOOL_DEFS } from "./jobContract.ts";
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.7.0";
+export const SERVER_VERSION = "1.8.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -114,6 +114,8 @@ export const TABLE_NOTES: Record<string, string> = {
   edit_markers: "beat, lyric, lipsync and comment markers on a sequence",
   edit_sequence_versions: "a committed snapshot of a sequence",
   edit_renders: "a queued render job (edit, vfx, qc, blender, beat_cut). cost_usd is constrained to 0. Pins skill_version_id and effect_preset_id. Inputs and outputs are asset ids",
+  style_learn_profiles: "a learned editing style (avt.style_profile). Not the timeline style_profiles color/vfx rows. Versioned. cost stays 0",
+  style_learn_effects: "one learned effect from a style: plain words, aliases, recipe tier (code, local model, or an existing AVT function). Variants point at the canonical row",
   timeline_items: "edit timeline",
   artists: "artist records",
   artist_assets: "artist pictures (faces, looks)",
@@ -1087,6 +1089,84 @@ export const TOOLS = [
       type: "object",
       properties: { project_id: { type: "string" }, document: { type: "object" } },
       required: ["project_id", "document"],
+    },
+  },
+  {
+    name: "avt_style_profile_get",
+    description: "The current avt.style_profile for a project (the newest row that is not tagged superseded). Read only. $0. Does not render.",
+    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"] },
+  },
+  {
+    name: "avt_style_profile_save",
+    description: "Validate an avt.style_profile (shot rhythm, grade, transitions, FX flags, the matched and approximated lists) and store it as a versioned project asset. The previous profile is tagged superseded, not deleted. $0. Audited. Does not render and does not call a model.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, document: { type: "object" } },
+      required: ["project_id", "document"],
+    },
+  },
+  {
+    name: "avt_style_plan",
+    description: "Plan an edit from a style profile, Fendi's clips, and beat times or an avt.beat_grid. Returns an EDL, a .cube LUT, and the local ffmpeg command. Performance speed stays 1. RGB split, glitch, and heavy shake are withheld on a performance take. $0. Does not render, does not write, and does not call a model.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string" },
+        profile: { type: "object" },
+        clips: { type: "array", items: { type: "object" } },
+        beats: { type: "array", items: { type: "number" } },
+        beat_grid: { type: "object" },
+        fps: { type: "number" },
+        width: { type: "number" },
+        height: { type: "number" },
+        song_asset_id: { type: "string" },
+      },
+      required: ["project_id", "profile", "clips"],
+    },
+  },
+  {
+    name: "avt_style_library_list",
+    description: "Effects learned into the style library for a project. Canonical rows only (variants stay linked). Read only. $0. Does not re-analyze.",
+    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"] },
+  },
+  {
+    name: "avt_style_library_search",
+    description: "Find a learned effect by plain words ('the screen flashes white') or by a time ('the thing at 0:42'). Read only. $0. Does not re-analyze.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, query: { type: "string" } },
+      required: ["project_id", "query"],
+    },
+  },
+  {
+    name: "avt_style_library_get",
+    description: "One learned effect, including its recipe tier and, for a generative effect, the existing AVT function it maps to. Read only. $0. Does not call that function.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+  },
+  {
+    name: "avt_style_library_save",
+    description: "Store a style profile and its effects in the style library. Near-duplicate recipes are linked as variants, not copied. $0. Audited. Does not render and does not call a model. The tables are in a migration that has not been applied.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" }, profile: { type: "object" } },
+      required: ["project_id", "profile"],
+    },
+  },
+  {
+    name: "avt_style_library_apply",
+    description: "Combine a stored cut rhythm with picked effects and plan the edit. Does not re-analyze the source. A generative effect is returned as the existing AVT function to call later, and is not called. $0. Does not render.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string" },
+        profile: { type: "object" },
+        rhythm_profile_id: { type: "string" },
+        effects: { type: "array", items: { type: "object" } },
+        effect_ids: { type: "array", items: { type: "string" } },
+        clips: { type: "array", items: { type: "object" } },
+        beats: { type: "array", items: { type: "number" } },
+      },
+      required: ["project_id"],
     },
   },
   {

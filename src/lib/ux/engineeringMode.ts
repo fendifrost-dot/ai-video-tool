@@ -45,6 +45,7 @@ export const ADVANCED_DESTINATION_KEYS = [
   "assets",
   "video",
   "scorecards",
+  "style",
   "shots",
   "cover-flight",
   "hero-frame",
