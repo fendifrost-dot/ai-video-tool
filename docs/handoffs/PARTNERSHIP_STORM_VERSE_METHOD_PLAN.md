@@ -253,3 +253,24 @@ grey mask); asking Gemini in words for a lower hat (three tries, unchanged).
 OPEN: the hat is still taller than he asked. The photo was taken from chest height, so his feet are seen from above: the
 street still must be made from that camera (line "the plate's camera must be his source's camera" above) or Gemini
 redraws legs and shoes in the blend pass; a low street camera with this figure repeats the floating feet.
+
+## THE LOOK IS SCENE STILL v1; only the face was wrong (Fendi, 18 Nov 2026)
+
+On figure v3b: "The stance is close, but it doesn't reflect the original generation Gemini did, which was heroic. The
+jacket was blowing in the wind. Refer back to this generation everything was perfect except my face. Hat was positioned
+perfect jacket blowing in wind only thing you needed to do is fix my face and produce more like it" (he attached scene
+still v1, `5bbdd504`). So: the picture is Gemini's whole-scene generation (stance, hat, coat in the wind, street); the
+separate dressed figure, the Blender card and the paste-up placements are NOT the look. Do not rebuild his body.
+
+The face fix, $0, as run on v1 (T7 `storm_scene/plan_b/v1_face/`, result `scene_still_v1_realface.jpg`):
+1. `AVT_FACE_TOP=-0.05 scripts/edit/still_face_from_photo.py photo_path/body_front.jpg still.png 1628,576,240,240 v1_face/front`
+   : his real face from his FRONT photo (`1fd67e48`), similarity only (scale 0.195, turn -2.2 deg, landmark residual 1.3 %
+   of the face width), colour matched, the still's own light laid over it (low frequencies: the brim's shadow), mask from
+   his brow line down and inside his beard line.
+2. `AVT_STILL_HEAD_MASK=v1_face/front_facemask.png scripts/edit/still_face_putback.py v1_face/front_photo_in_frame.png still.png out.png`
+   : printed `max |out-original| inside the hard head mask: 0`. Only 4,517 px of the still changed (a 71 x 74 px box).
+Compared and rejected: the posture_neutral photo (tilted 9 deg, side-lit: reads as a dull mask) and the neutral selfie
+(taken from below: wrong angle, residual 3.3 %). Without the still's light the face is too bright and shows a hard line
+at the forehead. The likeness is his pixels graded to the scene; the pose of the head is the still's, so the photo must
+match its angle. "More like it" = new Gemini whole-scene stills from the v1 request (other depths and angles), each
+followed by this fix; a three-quarter head needs his three-quarter face photo.
