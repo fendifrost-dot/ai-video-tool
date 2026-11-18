@@ -164,3 +164,32 @@ is NOT the size reference); shoes slim and true to size. The figure is fixed and
 placed at any depth again. Figure v2 (prompt `storm_him_dressed_v2`): A `fdf7fa96` (front photo, stance edited from the
 neck down: changed little), B `9b83875d` (posture_neutral photo: hands in pockets; put-back fails at the glasses, redo
 before any use). T7 `storm_scene/plan_b/photo_path/v2a_*`, `v2b_*`. Hat still reads tall in both: another pass is needed.
+
+## The placement is NOT the proven method yet (Fendi, 18 Nov 2026)
+
+"Is this the proven method? The fix is in, but you placing it into the scene is not ... the feet will not line up with
+the actual depth of the image ... refer to the YSL notes, because I believe you're going to have to build the scene out
+in Blender so my feet actually feel like scene ... as opposed to just copying and pasting it into the scene."
+
+He is right. What is proven and what is not, in the ladder stills:
+- PROVEN: the figure (real photo, clothes edit, `still_face_putback.py`, proof 0, head check).
+- NOT the method: `place_still_figure_on_plate.py`. It is a 2D paste. Its ground line is one formula (feet = horizon +
+  0.202 x his height) resting on two ESTIMATES read by eye off the plate (horizon row 1270, camera 0.385 m up), and its
+  contact, shadow and light are whatever Gemini drew. And the two cameras disagree: his photo was taken from about 1.5 m
+  away at chest height (3024x4032, he is ~3720 px tall, a 26 mm-equivalent lens), the plate from about 0.4 m off the
+  road, many metres back. A figure photographed from chest height cannot stand correctly in a picture seen from the
+  kerb (SHOT_RULES 6: the scene's angle is his source's angle).
+
+The YSL method (c033 showroom, `docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-19.md`), to follow exactly:
+1. A scene file like `scripts/edit/blender/showroom_c033_room2.json`: the plate's camera MEASURED from the picture
+   (vanishing point -> horizon and principal point; focal from two orthogonal directions; camera height from an object of
+   known size), every value labelled MEASURED / SPEC / ESTIMATE / DECISION.
+2. `build_scene.py`: the plate projected onto proxy surfaces (a floor, walls) from that camera; him as a card at a
+   measured spot ON THE FLOOR, sized from his 6 ft 3 and his source's own pixels-per-metre (`prep_performer.py`); passes
+   env / refl / fg / depth. His feet meet the floor because the floor exists.
+3. `comp_scene.py`: he is lit from values measured on the plate (`measure_plate_light.py`), contact shadow and
+   reflection from the scene, edge wrap <= 0.15.
+4. `verify_scene.py`: the result checked against the source.
+And the plate's camera must be his source's camera: make the street still from chest height at the distance his photo
+was taken from, scaled (or shoot him again from the plate's height), before any of the above.
+Status of the ladder stills `far/mid/near_still.jpg`: placement tests only, not candidates.
