@@ -253,3 +253,11 @@ reading list and first steps. Media is on the T7 only, never iCloud. No Grok on 
 mouth are always my real footage. Spend nothing until you have quoted it and I have approved it. Tell me what you
 need from me first.
 ```
+
+**The storm verse obeys the motion budget (Fendi, 17 Nov 2026: "The headlights behind me in the YSL shoot and the train
+were all generated not in my footage either please refer to the notes").** Build skill section 3 is binding here and
+was not read before the storm set was designed: v1-v4 put debris behind and in front of him, which the budget forbids.
+The verse is two kinds of shot: (1) his real take, swapped, alone in a calm, locked, long-lens frame of the place
+(v7 is the pattern); (2) the storm, in cutaways without him and in generated shots of him (recipe F). Whether debris
+or rain layered after the swap and matte holds up in his frame is a HYPOTHESIS; it is tested on a short clip and
+measured (`ring_flicker.py`, `matte_stability.py`) before anyone says it is safe.
