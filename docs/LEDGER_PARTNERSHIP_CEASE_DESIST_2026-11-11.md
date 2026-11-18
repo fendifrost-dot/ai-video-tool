@@ -27,8 +27,9 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 16 | 18 Nov 07:57 | Three stills "like v1" (Fendi: "fix my face and produce more like it"): knees-up `f2242ee7`, chest-up `7e6d51cd`, three-quarter `21df519f` | world-still-proxy, gemini-nano-banana-2.1 | $0.81 | unknown | knees-up: passes, his real face put on ($0, proof 0), posted. Chest-up: capelet blown up like a ruff, pale sky: rejected. Three-quarter: head turned right to near profile, matches neither of his face photos (residual 6.3 %): rejected |
 | 17 | 18 Nov 08:02 | Second roll of the two rejects: chest-up `057e24bc`, three-quarter (head left, from below) `76e28a0b` | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | both good pictures; his real face fits (residual 1.8 % and 2.8 %, proof 0) but Gemini's own, different glasses show round his at this size: not posted |
 | 18 | 18 Nov 08:05 | Seat pass on both paste-ups (`0cae9bf8`, `76e72227`): "remove the second pair of glasses, change nothing in the face" | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | NO GAIN: both times it redrew the whole face and put its own glasses back; after the put-back the second frame is still there |
+| 19 | 18 Nov 09:02 | Two more in the proven envelope (frontal, full figure and knees-up), the storm building: full figure `e75255eb`, knees-up at the peak with a tree and a car in the air `834c4bc9` | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | both pass; his real face put on each ($0, proof 0); posted with head checks. Approved in words by Fendi, 18 Nov: "whatever has been done to get the desired results, let's just keep doing more of that" (the $0.54 quoted for the two re-rolls, spent on these instead) |
 
-Total at estimate: **$19.79** (rows 1-18, 17-18 Nov 2026; invoices unknown). Stills stage: $3.82 of the $4.00 Fendi approved.
+Total at estimate: **$20.33** (rows 1-19, 17-18 Nov 2026; invoices unknown). Stills stage: $4.36 against the $4.00 first approved plus the $0.54 he approved on 18 Nov.
 
 ## Approved budgets
 

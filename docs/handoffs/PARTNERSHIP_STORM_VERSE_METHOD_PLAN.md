@@ -297,3 +297,21 @@ The cause is at generation: Gemini draws its own glasses, a different pair every
 it passes the $4): re-roll the chest-up and the three-quarter with NO glasses on the man, so his real face and his real
 glasses are the only pair in the picture. Head angle rules that worked: frontal for the front photo; "turned 40 degrees
 toward the LEFT edge, camera at waist height looking slightly up" for the three-quarter-left photo.
+
+## THE PROVEN ENVELOPE (Fendi, 18 Nov 2026): stay inside it
+
+"The only thing that I have interjected on is when you have used non-proven methods and gotten wrong results ... whatever
+has been done to get the desired results, let's just keep doing more of that."
+
+What is proven, four stills (T7 `storm_scene/plan_b/` and `like_v1/`):
+| Still | Asset | Face | Settings |
+|---|---|---|---|
+| full figure v1 (APPROVED) | `599baa06` | 65 px | `AVT_FACE_TOP=-0.05` |
+| knees-up | `1ff8f4c2` | 130 px | `AVT_FACE_TOP=-0.05 AVT_FACE_SIDE=0.14` |
+| full figure, storm building | `e75255eb` -> `storm_full_chaos2_realface.jpg` | 64 px | `AVT_FACE_TOP=-0.05 AVT_FACE_SIDE=0.12` |
+| knees-up, storm at its peak (tree and car in the air) | `834c4bc9` -> `storm_knees_chaos3_realface.jpg` | 125 px | `AVT_FACE_TOP=-0.05 AVT_FACE_SIDE=0.14` |
+The envelope: he FACES THE CAMERA, head level, camera at chest height, his face no wider than about 130 px in a 2752 px
+frame (full figure to knees-up), his FRONT photo `1fd67e48`. New pictures are asked as a retake of an approved still
+"from exactly the same camera position ... a few seconds later", changing one thing (the distance, or the storm).
+Outside the envelope (a close-up, a turned head) is NOT proven: say so and get his word before trying it; do not spend
+on it as if it were routine. Not yet done inside the envelope: animation (Seedance) of these stills.
