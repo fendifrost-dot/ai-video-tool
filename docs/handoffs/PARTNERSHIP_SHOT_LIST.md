@@ -125,3 +125,14 @@ OBSERVED, not a pass or fail:
 - At 28 px his face cannot be judged as his or not his: it is a dark face under the brim that stays the same on every
   frame. The real test of his likeness in motion is a knees-up clip (his face about 60 px at 720p).
 - Output is 720p; the master needs an upscale or a 720p finish.
+
+**Fendi, 18 Nov, on the motion test: "Looks good as is."** DECISION: this is the look for the animated storm stills.
+
+**Knees-up from the same clip, $0 (Fendi: "Couldn't we create the knees up shot without regenerating anything").** Yes:
+`ffmpeg -vf "crop=784:440:248:146,scale=1280:720:flags=lanczos"` on the test clip →
+`storm_v1_motion_test_knees_crop.mp4` (same folder). MEASURED: he stands 485 px tall in the 720p frame (hat top y 201,
+feet y 685), so a knees-up cut is a 1.64x enlargement (440 real lines shown as 720; 2.45x for a 1080p master). His
+face is about 50 px wide in the cut, the same on every frame, mouth closed. OBSERVED: softer than the full frame,
+readable under rain. RECOMMENDATION: animate each still once as a full figure and let the cutter punch in to knees-up
+where the lyric wants it (two framings from one paid clip); a knees-up meant to hold the screen for a long line is
+better made from a knees-up still (sharper).
