@@ -226,3 +226,30 @@ against his legs than a far camera would see (outer eye corners 608 px/m, body 4
 about 1.5 m away from above. In his order of work this placement is step 1 (depth and where he stands); Gemini's blend
 on a crop round him and the face put-back, then Seedance, come after it. `verify_scene.py` was not run (it checks a
 take against its shot; there is no take).
+
+## The Blender placement stills were rejected; figure v3b (Fendi, 18 Nov 2026)
+
+"Are you reviewing what you're sending me before you send it?" ... "the stance ... it's not stoic, it's not heroic, it's
+not main character, there's no hand in the pocket ... the feet point out ... and down. It's like I'm floating ... please
+don't send me anything without thoroughly looking at it first."
+
+What was wrong in `far/mid/near_bl_still.jpg` (figure v2a, the front photo): head too large for the body, feet seen from
+above so they point down, he glows (exposure raised 1.2 stops), a flat cut-out. The agent had checked numbers (foot rows,
+proof 0) and not the picture. RULE: open the final file and judge it as a viewer (whole figure, head at 4x, feet) before
+it is sent; a picture with a visible fault is not sent as a "placement only" exception.
+
+Figure v3b, the stance he asks for (hands in pockets is his own stance in photo `2ed75b4d`):
+1. Why v2b's put-back doubled the glasses: Gemini's clothes edit moved his head 94 px, shrank it to 0.931 and
+   straightened its 9 degree tilt. The put-back then pasted a tilted real face into a straight drawn head.
+2. `scripts/edit/still_head_pasteup.py photo edit prefix models` ($0): his real head from the SAME photo, scaled and
+   shifted (never turned) to the edit's head place, pasted from the brows down with ears, beard and glasses; writes the
+   paste-up, the photo in the edit's frame and the hard face mask.
+3. Gemini `storm_him_dressed_v3b_seat_hat` on the paste-up (`42dd2b6a` -> `97942d93`): seat the hat round the head that
+   is already his.
+4. `AVT_STILL_HEAD_MASK=<prefix>_hardmask.png still_face_putback.py <prefix>_photo_in_frame.png seat.jpg final.png`:
+   printed 0. A wider mask (to the glasses' hinges) brings wall and his blue cap in: do not widen it.
+T7 `storm_scene/plan_b/photo_path/v3b_*`. NEVER (tried, failed): his front photo's face on figure B (backlit, reads as a
+grey mask); asking Gemini in words for a lower hat (three tries, unchanged).
+OPEN: the hat is still taller than he asked. The photo was taken from chest height, so his feet are seen from above: the
+street still must be made from that camera (line "the plate's camera must be his source's camera" above) or Gemini
+redraws legs and shoes in the blend pass; a low street camera with this figure repeats the floating feet.

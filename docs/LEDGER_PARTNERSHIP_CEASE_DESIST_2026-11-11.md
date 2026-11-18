@@ -22,8 +22,10 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 11 | 18 Nov 04:54 | Ladder stills, far / mid / near: the real-face paste-up blended into the street (`a579dd5e`, `cdd645a2`, `f97cc8f1`), then his face put back on each (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.81 | unknown | posted with head check sheets; far: the hat lost its FF pattern, face only ~26 px |
 | 12 | 18 Nov 05:15 | The dressed figure v2, two stance options: A front photo with the stance squared (`fdf7fa96`), B posture_neutral photo, hands in pockets (`9b83875d`); fitted hat, slim shoes; face put back on both (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | A: stance changed little, hat lower, shoes slimmer, head check passes. B: more attitude; its put-back doubles the glasses at the right temple (ECC 0.81): fails the head check |
 | 13 | 18 Nov 05:27 | Matte of the figure v2a as a 2 s still clip (`c05eff9e`), for the Blender card | matte-video-proxy, veed, job `25829df9` | $0.036 | unknown | clean; it also held his reflection in the room's mirror (largest piece kept, as compose_cover_from_still.py does) |
+| 14 | 18 Nov 07:38 | Figure B, hat only: "crown half as tall, soft, a size smaller" (`d9055a0a`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | NO GAIN: the hat came back almost unchanged (third time words alone did not lower it); not used |
+| 15 | 18 Nov 07:42 | Figure v3b: his real head from the same photo pasted at the edit's head place (paste-up `42dd2b6a`), hat seated round it (`97942d93`), face put back with the known mask (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | head check passes at 4x (one pair of glasses, his own); hat still taller than he asked; posted as the figure alone |
 
-Total at estimate: **$17.36** (rows 1-13, 17-18 Nov 2026; invoices unknown).
+Total at estimate: **$17.90** (rows 1-15, 17-18 Nov 2026; invoices unknown).
 
 ## Approved budgets
 
