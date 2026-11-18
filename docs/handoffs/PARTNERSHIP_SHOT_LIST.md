@@ -95,3 +95,17 @@ Second half in all: about $38 if the test passes first time.
 
 The ten clips with song times as above, the lyric times, the master, the 20 photos of him and Allen for the memory
 layers, the storm levels per slot, and the film-grain reference (the car takes). Handoff format: build skill §5.
+
+## Stills made for the second half, 18 Nov 2026 (T7 `storm_scene/plan_b/shotlist/`)
+
+| Slot | Still (Gemini asset) | With his real face | State |
+|---|---|---|---|
+| 2:24-2:32 empty street, early | `6d486b10` | - | REJECTED: bright sky, made-up snapshots. To redo |
+| 2:41-2:50 knees-up, building | `b04300eb` | `storm_05_knees_building_realface.jpg` (face 119 px, proof 0) | posted |
+| 2:50-2:57 full figure, peak | `e0e54d9f` | `storm_06_full_peak_realface.jpg` (61 px, proof 0) | posted |
+| 3:04-3:12 empty street, peak | `442b853d` | - (`storm_08_street_peak_no_person.jpg`) | posted; it has two small made-up snapshots near the camera: Grokbot covers or crops them |
+| 3:12-3:27 full figure, storm passing | `b9e55272` | `storm_09_full_passing_realface.jpg` (81 px, proof 0) | posted |
+| 3:27-3:51 knees-up, end frame | `e6cf1dac` | `storm_10_knees_end_realface.jpg` (120 px, proof 0) | posted; a faint trace of Gemini's glasses rim beside his |
+Settings as in the method plan's envelope table. 9 of 10 slots now have a still. To animate a still with `montage-shot`
+continuous: file a copy under `worlds/scene_*` with `metadata_json.lane = world_still` and `scene_title` = the scene's
+name, newest first (the function takes the newest `worlds/scene_*` of the scene as `@Image1`); dry-run and read `plate.id`.
