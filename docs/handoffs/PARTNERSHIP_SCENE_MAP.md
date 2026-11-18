@@ -54,3 +54,10 @@ VERIFIED (cited), ESTIMATE or OPEN (his call). Song clock; the master is 3:51 (2
 2. One Seedance test on the approved storm still, to prove motion before more stills are bought.
 3. Stills for every remaining scene, shown as one board, approved together.
 4. Animation and swaps only on approved stills, section by section, in song order.
+
+## Answered by Fendi, 18 Nov 2026
+
+His words and the lyric-by-lyric draft built from them: [`PARTNERSHIP_SHOT_LIST.md`](PARTNERSHIP_SHOT_LIST.md). In short:
+room shots get a clothing swap; the new car takes (T7 `car shots/`, four full first-half passes, 4K 24, portrait) keep
+the jacket; Allen and his Lexus are generated, Allen in Ralph Lauren; no Allen in the second half; Grokbot builds the
+second half while the first half is made.
