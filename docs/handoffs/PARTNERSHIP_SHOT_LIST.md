@@ -31,6 +31,9 @@ second verse."
 | IMG_6466 | 1:44 | 0:03-1:47 | full first half |
 | IMG_6467 | 1:44 | 0:03-1:47 | full first half |
 | IMG_6455 | 0:12 | not synced (peak ratio 1.09) | insert: the Lexus radio and dash, no performance |
+VERIFIED (ffprobe): the files are 3840x2160 and some carry a phone rotation tag of -90 (the phone was tilted, so its
+sensor tagged the clip as upright). The tag is wrong for these: read them with `ffmpeg -noautorotate` so they stay
+widescreen as he shot them. The agent's first contact sheet honoured the tag, which is why he looked sideways in it.
 No best-take-per-line scoring yet. IMG_6462's footage after 1:47 is overrun, not material.
 
 ## First half, 0:00-1:47
