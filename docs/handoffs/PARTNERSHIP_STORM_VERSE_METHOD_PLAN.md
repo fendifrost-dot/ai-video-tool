@@ -51,14 +51,18 @@ What that fixes:
 - **Depth is built in Blender** from layers, not a flat still with a push.
 - **The feeling leads:** stillness and composure against the storm. Nothing comic, nothing superhero.
 
-Method per piece (each one named before its paid call):
+**THE ORDER OF WORK, corrected by Fendi the same day** (an agent had proposed compositing a cut-out of him in Blender
+and adding wind to his coat there; he rejected it): "That's the wrong approach, trying to add anything, any motion to me
+using Blender. The only thing Blender should be used for is creating the scene, and then we generate the entire scene
+inside Seedance ... We're not generating anything new. Only thing we're doing is creating the depth of the scene and
+placing me, and then having Gemini recreate the image correctly, and then having Seedance animate it."
 
-| Piece | Proven method | Rests on | Never |
+| Step | Tool | What it does | Never |
 |---|---|---|---|
-| Him, standing still, in the look, full figure | the skill's "STILL of him in a new outfit" path: his body photo in the tool (`silhouette_front` `1fd67e48` / `posture_neutral` `2ed75b4d`) dressed by Gemini with the four wardrobe pictures, then `still_face_putback.py` (his photo's head pasted back, proof 0), then cut out | Frost the Boss cover v12 `5b825de7` (7 Nov, "Ok I like lift b g2") | feeding that still to a video model (a still of him animated is a stranger); a new face; any mouth movement |
-| The place and its storm, moving, without him | Gemini still of LaSalle Street (`2fade1e8` family, cleaned of baked-in debris), animated by Seedance `montage-shot continuous {withHim: false}`; one render per stage of the verse (calm chaos -> flying cars and trees) | YSL plates and Animate the plate | Grok; people; a frozen still with a push |
-| Depth | Blender layers: far storm plate, him as a card at his true height (6 ft 3) at a measured distance, near debris and rain in front, one slow camera move with parallax, contact shadow and wet reflection (`scripts/edit/blender/`: `room_layers.py`, `comp_scene.py`) | c033 showroom v9 `436ffebe` | stand-in geometry shown as the look (v4); cards that tumble like paper cut-outs for cars |
+| 1. Layout ($0) | Blender (`scripts/edit/blender/`) | the depth of the scene and where he stands: the LaSalle canyon blocked in at true scale, a figure 6 ft 3 tall placed deep and off the front, the camera and lens chosen. Output: a layout render (and a depth pass). It is a guide, never the picture | any motion on him; compositing him; showing the layout as the look |
+| 2. The still | Gemini `gemini-nano-banana-2.1` via `world-still-proxy` | recreates that layout as a photograph: the real street (`2fade1e8` as `place`), him in the look from his body photo and face photos (`cast`) and the four wardrobe pictures (`garment`), standing still where the layout puts him | Grok; a different framing than the layout |
+| 3. The motion | Seedance via `montage-shot` (`continuous`, `mouth: "still"`) | animates the whole scene in one generation: the storm, the debris, the cars and trees, his coat in the wind, him standing still. The still is the place and the composition; his face pictures in the tool go in with it (the tool's default), so his face is built from his photos, not from the still (CLAUDE.md, models and likeness, point 2) | animating the still with no face pictures; any mouth movement; a swap or a matte on the result |
 
-UNTESTED, say so when posting: a motionless figure in a hurricane (his coat does not move unless the hem is given a
-small wind motion in Blender, which is a test); debris crossing behind a cut-out figure (the YSL seam risk; here the
-figure is a still with a clean, fixed matte, which is the easiest case, but it is measured, not assumed).
+One Seedance render per stage of the verse, the chaos stepping up. Check every render: `face_check.py` sheet,
+`mouth_scan.py`, the whole frame watched before posting. UNTESTED: whether the `continuous` prompt keeps a full figure
+(the montage prompt forbids full-body shots of him; read the dry run first).
