@@ -109,3 +109,19 @@ layers, the storm levels per slot, and the film-grain reference (the car takes).
 Settings as in the method plan's envelope table. 9 of 10 slots now have a still. To animate a still with `montage-shot`
 continuous: file a copy under `worlds/scene_*` with `metadata_json.lane = world_still` and `scene_title` = the scene's
 name, newest first (the function takes the newest `worlds/scene_*` of the scene as `@Image1`); dry-run and read `plate.id`.
+
+## Motion test, 18 Nov 2026 (job `c0d30173`, asset `581fe3ff`, $2.77 for 6 s, T7 `storm_scene/plan_b/motion_test/`)
+
+`montage-shot` continuous, `withHim: false`, camera "locked off", `@Image1` = the approved still (`ba01451b`), his three
+face photos and the coat and hat as pictures after it. MEASURED on the clip (1280x720, 24 fps, 145 frames):
+- His mouth is at rest: `mouth_scan.py` lip gap mean 0.075, spread 0.016, face found on 36 of 36 samples (moving is
+  mean > 0.08 AND spread > 0.03).
+- He does not float: his nose stays within 3 px across the clip (at 1920 wide).
+- No snow, although the function still appends YSL's "cold blue winter dusk ... snow" line: the action text's "the only
+  thing falling is rain" held this time. The line still needs removing from the function (Lovable edge redeploy).
+OBSERVED, not a pass or fail:
+- Seedance RE-FRAMED the picture: the still is a reference, not the first frame. He stands in the middle of the road,
+  further back and smaller than in the still (his face about 28 px wide at 720p), the camera lower.
+- At 28 px his face cannot be judged as his or not his: it is a dark face under the brim that stays the same on every
+  frame. The real test of his likeness in motion is a knees-up clip (his face about 60 px at 720p).
+- Output is 720p; the master needs an upscale or a 720p finish.
