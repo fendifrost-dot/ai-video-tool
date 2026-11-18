@@ -70,6 +70,24 @@ happens in a REAL place, a photographic plate (Gemini) seen from his phone's low
 (PROBLEM_INDEX: "He looks pasted on a still"), with only physically possible things in the wind (rain, leaves, paper,
 printed photographs of him and Allen). No glowing holograms, no flying cars, no abstract sky. He sees a photoreal still
 of the place before any motion is built.
+
+**Real-place round 1 (17 Nov 2026, Fendi: "Use downtown chicago for the real place pick an iconic location that
+easiest to recreate"; "You can do both ... I'm giving you autonomy"; approved up to $12).** All on project `0c5c4421`,
+board `c9b766a2`. Spent about $8.50 (estimates; invoices unknown):
+
+| What | Asset / job | Cost | Result |
+|---|---|---|---|
+| Gemini stills, downtown Chicago in a hurricane, nobody in them: A LaSalle Street canyon `2fade1e8`, B under the L `7fa33a08`, C Michigan Avenue bridge `63a72b2e` | jobs `487c133d`, `8528a692`, `e9cefbd5` | 3 x ~$0.27 | all usable; A picked to build (two walls, an end tower, a sky: the simplest layers) |
+| A again, tilted up 40 deg as his phone saw him (no ground: his take ends at the knees) `574af09f`, reference = `2fade1e8` as `place` | job `222020d4` | ~$0.27 | matches `storm_set.json` camera (pitch 40, focal 900) closely enough to re-project his take onto |
+| Prada coat + capelet `d3b89147` and Fendi FF bucket hat `d94f1cd4` on his real take S5, 6 s (`4f67ef7b`, shot `storm_test` `f61abad7`, sync `cfb46127`) | dress-clip job `100f9dfb` -> `bae4910b` | $4.09 | put-back `AVT_HEAD_ZOOM=3`: face on 180/180, `max |out-original| on face/hair/skin: 0`. ring_flicker 8.4 -> 11.4. Frame-to-frame change: head as the original, coat 6 spikes, below the belt 27 spikes (the skirt of the coat under the fan), pale lining patches at both hips, a few green specks of the blanket on the coat |
+| Walking shot, recipe F: silent window `895cb1b4` (file 667.5-673.5 s, waist up, mouth 0.017), plate `2fade1e8`, shot `storm_walk_test` `54507929`, scene `48ecb6c9` | montage-shot job `f57a66ff` -> `0f7fd085` | $3.33 | mouth at rest (0.017 / 0.010, 73 of 73 samples); the model shortened his trench to a jacket; still his own clothes |
+
+Set up for it: `continuity_entities` `5b9a5879` (primary artist), `variation_scenes` `48ecb6c9` (124.5-228 s, provisional).
+T7: `storm_scene/places_chicago_v1/`, `storm_scene/preview_v5_chicago/chicago_v5_prada_test.mp4` (the dressed take
+re-projected onto the tilted still with `storm_him_comp.py`; still background with a 4 % push, local preview matte),
+`work/swap_test_s5/`, `work/walk_shot/`. Posted to Fendi; no verdict yet. Not done: a moving, layered plate
+(PROBLEM_INDEX: a still with a push-in is not a scene), a clean plate without the baked-in newspapers, the shipping
+matte (`matte-video-proxy`, to quote), the Prada swap on the walking shot (~$4.09).
 Not yet filed in AVT: the take originals (~0.9 GB each).
 
 ## Read first, in this order
