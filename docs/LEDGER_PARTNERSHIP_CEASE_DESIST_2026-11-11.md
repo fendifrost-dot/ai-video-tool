@@ -13,12 +13,13 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 2 | 18 Nov 01:42 | Prada coat + capelet and Fendi FF bucket hat on his real take S5, 6 s (`4f67ef7b`) | dress-clip, Genjutsu 720p, job `100f9dfb` | $4.086 | unknown | `bae4910b`; put-back proof 0; flicker below the belt (27 spikes), see handoff |
 | 3 | 18 Nov 01:46 | Walking through the storm, recipe F, 6 s, silent window `895cb1b4` | montage-shot, Seedance 2.5 reference 720p, job `f57a66ff` | $3.328 | unknown | `0f7fd085`; mouth at rest |
 | 4 | 18 Nov 01:47 | LaSalle still tilted up 40 deg, his phone's view (`574af09f`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | usable |
+| 5 | 18 Nov 02:48 | Prada coat + capelet and Fendi FF bucket hat on 5 s of the generated storm walk (`67183e6f`, cut from `0f7fd085`) | dress-clip, Genjutsu 720p, job `cb3c119a` | $3.405 | unknown | `fdbcc936`; put-back proof 0 on 120/120; lavender patches at both hips again |
 
-Total at estimate: **$8.49** (rows 1-4, 17-18 Nov 2026; invoices unknown).
+Total at estimate: **$11.90** (rows 1-5, 17-18 Nov 2026; invoices unknown).
 
 ## Approved budgets
 
-Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $8.49 used. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
+Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $11.90 used. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
 
 ## State (VERIFIED by the rows written unless marked)
 

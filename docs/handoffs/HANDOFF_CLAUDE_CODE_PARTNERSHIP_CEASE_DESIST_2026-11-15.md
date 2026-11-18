@@ -88,6 +88,23 @@ re-projected onto the tilted still with `storm_him_comp.py`; still background wi
 `work/swap_test_s5/`, `work/walk_shot/`. Posted to Fendi; no verdict yet. Not done: a moving, layered plate
 (PROBLEM_INDEX: a still with a push-in is not a scene), a clean plate without the baked-in newspapers, the shipping
 matte (`matte-video-proxy`, to quote), the Prada swap on the walking shot (~$4.09).
+
+**Fendi on round 1 (17 Nov 2026) and round 2.** On the real-take shot: "A lot of drift in the clothing swap performance
+shot ... when I'm placed in the scene, I'm forefront, and it looks as if I'm floating back and forth ... I should be
+stationary ... placed further back into the scene ... a close-up at about 50 to 100 millimeters, so you can still see
+some background, but also ... a close-up of me." On the walk: "I'm clearly running ... we could do super slow motion,
+but there's no clothing swap in that generation." Rules from this: **no camera turn or push on a shot with his real take
+(locked camera); long-lens framing (50-100 mm equivalent), chest up, the place out of focus behind him; every shot of him
+that is shown wears the look's clothes** (never post a generated shot in his own clothes as a candidate).
+Round 2 ($3.41, total $11.90 of $12):
+- `storm_scene/preview_v6_longlens/chicago_v6_longlens_720.mp4`: the same put-back, `storm_set_v6.json` = camera pitch 36,
+  focal 2667 px (50 mm equivalent), no move; background = the tilted still `574af09f` re-projected to that lens with the
+  street turned 12 deg and a 7 px defocus, rain from `storm_set_comp.py`. Still a frozen background.
+- `work/walk_shot/walk_prada_slow.mp4` / `walk_prada_realtime.mp4`: dress-clip job `cb3c119a` -> `fdbcc936` on `67183e6f`,
+  put-back proof 0 on 120/120, half speed by minterpolate.
+- OBSERVED on both swaps: pale lavender patches at both hips. HYPOTHESIS: the coat's reference picture or its
+  description (pockets, lining) causes it; test by changing one of them on the next swap. Not yet measured: the swap's
+  drift inside the chest-up frame.
 Not yet filed in AVT: the take originals (~0.9 GB each).
 
 ## Read first, in this order
