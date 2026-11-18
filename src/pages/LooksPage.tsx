@@ -186,6 +186,7 @@ export default function LooksPage() {
 
   return (
     <>
+      <a href="/effects-lookbook.html" className="inline-flex py-2 text-sm underline">Open effects lookbook</a>
       <PageHeader
         title="Virtual Samples"
         subtitle="Every saved virtual sample across all artists."
