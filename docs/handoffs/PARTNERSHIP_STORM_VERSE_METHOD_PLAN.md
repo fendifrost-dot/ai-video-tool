@@ -154,3 +154,13 @@ The method, as run (all on T7 `storm_scene/plan_b/ladder/`):
 OBSERVED on the sheets: near and mid read as him; far: his real face is only ~26 px wide in the frame (soft), and Gemini
 changed the hat's FF pattern to a plain weave there. His real pixels are the face from the brows to the chin; hat, ears,
 beard sides, neck and glasses corners are Gemini's. Not yet filed as project stills in AVT; not judged by Fendi.
+
+**Fendi on the three ladder stills (18 Nov 2026):** "My stance isn't convincing enough and shoes look fat as hell and the
+bucket hat looks too cylindrical at the top and not a bucket hat looks a size too big and if you were modeling from the
+bucket hat I had on in the performance shot it is a size too big. I should be standing more stoic with main character
+energy." Rules for the figure from this: a stoic, planted, lead-of-the-film stance (never the flat arms-down pose of the
+body reference photo); the bucket hat low, soft, sloped in at the top, fitted a size smaller (his own hat in the takes
+is NOT the size reference); shoes slim and true to size. The figure is fixed and shown alone, head-checked, before it is
+placed at any depth again. Figure v2 (prompt `storm_him_dressed_v2`): A `fdf7fa96` (front photo, stance edited from the
+neck down: changed little), B `9b83875d` (posture_neutral photo: hands in pockets; put-back fails at the glasses, redo
+before any use). T7 `storm_scene/plan_b/photo_path/v2a_*`, `v2b_*`. Hat still reads tall in both: another pass is needed.
