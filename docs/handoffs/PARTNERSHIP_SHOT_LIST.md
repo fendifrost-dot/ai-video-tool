@@ -204,3 +204,16 @@ WITHDRAWN: my open question on cars and trees in the air. His 17 Nov brief asks 
 me" and he called s06 good. My "reads CGI" on s06 was my reading, not his.
 TO REDO (needs his OK, $2.77 each): 2:16 from the approved full-figure still `ba01451b`, 2:41 from the s04 still
 `445fcefb`, both with the s04 request.
+
+## The two redos, 18 Nov 2026 ($2.773 each; Fendi: "Use whatever methodology is most consistent with the results we desire. Im no here to micromanage I only interject when we don't follow proven methods and start wasting money when we don't have to")
+
+Method unchanged from what he approved: a full-figure still, the same request words, nothing added.
+
+| Song | Still → clip | File | Mouth (gap / spread) | Face in the 720p file | Head drift | OBSERVED |
+|---|---|---|---|---|---|---|
+| 2:16-2:24 | approved still `13189dcd` + the approved test's words → job `f86b6941` → `d79c8fc2` | `storm_s02b_full_start.mp4` | 0.097 / 0.027 at rest, 33/36 | 33 px | 7 x 10 px | slim black trousers, all-black shoes, small and further back; the spray thickens to a haze in the last second |
+| 2:41-2:50 | S04 still `6869fade` + S04's words → job `0a8000c4` → `ca0c73d9` | `storm_s05b_full_building.mp4` | 0.107 / 0.027 at rest, 27/36 | 33 px | 2 x 2 px | slim black trousers, all-black shoes; lips pink and a little parted, steady (as in S04) |
+
+Legs and shoes against S04: `storm_redo_legs_check.jpg`. Knees-up cuts, $0: `*_knees_crop.mp4`
+(`crop=560:316:516:238,scale=1280:720`): a 2.3x enlargement because he stands further back, so they are soft; usable
+for a short cut, not a held shot. Both clips are pending his word.
