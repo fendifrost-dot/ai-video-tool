@@ -1,7 +1,12 @@
 """Still face put-back, $0: the original photo's head (face, beard, glasses, cap, hair) pasted back over a clothing edit of
 that photo. The edit is aligned to the photo (ECC, similarity, on the head), the head mask comes from the face
 landmarks (grown to the cap), the paste is hard inside and feathered at the rim. Prints the proof: max |out-original|
-inside the hard head mask, which must be 0. usage: still_face_putback.py <original.jpg> <edit.png> <out.png> [models_dir]"""
+inside the hard head mask, which must be 0. usage: still_face_putback.py <original.jpg> <edit.png> <out.png> [models_dir]
+AVT_STILL_HAT=edit: the edit changed his hat (Partnership storm verse, 17 Nov 2026: his cap to the Fendi bucket hat). The
+mask is then his face from the brows down only (as body_only_swap.py does on video): the hat and brim are the edit's.
+AVT_STILL_HEAD_MASK=<mask.png>: his head is too small for the face landmarks (a figure a fifth of the frame high: about a
+30 px face) and its place is KNOWN, because the original is a paste-up the caller made. The given mask (white = his head,
+in the edit's frame) is used as the hard mask, with no landmark search and no alignment. The proof is printed the same."""
 import sys, os, numpy as np, cv2
 from PIL import Image, ImageOps
 import mediapipe as mp
@@ -9,6 +14,16 @@ from mediapipe.tasks.python import vision, BaseOptions
 orig_p, edit_p, out_p = sys.argv[1:4]; models = sys.argv[4] if len(sys.argv) > 4 else os.environ.get("AVT_MODELS", "models")
 orig = np.asarray(ImageOps.exif_transpose(Image.open(orig_p)).convert("RGB")); edit = np.asarray(Image.open(edit_p).convert("RGB"))
 H, W = edit.shape[:2]; o = cv2.resize(orig, (W, H), interpolation=cv2.INTER_AREA)
+GIVEN = os.environ.get("AVT_STILL_HEAD_MASK")
+if GIVEN:
+    m = (cv2.resize(cv2.imread(GIVEN, cv2.IMREAD_GRAYSCALE), (W, H), interpolation=cv2.INTER_NEAREST) > 127).astype(np.uint8) * 255
+    assert m.any(), "the given head mask is empty"
+    ys_, xs_ = np.where(m > 0); fw = float(xs_.max() - xs_.min()) / 1.5
+    hard = m.copy(); soft = cv2.GaussianBlur(m.astype(np.float32) / 255, (0, 0), max(2, fw * 0.03)); soft = np.maximum(soft, (hard > 0).astype(np.float32))
+    soft = np.clip(soft, 0, 1)                                           # the blur can overshoot 1 by a float's width
+    out = np.rint(edit.astype(np.float32) * (1 - soft[..., None]) + o.astype(np.float32) * soft[..., None]).clip(0, 255).astype(np.uint8)
+    diff = np.abs(out.astype(int) - o.astype(int)).max(2); print("given head mask, no alignment; max |out-original| inside the hard head mask:", int(diff[hard > 0].max()), "hard mask px", int((hard > 0).sum()))
+    Image.fromarray(out).save(out_p); cv2.imwrite(out_p.replace(".png", "_mask.png"), hard); print("wrote", out_p); sys.exit(0)
 lm = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(base_options=BaseOptions(model_asset_path=os.path.join(models, "face_landmarker.task")), running_mode=vision.RunningMode.IMAGE, num_faces=1))
 r = lm.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(o)))
 if r.face_landmarks:
@@ -39,7 +54,11 @@ hull = cv2.convexHull(pts.astype(np.int32))
 m = np.zeros((H, W), np.uint8); cv2.fillConvexPoly(m, hull, 255)
 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
 cap = np.zeros((H, W), np.uint8); cv2.ellipse(cap, (int(cx), int(cy - 0.35 * fh)), (int(0.75 * fw), int(1.05 * fh)), 0, 0, 360, 255, -1)
-m = cv2.bitwise_or(m, cap)
+if os.environ.get("AVT_STILL_HAT") == "edit":
+    brow = float(min(pts[i][1] for i in (105, 66, 107, 336, 296, 334)))       # the upper edge of both eyebrows (face mesh)
+    m[:max(0, int(brow - 0.06 * fh)), :] = 0; print("hat is the edit's: mask from the brows down, brow row", int(brow))
+else:
+    m = cv2.bitwise_or(m, cap)
 m[int(y1 + 0.02 * fh):, :] = 0  # nothing below the chin
 hard = m.copy(); soft = cv2.GaussianBlur(m.astype(np.float32) / 255, (0, 0), max(2, fw * 0.03))
 soft = np.maximum(soft, (hard > 0).astype(np.float32))

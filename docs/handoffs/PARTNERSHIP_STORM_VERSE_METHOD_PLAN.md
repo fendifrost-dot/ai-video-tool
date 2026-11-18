@@ -66,3 +66,38 @@ placing me, and then having Gemini recreate the image correctly, and then having
 One Seedance render per stage of the verse, the chaos stepping up. Check every render: `face_check.py` sheet,
 `mouth_scan.py`, the whole frame watched before posting. UNTESTED: whether the `continuous` prompt keeps a full figure
 (the montage prompt forbids full-body shots of him; read the dry run first).
+
+## Plan B, first pass (17-18 Nov 2026): what was run, what Fendi said, the exact still order
+
+Fendi on still v1: "Looks amazing but don't forget to replace my original pixels or whatever method we did to get my
+face 100%"; then "Use better prompts to put me further back if needed"; then "From the faces that I saw, they are not
+accurate ... make sure that my face is accurate in whatever step it needs to be done. Make sure you reference YSL and
+hyenas for the exact steps."
+
+**The still's exact order (the skill's "STILL of him in a new outfit", Frost the Boss cover), which stills v1-v4 skipped:**
+1. His real photo from the tool: `character_features` `1fd67e48` (silhouette_front: square to camera, arms down).
+2. Gemini changes ONLY the clothes on that photo (`567b1d3a`, prompt version `storm_plan_b_him_dressed_v1`).
+3. `AVT_STILL_HAT=edit python -I scripts/edit/still_face_putback.py body_front.jpg dressed_edit.jpg dressed_putback.png $AVT_MODELS`
+   printed `max |out-original| inside the hard head mask: 0` (new option: the edit changed his hat, so the mask is his
+   face from the brows down). T7 `storm_scene/plan_b/photo_path/dressed_putback.png`. This is him, real face, the look.
+4. Place him in the scene, small. `compose_cover_from_still.py` needs the RobustVideoMatting model, which is not on the
+   Mac (`~/.cache/avt/rvm_mobilenetv3_fp32.onnx`), and assumes a square plate. Done instead: local segmenter cut-out,
+   scaled to 20 % of the frame height, pasted on the empty plate `2fade1e8` (guide `91d2110f`), then one Gemini pass to
+   blend him in (`d78c9875`).
+5. NOT DONE CLEANLY: Gemini's blend pass redrew his head (a hood shape) because his face is about 30 px wide there.
+   Putting the guide's head back (`AVT_STILL_HEAD_MASK`, new option, proof 0) leaves a dark head inside Gemini's hood.
+   Next try, about $0.27: run the blend pass on a 4x crop round him (his face about 120 px), put the face back there with
+   the landmarks, shrink the crop back into the plate.
+
+Findings (OBSERVED):
+- A reference that shows him large makes Gemini return him large whatever the prompt says (v2, v3). The only scene
+  picture it may see is the guide with him at the wanted size (v4, v5 held the size).
+- At a fifth of the frame height his face is about 30 px in the 2752 px still and about 15 px in a 720p render. No
+  method makes a 15 px face a likeness; how small he stands is a trade against how much of his face reads.
+- `montage-shot` `continuous`: (a) its `featureId` pictures are signed from `wardrobe-refs` only, so his face pictures
+  (`artist-assets`) must be copied into the project (`bdcb1956`, `cf3370c9`, `5d7eca66`) and sent as `assetId`; (b) its
+  prompt carries YSL's fixed hour line ("cold blue winter dusk ... snow in the air and frost on the glass"). Both are tool
+  defects for any project that is not YSL: fix in `supabase/functions/_shared/continuousPrompt.ts` and
+  `montage-shot/index.ts` (Class B, needs a Lovable edge redeploy).
+- Animation `cce0b2c1` (from `ea050d80`, him large, Gemini's face): he stands still, the coat and the storm move, a
+  trash can rolls through; made before the face order above. T7 `storm_scene/plan_b/storm_still_anim_v1.mp4`.

@@ -15,12 +15,16 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 4 | 18 Nov 01:47 | LaSalle still tilted up 40 deg, his phone's view (`574af09f`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | usable |
 | 5 | 18 Nov 02:48 | Prada coat + capelet and Fendi FF bucket hat on 5 s of the generated storm walk (`67183e6f`, cut from `0f7fd085`) | dress-clip, Genjutsu 720p, job `cb3c119a` | $3.405 | unknown | `fdbcc936`; put-back proof 0 on 120/120; lavender patches at both hips again |
 | 6 | 18 Nov 03:12 | Matte of the dressed put-back `c5a3cb1a` (Fendi: 'Refer to our masking techniques used in hyenas') | matte-video-proxy, veed/video-background-removal, job `88509139` | $0.135 | unknown | solid on him; it also held the green quilt behind him on 180/180 frames |
+| 7 | 18 Nov 04:18-04:28 | Plan B scene stills v1-v4 (`5bbdd504`, `ea050d80`, `e3c5a1a1`, `c19cfa88`): him drawn into LaSalle Street by Gemini | world-still-proxy, gemini-nano-banana-2.1 | $1.08 | unknown | v1 "Looks amazing"; v2, v3 came back at v1's size (v1 was a reference); v4 small and far; all four have Gemini's drawing of his face ("not accurate") |
+| 8 | 18 Nov 04:23 | Seedance animation of the scene still `ea050d80`, 5 s, his 3 face photos + coat + hat as pictures | montage-shot continuous, job `365faa8a` | $2.311 | unknown | `cce0b2c1`; mouth 0.038 / 0.030; made before the face was corrected |
+| 9 | 18 Nov 04:31 | His real photo `1fd67e48` with only the clothes changed (`567b1d3a`), then `still_face_putback.py` (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | the YSL cover method; his real face, the full look |
+| 10 | 18 Nov 04:33 | Scene still v5: the real-face photo placed small on the plate, Gemini to blend it in (`d78c9875`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | scene right; Gemini redrew his 30 px head as a hood; head put-back from the guide not yet clean |
 
-Total at estimate: **$12.04** (rows 1-6, 17-18 Nov 2026; invoices unknown).
+Total at estimate: **$15.97** (rows 1-10, 17-18 Nov 2026; invoices unknown).
 
 ## Approved budgets
 
-Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $12.04 used (4 cents over, the matte he asked for). The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
+Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $12.04 used (4 cents over, the matte he asked for). Plan B, 17 Nov: up to $5 quoted, then "just do what we already did"; $3.93 used. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
 
 ## State (VERIFIED by the rows written unless marked)
 
