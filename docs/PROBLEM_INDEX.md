@@ -45,7 +45,7 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 | Proof of the put-back | `max \|out-original\| on face/hair/skin: 0` printed by the script; `face_check.py` sheet posted with the clip | every approved swap | posting without the printed 0 |
 | A swap window refused | Genjutsu needs ≥ 4 s; cut the window once, the 720p copy and the working copy from the same frames | Hyenas 12 Nov | two separate cuts (frames drift) |
 | A light or a train crossing behind him smears the swap | keep it out of his frame (build skill §3); gap G1 in `capability/GAPS.md` | YSL headlights, train | promising a fix no tool has |
-| The swapped garment changes shape frame to frame on a take shot with a fan | shoot swap takes in still air, nothing draped or moving behind him. Until re-shot: use a no-fan take, or frame above the part that whips. The storm itself obeys the motion budget (build skill §3): wind, debris and cars in the cutaways, his frame calm | Partnership storm take S5, 17 Nov (failed: "a lot of drift") | telling him to shoot with a fan, a blower or moving cloth when a swap follows; a coloured cloth draped behind him (the matte keeps it); claiming that things layered after the swap are safe in his frame (the YSL train and headlights were generated too) |
+| Swapped garment drifts on a take shot with a fan | swap takes: still air, plain wall; the storm goes in cutaways (skill §3) | Partnership S5, 17 Nov (failed) | a fan or draped cloth on a swap take |
 
 ## Him in generated shots, models
 
