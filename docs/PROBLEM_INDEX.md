@@ -14,8 +14,8 @@ immediately each time, but I still ended up wasting money in hours."
    Look at the final file yourself before posting it. A metric must not share thresholds with the fix it judges.
 6. A new fix Fendi approves gets a row here in the same PR as the fix.
 
-Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`recipes/HIS_FACE_IN_ANY_SCENE.md`](recipes/HIS_FACE_IN_ANY_SCENE.md)
-(the pipeline), [`SHOT_RULES.md`](SHOT_RULES.md), build skill `.claude/skills/avt-music-video-build/SKILL.md`.
+Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.md`, build skill
+`.claude/skills/avt-music-video-build/SKILL.md`.
 
 ## Mattes and composites (him, a creature, a prop, over a plate)
 
@@ -55,7 +55,7 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 | A bystander who looks like him talks | `mouth_scan.py`; a talking lookalike is a reject | c013 | posting it "for the record" |
 | A still that must look like a photograph | Gemini `gemini-nano-banana-2.1` via `world-still-proxy`, `model` named on every request | YSL plates | Grok (the tool's default is still Grok) |
 | Animating a still / clothing on real footage | Seedance (`montage-shot`) / Genjutsu (`dress-clip`) | YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
-| A generated clip of him has the wrong trousers or shoes (baggy, red laces) | animate a FULL-FIGURE still that already shows the right trousers and shoes (Gemini drew them from the wardrobe pictures); a knees-up framing is cut from the clip afterwards (`crop`, $0) | Partnership storm s04 `ca645fd0` ("perfect"), s06 `3bce8d34` (18 Nov) | animating a knees-up still: Seedance frames him full figure anyway and draws its own legs and shoes (s02 `8ebb1a4a`, s05 `02c928bf`, both rejected); the word "tripod" in the camera line (it drew one) |
+| Generated clip: wrong trousers/shoes | animate a full-figure still; crop for knees-up | storm s04 `ca645fd0` | a knees-up still as source |
 | Grok is the right tool | Fendi makes it in Grok Imagine, or his words go in `grok_approval` on `avt_call` | 12 Nov | a Grok generation without his words |
 
 ## The build (storyboard, slots, handoffs)
