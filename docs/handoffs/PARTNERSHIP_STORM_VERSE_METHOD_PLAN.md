@@ -27,3 +27,38 @@ No row, no call: say so to Fendi first (`docs/PROBLEM_INDEX.md` rule 3).
 
 Open and untested (say so, never promise): storm motion strength in W with a dressed window (`motion: "calm"` is the
 approved setting; "lively" is not); rain laid over P; whether S1's wall is plain enough for the matte.
+
+## PLAN B, DECIDED by Fendi, 17 Nov 2026 (replaces shot types P and W above; do not reopen them)
+
+"The performance shot will not work at all with the clothing swap there is nothing to relitigate. Let's move on and
+create the clothing swap with plan b no performance shot STANDING STILL as the world around me is chaos more debris as
+the verse progresses flying cars and trees flying pass me. I need to be scaled down and placed further back into the
+scene and not at the forefront. Create depth using blender. 50 mm zoom in isn't the right look and if Gemini needs to
+create legs and shoes it's fine. All black Americas cup pradas are preferred. Since no mouth movement is being generated
+we don't have to worry about being close enough to see me recite the verse. We are going for raw emotion, pain ... the
+hurt and pain I felt when I got the call that my best friend of 20 years was murdered the day he graduated from grad
+school in a robbery gone bad. I had to be strong for his mother while I was dying inside ... me keeping my composure
+through the storm while disaster and turmoil around me."
+
+What that fixes:
+- **No performance take and no video swap in this verse.** His mouth never moves in it. No lyric is seen on his lips.
+- **He stands still, composed, full figure allowed, small and deep in the frame.** This is his exception to SHOT_RULES 7
+  (waist up, never his shoes) for this shot only. Not a 50 mm close-up. Not at the front.
+- **The look:** Prada coat with the yellow capelet `d3b89147`, Fendi FF bucket hat `d94f1cd4`, Prada America's Cup
+  sneakers, black patent `a4eaa2da` (already in the wardrobe), dark jeans (wardrobe rule "If pants show: dark jeans":
+  YSL Mick Long black denim `df104591`). Glasses are his own; never a swap piece.
+- **The world is the chaos, and it builds:** light debris at the start of the verse, flying cars and trees by the end.
+- **Depth is built in Blender** from layers, not a flat still with a push.
+- **The feeling leads:** stillness and composure against the storm. Nothing comic, nothing superhero.
+
+Method per piece (each one named before its paid call):
+
+| Piece | Proven method | Rests on | Never |
+|---|---|---|---|
+| Him, standing still, in the look, full figure | the skill's "STILL of him in a new outfit" path: his body photo in the tool (`silhouette_front` `1fd67e48` / `posture_neutral` `2ed75b4d`) dressed by Gemini with the four wardrobe pictures, then `still_face_putback.py` (his photo's head pasted back, proof 0), then cut out | Frost the Boss cover v12 `5b825de7` (7 Nov, "Ok I like lift b g2") | feeding that still to a video model (a still of him animated is a stranger); a new face; any mouth movement |
+| The place and its storm, moving, without him | Gemini still of LaSalle Street (`2fade1e8` family, cleaned of baked-in debris), animated by Seedance `montage-shot continuous {withHim: false}`; one render per stage of the verse (calm chaos -> flying cars and trees) | YSL plates and Animate the plate | Grok; people; a frozen still with a push |
+| Depth | Blender layers: far storm plate, him as a card at his true height (6 ft 3) at a measured distance, near debris and rain in front, one slow camera move with parallax, contact shadow and wet reflection (`scripts/edit/blender/`: `room_layers.py`, `comp_scene.py`) | c033 showroom v9 `436ffebe` | stand-in geometry shown as the look (v4); cards that tumble like paper cut-outs for cars |
+
+UNTESTED, say so when posting: a motionless figure in a hurricane (his coat does not move unless the hem is given a
+small wind motion in Blender, which is a test); debris crossing behind a cut-out figure (the YSL seam risk; here the
+figure is a still with a clean, fixed matte, which is the easiest case, but it is measured, not assumed).
