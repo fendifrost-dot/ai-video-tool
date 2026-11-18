@@ -178,3 +178,29 @@ NEVER AGAIN: the word "tripod" in a camera line (say "the camera does not move")
 Head sheet: `storm_clips_head_checks.jpg`. Per clip: `<name>_tile.jpg`, `<name>_heads.jpg`, `<name>_mouth.csv`.
 OPEN (his): whether the peak keeps cars and trees in the air (his 14 Nov brief has cars blowing past) or only what a
 real storm lifts. Re-making one peak still and its clip is $0.27 + $2.77.
+
+## Fendi's word on the first four clips, 18 Nov 2026
+
+"S02 pants are baggy shoes aren't consistent and have red laces. Should be slim prada Americas cup . S04 perfect, S05
+looks extremely fake and same issue with pants and shoes, s06 looks good" and "Lower body pants and shoes perfect on
+s04 and s06".
+
+| Clip | His word | Filed |
+|---|---|---|
+| 2:16 `8ebb1a4a` (s02) | pants baggy, shoes wrong with red laces | rejected |
+| 2:32 `ca645fd0` (s04) | "perfect" | approved |
+| 2:41 `02c928bf` (s05) | "extremely fake", same pants and shoes | rejected |
+| 2:50 `3bce8d34` (s06) | "looks good" | approved |
+| 2:57, 3:04, 3:12, 3:27 | no word yet | pending |
+
+VERIFIED cause: the two approved clips were made from FULL-FIGURE stills, where Gemini had already drawn the slim black
+jeans (`df104591`) and the black America's Cup sneakers (`a4eaa2da`) from the wardrobe pictures. The two rejected clips
+were made from KNEES-UP stills with no legs or shoes in them; Seedance framed him full figure anyway and drew its own
+(baggy trousers, shoes with red laces), and it stood him large at the front, against his 17 Nov brief ("scaled down and
+placed further back into the scene and not at the forefront").
+DECISION (mine, from that evidence): animate full-figure stills only; a knees-up framing is cut from the clip
+(`crop`, $0), as he proposed. The s04 request is the one to repeat word for word.
+WITHDRAWN: my open question on cars and trees in the air. His 17 Nov brief asks for "flying cars and trees flying pass
+me" and he called s06 good. My "reads CGI" on s06 was my reading, not his.
+TO REDO (needs his OK, $2.77 each): 2:16 from the approved full-figure still `ba01451b`, 2:41 from the s04 still
+`445fcefb`, both with the s04 request.
