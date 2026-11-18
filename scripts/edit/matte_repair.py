@@ -68,6 +68,32 @@ def drop_floor_shadow(frame_bgr, alpha, box, v_lo=22, v_hi=40, min_out=30):
     return out, int((new < a - 1e-6).sum())
 
 
+def drop_backdrop(frame_bgr, alpha, hue_lo=35, hue_hi=95, s_min=22, v_min=10, min_px=2000):
+    """A coloured backdrop the provider matte keeps as part of him (Partnership storm takes, 17 Nov 2026: a green quilt
+    draped behind him, touching his outline; veed held it solid on all 180 frames, so the plate never showed there).
+    This is a chroma key on a backdrop, and it LOWERS the matte by a per-frame colour rule, which the problem index
+    lists under Never for a fading garment: use it only where the backdrop's colour is nowhere on him (check his
+    clothes first: a green garment would go too), and show the result as a test.
+    On each frame by itself: pixels in the hue range (OpenCV hue 0-179) with saturation > s_min and value > v_min,
+    closed 9 px, in regions of at least min_px, leave the matte (grown 5 px, feathered 1.5 px); then only the largest
+    solid piece of what is left stays (the scraps of backdrop between its folds go). It only lowers.
+    Returns the new alpha and the number of pixels lowered."""
+    hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
+    g = ((hsv[..., 0] >= hue_lo) & (hsv[..., 0] <= hue_hi) & (hsv[..., 1] > s_min) & (hsv[..., 2] > v_min)).astype(np.uint8)
+    g = cv2.morphologyEx(g, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(g, connectivity=8)
+    big = st[:, cv2.CC_STAT_AREA] >= min_px; big[0] = False
+    g = cv2.dilate(big[lab].astype(np.uint8), np.ones((5, 5), np.uint8))
+    new = alpha * (1 - cv2.GaussianBlur(g.astype(np.float32), (0, 0), 1.5))
+    m = cv2.morphologyEx((new > 0.5).astype(np.uint8), cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+    if n > 2:
+        keep = cv2.dilate((lab == 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))).astype(np.uint8), np.ones((15, 15), np.uint8))
+        new = new * cv2.GaussianBlur(keep.astype(np.float32), (0, 0), 2)
+    new = np.minimum(new, alpha).astype(alpha.dtype)
+    return new, int((new < alpha - 1e-6).sum())
+
+
 def selftest():
     H, W = 200, 160
     f = np.full((H, W, 3), 190, np.uint8)                 # white wall
@@ -94,11 +120,20 @@ def selftest():
     assert out2[75, 55] == 1.0 and out2[60, 60] == 1.0    # the dark spot in the fur and the fur stay
     assert np.all(out2 <= b + 1e-6)                       # it only lowers
     out3, _ = drop_floor_shadow(g, b, (0, 0, 20, 20)); assert np.array_equal(out3, b)   # nothing outside the box
+    # drop_backdrop: a tan coat in front of a green quilt that the provider matte holds solid, with a scrap of quilt apart
+    q = np.full((H, W, 3), (200, 205, 210), np.uint8)     # wall (BGR)
+    q[60:190, 60:150] = (60, 140, 40)                     # the green quilt behind and beside him
+    q[30:190, 40:90] = (120, 160, 190)                    # him: tan coat
+    c = np.zeros((H, W), np.float32); c[30:190, 40:150] = 1.0; c[60:190, 60:150] = 1.0
+    out4, low4 = drop_backdrop(q, c, min_px=500)
+    assert low4 > 0 and out4[120, 130] == 0.0             # the quilt is out of the matte
+    assert out4[100, 60] == 1.0                           # he stays solid
+    assert np.all(out4 <= c + 1e-6)                       # it only lowers
     print("selftest ok: dropped leg restored, crack in the wall not added, nothing removed; floor shadow cut, fur kept")
     return 0
 
 
-def repair_file(fg, alpha, out, box, v_lo=50, v_hi=110, drop=False):
+def repair_file(fg, alpha, out, box, v_lo=50, v_hi=110, drop=False, backdrop_hue=None):
     """The same repair on a whole clip, for a pipeline that does not go through composite_over_plate.py (the Blender
     set build): writes the repaired matte lossless (ffv1, as --key-dark-box does) and returns the pixels raised."""
     import subprocess
@@ -106,7 +141,8 @@ def repair_file(fg, alpha, out, box, v_lo=50, v_hi=110, drop=False):
     while True:
         okf, f = cf.read(); oka, a = ca.read()
         if not (okf and oka): break
-        r, c = (drop_floor_shadow if drop else key_dark_union)(f, a[..., 0].astype(np.float32) / 255, box, v_lo, v_hi)
+        if backdrop_hue: r, c = drop_backdrop(f, a[..., 0].astype(np.float32) / 255, *backdrop_hue)
+        else: r, c = (drop_floor_shadow if drop else key_dark_union)(f, a[..., 0].astype(np.float32) / 255, box, v_lo, v_hi)
         frames.append(np.clip(np.round(r * 255), 0, 255).astype(np.uint8)); raised += c
     fps = cf.get(cv2.CAP_PROP_FPS) or 24.0; h, w = frames[0].shape
     wr = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s", f"{w}x{h}", "-r", f"{fps:.6f}",
@@ -120,8 +156,11 @@ if __name__ == "__main__":
     if len(sys.argv) == 1: sys.exit(selftest())
     import argparse
     ap = argparse.ArgumentParser(description="usage: matte_repair.py <fg.mp4> <alpha.mp4> <out_alpha.mkv> --box x0,y0,x1,y1 [--key-v 50,110]")
-    ap.add_argument("fg"); ap.add_argument("alpha"); ap.add_argument("out"); ap.add_argument("--box", required=True); ap.add_argument("--key-v", default="50,110")
+    ap.add_argument("fg"); ap.add_argument("alpha"); ap.add_argument("out"); ap.add_argument("--box", default="0,0,0,0"); ap.add_argument("--key-v", default="50,110")
+    ap.add_argument("--drop-backdrop-hue", default="", help="lo,hi (OpenCV hue 0-179): LOWER the matte on a coloured backdrop the provider kept (drop_backdrop; green quilt: 35,95). Whole frame, --box unused. A test: nothing he wears may have that colour")
     ap.add_argument("--drop-floor-shadow", action="store_true", help="LOWER the matte on the room's black floor shadow inside the box (drop_floor_shadow): only on Fendi's word for the shot")
     A = ap.parse_args(); vlo, vhi = (int(v) for v in A.key_v.split(","))
-    n, raised = repair_file(A.fg, A.alpha, A.out, tuple(int(v) for v in A.box.split(",")), vlo, vhi, drop=A.drop_floor_shadow)
-    print(f"{'drop-floor-shadow' if A.drop_floor_shadow else 'key-dark-box'} {A.box}: {n} frames, px {'lowered' if A.drop_floor_shadow else 'raised'}: {raised}; wrote {A.out}")
+    hue = tuple(int(v) for v in A.drop_backdrop_hue.split(",")) if A.drop_backdrop_hue else None
+    n, raised = repair_file(A.fg, A.alpha, A.out, tuple(int(v) for v in A.box.split(",")), vlo, vhi, drop=A.drop_floor_shadow, backdrop_hue=hue)
+    what = "drop-backdrop-hue " + A.drop_backdrop_hue if hue else ("drop-floor-shadow " if A.drop_floor_shadow else "key-dark-box ") + A.box
+    print(f"{what}: {n} frames, px {'lowered' if (hue or A.drop_floor_shadow) else 'raised'}: {raised}; wrote {A.out}")

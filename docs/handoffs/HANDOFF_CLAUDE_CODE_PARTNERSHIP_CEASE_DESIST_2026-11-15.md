@@ -105,6 +105,22 @@ Round 2 ($3.41, total $11.90 of $12):
 - OBSERVED on both swaps: pale lavender patches at both hips. HYPOTHESIS: the coat's reference picture or its
   description (pockets, lining) causes it; test by changing one of them on the next swap. Not yet measured: the swap's
   drift inside the chest-up frame.
+
+**Fendi on v6 (17 Nov 2026): "Refer to our masking techniques used in hyenas there is still a lot of warping."** He was
+right about the method: v5 and v6 were cut out with the local selfie segmenter plus a colour gate inside
+`storm_him_comp.py` and re-projected by a homography, none of which is the proven lane. v7 uses the lane
+(PROBLEM_INDEX, "Him + a creature/prop"): `matte-video-proxy` on the put-back (`c5a3cb1a`, job `88509139`, $0.135) and
+`composite_over_plate.py` (`--scale 1 --cx 960 --push 0`), the take and matte cropped to the chest-up frame by one
+ffmpeg filter (rotate -6 deg for the phone's roll, crop 1171x659, no perspective warp).
+- FINDING: the veed matte holds the green quilt behind him solid on all 180 frames (it touches his outline). No row of
+  the index covers a backdrop the matte keeps. TEST added: `matte_repair.py --drop-backdrop-hue 35,95`
+  (`drop_backdrop`, a chroma key that only lowers; `matte_stability.py --baseline` prints `added 0` in all three
+  regions). It is a per-frame colour rule on the matte, so it stays a test until Fendi passes the picture; it gets an
+  index row only then. The cleaner fix is at the shoot: nothing draped behind him, a plain wall.
+- OBSERVED in v7: the outline is clean; the capelet's edge, collar flap and pockets still change shape frame to frame.
+  That is the swap (Genjutsu on a take with the fan on and his arm crossing the coat), not the matte.
+  HYPOTHESIS: the same swap on take S1 (no fan) drifts less; ~$4.09 to test, not approved.
+- T7: `storm_scene/preview_v7_hyenas_matte/` (`chicago_v7_720.mp4`, `comp.mp4`, `alpha_crop.mkv`), `work/swap_test_s5/matte/`.
 Not yet filed in AVT: the take originals (~0.9 GB each).
 
 ## Read first, in this order
