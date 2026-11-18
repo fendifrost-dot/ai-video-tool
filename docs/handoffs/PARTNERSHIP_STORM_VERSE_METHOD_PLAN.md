@@ -274,3 +274,26 @@ Compared and rejected: the posture_neutral photo (tilted 9 deg, side-lit: reads 
 at the forehead. The likeness is his pixels graded to the scene; the pose of the head is the still's, so the photo must
 match its angle. "More like it" = new Gemini whole-scene stills from the v1 request (other depths and angles), each
 followed by this fix; a three-quarter head needs his three-quarter face photo.
+
+## "More like it": what passed and what did not (18 Nov 2026)
+
+Fendi on the v1 real-face still (`599baa06`, approved): "Yes it's right thank you and this is literally all you had to do
+every time like I asked". The method is therefore fixed: Gemini whole-scene still -> `still_face_from_photo.py` ->
+`still_face_putback.py` (proof 0). Retakes are asked as "Retake the first reference photograph ... camera moved ..."
+with the approved still as the `screen` reference (prompt `storm_like_v1_retake_v1/v2`).
+
+| Still | Face in the still | Photo | Result |
+|---|---|---|---|
+| v1 full figure | 65 px | front `1fd67e48` | APPROVED `599baa06` |
+| knees-up `f2242ee7` | 130 px | front, `AVT_FACE_SIDE=0.14 AVT_FACE_TOP=-0.05` | passes my check, posted, `like_v1/storm_knees_up_realface.jpg` |
+| chest-up r2 `057e24bc` | 274 px | front, same settings | his face fits; Gemini's own glasses (a different pair) ring his: NOT posted |
+| three-quarter r2 `76e28a0b` | 142 px | three-quarter left `ddec5925` (box 1660,270,300,300) | his face fits (2.8 %); a wire rim of Gemini's glasses hangs by his nose: NOT posted |
+| far v4 `c19cfa88` | about 26 px | - | face too small for the landmarks: not done |
+
+NEVER (tried 18 Nov, failed): a Gemini "seat" pass on a paste-up of a face this large (it redraws the face and its own
+glasses, twice, $0.54); a local inpaint of the leftover frame (smudges the brim and the skin); a face photo whose angle
+is not the still's (near-profile photo on a 0.42 head: residual 6.3 %, a bright strip on the nose).
+The cause is at generation: Gemini draws its own glasses, a different pair every time, wider than his. NEXT (needs his OK,
+it passes the $4): re-roll the chest-up and the three-quarter with NO glasses on the man, so his real face and his real
+glasses are the only pair in the picture. Head angle rules that worked: frontal for the front photo; "turned 40 degrees
+toward the LEFT edge, camera at waist height looking slightly up" for the three-quarter-left photo.

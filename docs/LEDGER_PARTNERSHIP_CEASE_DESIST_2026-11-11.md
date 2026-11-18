@@ -24,8 +24,11 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 13 | 18 Nov 05:27 | Matte of the figure v2a as a 2 s still clip (`c05eff9e`), for the Blender card | matte-video-proxy, veed, job `25829df9` | $0.036 | unknown | clean; it also held his reflection in the room's mirror (largest piece kept, as compose_cover_from_still.py does) |
 | 14 | 18 Nov 07:38 | Figure B, hat only: "crown half as tall, soft, a size smaller" (`d9055a0a`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | NO GAIN: the hat came back almost unchanged (third time words alone did not lower it); not used |
 | 15 | 18 Nov 07:42 | Figure v3b: his real head from the same photo pasted at the edit's head place (paste-up `42dd2b6a`), hat seated round it (`97942d93`), face put back with the known mask (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | head check passes at 4x (one pair of glasses, his own); hat still taller than he asked; posted as the figure alone |
+| 16 | 18 Nov 07:57 | Three stills "like v1" (Fendi: "fix my face and produce more like it"): knees-up `f2242ee7`, chest-up `7e6d51cd`, three-quarter `21df519f` | world-still-proxy, gemini-nano-banana-2.1 | $0.81 | unknown | knees-up: passes, his real face put on ($0, proof 0), posted. Chest-up: capelet blown up like a ruff, pale sky: rejected. Three-quarter: head turned right to near profile, matches neither of his face photos (residual 6.3 %): rejected |
+| 17 | 18 Nov 08:02 | Second roll of the two rejects: chest-up `057e24bc`, three-quarter (head left, from below) `76e28a0b` | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | both good pictures; his real face fits (residual 1.8 % and 2.8 %, proof 0) but Gemini's own, different glasses show round his at this size: not posted |
+| 18 | 18 Nov 08:05 | Seat pass on both paste-ups (`0cae9bf8`, `76e72227`): "remove the second pair of glasses, change nothing in the face" | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | NO GAIN: both times it redrew the whole face and put its own glasses back; after the put-back the second frame is still there |
 
-Total at estimate: **$17.90** (rows 1-15, 17-18 Nov 2026; invoices unknown).
+Total at estimate: **$19.79** (rows 1-18, 17-18 Nov 2026; invoices unknown). Stills stage: $3.82 of the $4.00 Fendi approved.
 
 ## Approved budgets
 
