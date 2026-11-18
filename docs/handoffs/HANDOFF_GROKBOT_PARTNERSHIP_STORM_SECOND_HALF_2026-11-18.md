@@ -2,8 +2,8 @@
 
 Fendi, 18 Nov: "If you think we have generated enough stills to fill the entire second half of the song then we can
 build that out and have grokbot start working on it now and then we can come back to building the first half while
-grok bot works." This page is that handoff. Start on the ACCEPTED slots; the PICK slots and the one MISSING slot are
-marked. Detail behind every row: `PARTNERSHIP_SHOT_LIST.md`.
+grok bot works." This page is that handoff. Start on the ACCEPTED slots; the PICK slots (made, not yet judged by him) are
+marked. Every slot now has a clip. Detail behind every row: `PARTNERSHIP_SHOT_LIST.md`.
 
 ## What the second half is (his words)
 
@@ -34,7 +34,7 @@ project `0c5c4421-1298-4919-bf62-2764ce7837fa`, asset id in the row.
 |---|---|---|---|---|---|---|---|---|
 | S01 | 127.9-136.5 | 8.6 s | Ralph umbrellas for the rain | 1 start | `storm_s01_full_start.mp4` `29eeb4b6` | `581fe3ff-ed7e-4c49-b8cb-efe5567b13e5` | full figure, centre, light debris | ACCEPTED: "Looks good as is." |
 | S02 | 136.5-143.6 | 7.1 s | Range Rover sport ... Fendi bucket hat for the brain | 1 | `storm_s02b_full_start.mp4` `2e324705` | `d79c8fc2-9285-4719-90ae-56835331d788` | full figure, right of centre; knees-up by punch-in (the hat line) | ACCEPTED: "ok it's fine now" |
-| S03 | 143.6-152.2 | 8.6 s | Before we would splash in these foreigns ... pull you back up out the grave | 1 to 2 | MISSING | - | the empty street, debris and their photographs blowing through | - (the first still was rejected by me: bright sky, made-up snapshots; not remade) |
+| S03 | 143.6-152.2 | 8.6 s | Before we would splash in these foreigns ... pull you back up out the grave | 1 to 2 | `storm_s03_street_early_no_person.mp4` `fb41febc` | `9b73b15b-109c-45e6-a030-5cc9ece3cfec` | the empty street, rubbish, a trash can and a branch blowing through; their photographs are yours to add | PICK (never judged) |
 | S04 | 152.2-161.5 | 9.3 s | Just talked to your mama ... too hard to let go | 2 building | `storm_s04_full_building.mp4` `832d2570` | `ca645fd0-ef85-479f-a188-9926c33a95a9` | full figure, right of centre, branch, umbrella, cone, trash can | ACCEPTED: "S04 perfect" |
 | S05 | 161.5-170.4 | 8.9 s | All the challenges you overcame ... bullet holes all in your frame | 2 | `storm_s05b_full_building.mp4` `d5a3a5e1` | `ca0c73d9-108b-48a7-8848-c4dd76e65381` | as S04, a second take; knees-up by punch-in | ACCEPTED: "ok it's fine now" |
 | S06 | 170.4-176.6 | 6.2 s | Fight through life with disdain / Lost my day one ... | 3 peak | `storm_s06_full_peak.mp4` `10543332` | `3bce8d34-600c-4e35-a01a-70e1bc09d851` | full figure, a sedan and an uprooted tree in the air | ACCEPTED: "s06 looks good" |
@@ -50,7 +50,7 @@ the bottom edge: never use it uncropped). REJECTED, do not use: `storm_s02_knees
 ## What each clip needs from you (OBSERVED on the files)
 
 - **Length.** Every slot but S06 is longer than its 6.04 s clip. ESTIMATE of the speed that fills each: S01 70 %,
-  S02 85 %, S04 65 %, S05 68 %, S06 97 %, S07 89 %, S08 66 %, S09 40 %, S10 26 %. A hurricane reads well slowed; S09
+  S02 85 %, S03 70 %, S04 65 %, S05 68 %, S06 97 %, S07 89 %, S08 66 %, S09 40 %, S10 26 %. A hurricane reads well slowed; S09
   and S10 are too long for one slowed clip, so they need a second framing (punch-in), a held end frame with live rain
   over it, or his word on a shorter tail.
 - **Debris runs out.** In every clip the debris is thick for about 3 s and has blown away by the last 2. Add debris of
@@ -59,7 +59,9 @@ the bottom edge: never use it uncropped). REJECTED, do not use: `storm_s02_knees
   frame on S02, S04, S05 (soft; a short cut, not a held shot) and about 1.6x on S01.
 - **Resolution.** The clips are 720p. Scale them with a plain resampler. See the rules on his face.
 - **Per clip.** S02: the spray turns to haze in the last second. S04, S05, S06: his lips read slightly pink and parted,
-  steady (not moving); do not push in on the face. S08: two small made-up snapshots near the camera in the first
+  steady (not moving); do not push in on the face. S03: no snapshots in it by design (the first still's made-up
+  ones were the reason it was remade): this is the slot for their real photographs; the trash can near 2 s is clean
+  and sharp: add blur or cover it. S08: two small made-up snapshots near the camera in the first
   second: cover or crop them. S09: the sky goes from black to bright within 6 s: slow it or grade the change down.
 
 ## Memories and debris (yours to build)

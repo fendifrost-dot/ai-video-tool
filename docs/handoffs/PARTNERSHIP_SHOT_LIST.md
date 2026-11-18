@@ -221,3 +221,16 @@ for a short cut, not a held shot. Both clips are pending his word.
 **Fendi, 18 Nov, on the two redos: "ok it's fine now".** Filed approved: 2:08 `581fe3ff`, 2:16 `d79c8fc2`, 2:32
 `ca645fd0`, 2:41 `ca0c73d9`, 2:50 `3bce8d34`. Never judged: 2:57, 3:04, 3:12, 3:27. Missing: 2:24 (empty street, early
 storm). The cutter's page for the second half: `HANDOFF_GROKBOT_PARTNERSHIP_STORM_SECOND_HALF_2026-11-18.md`.
+
+## The missing 2:24 slot, 18 Nov 2026 ($3.04; Fendi: "Yes, make it")
+
+| Song | Still → clip | File | OBSERVED |
+|---|---|---|---|
+| 2:24-2:32 | new still `4ea26daf` (prompt `storm_shotlist_v2_photoreal`; filed for animation as `55c4cdb9`) → job `c6d5df32` → `9b73b15b` | `storm_s03_street_early_no_person.mp4` (md5 `fb41febc`), still `shotlist/storm_03_street_early_no_person.jpg` | nobody in it, no snow, no snapshots, the framing held (building patch first vs last frame: 2.3 of 255); newspaper, leaves, a rolling trash can, a branch that lands on the road; the trash can near 2 s is clean and sharp |
+
+What changed from the rejected still `6d486b10`: the request leads with the "real footage, not a render" wording, fixes
+the sky ("as dark as in the reference or darker"), lists ordinary street rubbish only and never mentions snapshots
+(naming them, even as "too small to show a picture", is what drew them). The clip's camera line says "the camera does
+not move at all" with no "tripod". The render took 18 minutes against 5 to 10 for the others; the job stayed "running"
+with no error and was not resubmitted. All ten slots now have a clip; five are his ACCEPTED, five are pending his word
+(2:24, 2:57, 3:04, 3:12, 3:27).
