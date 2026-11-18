@@ -133,3 +133,24 @@ Seedance. PROPOSED ladder (a RECOMMENDATION until he picks):
 Stage 1 is stills only (about $0.27 a Gemini call: one clothes edit per new source photo, one blend per placement),
 each sent with its head check sheet. Only stills he passes are animated (Seedance, $2.31 per 5 s). In video his face is
 Seedance's rendering guided by his real photos and the real-face still; pixel-exact is only possible on the stills.
+
+## Ladder stills, first three (18 Nov 2026; Fendi: "Use the method we created")
+
+The method, as run (all on T7 `storm_scene/plan_b/ladder/`):
+1. `scripts/edit/place_still_figure_on_plate.py <far|mid|near> <frac> <x>`: the real-face dressed photo pasted on the
+   empty plate `2fade1e8` at that depth, and a 16:9 crop round him in which he fills 80 % of the height (far 4.05x, mid
+   2.37x, near 1x). Gemini only ever sees the crop, so his face is large in what it works on.
+2. Gemini blend (`storm_ladder_blend_v1`, one reference = the crop): light, edges, contact shadow, reflection, rain, coat
+   in the wind. Results `a579dd5e` (far), `cdd645a2` (mid), `f97cc8f1` (near). The head held its shape in all three (on
+   the uncropped v5 it became a hood).
+3. Face put-back on a 1024 px head crop of each: `AVT_STILL_HAT=edit still_face_putback.py`, the paste-up colour-matched to
+   the blend inside the face mask first (colour only). Printed `max |out-original| inside the hard head mask: 0` on all
+   three (after a fix to the script: the blend could round 1 level low).
+4. The finished crop shrunk back into the plate, feathered at its border: `far_still.jpg`, `mid_still.jpg`,
+   `near_still.jpg`; `near_chest_up.jpg` and `near_knees_up.jpg` are crops of the near still.
+5. Head check sheet per still (`*_head_check.jpg`): real photo, Gemini's head, result, the edge of his real pixels, his head
+   at true size. LOOKED AT before posting.
+
+OBSERVED on the sheets: near and mid read as him; far: his real face is only ~26 px wide in the frame (soft), and Gemini
+changed the hat's FF pattern to a plain weave there. His real pixels are the face from the brows to the chin; hat, ears,
+beard sides, neck and glasses corners are Gemini's. Not yet filed as project stills in AVT; not judged by Fendi.

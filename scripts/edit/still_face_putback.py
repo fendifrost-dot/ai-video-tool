@@ -61,8 +61,8 @@ else:
     m = cv2.bitwise_or(m, cap)
 m[int(y1 + 0.02 * fh):, :] = 0  # nothing below the chin
 hard = m.copy(); soft = cv2.GaussianBlur(m.astype(np.float32) / 255, (0, 0), max(2, fw * 0.03))
-soft = np.maximum(soft, (hard > 0).astype(np.float32))
-out = (edit_al.astype(np.float32) * (1 - soft[..., None]) + o.astype(np.float32) * soft[..., None]).clip(0, 255).astype(np.uint8)
+soft = np.clip(np.maximum(soft, (hard > 0).astype(np.float32)), 0, 1)   # the blur can overshoot 1 by a float's width: without the clip and the rounding the proof read 1, not 0
+out = np.rint(edit_al.astype(np.float32) * (1 - soft[..., None]) + o.astype(np.float32) * soft[..., None]).clip(0, 255).astype(np.uint8)
 diff = np.abs(out.astype(int) - o.astype(int)).max(2); print("max |out-original| inside the hard head mask:", int(diff[hard > 0].max()), "hard mask px", int((hard > 0).sum()))
 Image.fromarray(out).save(out_p); cv2.imwrite(out_p.replace(".png", "_mask.png"), hard)
 print("wrote", out_p)

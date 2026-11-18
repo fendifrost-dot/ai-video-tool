@@ -19,12 +19,13 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 8 | 18 Nov 04:23 | Seedance animation of the scene still `ea050d80`, 5 s, his 3 face photos + coat + hat as pictures | montage-shot continuous, job `365faa8a` | $2.311 | unknown | `cce0b2c1`; mouth 0.038 / 0.030; made before the face was corrected |
 | 9 | 18 Nov 04:31 | His real photo `1fd67e48` with only the clothes changed (`567b1d3a`), then `still_face_putback.py` (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | the YSL cover method; his real face, the full look |
 | 10 | 18 Nov 04:33 | Scene still v5: the real-face photo placed small on the plate, Gemini to blend it in (`d78c9875`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | scene right; Gemini redrew his 30 px head as a hood; head put-back from the guide not yet clean |
+| 11 | 18 Nov 04:54 | Ladder stills, far / mid / near: the real-face paste-up blended into the street (`a579dd5e`, `cdd645a2`, `f97cc8f1`), then his face put back on each (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.81 | unknown | posted with head check sheets; far: the hat lost its FF pattern, face only ~26 px |
 
-Total at estimate: **$15.97** (rows 1-10, 17-18 Nov 2026; invoices unknown).
+Total at estimate: **$16.78** (rows 1-11, 17-18 Nov 2026; invoices unknown).
 
 ## Approved budgets
 
-Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $12.04 used (4 cents over, the matte he asked for). Plan B, 17 Nov: up to $5 quoted, then "just do what we already did"; $3.93 used. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
+Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $12.04 used (4 cents over, the matte he asked for). Plan B, 17 Nov: up to $5 quoted, then "just do what we already did"; $4.74 used (stills stage of the ladder: up to $4 quoted, "Use the method we created"; $0.81 used). The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
 
 ## State (VERIFIED by the rows written unless marked)
 
