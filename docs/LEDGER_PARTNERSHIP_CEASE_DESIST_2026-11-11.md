@@ -14,11 +14,11 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 3 | 18 Nov 01:46 | Walking through the storm, recipe F, 6 s, silent window `895cb1b4` | montage-shot, Seedance 2.5 reference 720p, job `f57a66ff` | $3.328 | unknown | `0f7fd085`; mouth at rest |
 | 4 | 18 Nov 01:47 | LaSalle still tilted up 40 deg, his phone's view (`574af09f`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | usable |
 
-Total at estimate: **$0.00**. Nothing has been generated.
+Total at estimate: **$8.49** (rows 1-4, 17-18 Nov 2026; invoices unknown).
 
 ## Approved budgets
 
-None. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
+Fendi, 17 Nov 2026: up to $12 for the real-place round ("You can do both ... I'm giving you autonomy to do what you need to do"); $8.49 used. The 4-engine passenger-seat test (about $10–15, see the handoff) is a RECOMMENDATION and is not approved.
 
 ## State (VERIFIED by the rows written unless marked)
 
