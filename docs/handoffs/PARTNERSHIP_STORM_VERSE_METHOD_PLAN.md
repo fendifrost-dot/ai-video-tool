@@ -110,3 +110,26 @@ real photo (real photo, generated head, result, the edge of his real pixels) BEF
 pixels are his. The real-face figure is `storm_scene/plan_b/photo_path/dressed_putback.png` (check sheet
 `head_check_dressed_photo.jpg`). Open with him: how large he stands (a fifth of the frame = a 15 px face in 720p, no
 likeness possible; about a third = the put-back holds).
+
+## Plan B coverage: a ladder of depths and angles (Fendi, 17 Nov 2026)
+
+"To keep the shot dynamic we are going to have to progressively cut from different depths so we need a variation of
+depths and angles since the performance shot didn't come out right." So the verse is not one shot at one size: it is a
+set of shots of the same moment, cut between, the chaos rising through them.
+
+Each angle starts from a REAL photo of him at that angle (SHOT_RULES 6: the scene's angle is the photo's angle), goes
+through the still order above (clothes-only edit, face put-back with proof 0, head check sheet), then placement, then
+Seedance. PROPOSED ladder (a RECOMMENDATION until he picks):
+
+| # | Depth | Angle | His real source in the tool | His face in the 720p render |
+|---|---|---|---|---|
+| 1 | extreme wide, a fifth of the frame | front | `silhouette_front` `1fd67e48` (dressed: `567b1d3a`, put-back done) | about 15 px: a figure, not a face |
+| 2 | wide, a third of the frame | front | the same dressed photo | about 25 px: reads as him by build, hat, beard |
+| 3 | full figure, half the frame | side profile | `silhouette_side` `91f1b325` | profile; the storm crosses the frame past him |
+| 4 | knees up | front, hands in pockets | `posture_neutral` `2ed75b4d` | about 60 px |
+| 5 | chest up | front | the dressed front photo, cropped | about 110 px: the composure shot; the likeness is judged hardest here |
+| 6 | chest up, from below | low angle | a frame of his real storm take (no fan stretch) | about 110 px |
+
+Stage 1 is stills only (about $0.27 a Gemini call: one clothes edit per new source photo, one blend per placement),
+each sent with its head check sheet. Only stills he passes are animated (Seedance, $2.31 per 5 s). In video his face is
+Seedance's rendering guided by his real photos and the real-face still; pixel-exact is only possible on the stills.
