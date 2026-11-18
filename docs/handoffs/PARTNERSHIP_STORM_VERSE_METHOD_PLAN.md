@@ -101,3 +101,12 @@ Findings (OBSERVED):
   `montage-shot/index.ts` (Class B, needs a Lovable edge redeploy).
 - Animation `cce0b2c1` (from `ea050d80`, him large, Gemini's face): he stands still, the coat and the storm move, a
   trash can rolls through; made before the face order above. T7 `storm_scene/plan_b/storm_still_anim_v1.mp4`.
+
+**What Fendi approved in still v1, exactly (17 Nov 2026): "the one I called amazing was only referencing the clothing swap
+and scenery not my face."** APPROVED as a look: the Prada coat with the capelet, the Fendi hat, dark jeans and black
+America's Cup Pradas on him, and LaSalle Street in the storm at dusk. NOT approved: any face so far. Then: "You're not
+checking my face and head" / "Do thorough checks before moving forward." Every picture of him is head-checked against his
+real photo (real photo, generated head, result, the edge of his real pixels) BEFORE it is sent, and the post says which
+pixels are his. The real-face figure is `storm_scene/plan_b/photo_path/dressed_putback.png` (check sheet
+`head_check_dressed_photo.jpg`). Open with him: how large he stands (a fifth of the frame = a 15 px face in 720p, no
+likeness possible; about a third = the put-back holds).
