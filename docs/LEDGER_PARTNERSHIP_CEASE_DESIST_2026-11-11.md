@@ -21,8 +21,9 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 10 | 18 Nov 04:33 | Scene still v5: the real-face photo placed small on the plate, Gemini to blend it in (`d78c9875`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | scene right; Gemini redrew his 30 px head as a hood; head put-back from the guide not yet clean |
 | 11 | 18 Nov 04:54 | Ladder stills, far / mid / near: the real-face paste-up blended into the street (`a579dd5e`, `cdd645a2`, `f97cc8f1`), then his face put back on each (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.81 | unknown | posted with head check sheets; far: the hat lost its FF pattern, face only ~26 px |
 | 12 | 18 Nov 05:15 | The dressed figure v2, two stance options: A front photo with the stance squared (`fdf7fa96`), B posture_neutral photo, hands in pockets (`9b83875d`); fitted hat, slim shoes; face put back on both (proof 0) | world-still-proxy, gemini-nano-banana-2.1 | $0.54 | unknown | A: stance changed little, hat lower, shoes slimmer, head check passes. B: more attitude; its put-back doubles the glasses at the right temple (ECC 0.81): fails the head check |
+| 13 | 18 Nov 05:27 | Matte of the figure v2a as a 2 s still clip (`c05eff9e`), for the Blender card | matte-video-proxy, veed, job `25829df9` | $0.036 | unknown | clean; it also held his reflection in the room's mirror (largest piece kept, as compose_cover_from_still.py does) |
 
-Total at estimate: **$17.32** (rows 1-12, 17-18 Nov 2026; invoices unknown).
+Total at estimate: **$17.36** (rows 1-13, 17-18 Nov 2026; invoices unknown).
 
 ## Approved budgets
 

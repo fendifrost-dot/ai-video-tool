@@ -193,3 +193,36 @@ The YSL method (c033 showroom, `docs/handoffs/HANDOFF_BLENDER_SHOWROOM_2026-10-1
 And the plate's camera must be his source's camera: make the street still from chest height at the distance his photo
 was taken from, scaled (or shoot him again from the plate's height), before any of the above.
 Status of the ladder stills `far/mid/near_still.jpg`: placement tests only, not candidates.
+
+## The street built with the c033 showroom method (18 Nov 2026)
+
+Fendi: "I don't understand why I keep having to come in and ask you, did you follow the proven methods ... You don't have
+to figure anything out. It's already figured out. Just refer to the notes. So yes ... build the scene out the exact same
+way, using the exact same method that we use for the proven shots." And: the angle "we can change in post-editing. So
+that's not as important as the scene being built."
+
+Run, in the order of `scripts/edit/reproduce_c033_showroom_room2.sh` (T7 `storm_scene/plan_b/scene/`):
+1. Plate camera MEASURED from the picture: `scripts/edit/blender/storm_lasalle_measure_plate_camera.py` (RANSAC over
+   line segments) + the parked sedan (ruled crop). Values and their labels: `storm_lasalle_{far,mid,near}.json`
+   (`plate`): focal 1067 px (ESTIMATE, the prompted 20 mm), horizon row 921 (ESTIMATE +/- 18: the picture's own cues
+   disagree by 50 rows), camera 0.46 m up (ESTIMATE tied to the horizon by the sedan's roof and tyre contact).
+2. The figure as the performer card: the dressed photo v2a (real face, proof 0) on a 1920x1080 canvas, matted by
+   `matte-video-proxy` (job `25829df9`), `prep_performer.py --size 1920x1080`. Its scale is MEASURED on him: eyes to
+   soles 906 px over 1.82 m = 498 px/m, so he stands 6 ft 3 with his soles on the road.
+3. `build_scene.py` (passes depth / env / refl / fg) and `comp_scene.py` with light MEASURED on the plate (the white
+   newspaper page) over his photo's white door; exposure +1.2 stops (DECISION, checked on his face).
+   The four scripts were built for the 1080x1920 showroom shots; each now takes the frame from the scene file
+   (`frame`, `render_fps`, island optional, a glossy proxy for the wet road). Defaults are the showroom's, unchanged.
+   **These are rendering scripts (Class C): the change needs sign-off before merge; rebuild room 2 and compare its decoded
+   MD5 with the handoff's before merging.**
+Checks: the env pass reproduces the plate (mean abs diff 1.02 levels, 65 black pixels of 2 million); his soles land on
+rows 976 / 1022 / 1111 of 1080 at 9.4 / 5.5 / 3.25 m (the near one is cut by the frame). The earlier 2D paste had his
+feet 35-40 rows too high at the far and mid depths: he was right that they did not line up.
+Stills: `far_bl_still.jpg`, `mid_bl_still.jpg`, `near_bl_still.jpg` (PLACEMENT ONLY).
+
+What the placement does not give, OBSERVED on the stills: he reads as a cut-out (no wind in the coat, dry, no contact
+shadow, a faint road reflection, the room's light direction). And MEASURED on the figure: his head is 22 % larger
+against his legs than a far camera would see (outer eye corners 608 px/m, body 498 px/m), because the photo was taken
+about 1.5 m away from above. In his order of work this placement is step 1 (depth and where he stands); Gemini's blend
+on a crop round him and the face put-back, then Seedance, come after it. `verify_scene.py` was not run (it checks a
+take against its shot; there is no take).

@@ -13,8 +13,9 @@ import numpy as np, cv2
 ap = argparse.ArgumentParser()
 ap.add_argument("fg"); ap.add_argument("alpha"); ap.add_argument("out")
 ap.add_argument("--roll", type=float, required=True); ap.add_argument("--scale", type=float, required=True)
+ap.add_argument("--size", default="1080x1920", help="the take's frame, WxH (default the showroom shots' 1080x1920)")
 A = ap.parse_args()
-W, H = 1080, 1920
+W, H = (int(v) for v in A.size.split("x"))
 os.makedirs(A.out, exist_ok=True)
 
 def frames(p, gray=False):
