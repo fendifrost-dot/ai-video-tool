@@ -33,6 +33,14 @@ Shooting close gives your face and mouth more pixels.
 
 ## Wind (the storm blows from behind the camera, straight past you: front to back)
 
+> **CORRECTION, 17 Nov 2026: NO FAN on any take that gets a clothing swap.** This sheet told Fendi to shoot with a fan,
+> without accounting for the swap that follows. The swap (Genjutsu) redraws the coat on every frame; fabric whipped by
+> a fan gives it nothing steady to follow, and the Prada coat came back changing shape frame to frame (test on take S5,
+> job `100f9dfb`; Fendi: "a lot of drift", "this is a disaster"). It is the same failure as the YSL train and
+> headlights: anything fast-moving IN THE FOOTAGE THAT IS SWAPPED breaks the swap. Shoot swap takes with still air and
+> nothing draped or moving behind him; the wind, rain and debris are added after the swap, as layers the swap never
+> sees. The fan advice below stands only for a take that is used in the clothes he is actually wearing.
+
 Fendi, 16 Nov: "I wanted the debris coming from the direction of the camera going past me" / "Front to back".
 
 | | Set it like this |
