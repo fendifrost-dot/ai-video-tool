@@ -60,6 +60,16 @@ This low angle sees storm sky and debris, not the ground. `storm_set_build.py --
 lay back pass → him → front pass. First test with the real him: T7 `storm_scene/preview_v4/storm_v4_him_test.mp4`
 (take S5, song 2:16.5–2:22.5). Its matte is the local segmenter (preview only); the shipping matte is `matte-video-proxy`
 (PROBLEM_INDEX), a paid call to quote. The 16:9 shooting sheet's C/D camera is superseded by this.
+
+**REJECTED by Fendi, 17 Nov 2026 (the look, not the camera match):** "it doesn't stick to our core principles of
+photorealism, extremely real ... We want to make the viewer believe that the scene actually happened. So this looks
+completely AI generated and unrealistic ... it's like a fantasy land. That's not what I'm going for, particularly with
+this shot." The Blender sky-and-stand-in storm is not the look and must not be shown to him again as one. What stays:
+the measured camera (`camera.footage`), the re-projection and the back / him / front layering. What changes: the storm
+happens in a REAL place, a photographic plate (Gemini) seen from his phone's low angle, built into moving layers
+(PROBLEM_INDEX: "He looks pasted on a still"), with only physically possible things in the wind (rain, leaves, paper,
+printed photographs of him and Allen). No glowing holograms, no flying cars, no abstract sky. He sees a photoreal still
+of the place before any motion is built.
 Not yet filed in AVT: the take originals (~0.9 GB each).
 
 ## Read first, in this order
