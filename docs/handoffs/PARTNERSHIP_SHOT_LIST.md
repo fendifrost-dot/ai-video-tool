@@ -217,3 +217,7 @@ Method unchanged from what he approved: a full-figure still, the same request wo
 Legs and shoes against S04: `storm_redo_legs_check.jpg`. Knees-up cuts, $0: `*_knees_crop.mp4`
 (`crop=560:316:516:238,scale=1280:720`): a 2.3x enlargement because he stands further back, so they are soft; usable
 for a short cut, not a held shot. Both clips are pending his word.
+
+**Fendi, 18 Nov, on the two redos: "ok it's fine now".** Filed approved: 2:08 `581fe3ff`, 2:16 `d79c8fc2`, 2:32
+`ca645fd0`, 2:41 `ca0c73d9`, 2:50 `3bce8d34`. Never judged: 2:57, 3:04, 3:12, 3:27. Missing: 2:24 (empty street, early
+storm). The cutter's page for the second half: `HANDOFF_GROKBOT_PARTNERSHIP_STORM_SECOND_HALF_2026-11-18.md`.
