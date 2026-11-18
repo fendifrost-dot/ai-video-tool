@@ -136,3 +136,45 @@ face is about 50 px wide in the cut, the same on every frame, mouth closed. OBSE
 readable under rain. RECOMMENDATION: animate each still once as a full figure and let the cutter punch in to knees-up
 where the lyric wants it (two framings from one paid clip); a knees-up meant to hold the screen for a long line is
 better made from a knees-up still (sharper).
+
+## PHOTOREAL, NOT CGI (Fendi, 18 Nov 2026, while the clips rendered)
+
+"And remember we are going for photo realism not cgi some of these images can past for cgi or cartoons so make sure
+we express that." DECISION (his): this goes into the words of every request from here on, to Gemini, to Seedance and to
+Grokbot, and every picture is judged for a CGI or cartoon look before it is sent to him.
+
+The eight clips below were already submitted when he said it; their wording did not say it (the function's own closing
+line says "cinematic and grounded"). Wording to lead every request with from now on:
+
+> Real footage, not a render: filmed on a real camera on a real street in a real storm, like news or documentary
+> footage. Natural colour as the camera recorded it, available light only, real motion blur on anything moving fast,
+> slight lens softness and grain, imperfect framing. Nothing looks computer-generated, illustrated, painted or like a
+> video game.
+
+For Grokbot: every storm clip gets a real-camera finish matched to the car takes (their grain, softness and contrast),
+motion blur on the debris he adds, no glow, no clean vector shapes.
+
+## The eight storm clips, 18 Nov 2026 (T7 `storm_scene/plan_b/animated/`, 1280x720, 24 fps, 145 frames each, $2.773 each)
+
+Same request as the approved test (`montage-shot` continuous, 6 s, camera locked off, `withHim: false`, his three face
+photos + coat + hat), the action changed per still for its storm level. Stills filed for it as `worlds/scene_storm_sNN_*`.
+MEASURED with `mouth_scan.py` (6 samples a second; moving is gap mean > 0.08 AND spread > 0.03):
+
+| Song | Clip (job → asset) | File | Mouth (gap / spread) | Face in the 720p file | Head drift | OBSERVED |
+|---|---|---|---|---|---|---|
+| 2:16-2:24 | `017b2a05` → `8ebb1a4a` | `storm_s02_knees_up.mp4` | 0.036 / 0.022 at rest, 36/36 | 53 px | 4 px | came out a full figure, not knees-up; reads mostly real |
+| 2:32-2:41 | `eb44c844` → `ca645fd0` | `storm_s04_full_building.mp4` | 0.104 / 0.020 at rest, 31/36 | 33 px | 2 px | lips pink and a little parted on every frame (steady, not moving); big sharp newspapers by the lens |
+| 2:41-2:50 | `da0ff0d1` → `02c928bf` | `storm_s05_knees_building.mp4` | 0.044 / 0.014 at rest, 36/36 | 51 px | 3 px | came out a full figure; reads mostly real |
+| 2:50-2:57 | `af444bea` → `3bce8d34` | `storm_s06_full_peak.mp4` | 0.099 / 0.014 at rest, 29/36 | 33 px | 3 px | lips pink and a little parted; a sedan and a tree hang in the air: reads CGI |
+| 2:57-3:04 | `c155ef8c` → `a6e8a1a7` | `storm_s07_knees_peak_cropped.mp4` | 0.033 / 0.014 at rest, 36/36 | 63 px | 2 px | knees-up kept; Seedance drew a small TRIPOD between his legs at the bottom edge (the word was in the camera line): cut out with `crop=1216:684:32:0` then back to 1280x720 ($0); sedan and tree in the air in the first half: reads CGI there |
+| 3:04-3:12 | `6f501529` → `ad79f9f7` | `storm_s08_street_peak_no_person.mp4` | no person | - | - | sedan and tree in the air, two made-up snapshots: first half reads CGI |
+| 3:12-3:27 | `c6e2f8dd` → `15072cc9` | `storm_s09_full_passing.mp4` | 0.077 / 0.012 at rest, 36/36 | 41 px | 4 px | the sky goes from black to bright in 6 s (reads like time-lapse); lips a little pink |
+| 3:27-3:51 | `6da7b3e1` → `e2bd9e12` | `storm_s10_knees_end.mp4` | 0.021 / 0.008 at rest, 36/36 | 63 px | 3 px | knees-up kept; calm, rain only; the most like a photograph, but skin and coat are smooth |
+
+OBSERVED on all eight: no snow; coat and hat correct; the debris is thick for the first 3 seconds and has blown away by
+the last 2 (nothing new comes in), so the usable storm is the first half of each clip unless Grokbot adds debris; the
+picture is clean, sharp and graded blue with orange lamps, which is part of the CGI read.
+NEVER AGAIN: the word "tripod" in a camera line (say "the camera does not move").
+Head sheet: `storm_clips_head_checks.jpg`. Per clip: `<name>_tile.jpg`, `<name>_heads.jpg`, `<name>_mouth.csv`.
+OPEN (his): whether the peak keeps cars and trees in the air (his 14 Nov brief has cars blowing past) or only what a
+real storm lifts. Re-making one peak still and its clip is $0.27 + $2.77.
