@@ -19,15 +19,19 @@ line numbers and best takes are from `PARTNERSHIP_TAKE_COVERAGE.md`. Whole-video
 
 ## The car takes (VERIFIED: ffprobe, and audio onsets against the master; T7 `work/car/sync.json`)
 
-4K, 24 fps, handheld inside his Lexus (red seats, wood-and-leather wheel), phone held upright (portrait), at night.
+4K, 24 fps, widescreen, inside his Lexus (red seats, wood-and-leather wheel), at night. CORRECTED by Fendi, 18 Nov 2026
+(an agent had called them portrait): "The phone isn't upright some of the visibility is blocked purposely for the aesthetic.
+All of the shots are widescreen." Use them exactly as they play: no rotating, no straightening, no cropping out the wheel
+or the dash. "All of the car shots are first verse only if anything ran over it just ran over it's not meant to go to the
+second verse."
 | Clip | Length | Song time | What it is |
 |---|---|---|---|
-| IMG_6462 | 2:13 | 0:04-2:16 | full first half and on through the beat change, into the storm verse's first lines |
+| IMG_6462 | 2:13 | 0:04-2:16 | full first half (use to 1:47 only) |
 | IMG_6465 | 1:42 | 0:03-1:45 | full first half |
 | IMG_6466 | 1:44 | 0:03-1:47 | full first half |
 | IMG_6467 | 1:44 | 0:03-1:47 | full first half |
 | IMG_6455 | 0:12 | not synced (peak ratio 1.09) | insert: the Lexus radio and dash, no performance |
-OBSERVED: portrait framing, so in the 16:9 master each is a crop or sits in a frame; no best-take-per-line scoring yet.
+No best-take-per-line scoring yet. IMG_6462's footage after 1:47 is overrun, not material.
 
 ## First half, 0:00-1:47
 
@@ -57,8 +61,8 @@ behind him in the room shots; nothing is named yet.
 
 | Song | Picture | Source |
 |---|---|---|
-| 1:47-2:03 | him alone in the parked car, not rapping, the song under him; the last frames push to his face | CAR (IMG_6462 runs through here) |
-| 2:03-2:08 | "Yo yo yo yo": the war cry, then the cut to the street | his real take (S5 best for the line); no separate yell take is on the T7 |
+| 1:47-2:03 | OPEN (his): 16 s with no lyrics. Not the car takes: they are first verse only | - |
+| 2:03-2:08 | "Yo yo yo yo": the war cry, then the cut to the street | WAITING ON FENDI: the close-up yell take is not shot yet (18 Nov: "I didn't do the close up yell take yet"). Until then the line exists only in the trench-coat takes (S5 best) |
 
 ## Second half, the storm, 2:08-3:51 (103 s). No Allen. He stands still; the storm builds; memories and debris fly past.
 
