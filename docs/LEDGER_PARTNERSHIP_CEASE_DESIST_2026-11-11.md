@@ -9,6 +9,10 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 
 | # | When (UTC) | What | Route | Estimate | Billed | Result |
 |---|---|---|---|---|---|---|
+| 1 | 18 Nov 01:40 | 3 stills: downtown Chicago in a hurricane (LaSalle `2fade1e8`, under the L `7fa33a08`, Michigan Ave bridge `63a72b2e`) | world-still-proxy, gemini-nano-banana-2.1, 2k 16:9 | $0.81 | unknown (Google invoice) | usable; LaSalle picked |
+| 2 | 18 Nov 01:42 | Prada coat + capelet and Fendi FF bucket hat on his real take S5, 6 s (`4f67ef7b`) | dress-clip, Genjutsu 720p, job `100f9dfb` | $4.086 | unknown | `bae4910b`; put-back proof 0; flicker below the belt (27 spikes), see handoff |
+| 3 | 18 Nov 01:46 | Walking through the storm, recipe F, 6 s, silent window `895cb1b4` | montage-shot, Seedance 2.5 reference 720p, job `f57a66ff` | $3.328 | unknown | `0f7fd085`; mouth at rest |
+| 4 | 18 Nov 01:47 | LaSalle still tilted up 40 deg, his phone's view (`574af09f`) | world-still-proxy, gemini-nano-banana-2.1 | $0.27 | unknown | usable |
 
 Total at estimate: **$0.00**. Nothing has been generated.
 
