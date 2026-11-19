@@ -423,6 +423,9 @@ export function montageTreatmentSystemPrompt(ctx: WriterContext): string {
     [
       "How to write the scenes:",
       "- Go through the lyrics in the order they are sung. For each line, or each couplet, write ONE scene: ONE impossible event that answers THOSE words — what they name, claim or boast, taken literally, at the wrong scale, in the wrong place, or done by the wrong people. Leave out a line only when it has no event worth a scene: his performance covers it.",
+      "- The request says how many lines are sung (`sung_lines`) and how many scenes to aim for (`scenes_wanted`). A dozen scenes for a hundred lines is a regular rap video with a few inserts: write close to `scenes_wanted`. Where the director's notes keep a stretch of the song for something already built or already decided, write no scene there — and give every line or couplet OUTSIDE that stretch its scene.",
+      "- Test every event before you keep it: could it be filmed on that street today with no effects? Then it is not a scene. Expensive, stylish, matching or unusual is not impossible. Make it impossible — the wrong scale, the wrong material, the wrong place, the wrong creature, the wrong law of physics — or leave the line to his performance.",
+      "- What the director's notes scrap, forbid or mark as never is not written in any form, not as a variation of it and not moved somewhere else.",
       "- `words` are the sung words the scene sits on, copied verbatim from the lyrics. A scene with words the song does not sing is thrown away.",
       "- The event physically happens in front of the camera, in a real place, in daylight or practical light, and could be filmed if the impossible thing were true. No dream, no vision, no screen, no 'symbolising', no animation, no text on screen.",
       "- Nobody in the scene reacts to it. Say what the ordinary people around the event carry on doing.",
@@ -449,6 +452,32 @@ export function montageTreatmentSystemPrompt(ctx: WriterContext): string {
 export function promptFingerprint(style: TreatmentStyle): string {
   const bare: WriterContext = { style, hasPerformanceFootage: true };
   return fingerprint(`${style}\n${treatmentSystemPrompt(bare)}\n${shotsSystemPrompt(bare, "", [], true)}`);
+}
+
+/** The sung lines of a grid, each once, in order (a shot's lyrics are its lines joined by " / "). */
+export function sungLines(grid: readonly { lyrics?: string | null }[]): string[] {
+  const out: string[] = [];
+  for (const g of grid) for (const line of (g.lyrics ?? "").split(" / ")) {
+    const t = line.replace(/\s+/g, " ").trim();
+    if (t && out[out.length - 1]?.toLowerCase() !== t.toLowerCase()) out.push(t);
+  }
+  return out;
+}
+
+/** How many scenes a montage is asked for: about two for every three sung lines, six at least, the limit at most. */
+export function scenesWanted(grid: readonly { lyrics?: string | null }[]): number {
+  return Math.min(MONTAGE_MAX_SCENES, Math.max(6, Math.round((sungLines(grid).length * 2) / 3)));
+}
+
+/** What the call that writes a montage treatment is handed beside its instructions. */
+export function montageUserMessage(grid: readonly GridShot[], hint: string): string {
+  return JSON.stringify({
+    sections_of_the_song: [...new Set(grid.map((g) => g.section).filter(Boolean))].join(", "),
+    shots: grid.length,
+    sung_lines: sungLines(grid).length,
+    scenes_wanted: scenesWanted(grid),
+    hint: hint.trim() || null,
+  });
 }
 
 /** The system prompt of the calls that write the shots. `treatment` is the one brief every shot serves. */

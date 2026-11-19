@@ -532,3 +532,41 @@ describe("the treatment style: montage twists by default for a music video the w
     expect(m).toMatch(/^\d+:[0-9a-z]+$/);
   });
 });
+
+// ── after the first live run (writer run 52b0d405, 19 Nov 2026): fourteen scenes for a hundred lines, several of them
+//    merely stylish, one a variation of a scene the notes had scrapped ───────────────────────────────────────────────
+import { montageUserMessage, scenesWanted, sungLines } from "./contract.ts";
+
+describe("a montage is asked for enough scenes, each one impossible, none that the notes scrapped", () => {
+  const g = (lyrics: string, i: number): GridShot => ({ key: `c${i}`, start: i * 2, end: i * 2 + 2, section: i < 3 ? "verse" : "hook", lyrics });
+
+  it("counts the sung lines once each, in order, across shots that share a line", () => {
+    const shots = [g("", 0), g("line one / line two", 1), g("line two / line three", 2), g("Line Three", 3), g("line one", 4)];
+    expect(sungLines(shots)).toEqual(["line one", "line two", "line three", "line one"]);
+    expect(sungLines([g("", 0)])).toEqual([]);
+  });
+
+  it("aims for about two scenes to every three lines, six at least and forty at most", () => {
+    const many = Array.from({ length: 110 }, (_, i) => g(`line ${i}`, i));
+    expect(scenesWanted(many)).toBe(40);
+    expect(scenesWanted(many.slice(0, 30))).toBe(20);
+    expect(scenesWanted(many.slice(0, 3))).toBe(6);
+  });
+
+  it("the writer is handed the count with its instructions", () => {
+    const shots = [g("a b c", 0), g("d e f", 1), g("", 2)];
+    expect(JSON.parse(montageUserMessage(shots, "  a hint "))).toEqual({ sections_of_the_song: "verse", shots: 3, sung_lines: 2, scenes_wanted: 6, hint: "a hint" });
+    expect(JSON.parse(montageUserMessage(shots, "")).hint).toBeNull();
+  });
+
+  it("the prompt says so: close to the count, an impossibility test, and nothing the notes scrap", () => {
+    const p = treatmentSystemPrompt({ projectType: "music_video", style: "montage_twists", hasPerformanceFootage: true });
+    expect(p).toContain("write close to `scenes_wanted`");
+    expect(p).toContain("A dozen scenes for a hundred lines is a regular rap video with a few inserts");
+    expect(p).toContain("could it be filmed on that street today with no effects? Then it is not a scene");
+    expect(p).toContain("Expensive, stylish, matching or unusual is not impossible");
+    expect(p).toContain("What the director's notes scrap, forbid or mark as never is not written in any form");
+    // a stretch the notes keep for something already built gets no scenes, and the rest is not left bare for it
+    expect(p).toContain("give every line or couplet OUTSIDE that stretch its scene");
+  });
+});
