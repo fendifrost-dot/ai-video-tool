@@ -276,3 +276,16 @@ photos and the blue-polo man of photo 4; the group photos are not needed and nob
   old-phone pictures (406 to 1280 px, no filter); 01, 02, 07 are later phone / Instagram pictures.
 - Test stills NOT made. Dry run of the first (prompt `allen_likeness_v1`, six references as `cast`, 16:9, 2k):
   accepted, $0.27. Two stills $0.54: waiting for his go and the age answer.
+
+## Allen likeness test v1, 19 Nov 2026 ($0.54; Fendi: "Younger" / "You are correct in your assumption" / "And proceed")
+
+DECISION (his): the film shows the YOUNGER Allen. His confirmation covers my reading of the files: references 03, 04,
+05, 06, 08 are the younger photos; 01, 02, 07 are later and are NOT sent with a younger-Allen request.
+| Test | Job → asset | References (`cast`) | File (T7 `work/allen/likeness_test_v1/`) | OBSERVED |
+|---|---|---|---|---|
+| A waist up, facing the camera | `e43a887b` → `6cc81452` | 05, 06, 03, 04 | `allen_likeness_a_waist_up.jpg` | reads as a photograph (shallow focus, skin texture); the striped polo and thermal of ref 05 kept; bare head |
+| B full figure | `ebc6183e` → `b1b29bbd` | 05, 06, 03, 04, 08 | `allen_likeness_b_full_figure.jpg` | reads as a photograph; loose dark jeans, white sneakers; his legs look short for his torso; the chest crest is drawn differently from A |
+Prompt `allen_likeness_v1_younger`: the "real photograph, not a render" lead, "the same real man shown in every
+reference photograph, at exactly the age he is in those photographs", no cap, the clothes of ref 05. Head check with
+his real photos above the generated heads: `allen_likeness_v1_head_check.jpg`. NOT JUDGED: whether the face is Allen
+(his call; no agent judges that). Both assets `pending`.
