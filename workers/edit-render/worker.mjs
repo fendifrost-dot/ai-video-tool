@@ -6,7 +6,7 @@
 // Env: AVT_WORKER_SECRET (required), AVT_WORKER_API (required: <SUPABASE_URL>/functions/v1/edit-render-worker-api),
 //      AVT_WORKER_ID (default hostname-pid), AVT_POLL_SECONDS (default 10).
 import { createHash } from "node:crypto";
-import { createReadStream, mkdtempSync, readFileSync, rmSync, statfsSync } from "node:fs";
+import { createReadStream, mkdirSync, mkdtempSync, readFileSync, rmSync, statfsSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { encodePlan } from "../../scripts/edit-render/encode.mjs";
@@ -33,6 +33,16 @@ export function assertDisk(dir, needBytes) {
   const free = Number(stats.bavail) * Number(stats.bsize);
   if (free < needBytes) throw new Error(`need ${needBytes} bytes free, have ${free}`);
   return free;
+}
+
+/**
+ * Where a job's files live while it runs. AVT_SCRATCH_DIR on a host whose rule is "media only on the external drive"
+ * (Fendi's Mac: the T7, never the internal disk); the system temp folder otherwise.
+ */
+export function scratchRoot() {
+  const dir = process.env.AVT_SCRATCH_DIR || tmpdir();
+  mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 export function log(event, fields = {}) {
@@ -74,7 +84,7 @@ export async function runOnce({
   encode = encodePlan,
   verify = verifyMp4,
   upload = uploadSigned,
-  disk = () => assertDisk(tmpdir(), 64 * 1024 * 1024),
+  disk = () => assertDisk(scratchRoot(), 64 * 1024 * 1024),
   hashFile = sha256File,
   runJob = null,
   // the job kinds this host can run; sent with every claim so it is never handed a job it has no runner for
@@ -91,7 +101,7 @@ export async function runOnce({
     if (!claim.render) return null;
     render = claim.render;
     log("claimed", { renderId: render.id, kind: render.kind, jobKind: render.job_kind ?? "edit", attempts: render.attempts });
-    dir = mkdtempSync(join(tmpdir(), "avt-render-"));
+    dir = mkdtempSync(join(scratchRoot(), "avt-render-"));
     const out = join(dir, `${render.id}.mp4`);
     const jobKind = render.job_kind ?? "edit";
     let summary = { durationSeconds: null, bytes: null };
@@ -165,7 +175,15 @@ async function main() {
   const tools = await capabilityManifest();
   // a put-back needs Python with numpy, OpenCV and MediaPipe, and the two model files with the right hashes
   const putback = await putbackCapability();
-  const kinds = ["edit", ...(putback.ok ? ["putback"] : [])];
+  // AVT_WORKER_KINDS narrows what this host asks for (the Mac's on-demand run asks for put-backs only, so it never
+  // takes an edit render the always-on box is there for). It can only narrow: a kind this host cannot run is dropped.
+  const can = ["edit", ...(putback.ok ? ["putback"] : [])];
+  const asked = (process.env.AVT_WORKER_KINDS ?? "").split(",").map((k) => k.trim()).filter(Boolean);
+  const kinds = asked.length ? can.filter((k) => asked.includes(k)) : can;
+  if (kinds.length === 0) {
+    log("nothing_to_do", { asked, can, putback: putback.problems });
+    process.exit(5);
+  }
   const runJob = (render, dir, ctx) => {
     if (render.job_kind === "putback")
       return runPutback(render, dir, { ...ctx, log: (line) => log("putback", { renderId: render.id, line }) });

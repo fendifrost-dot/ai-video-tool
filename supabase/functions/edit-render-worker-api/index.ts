@@ -76,10 +76,19 @@ serve(async (req) => {
   if (body.action === "claim") {
     // the edit queue alone is claimed by the function it always was; other kinds need the by-kind claim (SQL
     // 20261120100000_putback_job_kind.sql), so a worker that asks only for edits works before that SQL is applied
-    const kinds = claimKinds(body.kinds);
+    let kinds = claimKinds(body.kinds);
+    // whose machine this worker is. A put-back is claimed only for that user, so another user's row never leaves
+    // the queue through this worker. No owner on record (or the column not there yet): edit jobs only.
+    let ownerId: string | null = null;
+    if (kinds.includes("putback")) {
+      const { data: owner } = await db.from("edit_render_workers").select("owner_user_id").eq("id", worker.id).maybeSingle();
+      ownerId = typeof owner?.owner_user_id === "string" && UUID.test(owner.owner_user_id) ? owner.owner_user_id : null;
+      if (!ownerId) kinds = kinds.filter((k) => k !== "putback");
+      if (kinds.length === 0) return json(200, { ok: true, render: null, note: "this worker has no owner on record: it is handed no put-back" });
+    }
     const { data: rows, error } = kinds.length === 1 && kinds[0] === "edit"
       ? await db.rpc("claim_edit_render", { p_worker: workerId })
-      : await db.rpc("claim_edit_render_kinds", { p_worker: workerId, p_kinds: kinds });
+      : await db.rpc("claim_edit_render_kinds", { p_worker: workerId, p_kinds: kinds, p_owner: ownerId });
     if (error) return json(500, { ok: false, error: "claim_failed", message: error.message });
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row) return json(200, { ok: true, render: null });
@@ -91,9 +100,9 @@ serve(async (req) => {
         await failRow(row.id, planned.error);
         return json(200, { ok: true, render: null, skipped: row.id });
       }
-      // a put-back runs on the worker's own machine: it is handed only to a worker its job's user registered
-      const { data: owner } = await db.from("edit_render_workers").select("owner_user_id").eq("id", worker.id).maybeSingle();
-      if (!owner?.owner_user_id || owner.owner_user_id !== row.user_id || !UUID.test(jobProject)) {
+      // a put-back runs on the worker's own machine: it is handed only to a worker its job's user owns (the claim
+      // already asked for that user's rows alone; checked again here on the row that came back)
+      if (!ownerId || ownerId !== row.user_id || !UUID.test(jobProject)) {
         await failRow(row.id, "a put-back runs only on a worker registered by the job's own user, for a project of theirs");
         return json(200, { ok: true, render: null, skipped: row.id });
       }

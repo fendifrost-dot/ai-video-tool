@@ -139,3 +139,27 @@ describe("the put-back runner runs the script unchanged and gives back only a pr
     await expect(run("sleep", ["100"], { timeoutMs: 20, spawn: hang })).rejects.toThrow("ran past");
   });
 });
+
+describe("an input is never read past the byte limit, and a failed download never names its signed URL", () => {
+  // @ts-expect-error plain .mjs module
+  const load = () => import("./putback.mjs");
+  it("stops a stream that runs over the limit, and refuses one whose header already says so", async () => {
+    const { download } = await load();
+    const dir = mkdtempSync(join(tmpdir(), "putback-dl-"));
+    const big = async () => new Response("x".repeat(5000));
+    await expect(download("https://storage.example/a?token=SECRET", join(dir, "a.mp4"), big, 1000)).rejects.toThrow("over the 1000");
+    const declared = async () => new Response("tiny", { headers: { "content-length": "999999" } });
+    await expect(download("https://storage.example/b?token=SECRET", join(dir, "b.mp4"), declared, 1000)).rejects.toThrow("999999 bytes");
+    const ok = async () => new Response("fits");
+    await download("https://storage.example/c", join(dir, "c.mp4"), ok, 1000);
+    expect(readFileSync(join(dir, "c.mp4"), "utf8")).toBe("fits");
+  });
+  it("says only the status when the storage refuses", async () => {
+    const { download } = await load();
+    const dir = mkdtempSync(join(tmpdir(), "putback-dl-"));
+    const refused = async () => new Response("no", { status: 403 });
+    const err = await download("https://storage.example/a?token=SECRET", join(dir, "a.mp4"), refused, 1000).catch((e: Error) => e);
+    expect(String((err as Error).message)).toBe("an input could not be downloaded (403)");
+    expect(String((err as Error).message)).not.toContain("SECRET");
+  });
+});

@@ -14,7 +14,7 @@ import { spawn as nodeSpawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import {
@@ -44,13 +44,26 @@ export function sha256Of(file) {
 /** Run a command, collect its output, stop it at the time limit. Never a shell: arguments are an array. */
 export function run(cmd, args, { env = process.env, timeoutMs = 0, spawn = nodeSpawn, onLine = null } = {}) {
   return new Promise((res, rej) => {
-    const child = spawn(cmd, args, { env, stdio: ["ignore", "pipe", "pipe"], shell: false });
+    // its own process group, so that stopping it at the time limit stops what it started too (the script runs ffmpeg)
+    const child = spawn(cmd, args, { env, stdio: ["ignore", "pipe", "pipe"], shell: false, detached: true });
     let out = "";
     let err = "";
     let timer = null;
+    const stop = () => {
+      try {
+        if (child.pid) process.kill(-child.pid, "SIGKILL");
+        else child.kill("SIGKILL");
+      } catch {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          // already gone
+        }
+      }
+    };
     if (timeoutMs > 0)
       timer = setTimeout(() => {
-        child.kill("SIGKILL");
+        stop();
         rej(new Error(`${cmd} ran past ${Math.round(timeoutMs / 1000)} s and was stopped`));
       }, timeoutMs);
     child.stdout.on("data", (chunk) => {
@@ -105,11 +118,22 @@ export async function putbackCapability({ python = process.env.AVT_PUTBACK_PYTHO
   return { ok: problems.length === 0, problems, versions, python, modelsDir };
 }
 
-async function download(url, file, fetchImpl) {
+/** One input, streamed to disk and stopped at the byte limit: a file is never read past it, whatever its header says. */
+export async function download(url, file, fetchImpl, maxBytes = PUTBACK_LIMITS.maxBytes) {
   const res = await fetchImpl(url);
-  if (!res.ok || !res.body) throw new Error(`download failed ${res.status}`);
+  // never the URL in a message: it is signed
+  if (!res.ok || !res.body) throw new Error(`an input could not be downloaded (${res.status})`);
+  const declared = Number(res.headers?.get?.("content-length") ?? 0);
+  if (declared > maxBytes) throw new Error(`an input is ${declared} bytes, over the ${maxBytes} a put-back reads`);
   mkdirSync(dirname(file), { recursive: true });
-  await pipeline(Readable.fromWeb(res.body), createWriteStream(file));
+  let seen = 0;
+  const limit = new Transform({
+    transform(chunk, _enc, done) {
+      seen += chunk.length;
+      done(seen > maxBytes ? new Error(`an input is over the ${maxBytes} bytes a put-back reads`) : null, chunk);
+    },
+  });
+  await pipeline(Readable.fromWeb(res.body), limit, createWriteStream(file));
 }
 
 async function probeVideo(file, spawn) {

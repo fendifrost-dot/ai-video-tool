@@ -176,3 +176,17 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
     expect(claimKinds("putback")).toEqual(["edit"]);
   });
 });
+
+import { queuePutbackArgs } from "./putback.ts";
+
+describe("the owner's door is called with the plan's own fields", () => {
+  it("passes the project, the two assets in order and the preset name — nothing free-form", () => {
+    const plan = planPutback({ preset: "full_body" }, [A, B]);
+    if (!plan.ok) throw new Error("expected ok");
+    expect(queuePutbackArgs("44444444-4444-4444-8444-444444444444", plan.value)).toEqual({ p_project_id: "44444444-4444-4444-8444-444444444444", p_original_asset_id: A, p_swap_asset_id: B, p_preset: "full_body" });
+  });
+  it("every preset name is a name the SQL door accepts", () => {
+    for (const name of PUTBACK_PRESET_NAMES) expect(name).toMatch(/^[a-z0-9_]{1,40}$/);
+    expect(PUTBACK_LIMITS.maxBytes).toBe(1024 * 1024 * 1024);
+  });
+});

@@ -48,7 +48,7 @@ export const PUTBACK_MODELS: Readonly<Record<string, string>> = {
 };
 
 /** What one job may be handed. Over a limit, the job fails with the number before the script starts. */
-export const PUTBACK_LIMITS = { maxSeconds: 12, maxFrames: 1000, maxLongSide: 3840, timeoutMs: 20 * 60 * 1000 } as const;
+export const PUTBACK_LIMITS = { maxSeconds: 12, maxFrames: 1000, maxLongSide: 3840, timeoutMs: 20 * 60 * 1000, maxBytes: 1024 * 1024 * 1024 } as const;
 
 /** The script, relative to the repo root, and the file it always writes (rename on filing). */
 export const PUTBACK_SCRIPT = "scripts/edit/body_only_swap.py";
@@ -242,4 +242,9 @@ export function claimKinds(raw: unknown): string[] {
   const asked = Array.isArray(raw) ? raw.filter((k): k is string => typeof k === "string") : [];
   const kinds = CLAIMABLE_KINDS.filter((k) => asked.includes(k));
   return kinds.length ? [...kinds] : ["edit"];
+}
+
+/** What the owner's door (SQL `queue_putback_job`) is called with: the plan's own fields, nothing free-form. */
+export function queuePutbackArgs(projectId: string, plan: PutbackPlan): { p_project_id: string; p_original_asset_id: string; p_swap_asset_id: string; p_preset: string } {
+  return { p_project_id: projectId, p_original_asset_id: plan.originalAssetId, p_swap_asset_id: plan.swapAssetId, p_preset: plan.preset };
 }

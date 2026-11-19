@@ -427,7 +427,7 @@ alter table public.edit_clips add column if not exists time_remap_allowed boolea
 alter table public.edit_renders add column if not exists job_kind text not null default 'edit';
 alter table public.edit_renders drop constraint if exists edit_renders_job_kind_check;
 alter table public.edit_renders add constraint edit_renders_job_kind_check
-  check (job_kind in ('edit', 'vfx', 'qc', 'blender', 'beat_cut'));
+  check (job_kind in ('edit', 'vfx', 'qc', 'blender', 'beat_cut', 'putback'));  -- 'putback': 20261120100000 may be applied first
 
 alter table public.edit_renders alter column sequence_id drop not null;
 alter table public.edit_renders drop constraint if exists edit_renders_edit_needs_sequence;

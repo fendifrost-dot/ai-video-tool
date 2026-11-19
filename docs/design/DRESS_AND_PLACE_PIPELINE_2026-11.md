@@ -18,7 +18,9 @@ Labels: VERIFIED (I read the line or ran the query, cited), OBSERVED, DECISION, 
 | The only worker outside edge functions is `workers/edit-render/` (Node 22 + ffmpeg; no Python in its Dockerfile) | `workers/edit-render/Dockerfile` |
 | It already has a slot for other job kinds, but **no runner is wired**: `main()` calls `runOnce({ api, workerId })`, so any job that is not an edit fails with "no runner for …" | `workers/edit-render/worker.mjs:78`, `:95–97`, `:163` |
 | **The job-kind column is not in the live database.** `select job_kind from edit_renders` answers "column edit_renders.job_kind does not exist": migration `20261113120000_asset_store_extensions.sql` is CODED, not applied | AVT MCP `avt_select`, 19 Nov |
-| **No worker has claimed a job since 18 Oct.** `edit_renders` holds three rows in all; the last two were claimed by `box:grokbox` and a cloud agent on 18 Oct | same query |
+| **No job has been claimed since 18 Oct, but a worker is alive.** `edit_renders` holds three rows in all, the last claimed on 18 Oct. The Linux worker `box` still polls every few seconds (`last_seen_at` six seconds before I read it, 19 Nov 23:22 UTC); the cloud agent's worker row is revoked | AVT MCP and Lovable `query_database`, 19 Nov |
+| **Neither November migration is applied.** `edit_renders` has no `job_kind`, `project_id`, `input_asset_ids` or `settings`; `edit_render_workers` has no `owner_user_id`; none of the STORE-5 tables exist. STORE-5 is another Class C item still "in review; not deployed" (`RISK_REGISTER.md`) | Lovable `query_database` on `information_schema`, 19 Nov |
+| **The job table's policy admits only edit rows.** `edit_renders_owner`: `user_id = auth.uid() AND sequence_id IN (own sequences)`. A job with no sequence cannot be inserted or read by its owner through the app or the MCP, which use the owner's own client. There is no open `_open_test` policy on this table, and `edit_render_workers` has no policy and no grant at all (service role only) | `pg_policies` and grants, 19 Nov |
 | `claim_edit_render` hands the oldest queued row to whoever asks, whatever its kind | `supabase/migrations/20261018100000_edit_render_worker.sql:62–81` |
 | The worker API signs inputs only from `plan.inputs.items`; a job submitted through `avt_job_submit` stores asset ids instead, so it would be handed no files | `supabase/functions/edit-render-worker-api/index.ts:67–80`, `supabase/functions/avt-mcp/jobHandlers.ts:55–62` |
 | Every table and bucket still carries an open `_open_test` policy, and anonymous sign-in is live | `RISK_REGISTER.md` SEC-4 |
@@ -47,16 +49,31 @@ shot's primary until a put-back with proof 0 exists for it (slice e).
 
 **D6. Nothing is selected for him.** The dressed clip is filed unselected. Only Fendi's words make it primary.
 
-## 3. Where the worker runs (Fendi's decision; needs an answer before slice a is LIVE)
+## 3. Where the worker runs (DECIDED 19 Nov 2026)
 
-| Option | Cost | For | Against |
-|---|---|---|---|
-| **A. His Mac**, as a login item (`run-supervised.sh` under launchd), Python = the `~/.avt-venv` the scripts already run in, models and scratch on the T7 | $0 | it is where every approved put-back was made; nothing to rent; media stays on the T7 | 8 GB of memory: one job at a time, and not while a Blender render runs; only works while the Mac is on and the T7 is plugged in |
-| **B. The Linux box that claimed jobs on 18 Oct** (`box:grokbox`) | unknown to me: whether it still exists and who pays for it | always on; a container image is ready-made (§4) | I cannot see it from here; it holds none of the models |
-| **C. A rented CPU machine** | unknown until quoted. A put-back is CPU-only; how long one takes is not measured yet (slice a records it per job) | always on; no load on his Mac | a monthly bill for a job that runs a few times a day |
+Fendi, 19 Nov 2026, asked which of the options below: "any technical decision is out of my range please make
+whatever decision you deem necessary." DECISION (the agent's, under that delegation):
 
-RECOMMENDATION: **A now**, built so that B or C is a change of host and nothing else (the same worker, the same
-image, the same secret flow). A is $0 and is the environment the fixture already passes in.
+**The put-back worker is his Mac, started on demand.** Whoever queues a put-back starts the worker with `--once`
+for that job, after checking the machine is free, and it exits when the job is done. It is not a login item and
+not an always-on service.
+
+| Why | |
+|---|---|
+| It is where every approved put-back was made | Python `~/.avt-venv`, the two model files on the T7, the capability check passes there (§12) |
+| $0 | nothing to rent |
+| It can never start a heavy job behind his back | the Mac has 8 GB and was at 9–12 GB of swap all of 19 Nov with one other session working; an always-on worker would start a put-back the moment one is queued |
+| Media stays on the T7 | `AVT_SCRATCH_DIR` points the job's files at the T7; the worker's default is the system temp folder, which on his Mac is the internal disk and is not allowed |
+
+Start it (the README has the same):
+
+```bash
+AVT_SCRATCH_DIR="/Volumes/T7/_avt_work/worker_scratch" AVT_MODELS="/Volumes/T7/Hyenas AVT edit/_avt_work/models" AVT_PUTBACK_PYTHON="$HOME/.avt-venv/bin/python" workers/edit-render/run-once-putback.sh
+```
+
+The Linux worker `box` keeps doing edit renders exactly as today: it asks for no put-backs and is handed none.
+Giving it the Python runtime and the models later (the image is `Dockerfile.putback`) is a change of host, nothing
+else; it would need a worker row owned by Fendi's user.
 
 ## 4. The worker
 
@@ -68,8 +85,9 @@ image, the same secret flow). A is $0 and is the environment the fixture already
   claims a put-back.
 - `workers/edit-render/Dockerfile.putback`: the same image plus Python 3 with pinned `numpy`, `opencv-python-headless`,
   `mediapipe`, `scipy`. The model files are mounted, never baked in and never committed.
-- Limits, enforced in the runner before the script starts: input ≤ 12 s and ≤ 1,000 frames, ≤ 3840 px on the long
-  side, script wall time ≤ 20 minutes (the queue's own stale limit), scratch on the configured volume only.
+- Limits, enforced in the runner: each input stops downloading at 1 GiB; then, before the script starts, ≤ 12 s,
+  ≤ 1,000 frames, ≤ 3840 px on the long side; script wall time ≤ 20 minutes (the queue's own stale limit), and at
+  the limit the script's whole process group is stopped (it runs ffmpeg). Scratch is `AVT_SCRATCH_DIR`.
 
 ## 5. Security (for the security reviewer)
 
@@ -81,15 +99,17 @@ says is therefore running on untrusted input. The design treats the row as hosti
 | What gets executed | one fixed script path inside the worker's own checkout, `python -I` (no user site, no `PYTHONPATH`, no current-directory imports). The row cannot name a script, a flag or an environment variable |
 | Arguments | `settings.preset` must be one of a closed list compiled into the worker (§6). The preset expands to a fixed set of flags and `AVT_*` values. Any other key in `settings` fails the job before anything runs |
 | Inputs | two asset ids. The API resolves them itself, and signs a file only when the asset row has the **same `user_id` and `project_id` as the job row** and sits in an allowed bucket. The worker never sees a path it could change |
-| Who may queue a put-back | the API refuses to hand out a `putback` job whose `user_id` is not the owner of a registered worker (`edit_render_workers.owner_user_id`). An anonymous visitor's row is never claimed. This closes the SEC-4 hole for this job kind without waiting for RISK-001 |
+| Who may queue a put-back | only `queue_putback_job` makes a put-back row (the table's policy admits no row without an edit sequence, and is not changed). It acts for `auth.uid()` alone, refuses an anonymous session, checks the project and both files are that user's, takes a preset NAME only, and holds at most ten waiting put-backs a user |
+| Who is handed one | `claim_edit_render_kinds` takes a put-back off the queue only for the user who owns the asking worker (`edit_render_workers.owner_user_id`, a table with no policy and no grant: service role only). Another user's put-back is never claimed by this worker, and the API checks the row again |
 | Output | uploaded only through the signed upload URL for `project-exports/{user_id}/{project_id}/renders/{id}.mp4`, as today |
 | Secrets | the worker holds only its worker secret, as today. No service-role key, no provider key, no signed URL in any log (the runner logs asset ids and hashes) |
 | Resources | the limits in §4; a job over them fails with the number |
 | The media itself | a crafted MP4 reaching ffmpeg and OpenCV is a risk that exists today for the edit job; the owner check above narrows who can send one to the owner himself |
 | Provider spend | none. The put-back calls no provider. The swap that precedes it stays in `dress-clip`, behind its own dry run and price |
 
-RLS integration test: this change adds no policy. It adds one security-definer function (`claim_edit_render_kinds`),
-revoked from `anon` and `authenticated` like the one it replaces.
+RLS integration test: this change adds, widens and drops no policy. It adds three security-definer functions:
+`claim_edit_render_kinds` (service role only, like the one beside it), and `queue_putback_job` and `putback_job`
+(callable by a signed-in user, each acting for `auth.uid()` alone, `search_path` pinned).
 
 ## 6. Presets (named after the approved asset each reproduces)
 
@@ -133,13 +153,17 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 
 ## 9. What has to happen for slice a to be LIVE
 
-1. Sign-offs on this note.
-2. SQL, in Lovable's SQL editor only: `20261113120000_asset_store_extensions.sql` (still unapplied), then
-   `20261120100000_putback_job_kind.sql` (adds `putback` to the kind check, makes `claim_edit_render` hand out
-   edit jobs only, and adds `claim_edit_render_kinds`).
+1. Sign-offs: architecture and security from independent reviewers (recorded on PR #512); product is Fendi's own
+   request of 19 Nov and his delegation of the technical decisions.
+2. SQL, in Lovable only: `20261120100000_putback_job_kind.sql`. It is **self-contained**: it does not need the
+   pending STORE-5 migrations and applies before or after them. It adds four columns to `edit_renders`, one to
+   `edit_render_workers`, the two claim functions and the owner's two functions. **No policy changes.**
 3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`**.
-4. A worker registered and running where Fendi says (§3).
-5. The c033 fixture through the worker, proof 0, reported with the printed numbers.
+4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`).
+   The secret itself is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); it is
+   never in chat, in the repo or in SQL.
+5. The c033 fixture through the worker, proof 0, reported with the printed numbers. Blocked on 19 Nov only by the
+   Mac's memory.
 
 ## 10. Order of slices (from the handoff §4.6, with what this note changes)
 
