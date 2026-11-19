@@ -407,3 +407,78 @@ the scene (newest `scene_*` still with this scene title); v3 stays as the one he
 
 STILL HELD: animating Allen (Seedance, $2.77 for 6 s). No verified method keeps a face that exists only in photographs
 through a video model; his word is needed before that spend.
+
+## New direction, 19 Nov 2026 (Fendi): a scene per lyric, his performance switched in; the two Lexuses SCRAPPED
+
+His words: "Scratch the two Lexuses. That's unimportant. We're going to map out the scenes and generate scenes that go
+with the lyrics and switch in my performance shots throughout the video." A scene he asked for at "Treat it like it's
+salad": "a table made out of money, photorealistic of course, and somebody eating a salad on top of a table made out of
+money" (him or a generated person). On the room shots: "we have to create the background ... I haven't thought of any
+ideas, so let's run the Treatment in AVT, and let's also bounce ideas around once the treatment is rendered and the line
+by line shot list is generated." On Allen: "we just had to try it out. Do some research first to see which tool would be
+best ... You probably will have to go back after we generate and apply Allen's pixels back to his face."
+
+SCRAPPED (never list as candidates again): the two Lexuses back to back; him and Allen standing by the cars
+(first-half table rows 0:00-0:07 second picture, 0:51-1:10, 1:30-1:47). No exterior Lexus scene is needed.
+
+### Setup done in AVT (VERIFIED, all $0)
+
+- Song analysis run in the app: 136 BPM, 3:51, 525 beats.
+- Lyric timing: 114 lines placed by LRC paste from the times already measured against the master
+  (T7 `work/performance/coverage.json` -> `work/lyrics_timed.lrc`), so the board uses the same clock as this page.
+- His real takes filed as 720p copies with sound, each matched to the song (`performance_syncs`, method derived):
+  ROOM A-E, the handheld close-up, STORM S1/S2/S3/S5, CAR 6462/6465/6466/6467 (read with `-noautorotate`); the dash
+  insert 6455 as his b-roll; the empty room as a reference. Originals stay on the T7. Script: T7
+  `work/proxies/make_proxies.sh`. Each take's "what he wears / where filmed" note tells the writer: room takes get a
+  swap into look A, B or C and a new place; car takes are used as filmed.
+- "All my real footage is in" was confirmed by the agent in Setup (the Treatment will not run without it): everything
+  he has shot is filed; the close-up yell take is not shot yet.
+- The active board is the variation "Lyric by lyric" (`a27d2ac1`). "Still riding" (`c9b766a2`) keeps the three test
+  boxes and the two scene rows untouched; the scene rows have to be made again on the new board before `montage-shot`
+  is used there. The cast and the four outfits were copied across.
+
+### The Treatment (three writer runs, $0.24 in all; ledger rows 34-36)
+
+1. AI-written treatment, run `6841cfba`, $0.0712: REJECTED BY THE AGENT, not shown as a plan. OBSERVED: it wrote ten
+   beats with no lyric ties, so the tool shared the 116 shots out in equal blocks in the treatment's order: 13 dash
+   shots over 0:00-0:27 with no performance, Allen beside him at the wheel for 26 shots in a row (0:27-1:09), the money
+   table at 1:08-1:22 (the line is sung at 0:18) and on the Lexus dashboard, the storm from 1:36 (it starts at 2:08),
+   "bullet-hole frames" and "the car at dawn" in the second half, two matching Lexuses in two shots. It is kept under
+   Versions.
+2. Treatment written by the agent in song order, one paragraph per lyric line with the sung words quoted (the tool pins
+   a beat to the shot that sings its words: `beats.ts allocateBeats`), then "Rewrite the shots". Text: T7
+   `work/treatment_v2_lyric_by_lyric.txt`. Every picture in it is a RECOMMENDATION to bounce ideas on, except the money
+   table (his) and the Allen passenger-seat shots (his, 18-19 Nov). The app labels it "written by you"; the agent wrote it.
+   Run `027761ca` ($0.0844) matched 40 of 51 beats to their words but the app did not file it: an in-place rewrite is
+   refused when any beat is left without a shot ("Treat it like it's salad" shares a 1.3 s shot with "Flip through
+   green"). RULE for the next video: a line-by-line treatment is written as a CANDIDATE board (it is filed with its gaps).
+3. Treatment v3 (T7 `work/treatment_v3_lyric_by_lyric.txt`): salad merged into the "Flip through green" beat and held
+   through "Ralph Lauren fanatic"; Allen as two-shots over his real car take (ChatGPT's note to Fendi, 19 Nov: let the
+   audience notice Allen before he moves, keep rapping through the reveal); a denim close and a mirror shot to break up
+   the run of performance at 1:27-1:39. Written as a candidate, run `c04b0624` ($0.0831), renamed "Lyric by lyric"
+   (`a27d2ac1`) and made active. The AI first pass is archived as `29353d35`.
+
+OBSERVED on the board `a27d2ac1` (116 shots, fast cut on the beat; windows are the tool's, a picture can sit a beat
+after its words): slips to fix when the pictures are agreed: shots 39-41 put the mantel photographs "through the
+windshield"; 42, 44, 45 put the radio dial "on a small screen beside him"; 28-31 hold the radio display for 6 s;
+54-59 are six performance shots in a row (1:29-1:39); 70-73 stretch the yell over 2:03-2:16. The second half is written
+as the storm already handed to Grokbot; nothing there is new work.
+
+### Making Allen move: research, 19 Nov 2026 ($0, nothing generated). NOT VERIFIED: every route below is a test
+
+The job: the approved passenger-seat still (`14f9d5dd` / `077a3515`) as 3-6 s of him riding, mouth closed, small natural
+motion, his face still his. No video of him exists, so recipe F loses its `@Video1` (the model never sees his face move;
+every angle beyond his photos is invented). Recipe F's own page calls its result "a fair likeness" even with video:
+plan on putting his head pixels back afterwards, as Fendi said.
+
+| Order | Tool | Why | Inputs | Cost (estimate) | Risk |
+|---|---|---|---|---|---|
+| 1 | **LivePortrait, head pose only** (suggested to Fendi by ChatGPT, 19 Nov; open source, KwaiVGI) | it WARPS the still's own pixels instead of redrawing the face, so his head stays his photograph; lips can be held closed | the approved still + one small closed-mouth nod (a driving clip or pose values); Allen on his own layer over the real car frame | $0 run on the Mac (needs its model files downloaded to the T7), or cents on Fal | only the head crop moves: body, seat and light stay a still, so it needs moving cabin light around it; a nod can pull the mouth corners (check frame by frame). VERIFIED on fal's page: `flag_lip_zero`, `rotate_pitch/yaw/roll`, paste-back; a pose-only switch is not documented there. HYPOTHESIS: the open-source release has a pose-only region option (confirm with its help text) |
+| 2 | **Seedance 2.5** (Higgsfield), the still as a true START FRAME + 3-6 of his face photos | the route that already made the storm clips; mouth at rest on 7 of 7 clips (ledger row 22) | `start_image` = the still, face photos as references, 5 s, 720p, locked camera, breathing, a head turn under 10 degrees, passing light | about $1.72 for 5 s | ByteDance's own rules bar real faces in references; our Higgsfield route accepted his photos on 18 Nov, a different person is untested. Sent as a reference (not a start frame) Seedance re-framed him small (ledger row 21). `montage-shot` does not send a start frame today: a tool change |
+| 3 | **Kling 4.0** image-to-video | cheapest true first frame; Fendi named Kling | the still as start frame, same prompt, 5 s | about $0.55 | reviews report the face drifting over the clip; native audio leans toward talking: mouth scan |
+| 4 | **Genjutsu motion transfer** | drives the still from a filmed stand-in | the still + a 4-5 s clip of someone in the real passenger seat, mouth closed | about $1.70 | redraws the whole frame; unverified for a face from photos |
+| - | Gemini Omni Flash | skip | | | reports of its API blocking even a fictional presenter; a real person's photo is the likeliest refusal |
+
+Evidence is thin everywhere: no independent 2026 test of real-person likeness from stills was found, only single-run
+vendor posts. Whatever moves him, the check is the same: `face_check.py` sheet against his photographs, `mouth_scan.py`,
+frame by frame at the mouth corners, jaw and where he meets the seat; Fendi judges the face.
