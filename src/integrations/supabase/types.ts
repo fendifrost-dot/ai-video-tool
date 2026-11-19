@@ -759,6 +759,7 @@ export type Database = {
           id: string
           label: string
           last_seen_at: string | null
+          owner_user_id: string | null
           revoked_at: string | null
           secret_hash: string
         }
@@ -767,6 +768,7 @@ export type Database = {
           id?: string
           label: string
           last_seen_at?: string | null
+          owner_user_id?: string | null
           revoked_at?: string | null
           secret_hash: string
         }
@@ -775,6 +777,7 @@ export type Database = {
           id?: string
           label?: string
           last_seen_at?: string | null
+          owner_user_id?: string | null
           revoked_at?: string | null
           secret_hash?: string
         }
@@ -790,12 +793,16 @@ export type Database = {
           error: string | null
           finished_at: string | null
           id: string
+          input_asset_ids: string[]
+          job_kind: string
           kind: string
           output_asset_id: string | null
           output_bucket: string | null
           output_path: string | null
           plan: Json
-          sequence_id: string
+          project_id: string | null
+          sequence_id: string | null
+          settings: Json
           started_at: string | null
           status: string
           updated_at: string
@@ -811,12 +818,16 @@ export type Database = {
           error?: string | null
           finished_at?: string | null
           id?: string
+          input_asset_ids?: string[]
+          job_kind?: string
           kind: string
           output_asset_id?: string | null
           output_bucket?: string | null
           output_path?: string | null
           plan: Json
-          sequence_id: string
+          project_id?: string | null
+          sequence_id?: string | null
+          settings?: Json
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -832,12 +843,16 @@ export type Database = {
           error?: string | null
           finished_at?: string | null
           id?: string
+          input_asset_ids?: string[]
+          job_kind?: string
           kind?: string
           output_asset_id?: string | null
           output_bucket?: string | null
           output_path?: string | null
           plan?: Json
-          sequence_id?: string
+          project_id?: string | null
+          sequence_id?: string | null
+          settings?: Json
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -850,6 +865,13 @@ export type Database = {
             columns: ["output_asset_id"]
             isOneToOne: false
             referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_renders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
             referencedColumns: ["id"]
           },
           {
@@ -3386,12 +3408,50 @@ export type Database = {
           error: string | null
           finished_at: string | null
           id: string
+          input_asset_ids: string[]
+          job_kind: string
           kind: string
           output_asset_id: string | null
           output_bucket: string | null
           output_path: string | null
           plan: Json
-          sequence_id: string
+          project_id: string | null
+          sequence_id: string | null
+          settings: Json
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "edit_renders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_edit_render_kinds: {
+        Args: { p_kinds: string[]; p_owner: string; p_worker: string }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          cost_usd: number
+          created_at: string
+          duration_seconds: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          input_asset_ids: string[]
+          job_kind: string
+          kind: string
+          output_asset_id: string | null
+          output_bucket: string | null
+          output_path: string | null
+          plan: Json
+          project_id: string | null
+          sequence_id: string | null
+          settings: Json
           started_at: string | null
           status: string
           updated_at: string
@@ -3463,6 +3523,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      putback_job: { Args: { p_id: string }; Returns: Json }
+      queue_putback_job: {
+        Args: {
+          p_original_asset_id: string
+          p_preset: string
+          p_project_id: string
+          p_swap_asset_id: string
+        }
+        Returns: string
       }
       reap_stale_edit_renders: { Args: { p_minutes?: number }; Returns: number }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
