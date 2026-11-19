@@ -378,4 +378,32 @@ v1 `100483dd` is marked rejected and `usable: false`.
 OBSERVED on v3: his face, ear, earring and cap are the photo's; the scene is still the real car frame; at 3x a little of
 the drawn cap still shows as a brighter band outside his cap on the right, against the red headrest. The clean-up
 pass itself redrew his face (mean difference 9 of 255 inside the mask), which is why the put-back runs last.
-RULE for Allen from here: `AVT_FACE_EXACT` always; the default mode never on him. Pending his word on v3.
+RULE for Allen from here: `AVT_FACE_EXACT` always; the default mode never on him.
+
+## Passenger seat v3 PASSED by Fendi; v4 is the dial-in, 19 Nov 2026 ($0.27)
+
+**Fendi on v3 (`077a3515`): "It's very close and if you can use the approved methods to fix the issue ... You don't
+have to keep coming back to me, as long as you don't do anything outside of what's already been verified and proven
+... So if you can dial it in, that's fine. But as it stands, the image is extremely close and can pass."** v3 is filed
+`approved` with those words.
+
+OBSERVED on v3 at 3x (what "very close" left): a pale second cheek and jaw of the drawn head outside his own on the
+left; the dark underside of his cap brim ending in a straight horizontal cut at mouth level (the mask's own cut); a line
+under his chin.
+
+v4, same verified route, one pass: Gemini clean-up of the JOIN only (`world-still-proxy`, job `5250c27d` → `e0e63fef`,
+references: v3 as the frame + his approved photo `34bd95ac` for the brim, jaw and neck), then `still_face_putback.py`
+with the SAME head pixels (`passenger_seat_v3/h_photo_in_frame.png`) and the SAME mask (`h_facemask.png`):
+`max |out-original| inside the hard head mask: 0` (39,734 px). Inside the mask v4 is identical to v3. The clean-up
+redrew his face again (mean difference 10.6 of 255 inside the mask), so the intermediate `e0e63fef` is never a final.
+
+OBSERVED on v4: no second jawline; the brim ends in a rounded edge; beard and neck run into the sweater's collar. Left
+at 4x: a thin darker rim along his left cheek and a small step where his cap meets the drawn brim on the right; his
+neck is a touch greyer than his face. Not visible at normal size.
+
+Filed: `14f9d5dd` (`worlds/scene_allen_passenger_seat_v4_hishead.png`, pending: he has not judged v4), T7
+`work/allen/passenger_seat_v4/allen_passenger_seat_v4_final.png`, `..._head_check.jpg`. v4 is the working picture of
+the scene (newest `scene_*` still with this scene title); v3 stays as the one he passed.
+
+STILL HELD: animating Allen (Seedance, $2.77 for 6 s). No verified method keeps a face that exists only in photographs
+through a video model; his word is needed before that spend.
