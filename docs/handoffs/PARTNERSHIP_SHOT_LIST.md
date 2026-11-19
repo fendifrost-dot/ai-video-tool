@@ -544,3 +544,25 @@ detector reaches the picture). Fendi judges whether the nod reads as him.
 
 The engineering handoff written the same day is `docs/handoffs/HANDOFF_AVT_BUILT_IN_METHODS_2026-11-19.md` (audit of
 YSL / Hyenas / Partnership, the Treatment writer fix, the four methods built into the app).
+
+### Passenger seat v5: no seat belt, and the nod on it, 19 Nov 2026 ($0.27, ledger row 38)
+
+Fendi on nod test 1 (version B, his own pixels moved): "Yes it's fine but remove the seatbelt."
+
+Same verified route as the v3/v4 clean-ups: Gemini edit of v4 (`world-still-proxy`, job `7bad2c0e` → `a4449fe7`,
+references v4 as the frame + the Martini Bear sweater `27e951ad` so the bear under the belt is the real one), then ONLY
+the belt strip taken from the edit (mask = where the edit differs from v4 along the belt, 2.7 % of the frame).
+`max |out-v4| outside the belt mask: 0`; `inside the hard head mask: 0` (39,734 px). Filed `44788e06`
+(`worlds/scene_allen_passenger_seat_v5_nobelt_hishead.png`), T7 `work/allen/passenger_seat_v5/`. OBSERVED: no strap,
+buckle or shadow left on him; the bear is whole with its martini glass; a small dark fitting stays by the door pillar
+(it was there in v4 and is not on him).
+
+Nod redone on v5, version B (`work/allen/nod_test/allen_nod_v5_nobelt.mp4`, filed `22921c2f` under `tests/`): 48 of 72
+frames are the still bit for bit, head moves up to 12.8 px, lip gap never above 0.018 (`mouth_scan.py`). Pending his word.
+
+NEXT (not done): Allen over the real car take at "See you frequently up in my dreams" (song 1:18.10-1:21.78 = file
+74.22-77.90 s of `IMG_6462.MOV`). OBSERVED on that window: the phone is handheld, so the passenger headrest drifts by
+about a twelfth of the frame width and the cabin light changes; the seat sits at the far left edge, so part of his
+shoulder falls outside the frame; the dashboard edge crosses in front of his chest. He has to be tracked to the seat,
+lit with the cabin and tucked behind the dashboard, frame by frame. No verified method for a still layer on a moving
+handheld take: a test.
