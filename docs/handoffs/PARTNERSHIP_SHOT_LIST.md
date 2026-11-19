@@ -252,3 +252,14 @@ each, the middle frame of the matte as alpha over the photo's own pixels: `scrip
   for Instagram lettering, none left. 2, 11, 13 keep
   parts of bystanders at the edges. Per-photo notes: the Grokbot handoff's table.
 - NOT TRIED: re-running 14 from a tighter crop of the photo (3.6 cents); his word first.
+
+## Allen's likeness: who he is in each photo, 19 Nov 2026 (WAITING ON FENDI)
+
+Fendi, 19 Nov, on the first cut-out (memory photo 4, IMG_1758): "Allen is the one in the blue polo we'll have to compile
+the images of him to create his likeness". Filed: `continuity_entities` `ALLEN` (`7e5ffb08`, his words in it).
+- RULE: who Allen is in a photo is Fendi's word. No agent picks him out by matching faces.
+- Every person in the 20 photos is lettered left to right on T7 `work/allen/who_is_allen_sheet.jpg` (points:
+  `work/allen/people_cutouts/people_points.json`, tool `work/tools/letter_people.py`). Known so far: 4A.
+- Once he names the letters: crop Allen from each photo (his own pixels, no upscaling by a model), pick the clearest
+  for face-on, three-quarter, smiling and full figure, file them as `ALLEN`'s reference pictures, then the two test
+  stills (Gemini, about $0.54, not yet approved).
