@@ -47,11 +47,26 @@ export function sha256Of(file) {
 /** The least a child process needs. The worker's secret and API address are never in it. */
 const MIN_ENV = () => ({ PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", LANG: process.env.LANG ?? "C.UTF-8" });
 
+/** The process groups of the commands running now, so the worker can stop them when it stops. */
+const running = new Set();
+export function stopChildren() {
+  for (const pid of running) {
+    try {
+      process.kill(-pid, "SIGKILL");
+    } catch {
+      // already gone
+    }
+  }
+  running.clear();
+}
+
 /** Run a command, collect its output, stop it at the time limit. Never a shell: arguments are an array. */
 export function run(cmd, args, { env = process.env, timeoutMs = 0, spawn = nodeSpawn, onLine = null } = {}) {
   return new Promise((res, rej) => {
     // its own process group, so that stopping it at the time limit stops what it started too (the script runs ffmpeg)
     const child = spawn(cmd, args, { env, stdio: ["ignore", "pipe", "pipe"], shell: false, detached: true });
+    if (child.pid) running.add(child.pid);
+    const done = () => child.pid && running.delete(child.pid);
     let out = "";
     let err = "";
     let timer = null;
@@ -81,10 +96,12 @@ export function run(cmd, args, { env = process.env, timeoutMs = 0, spawn = nodeS
     });
     child.on("error", (e) => {
       if (timer) clearTimeout(timer);
+      done();
       rej(e);
     });
     child.on("close", (code) => {
       if (timer) clearTimeout(timer);
+      done();
       res({ code, out, err });
     });
   });
@@ -114,7 +131,7 @@ export async function putbackCapability({ python = process.env.AVT_PUTBACK_PYTHO
   // internal disk, which holds no media)
   if (!scratchDir) problems.push("AVT_SCRATCH_DIR is not set: a put-back's files go only where they are told to");
   try {
-    const probe = await run(python, ["-I", "-c", "import sys, numpy, cv2, mediapipe; print(sys.version.split()[0], numpy.__version__, cv2.__version__, mediapipe.__version__)"], { timeoutMs: 60_000, spawn });
+    const probe = await run(python, ["-I", "-c", "import sys, numpy, cv2, mediapipe; print(sys.version.split()[0], numpy.__version__, cv2.__version__, mediapipe.__version__)"], { env: MIN_ENV(), timeoutMs: 60_000, spawn });
     if (probe.code === 0) {
       const [py, np, cv, mp] = probe.out.trim().split(/\s+/);
       versions = { python: py, numpy: np, opencv: cv, mediapipe: mp };
@@ -159,6 +176,11 @@ async function probeVideo(file, spawn) {
   if (r.code !== 0) throw new Error(`ffprobe could not read ${file.split("/").pop()}`);
   const j = JSON.parse(r.out || "{}");
   const s = (j.streams ?? [])[0] ?? {};
+  // the limits are read on the first video stream, and the script lets ffmpeg pick the stream it decodes: a file
+  // with more than one could pass the limits on one and be decoded on another
+  const all = await run("ffprobe", ["-v", "error", "-select_streams", "v", "-show_entries", "stream=index", "-of", "csv=p=0", file], { env: MIN_ENV(), timeoutMs: 120_000, spawn });
+  const streams = all.code === 0 ? all.out.split(/\r?\n/).filter((l) => l.trim()).length : 0;
+  if (streams !== 1) throw new Error(`${file.split("/").pop()} has ${streams} video streams; a put-back reads a file with exactly one`);
   return { codec: String(s.codec_name ?? ""), width: Number(s.width) || 0, height: Number(s.height) || 0, frames: Number(s.nb_read_packets) || 0, seconds: Number(s.duration) || Number(j.format?.duration) || 0 };
 }
 
@@ -214,6 +236,9 @@ export async function runPutback(render, dir, { claim, out, fetchImpl = fetch, s
     }
     const pair = checkPutbackPair(probes.original, probes.swap);
     if (pair) throw new Error(pair);
+    // the script reads the swap AT THE ORIGINAL'S SIZE: its memory is its frames times the take's width and height
+    const swapHeld = checkPutbackInput("the swap, read at the take's size", { ...probes.swap, width: probes.original.width, height: probes.original.height });
+    if (swapHeld) throw new Error(swapHeld);
     const inputSha256 = { original: await hashFile(original), swap: await hashFile(swap) };
 
     const script = join(repoRoot, PUTBACK_SCRIPT);

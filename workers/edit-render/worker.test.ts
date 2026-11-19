@@ -168,6 +168,42 @@ describe("worker runOnce with a put-back job", () => {
     expect(String(calls[1].error)).toContain("is 4, not 0");
   });
 
+  it("a put-back-only worker never runs an edit job it is handed (a door that ignores `kinds`): the row's command line is not executed", async () => {
+    const calls: Record<string, unknown>[] = [];
+    let encoded = 0;
+    let ran = 0;
+    const editRow = { id: "r-edit", kind: "proxy", job_kind: "edit", attempts: 1, plan: { costUsd: 0, billable: false, inputs: { items: [] }, argv: ["/bin/sh", "-c", "echo owned"] } };
+    await runOnce({
+      api: async (body: Record<string, unknown>) => (calls.push(body), body.action === "claim" ? { ok: true, render: editRow, upload: { signedUrl: "up" } } : { ok: true }),
+      workerId: "t",
+      kinds: ["putback"],
+      encode: async () => {
+        encoded++;
+        return { realCount: 0 };
+      },
+      upload: async () => {},
+      runJob: async () => {
+        ran++;
+        return { durationSeconds: 1, bytes: 1 };
+      },
+    });
+    expect(encoded).toBe(0);
+    expect(ran).toBe(0);
+    expect(calls[1]).toMatchObject({ action: "fail", renderId: "r-edit" });
+    expect(String(calls[1].error)).toContain("was handed a edit job: not run");
+    // an old row with no job_kind is an edit job too
+    const calls2: Record<string, unknown>[] = [];
+    await runOnce({ api: async (body: Record<string, unknown>) => (calls2.push(body), body.action === "claim" ? { ok: true, render: { id: "r-old", kind: "proxy", attempts: 1, plan: {} }, upload: { signedUrl: "up" } } : { ok: true }), workerId: "t", kinds: ["putback"], encode: async () => { encoded++; return { realCount: 0 }; } });
+    expect(encoded).toBe(0);
+    expect(calls2[1]).toMatchObject({ action: "fail" });
+  });
+
+  it("says when the door set a row aside instead of handing one over, so the caller can ask again", async () => {
+    expect(await runOnce({ api: async () => ({ ok: true, render: null, skipped: "r-bad" }), workerId: "t", kinds: ["putback"] })).toEqual({ setAside: "r-bad" });
+    expect(await runOnce({ api: async () => ({ ok: true, render: null, requeued: "r-again" }), workerId: "t", kinds: ["putback"] })).toEqual({ setAside: "r-again" });
+    expect(await runOnce({ api: async () => ({ ok: true, render: null, note: "no owner" }), workerId: "t", kinds: ["putback"] })).toBe(null);
+  });
+
   it("a worker that says nothing claims the edit queue, as before", async () => {
     const calls: Record<string, unknown>[] = [];
     await runOnce({ api: async (body: Record<string, unknown>) => (calls.push(body), { ok: true, render: null }), workerId: "t" });

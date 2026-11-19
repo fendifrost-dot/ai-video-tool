@@ -156,7 +156,7 @@ describe("limits and the record on the asset", () => {
   });
 });
 
-import { acceptPutbackRecord, claimKinds, putbackInputItems } from "./putback.ts";
+import { acceptPutbackRecord, claimKinds, isWholeFrameDress, putbackInputItems, swapBinding } from "./putback.ts";
 
 describe("the server's side: what a claimed put-back is handed, and what it may file", () => {
   const U = "33333333-3333-4333-8333-333333333333";
@@ -172,7 +172,7 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
 
   it("hands over the two files of the job's own project, by bucket and path", () => {
     const r = putbackInputItems(plan, [row(B), row(A)], { userId: U, projectId: P }, bucketOf, buckets);
-    expect(r).toEqual({ ok: true, value: { original: { assetId: A, bucket: "project-clips", path: `${U}/${P}/dress/${A}.mp4` }, swap: { assetId: B, bucket: "project-clips", path: `${U}/${P}/dress/${B}.mp4` } } });
+    expect(r).toEqual({ ok: true, value: { original: { assetId: A, bucket: "project-clips", path: `${U}/${P}/dress/${A}.mp4` }, swap: { assetId: B, bucket: "project-clips", path: `${U}/${P}/dress/${B}.mp4` }, binding: "derived_from" } });
   });
 
   it("refuses an asset of another owner or project, a path outside the project, a URL, and a bucket it does not read", () => {
@@ -198,10 +198,27 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
     if (!reversed.ok) throw new Error("expected ok");
     const r1 = putbackInputItems(reversed.value, [row(A), row(B)], job, bucketOf, buckets);
     expect(r1.ok).toBe(false);
-    if (!r1.ok) expect(r1.error).toContain("is not the Dress output of the original");
+    if (!r1.ok) expect(r1.error).toContain("does not say it was made from the original");
     // a swap with no record of what it was made from (a raw provider file filed by hand), or made from another take
     expect(putbackInputItems(plan, [row(A), row(B, { metadata_json: { bucket: "project-clips" } })], job, bucketOf, buckets).ok).toBe(false);
     expect(putbackInputItems(plan, [row(A), row(B, { metadata_json: { bucket: "project-clips", derived_from: { asset_id: "55555555-5555-4555-8555-555555555555", method: "dressed" } } })], job, bucketOf, buckets).ok).toBe(false);
+    // a creature or prop swap made through the provider call is filed with a declared link to its window
+    const declared = putbackInputItems(plan, [row(A), row(B, { metadata_json: { bucket: "project-clips", swap_of: { asset_id: A.toUpperCase() } } })], job, bucketOf, buckets);
+    expect(declared.ok).toBe(true);
+    if (declared.ok) expect(declared.value.binding).toBe("swap_of");
+    // ...and a declaration naming another window is refused like any other
+    expect(putbackInputItems(plan, [row(A), row(B, { metadata_json: { bucket: "project-clips", swap_of: { asset_id: "55555555-5555-4555-8555-555555555555" } } })], job, bucketOf, buckets).ok).toBe(false);
+    expect(swapBinding({ derived_from: { asset_id: A }, swap_of: { asset_id: A } }, A)).toBe("derived_from");
+    expect(swapBinding(null, A)).toBe(null);
+  });
+
+  it("knows a whole-frame Dress output from a take and from a put-back", () => {
+    expect(isWholeFrameDress({ derived_from: { asset_id: A, method: "dressed", dress: {} } })).toBe(true);
+    expect(isWholeFrameDress({ derived_from: { asset_id: A, method: "montage", dress: {} } })).toBe(true);
+    expect(isWholeFrameDress({ derived_from: { asset_id: A, method: "dressed", putback: true } })).toBe(false);
+    expect(isWholeFrameDress({ derived_from: { asset_id: A, method: "restaged" } })).toBe(false);
+    expect(isWholeFrameDress({})).toBe(false);
+    expect(isWholeFrameDress(null)).toBe(false);
   });
 
   it("files only a record whose proof is exactly 0 and that is for this job; unknown fields are dropped", () => {
@@ -222,8 +239,16 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
       expect(ok.value.output).toMatchObject({ frames: 240, width: 1080, height: 1920 });
       expect(ok.value.proof_measured).toContain("not re-run and not re-hashed by the server");
       expect(putbackNote(ok.value)).toContain("measured by the worker on the frames before the final encode");
-      expect(putbackNote(ok.value)).not.toContain("WARNING");
-      expect(putbackNote({ ...ok.value, face_low: true, face_share: 0.52 })).toContain("WARNING: his face was found on only 52 %");
+      const clean = { ...ok.value, repo: { commit: "b".repeat(40), dirty: false } };
+      expect(putbackNote(clean)).not.toContain("WARNING");
+      expect(putbackNote(clean)).toContain("his face from the take");
+      expect(putbackNote(ok.value)).toContain("WARNING: the worker's copy of the script had uncommitted changes");
+      expect(putbackNote({ ...clean, face_low: true, face_share: 0.52 })).toContain("WARNING: his face was found on only 52 %");
+      // the proof is against the original it was given: a Dress output as the original is said, never "his face"
+      const whole = putbackNote({ ...clean, original_is_whole_frame_dress: true });
+      expect(whole).toContain("not his own pixels");
+      expect(whole).not.toContain("his face from the take");
+      expect(putbackNote({ ...clean, binding: "swap_of" })).toContain("declared by whoever filed it");
     }
     for (const bad of [null, [], { ...good, proof_max: 1 }, { ...good, proof_max: "0" }, { ...good, proof_max: null }, { ...good, preset: "hyenas_verse_creature" }, { ...good, swap_asset_id: A }, { ...good, script_sha256: "short" }, { ...good, input_sha256: { original: "a".repeat(64) } }]) {
       expect(acceptPutbackRecord(bad, plan).ok).toBe(false);
@@ -238,6 +263,8 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
     expect(acceptPutbackRecord({ ...good, face_found: [] }, plan).ok).toBe(false);
     expect(acceptPutbackRecord({ ...good, face_found: [{ scene: "0-239", found: 0, of: 240 }] }, plan).ok).toBe(false);
     expect(acceptPutbackRecord({ ...good, output: { frames: 17, width: 1080, height: 1920, seconds: 0.7 } }, plan).ok).toBe(false);
+    // a record with no output block states no frame count for the file: refused too
+    expect(acceptPutbackRecord({ ...good, output: null }, plan).ok).toBe(false);
     expect(putbackOutputPath(U, P, "job", 2)).toBe(`${U}/${P}/renders/job_a2.mp4`);
     expect(putbackOutputPath(U, P, "job", 0)).toBe(`${U}/${P}/renders/job_a1.mp4`);
   });

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { encodePlan } from "../../scripts/edit-render/encode.mjs";
 import { capabilityManifest } from "./blenderProbe.mjs";
 import { mayClearScratch } from "./cache.mjs";
-import { putbackCapability, runPutback } from "./putback.mjs";
+import { putbackCapability, runPutback, stopChildren } from "./putback.mjs";
 import { verifyMp4 } from "./verify.mjs";
 
 let busy = false;
@@ -65,8 +65,8 @@ export function makeApi({ url, secret, fetchImpl = fetch }) {
   };
 }
 
-export async function uploadSigned(signedUrl, file, fetchImpl = fetch, sha256 = "") {
-  const headers = { "content-type": "video/mp4", "x-upsert": "true" };
+export async function uploadSigned(signedUrl, file, fetchImpl = fetch, sha256 = "", { upsert = true } = {}) {
+  const headers = { "content-type": "video/mp4", "x-upsert": upsert ? "true" : "false" };
   if (sha256) headers["x-metadata"] = Buffer.from(JSON.stringify({ sha256 })).toString("base64");
   const res = await fetchImpl(signedUrl, {
     method: "PUT",
@@ -98,12 +98,21 @@ export async function runOnce({
   try {
     disk();
     const claim = await api({ action: "claim", workerId, kinds });
-    if (!claim.render) return null;
+    if (!claim.render) {
+      // the door may have set a bad row aside instead of handing one over: said, so an empty answer is not read as
+      // an empty queue (the caller may ask again)
+      const aside = claim.skipped ?? claim.requeued ?? null;
+      if (aside || claim.note) log("no_job", { skipped: claim.skipped ?? null, requeued: claim.requeued ?? null, note: claim.note ?? null });
+      return aside ? { setAside: aside } : null;
+    }
     render = claim.render;
     log("claimed", { renderId: render.id, kind: render.kind, jobKind: render.job_kind ?? "edit", attempts: render.attempts });
     dir = mkdtempSync(join(scratchRoot(), "avt-render-"));
     const out = join(dir, `${render.id}.mp4`);
     const jobKind = render.job_kind ?? "edit";
+    // a job of a kind this worker did not ask for is not run, whatever the door handed over (a door that was not
+    // redeployed ignores `kinds`): a put-back-only host never executes an edit job's command line
+    if (!kinds.includes(jobKind)) throw new Error(`this worker takes ${kinds.join(", ")} and was handed a ${jobKind} job: not run`);
     let summary = { durationSeconds: null, bytes: null };
     if (jobKind !== "edit") {
       if (!runJob) throw new Error(`no runner for ${jobKind}`);
@@ -119,7 +128,8 @@ export async function runOnce({
       summary = check.summary;
     }
     const sha256 = summary.sha256 ?? (await hashFile(out));
-    await upload(claim.upload.signedUrl, out, undefined, sha256);
+    // a put-back's object is one per attempt and is never overwritten
+    await upload(claim.upload.signedUrl, out, undefined, sha256, { upsert: jobKind === "edit" });
     const done = await api({
       action: "complete",
       workerId,
@@ -169,11 +179,16 @@ async function main() {
   const pollMs = Math.max(2, Number(process.env.AVT_POLL_SECONDS) || 10) * 1000;
   const once = process.argv.includes("--once");
   let stopping = false;
-  for (const sig of ["SIGTERM", "SIGINT"])
+  for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"])
     process.on(sig, () => {
       stopping = true;
       log("stopping", { sig });
+      // a job's script runs in its own process group: it is stopped with the worker, never left running behind a
+      // closed terminal with the lock released
+      stopChildren();
+      if (once || sig === "SIGHUP") process.exit(130);
     });
+  process.on("exit", stopChildren);
   const tools = await capabilityManifest();
   // a put-back needs Python with numpy, OpenCV and MediaPipe, and the two model files with the right hashes
   const putback = await putbackCapability();
@@ -205,10 +220,15 @@ async function main() {
     let handled = null;
     try {
       handled = await runOnce({ api, workerId, kinds, runJob });
+      // a row set aside at the door is not the job: ask again, a few times, so one bad row does not use up the run
+      for (let again = 0; once && handled && typeof handled === "object" && again < 5; again++) handled = await runOnce({ api, workerId, kinds, runJob });
     } catch (error) {
       log("poll_error", { error: error instanceof Error ? error.message : String(error) });
     }
-    if (once) break;
+    if (once) {
+      log("once_done", { ran: typeof handled === "string" ? handled : null });
+      break;
+    }
     if (!handled) await new Promise((r) => setTimeout(r, pollMs));
   } while (!stopping);
   log("stopped", { workerId });

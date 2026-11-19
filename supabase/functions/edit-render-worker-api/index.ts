@@ -25,7 +25,7 @@ import {
   bucketOfStoredAsset,
   signAssets,
 } from "../_shared/editMedia.ts";
-import { acceptPutbackRecord, claimKinds, planPutback, putbackInputItems, putbackNote, putbackOutputPath } from "../_shared/putback.ts";
+import { acceptPutbackRecord, claimKinds, isWholeFrameDress, planPutback, putbackInputItems, putbackNote, putbackOutputPath, swapBinding } from "../_shared/putback.ts";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -76,19 +76,17 @@ serve(async (req) => {
 
   // WHOSE jobs this worker runs. A job is work done on the worker's own machine — an edit job's plan can carry a
   // command line — so a worker runs only the jobs of the account it belongs to, never a visitor's (found 19 Nov
-  // 2026: the claim handed any signed-in visitor's row to the always-on worker). The owner is the worker row's
-  // `owner_user_id` (service role only; SQL 20261120100000). Until that column is there, EDIT_WORKER_OWNERS (a
-  // comma list of user ids, an edge secret) says it; with neither, a row is served only when its user is a real
-  // account, not an anonymous sign-in.
+  // 2026: the claim handed any signed-in visitor's row to the always-on worker; RISK_REGISTER SEC-6). The owner is
+  // the worker row's `owner_user_id` (a table no client can read or write; set by hand, SQL 20261120100000). Until
+  // that column is there, EDIT_WORKER_OWNERS (a comma list of user ids, an edge secret) says it. With neither, the
+  // worker is handed NOTHING: there is no "any real account" fallback (sign-up is open).
   const { data: ownerRow } = await db.from("edit_render_workers").select("owner_user_id").eq("id", worker.id).maybeSingle();
   const ownerId: string | null = typeof ownerRow?.owner_user_id === "string" && UUID.test(ownerRow.owner_user_id) ? ownerRow.owner_user_id : null;
   const allowed = (Deno.env.get("EDIT_WORKER_OWNERS") ?? "").split(",").map((v) => v.trim().toLowerCase()).filter((v) => UUID.test(v));
-  const serves = async (userId: unknown): Promise<boolean> => {
+  const serves = (userId: unknown): boolean => {
     if (typeof userId !== "string" || !UUID.test(userId)) return false;
     if (ownerId) return userId.toLowerCase() === ownerId.toLowerCase();
-    if (allowed.length) return allowed.includes(userId.toLowerCase());
-    const { data } = await db.auth.admin.getUserById(userId);
-    return !!data?.user && data.user.is_anonymous !== true;
+    return allowed.includes(userId.toLowerCase());
   };
   const ownsProject = async (userId: string, projectId: string): Promise<boolean> => {
     if (!UUID.test(projectId)) return false;
@@ -98,6 +96,8 @@ serve(async (req) => {
 
   if (body.action === "claim") {
     let kinds = claimKinds(body.kinds);
+    // a worker with no owner on record and no allow-list is handed nothing at all
+    if (!ownerId && allowed.length === 0) return json(200, { ok: true, render: null, note: "this worker has no owner on record: it is handed nothing until one is set" });
     // a put-back is handed only to a worker with an owner on record
     if (!ownerId) kinds = kinds.filter((k) => k !== "putback");
     if (kinds.length === 0) return json(200, { ok: true, render: null, note: "this worker has no owner on record: it is handed no put-back" });
@@ -113,7 +113,7 @@ serve(async (req) => {
     if (error) return json(500, { ok: false, error: "claim_failed", message: error.message });
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row) return json(200, { ok: true, render: null });
-    if (!(await serves(row.user_id))) {
+    if (!serves(row.user_id)) {
       await failRow(row.id, "this worker does not run jobs for this account");
       return json(200, { ok: true, render: null, skipped: row.id });
     }
@@ -156,9 +156,14 @@ serve(async (req) => {
       const outPath = putbackOutputPath(row.user_id, jobProject, row.id, Number(row.attempts) || 1);
       const { data: up, error: upErr } = await db.storage.from(OUTPUT_BUCKET).createSignedUploadUrl(outPath, { upsert: false });
       if (!originalUrl || !swapUrl || upErr || !up) {
-        // signing can fail for a passing reason: the job goes back to the queue, it is not destroyed
-        await db.from("edit_renders").update({ status: "queued", worker_id: null, claimed_at: null, error: "the put-back's files could not be signed; queued again" }).eq("id", row.id);
-        return json(200, { ok: true, render: null, requeued: row.id });
+        // signing can fail for a passing reason: the job goes back to the queue — twice. A file that is gone would
+        // otherwise come back for ever as the oldest row and block every put-back behind it
+        if ((Number(row.attempts) || 1) < 3) {
+          await db.from("edit_renders").update({ status: "queued", worker_id: null, claimed_at: null, error: "the put-back's files could not be signed; queued again" }).eq("id", row.id);
+          return json(200, { ok: true, render: null, requeued: row.id });
+        }
+        await failRow(row.id, "the put-back's files could not be signed three times: one of the two files is missing from storage");
+        return json(200, { ok: true, render: null, skipped: row.id });
       }
       return json(200, {
         ok: true,
@@ -238,7 +243,7 @@ serve(async (req) => {
       ? ((row.project_id as string) || "")
       : (row.plan as { sequence?: { projectId?: string } })?.sequence?.projectId || (row.project_id as string) || "";
     // the same checks as at the claim: this worker runs this account's jobs, and the project is that account's
-    if (!(await serves(row.user_id)) || !(await ownsProject(row.user_id, projectId)) || (isPutback && ownerId !== row.user_id)) {
+    if (!serves(row.user_id) || !(await ownsProject(row.user_id, projectId)) || (isPutback && ownerId !== row.user_id)) {
       await failRow(renderId, "this worker does not run jobs for this account or project");
       return json(403, { ok: false, error: "not_this_workers_job" });
     }
@@ -255,11 +260,20 @@ serve(async (req) => {
     if (row.job_kind === "putback") {
       const planned = planPutback(row.settings, row.input_asset_ids);
       const record = planned.ok ? acceptPutbackRecord(body.putback, planned.value) : planned;
-      if (!record.ok) {
-        await failRow(renderId, record.error);
-        return json(400, { ok: false, error: "putback_not_proven", message: record.error });
+      if (!planned.ok || !record.ok) {
+        const why = !record.ok ? record.error : "the job's own plan no longer reads";
+        await failRow(renderId, why);
+        return json(400, { ok: false, error: "putback_not_proven", message: why });
       }
-      putback = record.value;
+      // what the two inputs are, read again from their rows: how the swap is tied to the window, and whether the
+      // "original" is itself a whole-frame Dress output (then the face kept is the generator's, and the note says so)
+      const { data: inputRows } = await db.from("project_assets").select("id, metadata_json").in("id", [planned.value.originalAssetId, planned.value.swapAssetId]);
+      const metaOf = (id: string) => (inputRows ?? []).find((r: { id: string }) => r.id === id)?.metadata_json;
+      putback = {
+        ...record.value,
+        binding: swapBinding(metaOf(planned.value.swapAssetId), planned.value.originalAssetId),
+        original_is_whole_frame_dress: isWholeFrameDress(metaOf(planned.value.originalAssetId)),
+      };
     }
     const { data: asset, error: assetErr } = await db
       .from("project_assets")

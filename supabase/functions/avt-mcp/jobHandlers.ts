@@ -148,6 +148,10 @@ export async function runJobTool(db: Db, userId: string, credentialId: string, n
   if (name === "avt_job_submit") return submit(ctx, args);
   if (name === "avt_job_status") {
     const row = await job(ctx, args.job_id);
+    // a put-back says why it failed and what it filed: that is the whole of its status
+    if (row.job_kind === "putback") {
+      return { id: row.id, status: row.status, job_kind: "putback", preset: row.preset ?? null, attempts: row.attempts ?? 0, error: row.error ?? null, output_asset_id: row.output_asset_id ?? null, worker_id: row.worker_id ?? null, created_at: row.created_at ?? null, finished_at: row.finished_at ?? null };
+    }
     return { id: row.id, status: row.status, progress: row.progress ?? 0, job_kind: row.job_kind };
   }
   if (name === "avt_job_logs") {

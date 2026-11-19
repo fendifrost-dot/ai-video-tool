@@ -1,3 +1,11 @@
+-- CONDITION BEFORE THIS FILE IS APPLIED (security review of PR #512, 19 Nov 2026; RISK_REGISTER SEC-6): it lets a
+-- signed-in account register a worker of its own. Today worker rows are made only by hand in the SQL editor, and
+-- `claim_edit_render` (20261120100000) hands out the rows of any account that owns a live worker. Before applying
+-- this: (1) make the legacy `claim_edit_render` hand out nothing (the deployed function claims by owner through
+-- `claim_edit_render_kinds`), and (2) add the first-folder check or the legacy-grants table to the edit path of
+-- edit-render-worker-api, which signs `<any folder>/<project>/…` for a project the row's user owns — and
+-- `video_projects` is open (SEC-4).
+--
 -- Worker registration and cache reports for the edit-render box.
 -- Apply in the Lovable SQL editor on qoyxgnkvjukovkrvdaiq after
 -- 20261113120000_asset_store_extensions.sql. The secret is stored as a hash.

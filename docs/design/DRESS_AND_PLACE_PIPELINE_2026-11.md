@@ -23,7 +23,7 @@ Labels: VERIFIED (I read the line or ran the query, cited), OBSERVED, DECISION, 
 | **The job table's policy admits only edit rows.** `edit_renders_owner`: `user_id = auth.uid() AND sequence_id IN (own sequences)`. A job with no sequence cannot be inserted or read by its owner through the app or the MCP, which use the owner's own client. There is no open `_open_test` policy on this table, and `edit_render_workers` has no policy and no grant at all (service role only) | `pg_policies` and grants, 19 Nov |
 | `claim_edit_render` hands the oldest queued row to whoever asks, whatever its kind | `supabase/migrations/20261018100000_edit_render_worker.sql:62–81` |
 | The worker API signs inputs only from `plan.inputs.items`; a job submitted through `avt_job_submit` stores asset ids instead, so it would be handed no files | `supabase/functions/edit-render-worker-api/index.ts:67–80`, `supabase/functions/avt-mcp/jobHandlers.ts:55–62` |
-| Every table and bucket still carries an open `_open_test` policy, and anonymous sign-in is live | `RISK_REGISTER.md` SEC-4 |
+| Most tables and every bucket still carry an open `_open_test` policy (not `edit_renders` or `edit_render_workers`: the row above), and anonymous sign-in is live | `RISK_REGISTER.md` SEC-4 |
 | The c033 fixture reproduces from stored inputs at $0, with hashes for the inputs, the models and the decoded output | `scripts/edit/reproduce_body_only_c033.sh` |
 
 So the handoff's "give that worker a Python runtime" is right in direction and short by three things: the queue has
@@ -92,8 +92,9 @@ else; it would need a worker row owned by Fendi's user.
 - `workers/edit-render/Dockerfile.putback`: the same image plus Python 3 with pinned `numpy`, `opencv-python-headless`,
   `mediapipe`, `scipy`. The model files are mounted, never baked in and never committed.
 - Limits, enforced in the runner: each input stops downloading at 1 GiB; then, before the script starts, ≤ 12 s,
-  ≤ 1,000 frames, ≤ 3840 px on the long side; script wall time ≤ 20 minutes (the queue's own stale limit), and at
-  the limit the script's whole process group is stopped (it runs ffmpeg). Scratch is `AVT_SCRATCH_DIR`.
+  ≤ 1,000 frames, ≤ 3840 px on the long side, frames × width × height ≤ 520 million; script wall time ≤ 12 minutes
+  (under the queue's own 20-minute stale limit), and at the limit the script's whole process group is stopped (it
+  runs ffmpeg). Scratch is `AVT_SCRATCH_DIR`.
 
 ## 5. Security (for the security reviewer)
 
@@ -108,7 +109,7 @@ says is therefore running on untrusted input. The design treats the row as hosti
 | The same worker's other jobs | **Found by the security review, live since 18 Oct:** the claim handed ANY signed-in visitor's edit row to the always-on worker, and the edit runner executes the command line in a row's plan. Fixed here for every job kind: a worker is handed only the jobs of the account it belongs to (SQL), the API checks it again at claim and at complete, a worker says which kinds it takes (default `edit`; the Mac asks for put-backs only), and a claimed job carries the worker row's id, not just its label |
 | Who may queue a put-back | only `queue_putback_job` makes a put-back row (the table's policy admits no row without an edit sequence, and is not changed). It acts for `auth.uid()` alone, refuses an anonymous session, checks the project and both files are that user's, takes a preset NAME only, and holds at most ten waiting put-backs a user |
 | Who is handed one | `claim_edit_render_kinds` takes a put-back off the queue only for the user who owns the asking worker (`edit_render_workers.owner_user_id`, a table with no policy and no grant: service role only). Another user's put-back is never claimed by this worker, and the API checks the row again |
-| Output | uploaded only through the signed upload URL for `project-exports/{user_id}/{project_id}/renders/{id}.mp4`, as today |
+| Output | uploaded only through the signed upload URL for `project-exports/{user_id}/{project_id}/renders/{id}_a{attempt}.mp4`: one path per attempt, never overwritten |
 | Secrets | the worker holds only its worker secret, as today. No service-role key, no provider key, no signed URL in any log (the runner logs asset ids and hashes) |
 | Resources | each input: this project's storage only, no redirect, 1 GiB and 2 minutes at most; then h264/hevc/prores only, ≤ 12 s, and frames × width × height ≤ 520 million (what the script holds in memory: about 1.5 GB a clip, the size of the approved c033 window); the script's process group is stopped at 12 minutes; nothing of a failed job stays on disk; at most ten put-backs wait per user |
 | Output | one object per attempt, never overwritten; a finished put-back set back to queued is not run again |
@@ -140,7 +141,7 @@ PR #508's scripts are on `main`; they are not in slice a.
 
 | Fixture | Inputs | Must show |
 |---|---|---|
-| c033 clothing swap | take window `c45e30c6`, stored Dress output `5a81d308` | proof 0; his face found on 240 of 240 frames; `hat_geometry.py` inside 0.03–0.14 against the approved final. The decoded MD5 of the 18 Oct file is reported, not required (it predates the interpolation step) |
+| c033 clothing swap | take window `c45e30c6`, stored Dress output `5a81d308` | proof 0; his face found on 240 of 240 frames. `hat_geometry.py` is reported against the approved final `5482b35b`; its pass range is **not set yet** (0.03–0.14 was measured on c041, not on this take) and is set from this fixture's own first run. The decoded MD5 of the 18 Oct file is reported, not required (it predates the interpolation step) |
 | Hyenas creature swap | the verse take and its stored swap | proof 0; face found 96/96 |
 
 Slice a is not LIVE until the worker, run end to end on the c033 inputs, files a clip whose record shows the first
@@ -163,25 +164,23 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 | His face is found on few frames | filed with the counts and a plain warning; found on none in any scene: not filed |
 | Proof is not 0, or the file's frames are not the proof's | the job fails with the number. No clip is filed, and it is not retried (only reaped jobs are) |
 | A model file is missing or its hash differs, or the T7 is unplugged | the worker does not ask for put-backs at all; mid-job it fails before the script starts, naming the file |
-| The swap is not conformed, is not the Dress output of that window, or the two are reversed | refused at the claim (the swap's own record) and again by duration on the worker |
+| The swap is not conformed, does not say it was made from that window, or the two are reversed | refused at the claim (the swap's own record: `derived_from.asset_id` written by dress-clip, or `swap_of.asset_id` declared by whoever filed a creature or prop swap; which of the two is on the filed asset) and again by duration on the worker |
+| The "original" given is itself a whole-frame Dress output | filed, with a WARNING in the asset's note: the face kept is that output's, not his own pixels. Refusing it outright waits for slice e (the one-call pipeline picks the inputs itself) |
 | The inputs are too large for the machine | refused before the script starts, with the number |
 | Two starts on one machine | the second stops: one put-back worker at a time (a lock in the scratch folder) |
 | The worker's checkout is behind `main` or has local changes | the commit and a dirty flag are on the asset. Not refused yet: pinning an expected script hash is slice b |
-| A signing error at the claim | the job goes back to the queue, it is not failed |
+| A signing error at the claim | the job goes back to the queue (while it has attempts left), it is not failed. A one-job run says what was set aside and asks again, up to five times |
 
 ## 9. What has to happen for slice a to be LIVE
 
-1. Sign-offs: architecture and security from independent reviewers (recorded on PR #512); product is Fendi's own
-   request of 19 Nov and his delegation of the technical decisions.
-2. SQL, in Lovable only: `20261120100000_putback_job_kind.sql`. It is **self-contained**: it does not need the
-   pending STORE-5 migrations and applies before or after them. It adds four columns to `edit_renders`, one to
-   `edit_render_workers`, the two claim functions and the owner's two functions. **No policy changes.**
-3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`**.
-4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`).
-   The secret itself is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); it is
-   never in chat, in the repo or in SQL.
-5. The c033 fixture through the worker, proof 0, reported with the printed numbers. Blocked on 19 Nov only by the
-   Mac's memory.
+| Step | State (19 Nov 2026) |
+|---|---|
+| 1. Sign-offs: architecture and security from independent reviewers (recorded on PR #512); product is Fendi's own request of 19 Nov and his delegation of the technical decisions | on PR #512 |
+| 2. SQL, in Lovable only: `20261120100000_putback_job_kind.sql`. Self-contained: it does not need the pending STORE-5 migrations and applies before or after them. Four columns on `edit_renders`, one on `edit_render_workers`, the two claim functions, the owner's two functions. **No policy changes** | **APPLIED** 19 Nov ≈23:48 UTC through Lovable `query_database`, on Fendi's "Yes, apply it" in chat |
+| 2b. The live worker `box` is given its owner, by hand, in the same editor (never derived from rows a visitor can write) | **DONE** with step 2. VERIFIED by a rolled-back test in the same editor: a queued edit row of another account was claimed 0 times by the old claim, 0 by the owner-scoped claim and 0 with no owner; the owner's own row was claimed once |
+| 3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`** | see §12 |
+| 4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`). The secret is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); never in chat, the repo or SQL | see §12 |
+| 5. The c033 fixture through the worker, proof 0, reported with the printed numbers | **NOT RUN**: the Mac's memory (pressure level 2 of 1/2/4 on 19 Nov) |
 
 ## 10. Order of slices (from the handoff §4.6, with what this note changes)
 
@@ -196,12 +195,12 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 
 ## 11. Open decisions for Fendi
 
-1. Where the worker runs (§3). Recommended: his Mac, $0.
+1. ~~Where the worker runs~~ DECIDED (§3): his Mac, on demand, $0. Fendi, 19 Nov: "any technical decision is out of my range please make whatever decision you deem necessary".
 2. Whether the Blender light match (`comp_scene.py`) may be a default: he has not judged showroom v9 or room 2 v2.
 
 ## 12. What is CODED on the draft branch (19 Nov 2026), and what is not
 
-CODED, with unit tests, **not merged, not applied, not deployed**:
+CODED, with unit tests. The SQL is applied (§9); the functions are live only once §9 step 3 is done and named here:
 
 | File | What |
 |---|---|
@@ -220,8 +219,7 @@ VERIFIED on Fendi's Mac, 19 Nov: the capability check passes with the real inter
 (both model hashes equal to the recorded ones).
 
 NOT DONE:
-- **The SQL is not applied.** Changing the production database needs Fendi's explicit yes; it was asked for on
-  19 Nov. It carries the security fix of §5 as well as the put-back's columns.
+- ~~The SQL is not applied~~ **APPLIED and verified** 19 Nov ≈23:48 UTC (§9 steps 2 and 2b), on Fendi's "Yes, apply it".
 - **The c033 fixture through the runner.** The Mac's swap was 9–12 GB of 10–13 GB in use all of 19 Nov with other
   sessions working; one heavy job at a time there.
 - Stage 1 of the handoff's table (cutting the window in the worker) and the checks of slice b.

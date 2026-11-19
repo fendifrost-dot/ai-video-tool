@@ -14,7 +14,7 @@ const PROOF = "scene 0-239: his face on 240 of 240 frames\nframes 240 swap frame
 type Call = { cmd: string; args: string[]; env: Record<string, string> };
 
 /** A stand-in for child_process.spawn: records the call, answers ffprobe, and plays the put-back script. */
-function fakeSpawn(opts: { proof?: string; code?: number; writeOutput?: boolean; probe?: Record<string, unknown>; swapProbe?: Record<string, unknown>; outProbe?: Record<string, unknown> } = {}) {
+function fakeSpawn(opts: { proof?: string; code?: number; writeOutput?: boolean; probe?: Record<string, unknown>; swapProbe?: Record<string, unknown>; outProbe?: Record<string, unknown>; videoStreams?: number } = {}) {
   const calls: Call[] = [];
   const spawn = (cmd: string, args: string[], o: { env?: Record<string, string>; shell?: boolean }) => {
     calls.push({ cmd, args, env: o.env ?? {} });
@@ -24,6 +24,12 @@ function fakeSpawn(opts: { proof?: string; code?: number; writeOutput?: boolean;
     child.stderr = new EventEmitter();
     child.kill = () => {};
     setImmediate(() => {
+      if (cmd === "ffprobe" && args.includes("csv=p=0")) {
+        // the count of video streams, one index a line
+        child.stdout.emit("data", Array.from({ length: opts.videoStreams ?? 1 }, (_, i) => String(i)).join("\n") + "\n");
+        child.emit("close", 0);
+        return;
+      }
       if (cmd === "ffprobe") {
         // the swap may be given its own probe (a raw, unconformed file); the result file reads as the take's frames
         const isSwap = String(args[args.length - 1]).endsWith("swap.mp4");
@@ -121,6 +127,17 @@ describe("the put-back runner runs the script unchanged and gives back only a pr
     expect(raw.calls.every((c) => c.cmd === "ffprobe")).toBe(true);
     const c = scratch();
     await expect(runPutback(render, c.dir, { claim, out: c.out, fetchImpl: fetchOk, checkHost: false, spawn: fakeSpawn({ outProbe: { codec_name: "h264", width: 1080, height: 1920, nb_read_packets: "17", duration: "0.7" } }).spawn, modelsDir: c.models, hashFile: goodHash })).rejects.toThrow("17 frames and the proof is for 240");
+  });
+
+  it("a file with more than one video stream, or a small swap that would be read at a large take's size, is refused", async () => {
+    const a = scratch();
+    const two = fakeSpawn({ videoStreams: 2 });
+    await expect(runPutback(render, a.dir, { claim, out: a.out, fetchImpl: fetchOk, checkHost: false, spawn: two.spawn, modelsDir: a.models, hashFile: goodHash })).rejects.toThrow("2 video streams");
+    expect(two.calls.every((c) => c.cmd === "ffprobe")).toBe(true);
+    // the take is 1080x1920; the swap is small on disk but has 250 frames: at the take's size that is over the budget
+    const b = scratch();
+    const many = fakeSpawn({ probe: { codec_name: "h264", width: 1080, height: 1920, nb_read_packets: "96", duration: "4.004" }, swapProbe: { codec_name: "h264", width: 640, height: 360, nb_read_packets: "260", duration: "4.0" } });
+    await expect(runPutback(render, b.dir, { claim, out: b.out, fetchImpl: fetchOk, checkHost: false, spawn: many.spawn, modelsDir: b.models, hashFile: goodHash })).rejects.toThrow("the swap, read at the take's size");
   });
 
   it("a script that fails, prints no proof, or writes no file throws with the reason", async () => {

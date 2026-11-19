@@ -9,8 +9,9 @@ The host holds only a **worker secret**, not the service-role key. The worker ta
 and completes the row. Register a secret (SQL editor, service role):
 
 ```sql
-insert into public.edit_render_workers (label, secret_hash)
-values ('box', encode(digest('<secret>', 'sha256'), 'hex'));  -- or compute sha256 hex locally
+-- owner_user_id is whose jobs this worker runs; a worker with no owner is handed nothing (SEC-6)
+insert into public.edit_render_workers (label, secret_hash, owner_user_id)
+values ('box', '<sha256 hex of the secret, computed locally>', '<the owner's auth.users id>');
 ```
 
 Requirements: Node ≥ 22.6 (`--experimental-strip-types`), ffmpeg/ffprobe on PATH.

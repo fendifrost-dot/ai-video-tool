@@ -245,7 +245,7 @@ export function putbackInputItems(
   job: { userId: string; projectId: string },
   bucketOf: (row: Record<string, unknown>) => string,
   allowedBuckets: readonly string[],
-): PutbackResult<{ original: PutbackItem; swap: PutbackItem }> {
+): PutbackResult<{ original: PutbackItem; swap: PutbackItem; binding: SwapBinding }> {
   const rowOf = (assetId: string) => rows.find((r) => typeof r.id === "string" && r.id.toLowerCase() === assetId.toLowerCase());
   const item = (assetId: string, label: string): PutbackResult<PutbackItem> => {
     const row = rowOf(assetId);
@@ -264,11 +264,32 @@ export function putbackInputItems(
   if (!original.ok) return original;
   const swap = item(plan.swapAssetId, "the swap");
   if (!swap.ok) return swap;
-  const from = ((rowOf(plan.swapAssetId)?.metadata_json ?? {}) as { derived_from?: { asset_id?: unknown; method?: unknown } }).derived_from;
-  if (!from || typeof from.asset_id !== "string" || from.asset_id.toLowerCase() !== plan.originalAssetId.toLowerCase()) {
-    return { ok: false, error: `the swap (${plan.swapAssetId.slice(0, 8)}) is not the Dress output of the original (${plan.originalAssetId.slice(0, 8)}): a put-back takes the window, then the conformed dress-clip result made from that same window, in that order` };
+  const binding = swapBinding(rowOf(plan.swapAssetId)?.metadata_json, plan.originalAssetId);
+  if (!binding) {
+    return { ok: false, error: `the swap (${plan.swapAssetId.slice(0, 8)}) does not say it was made from the original (${plan.originalAssetId.slice(0, 8)}): a put-back takes the window, then the swap made from that same window, in that order. A dress-clip result says so by itself; a swap made another way (a creature or prop through the provider call, a pasted region) is filed with metadata_json.swap_of = { asset_id: <the window's asset id> }` };
   }
-  return { ok: true, value: { original: original.value, swap: swap.value } };
+  return { ok: true, value: { original: original.value, swap: swap.value, binding } };
+}
+
+/**
+ * How a swap says which window it was made from. `derived_from`: dress-clip (and the Region swap page) write it when
+ * they file a conformed result. `swap_of`: declared by whoever files a swap made another way — the creature or prop
+ * swap of docs/recipes/CREATURE_OR_PROP_SWAP_ON_HIS_TAKE.md goes through the provider call, and a pasted region is
+ * a local file — so those lanes are not shut out; the declaration is the filer's word, and is recorded as such.
+ */
+export type SwapBinding = "derived_from" | "swap_of";
+export function swapBinding(metadata: unknown, originalAssetId: string): SwapBinding | null {
+  const meta = (metadata ?? {}) as { derived_from?: { asset_id?: unknown }; swap_of?: { asset_id?: unknown } };
+  const same = (v: unknown) => typeof v === "string" && v.toLowerCase() === originalAssetId.toLowerCase();
+  if (same(meta.derived_from?.asset_id)) return "derived_from";
+  if (same(meta.swap_of?.asset_id)) return "swap_of";
+  return null;
+}
+
+/** True when an asset is a whole-frame Dress output (its face is the generator's), not a take and not a put-back. */
+export function isWholeFrameDress(metadata: unknown): boolean {
+  const d = ((metadata ?? {}) as { derived_from?: { method?: unknown; putback?: unknown; dress?: unknown } }).derived_from;
+  return !!d && (d.method === "dressed" || !!d.dress) && d.putback !== true;
 }
 
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -305,7 +326,7 @@ export function acceptPutbackRecord(raw: unknown, plan: PutbackPlan): PutbackRes
   const empty = faceFound.find((f) => f.found === 0);
   if (empty) return { ok: false, error: `his face was found on 0 of ${empty.of} frames in scene ${empty.scene}: nothing is filed` };
   const out = (r.output ?? {}) as Record<string, unknown>;
-  if (int(out.frames) !== null && int(out.frames) !== frames) return { ok: false, error: `the file has ${String(out.frames)} frames and the proof is for ${frames}: nothing is filed` };
+  if (int(out.frames) !== frames) return { ok: false, error: `the file has ${int(out.frames) === null ? "no stated" : String(out.frames)} frames and the proof is for ${frames}: nothing is filed` };
   const found = faceFound.reduce((n, f) => n + f.found, 0);
   const of = faceFound.reduce((n, f) => n + f.of, 0);
   const share = of > 0 ? found / of : 0;
@@ -349,7 +370,13 @@ export function acceptPutbackRecord(raw: unknown, plan: PutbackPlan): PutbackRes
 /** The note written on the filed asset: what was done, what the proof is, and a plain warning when his face was found on few frames. */
 export function putbackNote(record: Record<string, unknown>): string {
   const low = record.face_low === true ? ` WARNING: his face was found on only ${Math.round(Number(record.face_share) * 100)} % of the frames; look at the face sheet before using it.` : "";
-  return `Put-back (free, worker), preset ${String(record.preset)}: clothes from the swap, his face from the take. The script's proof printed 0 (max |out-original| on face/hair/skin, measured by the worker on the frames before the final encode).${low} Not approved: the director judges it.`;
+  // the proof is against the ORIGINAL it was given: when that is itself a whole-frame Dress output, the face it kept
+  // is the generator's, and "his face" must not be said
+  const whole = record.original_is_whole_frame_dress === true;
+  const face = whole ? "the face of the ORIGINAL IT WAS GIVEN, which is itself a whole-frame Dress output — so not his own pixels: WARNING, run the put-back from the take" : "his face from the take";
+  const dirty = (record.repo as { dirty?: unknown } | null)?.dirty === true ? " WARNING: the worker's copy of the script had uncommitted changes." : "";
+  const declared = record.binding === "swap_of" ? " The swap's link to the window was declared by whoever filed it." : "";
+  return `Put-back (free, worker), preset ${String(record.preset)}: clothes from the swap, ${face}. The script's proof printed 0 (max |out-original| on face/hair/skin, measured by the worker on the frames before the final encode).${low}${dirty}${declared} Not approved: the director judges it.`;
 }
 
 /** Where a put-back's file goes: one object per attempt, so a retry never replaces what an earlier attempt uploaded. */

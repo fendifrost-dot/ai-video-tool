@@ -16,14 +16,22 @@ env_file=${AVT_WORKER_ENV:-$HOME/.secrets/avt_render_worker_mac.env}
 [ -f "$env_file" ] || { echo "no worker secret file at $env_file"; exit 2; }
 set -a; . "$env_file"; set +a
 : "${AVT_SCRATCH_DIR:?set AVT_SCRATCH_DIR to a folder on the T7}" "${AVT_MODELS:?set AVT_MODELS}"
-case "$AVT_SCRATCH_DIR" in /Volumes/*) [ -d "$(echo "$AVT_SCRATCH_DIR" | cut -d/ -f1-3)" ] || { echo "the drive for $AVT_SCRATCH_DIR is not mounted"; exit 3; } ;; esac
+# the scratch folder must be on a mounted volume of its own, never a stale folder left on the internal disk
+if [ "$(uname)" = "Darwin" ]; then
+  case "$AVT_SCRATCH_DIR" in
+    /Volumes/*)
+      vol=$(echo "$AVT_SCRATCH_DIR" | cut -d/ -f1-3)
+      mount | grep -q " on $vol (" || { echo "not starting: $vol is not a mounted drive"; exit 3; } ;;
+    *) echo "not starting: on this Mac AVT_SCRATCH_DIR must be on the external drive (/Volumes/...), never the internal disk"; exit 3 ;;
+  esac
+fi
 mkdir -p "$AVT_SCRATCH_DIR"
 if [ "$(uname)" = "Darwin" ] && [ "${AVT_SKIP_MEMORY_CHECK:-0}" != "1" ]; then
-  # swap in use, in MB: a put-back holds several GB; over the limit another heavy job is running
-  used=$(sysctl -n vm.swapusage | sed -E 's/.*used = ([0-9.]+)M.*/\1/' | cut -d. -f1)
-  limit=${AVT_MAX_SWAP_MB:-4096}
-  if [ "${used:-0}" -gt "$limit" ]; then
-    echo "not starting: ${used} MB of swap in use (limit ${limit}). Another heavy job is running; try again when it is done."
+  # the system's own memory-pressure level: 1 normal, 2 warning, 4 critical. A put-back holds several GB; above
+  # normal, another heavy job is running. (Swap in use is not the test: it stays high long after a job ends.)
+  level=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo "")
+  if [ "$level" != "1" ]; then
+    echo "not starting: memory pressure is ${level:-unreadable} (1 is normal). Another heavy job is running; try again when it is done."
     exit 4
   fi
 fi
@@ -39,7 +47,7 @@ if ! mkdir "$lock" 2>/dev/null; then
 fi
 echo $$ > "$lock/pid"
 trap 'rm -rf "$lock"' EXIT
-export AVT_WORKER_ID=${AVT_WORKER_ID:-mac-once}
+export AVT_WORKER_ID=${AVT_WORKER_ID:-mac-once-$$-$(date +%s)}
 export AVT_WORKER_KINDS=putback
 cd "$here/../.."
 node --experimental-strip-types workers/edit-render/worker.mjs --once

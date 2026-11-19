@@ -26,7 +26,8 @@
 --   drop function public.putback_job(uuid);
 --   drop function public.claim_edit_render_kinds(text, text[], uuid);
 --   delete from public.edit_renders where job_kind = 'putback';
---   alter table public.edit_renders drop constraint edit_renders_job_kind_check, drop constraint edit_renders_edit_needs_sequence;
+--   alter table public.edit_renders drop constraint edit_renders_job_kind_check, drop constraint edit_renders_edit_needs_sequence,
+--     drop constraint edit_renders_putback_no_sequence;
 --   Do NOT restore the old claim_edit_render: it is the hole item 3 closes. The added columns are harmless to keep
 --   (the pending STORE-5 migration adds the same ones).
 
@@ -41,6 +42,12 @@ alter table public.edit_renders alter column sequence_id drop not null;
 alter table public.edit_renders drop constraint if exists edit_renders_edit_needs_sequence;
 alter table public.edit_renders add constraint edit_renders_edit_needs_sequence
   check (job_kind <> 'edit' or sequence_id is not null);
+
+-- a put-back never rides on an edit sequence: the table's policy admits a signed-in user's own rows WITH a sequence,
+-- so without this a user could write a put-back row past queue_putback_job and its checks
+alter table public.edit_renders drop constraint if exists edit_renders_putback_no_sequence;
+alter table public.edit_renders add constraint edit_renders_putback_no_sequence
+  check (job_kind <> 'putback' or sequence_id is null);
 
 alter table public.edit_renders drop constraint if exists edit_renders_kind_check;
 alter table public.edit_renders add constraint edit_renders_kind_check
@@ -146,9 +153,12 @@ begin
   if v_uid is null then
     raise exception 'not signed in';
   end if;
-  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+  -- read from the account itself, not from the token's snapshot of it
+  if coalesce((select u.is_anonymous from auth.users u where u.id = v_uid), true) then
     raise exception 'an anonymous session cannot queue a put-back';
   end if;
+  -- one queue_putback_job at a time per user, so the count below cannot be raced past
+  perform pg_advisory_xact_lock(hashtext('queue_putback_job:' || v_uid::text));
   if p_preset is null or p_preset !~ '^[a-z0-9_]{1,40}$' then
     raise exception 'preset is not a preset name';
   end if;
