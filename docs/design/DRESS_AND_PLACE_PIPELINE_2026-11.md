@@ -40,9 +40,15 @@ Nothing is ported to TypeScript, and no script is "improved" on the way in. The 
 
 **D3. A job is a preset plus two asset ids. Nothing else reaches the command line.** See §5.
 
-**D4. The proof travels with the asset.** A put-back result is filed with
-`metadata_json.putback = { proof_max, frames, face_found, preset, script_sha256, model_sha256, input_sha256 }`. A
-result whose proof is not 0 is **not filed as a clip**: the job fails and says the number.
+**D4. The proof travels with the asset, and is said for what it is.** A put-back result is filed with
+`metadata_json.putback`: the preset and its exact flags, the proof, on how many frames of each scene his face was
+found, one hash over the script and the five modules it imports, the worker checkout's commit and whether it was
+dirty, the Python, library and ffmpeg versions, both input hashes, and the output's frames and size. A result is
+**not filed** when the proof is not 0, when the script did not say where it found his face, when it found him on no
+frame of any scene (a 0 that protected nothing proves nothing), or when the file's frame count is not the proof's.
+A low face count is filed with a plain warning on the asset. The proof is the worker's own measurement, on the
+frames before the final encode: the server checks the record against the job, it does not re-run the script or
+hash the file, and the asset's note says so.
 
 **D5. A whole-frame Dress output is an intermediate.** The app and the MCP label it so, and it cannot be made a
 shot's primary until a put-back with proof 0 exists for it (slice e).
@@ -98,13 +104,16 @@ says is therefore running on untrusted input. The design treats the row as hosti
 |---|---|
 | What gets executed | one fixed script path inside the worker's own checkout, `python -I` (no user site, no `PYTHONPATH`, no current-directory imports). The row cannot name a script, a flag or an environment variable |
 | Arguments | `settings.preset` must be one of a closed list compiled into the worker (§6). The preset expands to a fixed set of flags and `AVT_*` values. Any other key in `settings` fails the job before anything runs |
-| Inputs | two asset ids. The API resolves them itself, and signs a file only when the asset row has the **same `user_id` and `project_id` as the job row** and sits in an allowed bucket. The worker never sees a path it could change |
+| Inputs | two asset ids. The API resolves them itself, and signs a file only when the asset row has the **same `user_id` and `project_id` as the job row**, the project is that user's, the path is under **that user's own folder** of that project, the bucket is allowed, and the swap's own record says it is the Dress output **made from the original** (so the two cannot be reversed and a raw provider file cannot stand in). The worker never sees a path it could change |
+| The same worker's other jobs | **Found by the security review, live since 18 Oct:** the claim handed ANY signed-in visitor's edit row to the always-on worker, and the edit runner executes the command line in a row's plan. Fixed here for every job kind: a worker is handed only the jobs of the account it belongs to (SQL), the API checks it again at claim and at complete, a worker says which kinds it takes (default `edit`; the Mac asks for put-backs only), and a claimed job carries the worker row's id, not just its label |
 | Who may queue a put-back | only `queue_putback_job` makes a put-back row (the table's policy admits no row without an edit sequence, and is not changed). It acts for `auth.uid()` alone, refuses an anonymous session, checks the project and both files are that user's, takes a preset NAME only, and holds at most ten waiting put-backs a user |
 | Who is handed one | `claim_edit_render_kinds` takes a put-back off the queue only for the user who owns the asking worker (`edit_render_workers.owner_user_id`, a table with no policy and no grant: service role only). Another user's put-back is never claimed by this worker, and the API checks the row again |
 | Output | uploaded only through the signed upload URL for `project-exports/{user_id}/{project_id}/renders/{id}.mp4`, as today |
 | Secrets | the worker holds only its worker secret, as today. No service-role key, no provider key, no signed URL in any log (the runner logs asset ids and hashes) |
-| Resources | the limits in §4; a job over them fails with the number |
-| The media itself | a crafted MP4 reaching ffmpeg and OpenCV is a risk that exists today for the edit job; the owner check above narrows who can send one to the owner himself |
+| Resources | each input: this project's storage only, no redirect, 1 GiB and 2 minutes at most; then h264/hevc/prores only, ≤ 12 s, and frames × width × height ≤ 520 million (what the script holds in memory: about 1.5 GB a clip, the size of the approved c033 window); the script's process group is stopped at 12 minutes; nothing of a failed job stays on disk; at most ten put-backs wait per user |
+| Output | one object per attempt, never overwritten; a finished put-back set back to queued is not run again |
+| The media itself | a crafted file reaching ffprobe, ffmpeg and OpenCV on the owner's machine. Only the owner's own door makes a job, so only a file the OWNER names is read; ffprobe runs with a bare environment (never the worker's secret) and the codec is checked before the script starts. **Residual, until RISK-001 closes:** every bucket and `project_assets` are open, so a stranger can plant a file under the owner's folder with a row to match; it is read only if the owner (or an agent acting for him) then queues a put-back naming it |
+| What the proof guarantees | see D4. Whoever holds a worker's secret can file a clip carrying a proof record; the secret lives only on the worker's machine and its hash in a table no client can read |
 | Provider spend | none. The put-back calls no provider. The swap that precedes it stays in `dress-clip`, behind its own dry run and price |
 
 RLS integration test: this change adds, widens and drops no policy. It adds three security-definer functions:
@@ -115,9 +124,11 @@ RLS integration test: this change adds, widens and drops no policy. It adds thre
 
 | Preset | Flags and settings | Reproduces |
 |---|---|---|
-| `c033_showroom` | `AVT_HEAD_ZOOM=4`, `--base original`, head fit off, hat gap fill on | YSL c033 `5482b35b` and c041 `6f4edd50` (`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md:131`: "`AVT_HEAD_ZOOM=4` is the setting of both approved results") |
-| `full_body` | `AVT_HEAD_ZOOM=3`, `--base original` | the full-body setting of `docs/PROBLEM_INDEX.md` ("Face found on few frames": 4, or 3 on full body) |
-| `hyenas_verse_creature` | `AVT_HEAD_ZOOM=3`, `--base swap`, `--retime auto`, `--hat-gap-fill off` | Hyenas verse, face found 96/96 |
+| `c033_showroom` | `AVT_HEAD_ZOOM=4`, `--base original`, head fit off, hat gap fill on | YSL c033 `5482b35b` and c041 `6f4edd50`: the recipe's setting (`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md:131`). The 18 Oct file's decoded MD5 predates the swap-rate interpolation and is not expected to match |
+| `hyenas_verse_creature` | `AVT_HEAD_ZOOM=3`, `--base swap`, `--retime auto`, `--hat-gap-fill off` | Hyenas verse, face found 96/96 (`docs/handoffs/HANDOFF_GROKBOT_HYENAS_PERFORMANCE_IN_SET_2026-11-13.md:137`) |
+
+A clothing swap on a full-body frame (zoom 3 with `--base original`) has no approved asset behind it yet, so it is
+not a preset: the first time one is needed it is added with the result Fendi approves.
 
 An override is a new preset with a written reason, reviewed like code. There is no free-form override at run time:
 that is how the improvising starts.
@@ -127,14 +138,18 @@ PR #508's scripts are on `main`; they are not in slice a.
 
 ## 7. Fixtures and the kill criterion
 
-| Fixture | Inputs | Must print |
+| Fixture | Inputs | Must show |
 |---|---|---|
-| c033 clothing swap | take `c45e30c6`, stored Genjutsu output `5a81d308` | `max \|out-original\| on face/hair/skin: 0`; decoded-frame MD5 `5f268d20fa6a440487ccfa8bbcab4dd4` on the pinned library versions |
+| c033 clothing swap | take window `c45e30c6`, stored Dress output `5a81d308` | proof 0; his face found on 240 of 240 frames; `hat_geometry.py` inside 0.03–0.14 against the approved final. The decoded MD5 of the 18 Oct file is reported, not required (it predates the interpolation step) |
 | Hyenas creature swap | the verse take and its stored swap | proof 0; face found 96/96 |
 
-Slice a does not merge until the worker, run end to end on the c033 inputs, files a clip whose recorded proof is 0.
-The decoded MD5 is expected to differ where the Python or MediaPipe version differs from the pinned one
-(`reproduce_body_only_c033.sh` says so); the proof line is the gate, the MD5 is reported.
+Slice a is not LIVE until the worker, run end to end on the c033 inputs, files a clip whose record shows the first
+row. **Not run yet** (the Mac's memory, §12), so two things in this note are unmeasured: how long a put-back takes
+on that machine (the 12-minute limit is a guess that must hold under the queue's 20), and its peak memory. If c033
+takes more than about ten minutes there, the limits and the stale reaper are revisited before anything else is
+built on them.
+
+Freezing the two fixtures read-only per `docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md` is part of slice b.
 
 `docs/VIDEO_SWAP_ARCHITECTURE.md` kill criterion: unchanged. This pipeline adds no new swap engine; on his real takes
 the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.md`).
@@ -143,13 +158,16 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 
 | Failure | What happens |
 |---|---|
-| No worker is up | the job stays `queued`; the app says "waiting for the worker" with how long. Nothing is charged, nothing is lost |
-| The Mac sleeps mid-job | the row is reaped after 20 minutes and queued again, three attempts at most (existing behaviour) |
-| His face is found on few frames | the job completes only if the proof is 0, and files the per-scene face counts; a low count is shown, never hidden |
-| Proof is not 0 | the job fails with the number. No clip is filed |
-| A model file is missing or its hash differs | the job fails before the script starts, naming the file |
-| The swap has a different frame count or a cut the take lacks | the script's own warnings are stored with the job; the result is still gated by the proof |
-| The worker's checkout is behind `main` | the runner records the script's sha256 on the asset; a stale script is visible, and the preset list is checked against the server's on claim |
+| No worker is started | the job stays `queued`, at no cost. The worker on the Mac is started on demand; nothing starts it by itself, and the app does not show a waiting put-back yet (slice e) |
+| The Mac sleeps or the worker dies mid-job | the row is reaped after 20 minutes by the next claim of any worker and queued again (three attempts). It runs again only when a worker is started again |
+| His face is found on few frames | filed with the counts and a plain warning; found on none in any scene: not filed |
+| Proof is not 0, or the file's frames are not the proof's | the job fails with the number. No clip is filed, and it is not retried (only reaped jobs are) |
+| A model file is missing or its hash differs, or the T7 is unplugged | the worker does not ask for put-backs at all; mid-job it fails before the script starts, naming the file |
+| The swap is not conformed, is not the Dress output of that window, or the two are reversed | refused at the claim (the swap's own record) and again by duration on the worker |
+| The inputs are too large for the machine | refused before the script starts, with the number |
+| Two starts on one machine | the second stops: one put-back worker at a time (a lock in the scratch folder) |
+| The worker's checkout is behind `main` or has local changes | the commit and a dirty flag are on the asset. Not refused yet: pinning an expected script hash is slice b |
+| A signing error at the claim | the job goes back to the queue, it is not failed |
 
 ## 9. What has to happen for slice a to be LIVE
 
@@ -187,20 +205,25 @@ CODED, with unit tests, **not merged, not applied, not deployed**:
 
 | File | What |
 |---|---|
-| `supabase/functions/_shared/putback.ts` | the presets, limits, model hashes, the proof reader, the server's input and record checks |
-| `workers/edit-render/putback.mjs` | the runner: downloads the two inputs, checks the models, runs the script with `python -I`, gates on proof 0 |
-| `workers/edit-render/worker.mjs` | claims by kind; hands the runner the claim; sends the proof with the result |
-| `supabase/functions/edit-render-worker-api/index.ts` | the claim and complete paths for a put-back (§5) |
-| `supabase/functions/avt-mcp/jobContract.ts` | `avt_job_submit` accepts `putback` and refuses a bad one before it is queued |
-| `supabase/migrations/20261120100000_putback_job_kind.sql` | §9 step 2. A file only: SQL runs in Lovable's SQL editor |
+| `supabase/functions/_shared/putback.ts` | the presets, limits, model hashes, the proof reader and its gates, the server's input and record checks |
+| `workers/edit-render/putback.mjs` | the runner: bounded downloads from this project's storage, input and pair checks, `python -I`, the gates, the record, cleanup |
+| `workers/edit-render/worker.mjs`, `run-once-putback.sh` | kinds are said, not assumed; scratch is said; one job on demand on the Mac |
+| `supabase/functions/edit-render-worker-api/index.ts` | a worker runs only its own account's jobs (every kind); the put-back's claim and complete paths |
+| `supabase/functions/avt-mcp/jobContract.ts`, `jobHandlers.ts` | `avt_job_submit` queues a put-back through its own door; status reads through it |
+| `supabase/migrations/20261120100000_putback_job_kind.sql` | §9 step 2. A file only: SQL runs in Lovable |
 | `workers/edit-render/Dockerfile.putback` | the image with Python. **Never built** |
 
-VERIFIED on Fendi's Mac, 19 Nov: the worker's capability check passes with the real interpreter and the real model
-files (`{"ok":true, "versions":{"python":"3.9.6","numpy":"2.0.2","opencv":"5.0.0","mediapipe":"1.2.3"}}`, both model
-hashes equal to the recorded ones).
+Reviews (independent agents, read-only): architecture and security both returned CHANGES REQUESTED on the first
+draft (`3ae94e41`); what they found and what was done about each is on PR #512.
 
-NOT DONE: the c033 fixture through the runner. The Mac's swap was 9.0 GB of 10.2 GB in use when I checked
-(`sysctl vm.swapusage`), another session was working on it, and a 240-frame put-back holds several GB; the rule on
-that machine is one heavy job at a time. It is the first thing to run when the machine is free, and slice a does not
-merge before it prints proof 0.
+VERIFIED on Fendi's Mac, 19 Nov: the capability check passes with the real interpreter and the real model files
+(both model hashes equal to the recorded ones).
+
+NOT DONE:
+- **The SQL is not applied.** Changing the production database needs Fendi's explicit yes; it was asked for on
+  19 Nov. It carries the security fix of §5 as well as the put-back's columns.
+- **The c033 fixture through the runner.** The Mac's swap was 9–12 GB of 10–13 GB in use all of 19 Nov with other
+  sessions working; one heavy job at a time there.
+- Stage 1 of the handoff's table (cutting the window in the worker) and the checks of slice b.
+- No test runs the edge function's handler or the SQL: both are covered only by `deno check` and reading.
 

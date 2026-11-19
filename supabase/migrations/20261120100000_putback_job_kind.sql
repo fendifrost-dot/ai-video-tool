@@ -11,24 +11,24 @@
 -- What it does:
 --   1. edit_renders: job_kind (with 'putback'), project_id, input_asset_ids, settings; sequence_id may be null for
 --      a job that is not an edit; kind may be 'job'.
---   2. edit_render_workers.owner_user_id: whose machine a worker is. A put-back is handed only to a worker its
---      job's user owns (edit-render-worker-api).
---   3. claim_edit_render (the claim every existing worker uses) hands out EDIT jobs only; claim_edit_render_kinds
---      hands a worker only the kinds it names.
+--   2. edit_render_workers.owner_user_id: whose machine a worker is (the table has no policy and no grant: service
+--      role only). It is set by hand for the one live worker (see below); an ownerless worker is handed nothing.
+--   3. SECURITY FIX: both claims hand a worker only the jobs of the account it belongs to. Until now any signed-in
+--      visitor's edit row was handed to the always-on worker, whose edit runner executes a command line from the row.
 --   4. queue_putback_job / putback_job: the ONLY way a put-back row is made or read by its owner. The table's own
 --      policy (edit_renders_owner) admits only rows tied to one of the user's edit sequences and is NOT changed:
 --      no policy is added, widened or dropped here. Both functions act for auth.uid() alone, on a project and two
 --      files that user owns.
 -- No table is dropped, no row is deleted, no policy changes, no storage change.
 --
--- Rollback:
+-- Rollback (in this order):
 --   drop function public.queue_putback_job(uuid, uuid, uuid, text);
 --   drop function public.putback_job(uuid);
---   drop function public.claim_edit_render_kinds(text, text[]);
---   re-create claim_edit_render from 20261018100000_edit_render_worker.sql;
---   delete from public.edit_renders where job_kind = 'putback';   -- only if the columns are to go
+--   drop function public.claim_edit_render_kinds(text, text[], uuid);
+--   delete from public.edit_renders where job_kind = 'putback';
 --   alter table public.edit_renders drop constraint edit_renders_job_kind_check, drop constraint edit_renders_edit_needs_sequence;
---   (the added columns are harmless to keep; the pending STORE-5 migration adds the same ones.)
+--   Do NOT restore the old claim_edit_render: it is the hole item 3 closes. The added columns are harmless to keep
+--   (the pending STORE-5 migration adds the same ones).
 
 -- ---------------------------------------------------------------------------------------------- columns
 
@@ -52,13 +52,27 @@ alter table public.edit_renders add column if not exists project_id uuid referen
 
 alter table public.edit_render_workers add column if not exists owner_user_id uuid references auth.users (id) on delete cascade;
 
--- ---------------------------------------------------------------------------------------------- claims
+-- THE LIVE WORKER'S OWNER IS SET BY HAND, in this editor, by whoever applies this file — never derived from rows a
+-- signed-in visitor can write (a visitor may insert a finished job row of their own carrying any worker name):
+--
+--   update public.edit_render_workers set owner_user_id = '<the workspace owner's auth.users id>'
+--    where label = 'box' and revoked_at is null;
+--
+-- Until an owner is set a worker is handed nothing at all: that is the safe state, and the reason to do it at once.
 
+-- ---------------------------------------------------------------------------------------------- claims
+--
+-- A job is work done on the worker's own machine (an edit job's plan can carry a command line), so a worker is
+-- handed only the jobs of the account it belongs to. Before this file `claim_edit_render` handed the oldest queued
+-- row of ANY signed-in user, an anonymous sign-in included, to whichever worker asked.
+
+-- The claim every existing worker and the deployed function use: edit jobs only, and only of an account that owns
+-- a live worker.
 create or replace function public.claim_edit_render(p_worker text)
 returns setof public.edit_renders
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   perform public.reap_stale_edit_renders(20);
@@ -67,36 +81,40 @@ begin
      set status = 'rendering', claimed_at = now(), started_at = now(), worker_id = p_worker,
          attempts = r.attempts + 1, error = null
    where r.id = (
-     select id from public.edit_renders
-      where status = 'queued'
-        and job_kind = 'edit'
-      order by created_at
+     select e.id from public.edit_renders e
+      where e.status = 'queued'
+        and e.job_kind = 'edit'
+        and e.user_id in (select w.owner_user_id from public.edit_render_workers w
+                           where w.revoked_at is null and w.owner_user_id is not null)
+      order by e.created_at
       for update skip locked
       limit 1)
   returning r.*;
 end $$;
 
--- A worker names the kinds it can run and the user it works for. A put-back is claimed only for that user: another
--- user's put-back is never taken off the queue by this worker (it waits for a worker of its own, or times out of
--- nothing: a queued row costs nothing).
+-- A worker names the kinds it can run and the account it belongs to, and is handed that account's rows alone:
+-- another user's job is never taken off the queue by this worker.
 create or replace function public.claim_edit_render_kinds(p_worker text, p_kinds text[], p_owner uuid)
 returns setof public.edit_renders
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
+  if p_owner is null then
+    return;
+  end if;
   perform public.reap_stale_edit_renders(20);
   return query
   update public.edit_renders r
      set status = 'rendering', claimed_at = now(), started_at = now(), worker_id = p_worker,
          attempts = r.attempts + 1, error = null
    where r.id = (
-     select id from public.edit_renders
-      where status = 'queued'
-        and job_kind = any (p_kinds)
-        and (job_kind = 'edit' or (p_owner is not null and user_id = p_owner))
-      order by created_at
+     select e.id from public.edit_renders e
+      where e.status = 'queued'
+        and e.job_kind = any (p_kinds)
+        and e.user_id = p_owner
+      order by e.created_at
       for update skip locked
       limit 1)
   returning r.*;
@@ -118,7 +136,7 @@ create or replace function public.queue_putback_job(
 ) returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -163,7 +181,7 @@ returns jsonb
 language sql
 security definer
 stable
-set search_path = public
+set search_path = public, pg_temp
 as $$
   select jsonb_build_object(
            'id', r.id, 'job_kind', r.job_kind, 'status', r.status, 'error', r.error, 'attempts', r.attempts,

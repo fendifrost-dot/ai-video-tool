@@ -27,7 +27,19 @@ if [ "$(uname)" = "Darwin" ] && [ "${AVT_SKIP_MEMORY_CHECK:-0}" != "1" ]; then
     exit 4
   fi
 fi
+# one put-back at a time on this machine: a second start while one runs stops here
+lock="$AVT_SCRATCH_DIR/.putback-worker.lock"
+if ! mkdir "$lock" 2>/dev/null; then
+  other=$(cat "$lock/pid" 2>/dev/null || true)
+  if [ -n "$other" ] && kill -0 "$other" 2>/dev/null; then
+    echo "not starting: a put-back worker is already running here (pid $other)"
+    exit 6
+  fi
+  rm -rf "$lock" && mkdir "$lock"
+fi
+echo $$ > "$lock/pid"
+trap 'rm -rf "$lock"' EXIT
 export AVT_WORKER_ID=${AVT_WORKER_ID:-mac-once}
 export AVT_WORKER_KINDS=putback
 cd "$here/../.."
-exec node --experimental-strip-types workers/edit-render/worker.mjs --once
+node --experimental-strip-types workers/edit-render/worker.mjs --once

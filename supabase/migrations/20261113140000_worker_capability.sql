@@ -22,6 +22,10 @@ begin
   if auth.uid() is null then
     raise exception 'not authenticated';
   end if;
+  -- a worker runs its owner's jobs on its owner's machine: an anonymous sign-in owns none (security review, 19 Nov 2026)
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'an anonymous session cannot register a worker';
+  end if;
   if p_label is null or p_secret is null or length(p_secret) < 32 then
     raise exception 'label and a 32 character secret are required';
   end if;

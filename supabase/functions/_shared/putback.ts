@@ -25,17 +25,12 @@ export const PUTBACK_PRESETS: Readonly<Record<string, PutbackPreset>> = {
   c033_showroom: {
     args: ["--base", "original"],
     env: { AVT_HEAD_ZOOM: "4" },
-    reproduces: "YSL c033 5482b35b and c041 6f4edd50: clothes from the swap, his face his own pixels (docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md, 'AVT_HEAD_ZOOM=4 is the setting of both approved results')",
-  },
-  full_body: {
-    args: ["--base", "original"],
-    env: { AVT_HEAD_ZOOM: "3" },
-    reproduces: "a clothing swap on a full-body frame (docs/PROBLEM_INDEX.md, 'Face found on few frames': 3 on full body)",
+    reproduces: "YSL c033 5482b35b and c041 6f4edd50: clothes from the swap, his face his own pixels. The recipe's setting (docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md: 'AVT_HEAD_ZOOM=4 is the setting of both approved results'). The 18 Oct file's decoded MD5 predates the swap-rate interpolation and is not expected to match; the gate is the proof and the face counts",
   },
   hyenas_verse_creature: {
     args: ["--base", "swap", "--retime", "auto", "--hat-gap-fill", "off"],
     env: { AVT_HEAD_ZOOM: "3" },
-    reproduces: "Hyenas verse: a creature or prop swapped in beside him, the swap frame kept, his face put back (docs/handoffs/HANDOFF_GROKBOT_HYENAS_PERFORMANCE_IN_SET_2026-11-13.md:137; face found 96/96)",
+    reproduces: "Hyenas verse: a creature or prop swapped in beside him, the swap frame kept, his face put back (docs/handoffs/HANDOFF_GROKBOT_HYENAS_PERFORMANCE_IN_SET_2026-11-13.md:137; face found 96/96; Fendi on verse 0.9: 'Perfect')",
   },
 };
 
@@ -48,7 +43,29 @@ export const PUTBACK_MODELS: Readonly<Record<string, string>> = {
 };
 
 /** What one job may be handed. Over a limit, the job fails with the number before the script starts. */
-export const PUTBACK_LIMITS = { maxSeconds: 12, maxFrames: 1000, maxLongSide: 3840, timeoutMs: 20 * 60 * 1000, maxBytes: 1024 * 1024 * 1024 } as const;
+export const PUTBACK_LIMITS = {
+  maxSeconds: 12,
+  maxFrames: 1000,
+  maxLongSide: 3840,
+  /**
+   * frames x width x height of ONE input. The script holds both clips in memory as raw frames (3 bytes a pixel), so
+   * this is what decides whether a job fits the host: 520 million is about 1.56 GB a clip, and admits the approved
+   * c033 window (240 frames of 1080x1920 = 498 million) and nothing much larger. A 4K source is cropped first, as
+   * the recipe says.
+   */
+  maxPixelFrames: 520_000_000,
+  /** The two inputs must cover the same stretch: the swap is the Dress output CONFORMED to the take's window. */
+  maxDurationGapSeconds: 0.15,
+  /** Script wall time. With the two downloads (2 min each) it stays under the queue's 20-minute stale limit. */
+  timeoutMs: 12 * 60 * 1000,
+  downloadTimeoutMs: 2 * 60 * 1000,
+  maxBytes: 1024 * 1024 * 1024,
+  /** The video codecs a put-back input may be; anything else is refused before the script starts. */
+  codecs: ["h264", "hevc", "prores"],
+} as const;
+
+/** The modules body_only_swap.py imports from its own folder: hashed with it, so "unchanged" can be checked. */
+export const PUTBACK_SCRIPT_FILES = ["body_only_swap.py", "segmenters.py", "swap_rate.py", "face_track.py", "head_fit.py", "silhouette.py"] as const;
 
 /** The script, relative to the repo root, and the file it always writes (rename on filing). */
 export const PUTBACK_SCRIPT = "scripts/edit/body_only_swap.py";
@@ -91,6 +108,8 @@ export type PutbackProof = {
   faceFound: { scene: string; found: number; of: number }[];
   /** The script's own warnings, kept with the job. */
   warnings: string[];
+  /** What else the script said it did to the swap's timing or picture (stretched, retimed, interpolated, re-rendered). */
+  notes: string[];
 };
 
 /** The script's printout, read. It changes nothing in the script: these are the lines it has always printed. */
@@ -98,45 +117,94 @@ export function parsePutbackProof(stdout: string): PutbackProof {
   const text = String(stdout ?? "");
   const proof = text.match(/frames (\d+) swap frames aligned (\d+) max \|out-original\| on face\/hair\/skin: (-?\d+(?:\.\d+)?)/);
   const faceFound = [...text.matchAll(/scene (\d+-\d+): his face on (\d+) of (\d+) frames/g)].map((m) => ({ scene: m[1], found: Number(m[2]), of: Number(m[3]) }));
-  const warnings = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.startsWith("WARNING")).slice(0, 20).map((l) => l.slice(0, 300));
+  const lines = text.split(/\r?\n/).map((l) => l.trim());
+  const warnings = lines.filter((l) => l.startsWith("WARNING")).slice(0, 20).map((l) => l.slice(0, 300));
+  const notes = lines.filter((l) => /stretched|retimed to the take|swap interpolated|re-rendered by the generator|scenes aligned by their cuts/.test(l) && !l.startsWith("WARNING")).slice(0, 20).map((l) => l.slice(0, 300));
   return {
     proofMax: proof ? Number(proof[3]) : null,
     frames: proof ? Number(proof[1]) : null,
     swapFramesAligned: proof ? Number(proof[2]) : null,
     faceFound,
     warnings,
+    notes,
   };
 }
 
-/** Whether a result may be filed as a clip: the proof was printed and is exactly 0. Anything else fails the job. */
+/** On how many of the frames his face was found, over all scenes (null when the script printed no face line). */
+export function faceCoverage(proof: PutbackProof): { found: number; of: number; share: number } | null {
+  if (proof.faceFound.length === 0) return null;
+  const found = proof.faceFound.reduce((n, f) => n + f.found, 0);
+  const of = proof.faceFound.reduce((n, f) => n + f.of, 0);
+  return { found, of, share: of > 0 ? found / of : 0 };
+}
+
+/**
+ * Whether a result may be filed as a clip. The proof line alone is not enough: it measures only the pixels the script
+ * chose to protect, so it prints 0 when it protected NOTHING (his face found on no frame: the glasses and the face
+ * then come from the swap). So: the proof was printed and is exactly 0, AND the script said on how many frames it
+ * found his face, AND it found him in every scene. A low share is not refused (the handoff: "or the count shown"):
+ * it is recorded and said on the asset.
+ */
 export function putbackPasses(proof: PutbackProof): { ok: true } | { ok: false; why: string } {
   if (proof.proofMax === null) return { ok: false, why: "the script did not print its proof line" };
   if (proof.proofMax !== 0) return { ok: false, why: `max |out-original| on face/hair/skin is ${proof.proofMax}, not 0: his face is not his own pixels` };
+  if (!(proof.frames !== null && proof.frames > 0)) return { ok: false, why: "the proof line names no frames" };
+  const cover = faceCoverage(proof);
+  if (!cover) return { ok: false, why: "the script did not say on how many frames it found his face: a proof of 0 with no face protects nothing" };
+  const empty = proof.faceFound.find((f) => f.found === 0);
+  if (empty) return { ok: false, why: `his face was found on 0 of ${empty.of} frames in scene ${empty.scene}: nothing of him was protected there, so the 0 proves nothing (try the other preset, or a closer window)` };
   return { ok: true };
 }
 
+/** Below this share of frames with his face found, the result is filed with a plain warning on it. */
+export const LOW_FACE_SHARE = 0.9;
+
 /** A probed input held against the limits. */
-export function checkPutbackInput(label: string, probe: { seconds: number; frames: number; width: number; height: number }): string | null {
+export function checkPutbackInput(label: string, probe: { seconds: number; frames: number; width: number; height: number; codec?: string }): string | null {
   const L = PUTBACK_LIMITS;
   if (!(probe.seconds > 0) || !(probe.frames > 0)) return `${label}: no video in it`;
+  if (probe.codec !== undefined && !(L.codecs as readonly string[]).includes(probe.codec)) return `${label}: its video is ${probe.codec || "of no known codec"}; a put-back reads ${L.codecs.join(", ")}`;
+  if (probe.frames * probe.width * probe.height > L.maxPixelFrames) return `${label}: ${probe.frames} frames of ${probe.width}x${probe.height} is more than this job holds in memory (${Math.round(L.maxPixelFrames / 1e6)} million pixel-frames; the approved c033 window is 498). Cut a shorter window or crop the 4K source to him first`;
   if (probe.seconds > L.maxSeconds) return `${label}: ${probe.seconds.toFixed(2)} s is over the ${L.maxSeconds} s a put-back takes`;
   if (probe.frames > L.maxFrames) return `${label}: ${probe.frames} frames is over ${L.maxFrames}`;
   if (Math.max(probe.width, probe.height) > L.maxLongSide) return `${label}: ${probe.width}x${probe.height} is over ${L.maxLongSide} px on the long side`;
   return null;
 }
 
+/** The two inputs held against each other: the swap must be conformed to the take's own window. */
+export function checkPutbackPair(original: { seconds: number }, swap: { seconds: number }): string | null {
+  const gap = Math.abs(original.seconds - swap.seconds);
+  return gap > PUTBACK_LIMITS.maxDurationGapSeconds
+    ? `the swap is ${swap.seconds.toFixed(3)} s and the take's window ${original.seconds.toFixed(3)} s: the swap is not conformed to the window (docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md, "Do not")`
+    : null;
+}
+
 /** What is recorded on the filed asset (`metadata_json.putback`): the proof, and everything needed to make it again. */
 export function putbackRecord(input: {
   plan: PutbackPlan;
   proof: PutbackProof;
+  /** sha256 over the script and every module it imports from its folder (PUTBACK_SCRIPT_FILES), in that order. */
   scriptSha256: string;
   inputSha256: { original: string; swap: string };
   seconds: number | null;
+  /** The interpreter and libraries that ran it, and ffmpeg (it interpolates the swap and encodes the result). */
+  versions?: Record<string, string> | null;
+  /** The worker checkout: its commit, and whether it had uncommitted changes. */
+  repo?: { commit: string; dirty: boolean } | null;
+  output?: { frames: number; width: number; height: number; seconds: number } | null;
 }): Record<string, unknown> {
+  const cover = faceCoverage(input.proof);
   return {
     method: "FACE_PRESERVING_CLOTHING_SWAP",
     script: PUTBACK_SCRIPT,
+    script_files: [...PUTBACK_SCRIPT_FILES],
     script_sha256: input.scriptSha256,
+    versions: input.versions ?? null,
+    repo: input.repo ?? null,
+    output: input.output ?? null,
+    face_share: cover ? Math.round(cover.share * 1000) / 1000 : null,
+    face_low: cover ? cover.share < LOW_FACE_SHARE : null,
+    notes: input.proof.notes,
     preset: input.plan.preset,
     args: input.plan.args,
     env: input.plan.env,
@@ -160,9 +228,16 @@ export function putbackRecord(input: {
 export type PutbackItem = { assetId: string; bucket: string; path: string };
 
 /**
- * The two files of a put-back, resolved from the asset rows the SERVER read. An input is handed over only when its
- * row belongs to the same user and the same project as the job, sits in an allowed bucket, and its path is a plain
- * storage path inside that project. The worker never names a path.
+ * The two files of a put-back, resolved from the asset rows the SERVER read. An input is handed over only when:
+ * its row belongs to the same user and the same project as the job; it sits in an allowed bucket; its path is a
+ * plain storage path under THAT USER'S own folder and that project (`{user}/{project}/…`); and the swap is the Dress
+ * output made FROM the original (`metadata_json.derived_from.asset_id`, written by dress-clip when it files a
+ * conformed result) — so the two cannot be handed in reversed, and a raw provider file cannot stand in for the
+ * conformed one. The worker never names a path.
+ *
+ * What this does not settle while every bucket and `project_assets` are open (RISK-001 / SEC-4): a stranger can
+ * plant a file under the owner's folder with a row to match. It reaches a worker only if the OWNER then queues a
+ * put-back naming it, since only the owner's own door makes a job.
  */
 export function putbackInputItems(
   plan: PutbackPlan,
@@ -171,14 +246,15 @@ export function putbackInputItems(
   bucketOf: (row: Record<string, unknown>) => string,
   allowedBuckets: readonly string[],
 ): PutbackResult<{ original: PutbackItem; swap: PutbackItem }> {
+  const rowOf = (assetId: string) => rows.find((r) => typeof r.id === "string" && r.id.toLowerCase() === assetId.toLowerCase());
   const item = (assetId: string, label: string): PutbackResult<PutbackItem> => {
-    const row = rows.find((r) => typeof r.id === "string" && r.id.toLowerCase() === assetId.toLowerCase());
+    const row = rowOf(assetId);
     if (!row) return { ok: false, error: `${label} (${assetId.slice(0, 8)}) is not an asset of this project` };
     if (row.user_id !== job.userId || row.project_id !== job.projectId) return { ok: false, error: `${label} (${assetId.slice(0, 8)}) belongs to another project or owner` };
     const path = typeof row.file_url === "string" ? row.file_url.trim() : "";
     const parts = path.split("/");
-    if (!path || /^[a-z]+:\/\//i.test(path) || path.startsWith("/") || parts.some((p) => p === "" || p === "." || p === "..") || parts[1] !== job.projectId) {
-      return { ok: false, error: `${label} (${assetId.slice(0, 8)}) has no storage path inside this project` };
+    if (!path || /^[a-z]+:\/\//i.test(path) || path.startsWith("/") || parts.some((p) => p === "" || p === "." || p === "..") || parts[0] !== job.userId || parts[1] !== job.projectId) {
+      return { ok: false, error: `${label} (${assetId.slice(0, 8)}) has no storage path inside this owner's folder of this project` };
     }
     const bucket = bucketOf(row);
     if (!allowedBuckets.includes(bucket)) return { ok: false, error: `${label} (${assetId.slice(0, 8)}) is in a bucket a put-back does not read` };
@@ -188,20 +264,31 @@ export function putbackInputItems(
   if (!original.ok) return original;
   const swap = item(plan.swapAssetId, "the swap");
   if (!swap.ok) return swap;
+  const from = ((rowOf(plan.swapAssetId)?.metadata_json ?? {}) as { derived_from?: { asset_id?: unknown; method?: unknown } }).derived_from;
+  if (!from || typeof from.asset_id !== "string" || from.asset_id.toLowerCase() !== plan.originalAssetId.toLowerCase()) {
+    return { ok: false, error: `the swap (${plan.swapAssetId.slice(0, 8)}) is not the Dress output of the original (${plan.originalAssetId.slice(0, 8)}): a put-back takes the window, then the conformed dress-clip result made from that same window, in that order` };
+  }
   return { ok: true, value: { original: original.value, swap: swap.value } };
 }
 
 const HEX64 = /^[0-9a-f]{64}$/;
+const sameList = (a: unknown, b: readonly string[]) => Array.isArray(a) && a.length === b.length && a.every((x, i) => x === b[i]);
+const sameMap = (a: unknown, b: Readonly<Record<string, string>>) =>
+  !!a && typeof a === "object" && !Array.isArray(a) && Object.keys(a as object).length === Object.keys(b).length && Object.entries(b).every(([k, v]) => (a as Record<string, unknown>)[k] === v);
 
 /**
- * The record a worker sends back, checked again at the door before anything is filed: the proof must be exactly 0,
- * and the record must be for THIS job (its preset, its two assets). Only known fields are kept.
+ * The record a worker sends back, checked again at the door before anything is filed. What this check is: the
+ * worker's own statement, held against THIS job — its preset, the preset's exact flags and settings (a record that
+ * says it ran anything else is refused, never rewritten), its two assets — with the proof exactly 0, his face found
+ * in every scene, and the hashes present. What it is not: the server does not run the script and does not hash the
+ * uploaded file, so whoever holds a worker's secret can file a clip with this record on it. The asset says so.
  */
 export function acceptPutbackRecord(raw: unknown, plan: PutbackPlan): PutbackResult<Record<string, unknown>> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "the put-back came back without its proof record" };
   const r = raw as Record<string, unknown>;
   if (r.proof_max !== 0) return { ok: false, error: `the put-back's proof is ${String(r.proof_max)}, not 0: nothing is filed` };
   if (r.preset !== plan.preset || r.original_asset_id !== plan.originalAssetId || r.swap_asset_id !== plan.swapAssetId) return { ok: false, error: "the proof record is for another job" };
+  if (!sameList(r.args, plan.args) || !sameMap(r.env, plan.env)) return { ok: false, error: `the worker did not run preset ${plan.preset} as it is written (its flags or settings differ): nothing is filed` };
   const sha = (r.input_sha256 ?? {}) as Record<string, unknown>;
   if (typeof r.script_sha256 !== "string" || !HEX64.test(r.script_sha256) || typeof sha.original !== "string" || !HEX64.test(sha.original) || typeof sha.swap !== "string" || !HEX64.test(sha.swap)) {
     return { ok: false, error: "the proof record lacks the hashes of the script and the inputs" };
@@ -211,30 +298,63 @@ export function acceptPutbackRecord(raw: unknown, plan: PutbackPlan): PutbackRes
     .slice(0, 50)
     .map((f) => f as Record<string, unknown>)
     .filter((f) => f && typeof f.scene === "string" && typeof f.found === "number" && typeof f.of === "number")
-    .map((f) => ({ scene: String(f.scene).slice(0, 24), found: int(f.found), of: int(f.of) }));
+    .map((f) => ({ scene: String(f.scene).slice(0, 24), found: int(f.found) ?? 0, of: int(f.of) ?? 0 }));
+  const frames = int(r.frames);
+  if (!frames) return { ok: false, error: "the proof record names no frames: nothing is filed" };
+  if (faceFound.length === 0) return { ok: false, error: "the proof record does not say on how many frames his face was found: nothing is filed" };
+  const empty = faceFound.find((f) => f.found === 0);
+  if (empty) return { ok: false, error: `his face was found on 0 of ${empty.of} frames in scene ${empty.scene}: nothing is filed` };
+  const out = (r.output ?? {}) as Record<string, unknown>;
+  if (int(out.frames) !== null && int(out.frames) !== frames) return { ok: false, error: `the file has ${String(out.frames)} frames and the proof is for ${frames}: nothing is filed` };
+  const found = faceFound.reduce((n, f) => n + f.found, 0);
+  const of = faceFound.reduce((n, f) => n + f.of, 0);
+  const share = of > 0 ? found / of : 0;
+  const strs = (v: unknown, n: number) => (Array.isArray(v) ? v : []).filter((w): w is string => typeof w === "string").slice(0, n).map((w) => w.slice(0, 300));
+  const versions = r.versions && typeof r.versions === "object" && !Array.isArray(r.versions)
+    ? Object.fromEntries(Object.entries(r.versions as Record<string, unknown>).filter(([k, v]) => /^[a-z]{2,12}$/.test(k) && typeof v === "string").slice(0, 8).map(([k, v]) => [k, String(v).slice(0, 40)]))
+    : null;
+  const repo = (r.repo ?? {}) as Record<string, unknown>;
   return {
     ok: true,
     value: {
       method: "FACE_PRESERVING_CLOTHING_SWAP",
       script: PUTBACK_SCRIPT,
+      script_files: [...PUTBACK_SCRIPT_FILES],
       script_sha256: r.script_sha256,
       preset: plan.preset,
       args: [...plan.args],
       env: { ...plan.env },
       model_sha256: { ...PUTBACK_MODELS },
+      versions,
+      repo: typeof repo.commit === "string" && /^[0-9a-f]{7,40}$/.test(repo.commit) ? { commit: repo.commit, dirty: repo.dirty === true } : null,
       original_asset_id: plan.originalAssetId,
       swap_asset_id: plan.swapAssetId,
       input_sha256: { original: sha.original, swap: sha.swap },
       proof_max: 0,
-      frames: int(r.frames),
+      proof_measured: "on the frames before the final encode, by the worker; not re-run and not re-hashed by the server",
+      frames,
       swap_frames_aligned: int(r.swap_frames_aligned),
       face_found: faceFound,
-      warnings: (Array.isArray(r.warnings) ? r.warnings : []).filter((w): w is string => typeof w === "string").slice(0, 20).map((w) => w.slice(0, 300)),
+      face_share: Math.round(share * 1000) / 1000,
+      face_low: share < LOW_FACE_SHARE,
+      output: int(out.frames) !== null ? { frames: int(out.frames), width: int(out.width), height: int(out.height), seconds: typeof out.seconds === "number" ? out.seconds : null } : null,
+      warnings: strs(r.warnings, 20),
+      notes: strs(r.notes, 20),
       run_seconds: typeof r.run_seconds === "number" && Number.isFinite(r.run_seconds) ? r.run_seconds : null,
       approved: false,
     },
   };
 }
+
+/** The note written on the filed asset: what was done, what the proof is, and a plain warning when his face was found on few frames. */
+export function putbackNote(record: Record<string, unknown>): string {
+  const low = record.face_low === true ? ` WARNING: his face was found on only ${Math.round(Number(record.face_share) * 100)} % of the frames; look at the face sheet before using it.` : "";
+  return `Put-back (free, worker), preset ${String(record.preset)}: clothes from the swap, his face from the take. The script's proof printed 0 (max |out-original| on face/hair/skin, measured by the worker on the frames before the final encode).${low} Not approved: the director judges it.`;
+}
+
+/** Where a put-back's file goes: one object per attempt, so a retry never replaces what an earlier attempt uploaded. */
+export const putbackOutputPath = (userId: string, projectId: string, jobId: string, attempt: number) =>
+  `${userId}/${projectId}/renders/${jobId}_a${Math.max(1, Math.round(attempt))}.mp4`;
 
 /** The kinds a worker may ask for at this door. Anything else in a claim is dropped. */
 export const CLAIMABLE_KINDS = ["edit", "putback"] as const;

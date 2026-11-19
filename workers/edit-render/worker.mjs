@@ -145,6 +145,8 @@ export async function runOnce({
     const message = error instanceof Error ? error.message : String(error);
     if (!render) throw error;
     log("failed", { renderId: render.id, error: message });
+    // a failed job that is not an edit leaves nothing behind (its runner has removed its files; the folder goes too)
+    if ((render.job_kind ?? "edit") !== "edit") clearScratch = true;
     await api({ action: "fail", workerId, renderId: render.id, error: message }).catch((e) =>
       log("fail_report_error", { error: String(e) }),
     );
@@ -175,18 +177,19 @@ async function main() {
   const tools = await capabilityManifest();
   // a put-back needs Python with numpy, OpenCV and MediaPipe, and the two model files with the right hashes
   const putback = await putbackCapability();
-  // AVT_WORKER_KINDS narrows what this host asks for (the Mac's on-demand run asks for put-backs only, so it never
-  // takes an edit render the always-on box is there for). It can only narrow: a kind this host cannot run is dropped.
+  // What this host asks for is SAID, never assumed (AVT_WORKER_KINDS, default "edit"). An edit job's plan can carry
+  // a command line from its row, so a host takes edit jobs only on purpose; Fendi's Mac asks for put-backs alone
+  // (run-once-putback.sh). A kind the host cannot run is dropped.
   const can = ["edit", ...(putback.ok ? ["putback"] : [])];
-  const asked = (process.env.AVT_WORKER_KINDS ?? "").split(",").map((k) => k.trim()).filter(Boolean);
-  const kinds = asked.length ? can.filter((k) => asked.includes(k)) : can;
+  const asked = (process.env.AVT_WORKER_KINDS ?? "edit").split(",").map((k) => k.trim()).filter(Boolean);
+  const kinds = can.filter((k) => asked.includes(k));
   if (kinds.length === 0) {
     log("nothing_to_do", { asked, can, putback: putback.problems });
     process.exit(5);
   }
   const runJob = (render, dir, ctx) => {
     if (render.job_kind === "putback")
-      return runPutback(render, dir, { ...ctx, log: (line) => log("putback", { renderId: render.id, line }) });
+      return runPutback(render, dir, { ...ctx, versions: putback.versions, log: (line) => log("putback", { renderId: render.id, line }) });
     throw new Error(`no runner for ${render.job_kind}`);
   };
   log("start", {
