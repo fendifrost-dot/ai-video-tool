@@ -342,3 +342,23 @@ as a Gemini whole-scene still with `34bd95ac` as the man and frames of the car t
 his head at the photo's angle and no larger than in the photo (about 160 px), then his real face from `34bd95ac`
 (`still_face_from_photo.py` + `still_face_putback.py`); the car takes show only the driver's side from the steering
 column, so the passenger side is drawn. Then the same for him and Allen by the cars.
+
+## Allen in the passenger seat v1, 19 Nov 2026 ($0.27; Fendi: "I'm not here to micromanage you I'm only going to interrupt when I see non verified methods")
+
+DECISION (his): a step on a verified method is stated with its price and run, no "go" asked; a step with NO verified
+method is put to him before any money (PROBLEM_INDEX rule 3).
+| Step | What | Result |
+|---|---|---|
+| Plate, $0 | a real frame of his car take `IMG_6462.MOV` at 20 s (`-noautorotate`), cropped to the passenger side so he is not in it: `32b83244` | the empty red passenger seat, mirror, ceiling: his own footage |
+| Still, $0.27 | Gemini edit of that frame (`screen`) adding Allen from `34bd95ac` (`cast`), prompt `allen_passenger_seat_v1`, 1k so his face is no larger than his photo's; job `1acdc65c` → `1c1bff38` | reads as the car footage: grain, seat belt, the bear half hidden by the belt and dash |
+| His face, $0 | `still_face_from_photo.py 34bd95ac still 330,240,270,300` (scale 0.97, turn -3.1 deg, residual 1.9 %, face 159 x 192 px) + `still_face_putback.py` | `max |out-original| inside the hard head mask: 0` (21,746 px); no seam seen at 3x; his eyes are lowered as in the photo |
+T7 `work/allen/passenger_seat_v1/` (`allen_passenger_seat_v1_realface.png`, `allen_passenger_seat_v1_head_check.jpg`).
+Filed `100483dd` under `worlds/scene_*`; scene `df2ca262` "Lexus at night: Allen in the passenger seat" (15.0-18.5 s);
+shot `allen_passenger` `b8a37e79`. Pending his word. This is why the paste works here and failed on test B: the scale
+is 1 or less and the scene is as dark and soft as his photo.
+
+**NOT RUN, no verified method: animating him.** Dry run ready (`montage-shot` continuous, `withHim: false`,
+`face: false`, 6 s, $2.773, plate `100483dd`). The verified cases animate FENDI at 33-63 px faces (storm) or from his
+real footage (recipe F). Allen has no footage and his face here is about 100 px at 720p, so Seedance would redraw it
+on every frame with nothing but the still to hold it. Put to Fendi before spending. If run: one clip, judged by a head
+strip against `34bd95ac` and `mouth_scan.py`; a drifting face is a reject, not a re-roll loop.
