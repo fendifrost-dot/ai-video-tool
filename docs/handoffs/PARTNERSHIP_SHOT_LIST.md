@@ -289,3 +289,35 @@ Prompt `allen_likeness_v1_younger`: the "real photograph, not a render" lead, "t
 reference photograph, at exactly the age he is in those photographs", no cap, the clothes of ref 05. Head check with
 his real photos above the generated heads: `allen_likeness_v1_head_check.jpg`. NOT JUDGED: whether the face is Allen
 (his call; no agent judges that). Both assets `pending`.
+
+## Allen: likeness by the swap method, and his wardrobe, 19 Nov 2026 ($0.27)
+
+Fendi, on test v1: "use the methodology we use for the face swap and the clothing swap to get his likeness correct. And
+we're going to change his wardrobe. I remember it should be in the notes, Ralph Lauren outfit." / "It was a Ralph Lauren
+polo bear sweater that we were going to put on him." DECISION (his): Allen's face is his real photo's pixels, not a
+face Gemini draws; he wears a Polo Bear sweater. Test v1 (a drawn face) is superseded, never judged.
+
+**Wardrobe.** Polo Ralph Lauren Polo Bear Sweater, Navy (flag-sweater bear), code AI710946137001, chosen by the agent
+(colour and style were left open; it does not repeat Fendi's cream one). T7 `wardrobe/10_allen_polo_bear_sweater_navy/`
+(`source.txt`), flat front filed as `400b40c3`. Nothing collared under it: the maker's worn photos show a button-down,
+so only the FLAT picture is sent as the garment.
+
+**FAILED, not posted ($0): his real face pasted onto the generated test B** (`still_face_from_photo.py` +
+`still_face_putback.py`, proof 0 each; T7 `work/allen/likeness_test_v1/face/`). MEASURED / OBSERVED:
+| His photo | Scale onto the 125 px drawn face | Turn | Residual | What it looks like |
+|---|---|---|---|---|
+| ref 05 (kitchen) | 0.68 | -0.6 deg | 2.3 % | soft; a straight seam across the forehead; his eyes half closed as in the photo |
+| ref 06 (red hoodie) | 2.20 (enlarged) | 1.1 deg | 1.6 % | blocky: the photo's face is about 60 px wide |
+| ref 03 (white polo) | 1.58 (enlarged) | 8.8 deg | 4.0 % | wrong angle; a round seam on his cheek |
+Cause: his young photos are old phone pictures (faces 60 to 190 px), none face-on at rest. RULE for Allen: a generated
+still of him is framed so his face is no larger than his photo's face, and its head matches a photo's angle; otherwise
+the route below.
+
+**PASSED my check, posted: the clothing swap on his REAL photo** (skill avt-clothing-swap, "A STILL of him in a new
+outfit"): ref 05 as `screen` + the flat sweater as `garment`, prompt `allen_dressed_photo_v1` (1k, 5:4, "change ONLY
+what the man is wearing"; "still look like the same old phone photograph"), job `99002f42` → `d77de245`; then
+`still_face_putback.py ref05 edit out`: ECC 0.903, `max |out-original| inside the hard head mask: 0` (73,582 px: his
+face, cap, ear and earring are the photo's pixels). T7 `work/allen/dressed_v1/allen_dressed_polo_bear_navy_realface.png`
+(1152x928), check sheets `allen_dressed_v1_check.jpg`, `allen_dressed_v1_heads.jpg`. Pending his word.
+NEXT (not started): the same on a seated photo for the passenger seat (ref 03 is seated, three-quarter, 316x398), then
+Allen placed in the car and by the cars as his own pixels; quote before each.
