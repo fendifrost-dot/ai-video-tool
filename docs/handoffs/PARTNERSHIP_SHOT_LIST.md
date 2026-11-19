@@ -566,3 +566,24 @@ about a twelfth of the frame width and the cabin light changes; the seat sits at
 shoulder falls outside the frame; the dashboard edge crosses in front of his chest. He has to be tracked to the seat,
 lit with the cabin and tucked behind the dashboard, frame by frame. No verified method for a still layer on a moving
 handheld take: a test.
+
+### Allen beside him in the real car take, test 1, 19 Nov 2026 ($0.036 matte, ledger row 39). NOT VERIFIED: a test
+
+Line: "See you frequently up in my dreams", song 1:18.10-1:21.78 (file 74.22-77.90 s of `IMG_6462.MOV`, 89 frames at
+24 fps, read with `-noautorotate`). VERIFIED by looking at all four car takes at this line: only 6462 shows the
+passenger seat; 6465, 6466 and 6467 are close on him from the wheel.
+
+| Step | What | Measured |
+|---|---|---|
+| Cut-out | `photo_people_cutout.py clip` → `matte-video-proxy` (veed, job `edc3834c`) as delivered → `cut` | people 14.5 % of the still; the dashboard in front of him is not in the matte |
+| Track | the cabin (sunroof edge, headrest, seat backs, rear seats) followed frame to frame (ECC, rotation + shift), from the first frame | match 0.997 median (lowest 0.46 on the light flare); cabin drifts 93 px across and 34 px down at 720p. Chained feature tracking failed here (40 of 89 frames unsolved): too dark and shaky |
+| Place | still → take: scale 1.0, shift (-250, +75) px at 720p, so the headrest's top right corner matches | his head sits in front of the headrest, left shoulder out of frame |
+| Dashboard | the pale dashboard edge found per frame; he is hidden under its top edge | |
+| Light | one gain from the bare headrest beside his head per frame (0.61-1.06 of frame 1), base gain 1.3, saturation 0.88, and the take's own haze (rise of the dark cabin, up to 85 of 255) laid over him | on the frames where a street light floods the car he sinks into the haze with the cabin |
+| Nod | version B (his own pixels moved), frames 48-71 of the line | |
+| Proof | `max |out-take| outside Allen's outline: 0` | Fendi's performance is untouched |
+
+Output: T7 `work/allen/two_shot/allen_two_shot_test1.mp4` (1280x720, with the song), script `allen_two_shot.py` beside
+it. OBSERVED, to fix if he likes the idea: the cut-out's edge is harder than the footage; no shadow from him on the
+seat; he is not blurred when the camera shakes; 720p only (the still is 1376 px wide, so 1080p needs it enlarged 1.4x
+or remade at 2k); the light flare comes from his side and should catch his cheek. Pending his word.
