@@ -587,3 +587,23 @@ Output: T7 `work/allen/two_shot/allen_two_shot_test1.mp4` (1280x720, with the so
 it. OBSERVED, to fix if he likes the idea: the cut-out's edge is harder than the footage; no shadow from him on the
 seat; he is not blurred when the camera shakes; 720p only (the still is 1376 px wide, so 1080p needs it enlarged 1.4x
 or remade at 2k); the light flare comes from his side and should catch his cheek. Pending his word.
+
+## Allen beside him in the real car take, test 2 ($0, local; asset `3e7ce2a1`, pending)
+
+Fendi on test 1 (19 Nov): "his likeness is correct but we need to figure out a method to make him not look pasted in
+the scene and having things glitch around him. The console screen is appearing and disappearing and the depth is off
+in the image to where Allen almost looks like he is connected to the seat in a 2 dimensional plane where as you can
+see my depth".
+
+| What he saw | Cause in test 1 (VERIFIED by measurement) | Test 2 |
+|---|---|---|
+| The console screen appears and disappears | the dashboard edge was found fresh on every frame by a fixed colour rule; in the light flare (frames 7-22) the rule failed. Allen covered dashboard pixels on all 89 frames, up to 11,924 px | `dash_occluder.py`: the edge tracked as one shape from frame 1, then cut on each frame by GrabCut seeded from that track (colour learned from that frame's own light). Allen covers 0 dashboard pixels on 89 frames; left end steps 3 px per frame median, 10 worst |
+| Flat, joined to the seat | he was tracked to one average of the whole cabin, so he moved as part of the far wall; the take's seat is lit as an empty seat; he was a frozen still | he follows the passenger headrest plus half of the slide the headrest shows against the rear seats (measured: 20 px across, 16 px down, over the clip); he shadows the seat behind him; slow sway of head and body |
+| Pasted | razor edge, no blur on camera shake, brightened 1.3x | edge pulled in and softened, blur along each frame's shake (median 2.5, max 5.2 px per frame), edge shading, light wrap 0.12, exposure 1.12 |
+
+- Script: `two_shot/allen_two_shot_v2.py -250 75 1.0 48` with `EXPO=1.12` (T7). Printed: outside Allen's outline and
+  his shadow on the seat 0; Fendi's half of the frame (x >= 700) 0.
+- HYPOTHESIS, not measured: the depth figures (head 20 cm nearer than the headrest, so `PAR` 0.5) and the light
+  direction of the shadow (front left). Judged by eye only.
+- OBSERVED, still open: 720p; his face is evenly lit while Fendi's light moves; the still looks at eye level and the
+  phone sits low; no verdict from Fendi yet. Not a row in `PROBLEM_INDEX.md` until he approves a version.
