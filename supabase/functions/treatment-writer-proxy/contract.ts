@@ -82,7 +82,7 @@ export const MONTAGE_PATTERNS = [
   "People in uniform doing routine work on something that should not be there: an airport ground crew marshals a blue whale onto the stand with light wands.",
   "A door, a lift or a fridge that opens straight onto another place: a corner-shop freezer door opens on a ski slope and a boy steps out carrying a sled.",
   "An ordinary thing at the wrong size or made of the wrong stuff: two men roll a wristwatch the size of a manhole cover down the block.",
-  "The right event in the wrong room: a board meeting held inside a running car wash, nobody looking up from the papers.",
+  "The right event in the wrong element: a board meeting held at the bottom of a public swimming pool, the papers dry, nobody looking up from them.",
   "A sound or a gesture that bends the physical world: on the snare every streetlight on the block bows, then straightens.",
   "An animal or a crowd behaving as professionals: a goat in a hi-vis vest signs for a parcel at the door.",
 ] as const;
@@ -217,6 +217,15 @@ export const MONTAGE_TREATMENT_SCHEMA = {
 } as const;
 
 export type MontageScene = { words: string; event: string; place: string; people: string[] };
+
+/** The scenes a montage call returned beyond the limit: cut, and said (they are reported with the run, like any scene left out). */
+export function scenesOverLimit(raw: unknown): { words: string; why: string }[] {
+  const list = Array.isArray((raw as { scenes?: unknown })?.scenes) ? ((raw as { scenes: unknown[] }).scenes as Record<string, unknown>[]) : [];
+  return list
+    .filter((r) => typeof r?.event === "string" && r.event.trim())
+    .slice(MONTAGE_MAX_SCENES)
+    .map((r) => ({ words: typeof r.words === "string" ? r.words.replace(/\s+/g, " ").trim().slice(0, 300) : "", why: `the writer returned more than ${MONTAGE_MAX_SCENES} scenes; this one was past the limit` }));
+}
 
 /** The scenes a montage call returned, cleaned. */
 export function montageScenes(raw: unknown): MontageScene[] {
@@ -423,8 +432,8 @@ export function montageTreatmentSystemPrompt(ctx: WriterContext): string {
     [
       "How to write the scenes:",
       "- Go through the lyrics in the order they are sung. For each line, or each couplet, write ONE scene: ONE impossible event that answers THOSE words — what they name, claim or boast, taken literally, at the wrong scale, in the wrong place, or done by the wrong people. Leave out a line only when it has no event worth a scene: his performance covers it.",
-      "- The request says how many lines are sung (`sung_lines`) and how many scenes to aim for (`scenes_wanted`). A dozen scenes for a hundred lines is a regular rap video with a few inserts: write close to `scenes_wanted`. Where the director's notes keep a stretch of the song for something already built or already decided, write no scene there — and give every line or couplet OUTSIDE that stretch its scene.",
-      "- Test every event before you keep it: could it be filmed on that street today with no effects? Then it is not a scene. Expensive, stylish, matching or unusual is not impossible. Make it impossible — the wrong scale, the wrong material, the wrong place, the wrong creature, the wrong law of physics — or leave the line to his performance.",
+      "- The request says how many lines are sung (`sung_lines`) and how many scenes to aim for (`scenes_wanted`). A dozen scenes for a hundred lines is a regular rap video with a few inserts: write close to `scenes_wanted`, and never more than the limit below. Where the director's notes keep a stretch of the song for something already built or already decided, write no scene there, and spread your scenes over the rest of the song instead of leaving it bare.",
+      "- Test every event before you keep it: could it be filmed on that street today with no effects? Then it is not a scene. Expensive, stylish, matching or unusual is not impossible. Make it impossible — the wrong scale, the wrong material, the wrong place, the wrong creature, the wrong law of physics — or leave the line to his performance. A scene that fails this test is never kept to reach the count: fewer real scenes beat more weak ones.",
       "- What the director's notes scrap, forbid or mark as never is not written in any form, not as a variation of it and not moved somewhere else.",
       "- `words` are the sung words the scene sits on, copied verbatim from the lyrics. A scene with words the song does not sing is thrown away.",
       "- The event physically happens in front of the camera, in a real place, in daylight or practical light, and could be filmed if the impossible thing were true. No dream, no vision, no screen, no 'symbolising', no animation, no text on screen.",
@@ -464,9 +473,15 @@ export function sungLines(grid: readonly { lyrics?: string | null }[]): string[]
   return out;
 }
 
-/** How many scenes a montage is asked for: about two for every three sung lines, six at least, the limit at most. */
+/**
+ * How many scenes a montage is asked for: about two for every three places a scene can sit, the limit at most. A place
+ * is a sung line — but never more places than there are shots with words (a scene needs a shot of its own), and a
+ * line cut across two shots arrives as two fragments, so the smaller of the two counts is the honest one. A song of
+ * a few lines is asked for no more scenes than it has places.
+ */
 export function scenesWanted(grid: readonly { lyrics?: string | null }[]): number {
-  return Math.min(MONTAGE_MAX_SCENES, Math.max(6, Math.round((sungLines(grid).length * 2) / 3)));
+  const places = Math.min(sungLines(grid).length, grid.filter((g) => (g.lyrics ?? "").trim()).length);
+  return Math.min(MONTAGE_MAX_SCENES, places, Math.max(Math.min(6, places), Math.round((places * 2) / 3)));
 }
 
 /** What the call that writes a montage treatment is handed beside its instructions. */

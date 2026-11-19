@@ -47,7 +47,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { streamed } from "./stream.ts";
-import { costOf, estimateCostUsd, fingerprint, gridHasWords, SHOTS_PER_CALL, acceptShots, writerEntities, writerExemplars, chunkGrid, linkedShots, linkUserMessage, montageScenes, montageTreatmentText, montageUserMessage, MONTAGE_TREATMENT_SCHEMA, promptFingerprint, repeatedScenes, rewriteUserMessage, sceneParagraph, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentStyleOf, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type MontageScene, type WriterContext } from "./contract.ts";
+import { costOf, estimateCostUsd, fingerprint, gridHasWords, SHOTS_PER_CALL, acceptShots, writerEntities, writerExemplars, chunkGrid, linkedShots, linkUserMessage, montageScenes, montageTreatmentText, montageUserMessage, scenesOverLimit, MONTAGE_TREATMENT_SCHEMA, promptFingerprint, repeatedScenes, rewriteUserMessage, sceneParagraph, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentStyleOf, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type MontageScene, type WriterContext } from "./contract.ts";
 import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsFromScenes, montageSceneParagraphs, beatsSystemPrompt, coverageOf, fewestBeats, MONTAGE_BEAT_CAP, normalizeTieKinds, paragraphsOf, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
 
 const corsHeaders = {
@@ -189,7 +189,7 @@ serve(async (req) => {
     const made = beatsFromScenes(montageScenes(r.value), grid, ctx.entities ?? []);
     scenes = made.kept;
     sceneBeats = made.beats;
-    droppedScenes = made.dropped;
+    droppedScenes = [...made.dropped, ...scenesOverLimit(r.value)];
     const written = montageTreatmentText({ concept: String(t.concept ?? ""), throughLine: String(t.through_line ?? ""), scenes });
     concept = written.concept;
     narrative = written.narrative;
