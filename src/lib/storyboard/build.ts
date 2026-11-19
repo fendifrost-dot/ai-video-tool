@@ -170,6 +170,12 @@ export type WriteStoryboardInput = {
    * direction and treatment text and starts with no director edits; it is not made active.
    */
   candidate?: { name: string; recut?: boolean } | null;
+  /**
+   * The name of the candidate an in-place rewrite falls back to when the shots that came back do not carry the whole
+   * treatment: the run is paid for, so its shots are filed beside this board instead of being thrown away (19 Nov
+   * 2026: writer run `027761ca`, $0.08, filed nothing). Without a name the rewrite is refused as before.
+   */
+  fallbackCandidateName?: string | null;
 };
 
 export type WriteStoryboardResult = {
@@ -180,6 +186,8 @@ export type WriteStoryboardResult = {
   /** The variation the shots were written into: this one, or the candidate just made. */
   variationId: string;
   candidateVariationId: string | null;
+  /** Why the shots are in a candidate: the director asked for one, or an in-place rewrite did not carry the treatment. */
+  candidateBecause: "asked" | "coverage" | null;
   /** Director edits on the current board that were NOT carried into the candidate (its shots are new rows). */
   editsLeftBehind: number;
 };
@@ -200,12 +208,13 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   const text0 = input.aiWritesText ? "" : input.treatmentText;
   let targetVariationId = input.variationId;
   let candidateVariationId: string | null = null;
-  if (input.candidate) {
+  let candidateBecause: WriteStoryboardResult["candidateBecause"] = null;
+  const makeCandidate = async (name: string, because: "asked" | "coverage") => {
     const direction = await readDirection(input.projectId, input.variationId);
     const prior = parseTreatmentDoc(input.treatmentJson);
     const made = await createVariation({
       projectId: input.projectId,
-      name: input.candidate.name,
+      name,
       treatmentText: text0,
       mood: direction?.mood ?? null,
       visualStyle: direction?.visual_style ?? null,
@@ -215,17 +224,27 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     });
     targetVariationId = made.id;
     candidateVariationId = made.id;
+    candidateBecause = because;
     // the candidate's shots point at people, places and lighting states by key: the keys must exist there too
     await copyContinuityEntities(input.variationId, made.id);
-  }
+  };
+  if (input.candidate) await makeCandidate(input.candidate.name, "asked");
 
-  const draft = await draftTreatmentClips({ ...input.context, variationId: targetVariationId, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });
+  // the board's own style choice (cut settings) goes with the call unless the caller already set one
+  const treatmentStyle = input.context.treatmentStyle ?? parseCutSettings(input.treatmentJson).style ?? null;
+  const draft = await draftTreatmentClips({ ...input.context, treatmentStyle, variationId: targetVariationId, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });
   if (input.aiWritesText && !draft.concept.trim()) throw new Error("The writer returned no treatment — nothing was changed. Try again.");
-  // a board that exists is never replaced in place by shots that do not carry the treatment: the gaps are said and
-  // nothing is written (a first write and a candidate are written and shown with their gaps — nothing is lost there)
+  // a board that exists is never replaced in place by shots that do not carry the treatment (a first write and a
+  // candidate are written and shown with their gaps — nothing is lost there). The run is paid for all the same: with a
+  // fallback name its shots are filed as a candidate beside this board (the run's own row keeps this board's id);
+  // without one the gaps are said and nothing is written.
   if (!candidateVariationId && input.boxes.length > 0 && draft.coverage && !draft.coverage.ok) {
-    const gaps = coverageGaps(draft.coverage);
-    throw new Error(`The shots that came back do not carry the whole treatment, so the board was not replaced: ${gaps.slice(0, 4).join(" ")}${gaps.length > 4 ? ` (+${gaps.length - 4} more)` : ""} Write them into a candidate instead to review them beside this board.`);
+    const name = input.fallbackCandidateName?.trim();
+    if (!name) {
+      const gaps = coverageGaps(draft.coverage);
+      throw new Error(`The shots that came back do not carry the whole treatment, so the board was not replaced: ${gaps.slice(0, 4).join(" ")}${gaps.length > 4 ? ` (+${gaps.length - 4} more)` : ""} Write them into a candidate instead to review them beside this board.`);
+    }
+    await makeCandidate(name, "coverage");
   }
   const at = new Date().toISOString();
   const text = input.aiWritesText ? [draft.concept, draft.narrative].filter(Boolean).join("\n\n") : input.treatmentText;
@@ -270,7 +289,11 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     model: draft.model,
     generated_at: at,
     // the cut settings the shots were cut with go with them (a candidate is cut, and re-cut, the same way)
-    cut: withCutSettings(null, parseCutSettings(input.treatmentJson)).cut,
+    // …and the style: a text the WRITER wrote as a montage is a montage on every later pass (rewrite, candidate,
+    // re-cut all send the text back as the director's, which without this would be cut the classic way). A classic
+    // write saves nothing: it is what an unchosen style already gives, and saving it would hold later AI writes to
+    // classic after the lyrics are synced
+    cut: withCutSettings(null, { ...parseCutSettings(input.treatmentJson), ...(input.aiWritesText && draft.style === "montage_twists" ? { style: draft.style } : {}) }).cut,
   };
   // a new text replaces the old one: the old one is kept as a version, labelled as replaced by this generation
   await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(record, doc, { what: "generate", at }) : withTreatmentDoc(record, doc), targetVariationId);
@@ -281,6 +304,7 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     draft,
     variationId: targetVariationId,
     candidateVariationId,
+    candidateBecause,
     editsLeftBehind: candidateVariationId ? input.boxes.filter((b) => (b.override?.manual?.length ?? 0) > 0 || b.locked).length : 0,
   };
 }

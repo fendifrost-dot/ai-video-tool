@@ -376,3 +376,219 @@ describe("who is in a shot (cast)", () => {
     expect(r.clips[0].cast).toEqual({ members: [{ key: "THE_RIDER", action: "rides", placement: "", framing: "wide" }], open: false, none: false });
   });
 });
+
+// ── the montage style (Fendi, 19 Nov 2026) ─────────────────────────────────────────────────────────────────────────
+import { exemplarsBlock, gridHasWords, MONTAGE_MAX_SCENES, MONTAGE_CUT_RULE, MONTAGE_PATTERNS, MONTAGE_SCENE_RULE, MONTAGE_STYLE_LINE, MONTAGE_TREATMENT_SCHEMA, montageScenes, montageTreatmentSystemPrompt, montageTreatmentText, promptFingerprint, sceneParagraph, TREATMENT_STYLES, treatmentStyleOf, writerExemplars } from "./contract.ts";
+import { BETWEEN_SCENES_RULE, paragraphsOf } from "./beats.ts";
+
+describe("the treatment style: montage twists by default for a music video the writer writes, classic kept word for word", () => {
+  const fixedGrid: GridShot[] = [
+    { key: "c001", start: 0, end: 2, section: "verse 1", energy: "high", lyrics: "flip through green like a salad" },
+    { key: "c002", start: 2, end: 4, section: "verse 1", energy: "high", lyrics: "" },
+  ];
+  const fixed = (hasPerformanceFootage: boolean) => ({
+    projectType: "music_video", songTitle: "Song", lyrics: "flip through green like a salad\nsecond line", artistProfile: "A", visualStyle: "V", mood: "M", notes: "N", hasPerformanceFootage,
+    entities: [{ key: "allen", kind: "character" as const, name: "Allen", description: "his late partner" }, { key: "lexus", kind: "location" as const, name: "The Lexus", description: "red seats" }],
+    looks: [{ name: "L1", description: "d" }],
+  });
+
+  it("the classic prompts are, to the character, what main had on 19 Nov 2026 (fingerprints taken from origin/main 8d39aae7)", () => {
+    // with no style, and with style classic and no references, nothing the writer is told has changed
+    for (const style of [undefined, "classic" as const]) {
+      const a = { ...fixed(true), style };
+      expect(fingerprint(treatmentSystemPrompt(a))).toBe("3998:1a3nsb2");
+      expect(fingerprint(shotsSystemPrompt(a, "the treatment", fixedGrid, true))).toBe("12620:ngyn8g");
+      expect(fingerprint(shotsSystemPrompt(a, "the treatment", fixedGrid, false))).toBe("11114:rl13c0");
+      const b = { ...fixed(false), style };
+      expect(fingerprint(treatmentSystemPrompt(b))).toBe("1759:awxvp7");
+      expect(fingerprint(shotsSystemPrompt(b, "the treatment", fixedGrid, true))).toBe("10381:8161cd");
+      expect(fingerprint(shotsSystemPrompt(b, "the treatment", fixedGrid, false))).toBe("8875:wl1zkd");
+    }
+  });
+
+  it("the style of a run: the one asked for; else montage only when the writer writes a music video's text", () => {
+    expect(TREATMENT_STYLES).toEqual(["montage_twists", "classic"]);
+    expect(treatmentStyleOf(undefined, "music_video", true)).toBe("montage_twists");
+    expect(treatmentStyleOf(null, null, true)).toBe("montage_twists");
+    // the director's own text is cut as before unless he says it is a montage
+    expect(treatmentStyleOf(undefined, "music_video", false)).toBe("classic");
+    expect(treatmentStyleOf("montage_twists", "music_video", false)).toBe("montage_twists");
+    expect(treatmentStyleOf("classic", "music_video", true)).toBe("classic");
+    expect(treatmentStyleOf(undefined, "commercial", true)).toBe("classic");
+    expect(treatmentStyleOf(undefined, "social", true)).toBe("classic");
+    expect(treatmentStyleOf("anything else", "music_video", true)).toBe("montage_twists");
+    // a montage sits on timed words: with none on any shot, an unasked style stays classic (an instrumental, lyrics not synced)
+    expect(treatmentStyleOf(undefined, "music_video", true, false)).toBe("classic");
+    expect(treatmentStyleOf(undefined, "music_video", true, true)).toBe("montage_twists");
+    // asked for outright it is still returned — the function refuses it before any paid call (index.ts)
+    expect(treatmentStyleOf("montage_twists", "music_video", true, false)).toBe("montage_twists");
+    expect(gridHasWords([{ lyrics: "" }, { lyrics: null }, {}])).toBe(false);
+    expect(gridHasWords([{ lyrics: "" }, { lyrics: " a line " }])).toBe(true);
+  });
+
+  it("the montage is bounded: at most forty scenes are asked for and kept, and the shot writer is not handed the shapes", () => {
+    const p = treatmentSystemPrompt({ ...fixed(true), style: "montage_twists" });
+    expect(p).toContain(`At most ${MONTAGE_MAX_SCENES} scenes`);
+    expect(MONTAGE_MAX_SCENES).toBe(40);
+    expect(montageScenes({ scenes: Array.from({ length: 70 }, (_, i) => ({ words: `w${i}`, event: `e${i}`, place: "p", people: [] })) })).toHaveLength(40);
+    // the shapes invite NEW twists: they belong to the call that writes the treatment, not to the calls that write inside its beats
+    const shots = shotsSystemPrompt({ ...fixed(true), style: "montage_twists", exemplars: ["a reference of his"] }, "the treatment", fixedGrid, true);
+    expect(shots).not.toContain(MONTAGE_PATTERNS[0]);
+    expect(shots).not.toContain("a reference of his");
+    expect(shots).toContain("This holds even when the words sung in it are words a scene quotes");
+    // with no footage of him a scene is still an event
+    expect(shotsSystemPrompt({ ...fixed(false), style: "montage_twists" }, "the treatment", fixedGrid, true)).toContain(MONTAGE_SCENE_RULE);
+  });
+
+  it("the montage treatment prompt asks for a twist per sung line, deadpan, on its own words — and never for one idea in a few places", () => {
+    const p = treatmentSystemPrompt({ ...fixed(true), style: "montage_twists" });
+    expect(p).toBe(montageTreatmentSystemPrompt({ ...fixed(true), style: "montage_twists" }));
+    expect(p).toContain(MONTAGE_STYLE_LINE);
+    expect(p).toContain("handheld camerawork, quick optical zooms, 35mm film grain, muted warm colour, fast cuts");
+    expect(p).toContain("ONE impossible event that answers THOSE words");
+    expect(p).toContain("Go through the lyrics in the order they are sung");
+    expect(p).toContain("copied verbatim from the lyrics");
+    expect(p).toContain("Nobody in the scene reacts to it");
+    expect(p).toContain("The place may change with every scene");
+    expect(p).toContain("A plain picture of what a line says is a regular rap video and is the failure here");
+    // what stays sincere is the project's call, said in its notes — not a name written into the prompt
+    expect(p).toContain("What the director's notes mark as sincere");
+    expect(p).not.toMatch(/Allen is never|partner is never/);
+    // the three lines that made every treatment a regular rap video are not in it
+    expect(p).not.toContain("ONE idea, strong enough to hold the whole song");
+    expect(p).not.toContain("a small number of places that return");
+    expect(p).not.toContain("about two are performance and one is a cutaway");
+    // the lyrics and the people on file still reach it
+    expect(p).toContain("Lyrics:\nflip through green like a salad");
+    expect(p).toContain("- allen — Allen: his late partner");
+  });
+
+  it("the built-in shapes and the director's own references both reach the writer", () => {
+    const own = ["A Bentley sits at the curb with no wheels. Four kids carry it down the street."];
+    const p = treatmentSystemPrompt({ ...fixed(true), style: "montage_twists", exemplars: own });
+    for (const shape of MONTAGE_PATTERNS) expect(p).toContain(shape);
+    expect(p).toContain("never reuse an example");
+    expect(p).toContain("The director's own references");
+    expect(p).toContain(own[0]);
+    // the classic style gets his references too (a project that has them), and nothing when it has none
+    const classic = treatmentSystemPrompt({ ...fixed(true), style: "classic", exemplars: own });
+    expect(classic).toContain(own[0]);
+    expect(classic).not.toContain(MONTAGE_PATTERNS[0]);
+    expect(exemplarsBlock({ style: "classic" })).toBeNull();
+    expect(exemplarsBlock({})).toBeNull();
+  });
+
+  it("the references are cleaned: strings only, trimmed, no repeats, twelve at most", () => {
+    expect(writerExemplars(["  a  b ", "a b", 7, null, "", "c"])).toEqual(["a b", "c"]);
+    expect(writerExemplars("not a list")).toEqual([]);
+    expect(writerExemplars(Array.from({ length: 20 }, (_, i) => `e${i}`))).toHaveLength(12);
+    expect(writerExemplars(["x".repeat(900)])[0]).toHaveLength(600);
+  });
+
+  it("the montage shots prompt: the scenes are the cut, a scene is an event, and a shot with no scene is his performance", () => {
+    const p = shotsSystemPrompt({ ...fixed(true), style: "montage_twists" }, "the treatment", fixedGrid, true);
+    expect(p).toContain(MONTAGE_CUT_RULE);
+    expect(p).toContain("There is no fixed share of performance to cutaway");
+    expect(p).toContain(MONTAGE_SCENE_RULE);
+    expect(p).toContain(BETWEEN_SCENES_RULE);
+    expect(p).toContain(MONTAGE_STYLE_LINE);
+    expect(p).not.toContain("about two are performance and one is a cutaway");
+    // what holds in both styles is still there: his frame, the treatment's authority, the beats
+    expect(p).toContain("he is framed from the waist up or closer");
+    expect(p).toContain(TREATMENT_DECIDES);
+    expect(p).toContain("Each shot you are handed carries its `beat`");
+  });
+
+  it("the montage schema asks for the words each scene sits on, and the scenes are cleaned", () => {
+    const item = MONTAGE_TREATMENT_SCHEMA.schema.properties.scenes.items;
+    expect(item.required).toEqual(["words", "event", "place", "people"]);
+    expect(item.properties.words.description).toContain("VERBATIM");
+    expect(MONTAGE_TREATMENT_SCHEMA.schema.required).toContain("through_line");
+    const scenes = montageScenes({ scenes: [{ words: " Flip  through green ", event: "Lettuce is dealt.", place: "casino", people: ["allen", 4] }, { words: "x", event: "", place: "" }, null] });
+    expect(scenes).toEqual([{ words: "Flip through green", event: "Lettuce is dealt.", place: "casino", people: ["allen"] }]);
+    expect(montageScenes(null)).toEqual([]);
+  });
+
+  it("the treatment text the director reads has one paragraph per scene with its words quoted — the shape a hand-written montage is pinned from", () => {
+    const scenes = [
+      { words: "Flip through green like a salad", event: "A dealer deals lettuce leaves across a casino table and the players stack them like chips.", place: "a casino floor", people: [] },
+      { words: "ten radios on me", event: "Ten radios hang off one man like a coat while a bus driver waits with the doors open.", place: "a bus stop", people: [] },
+    ];
+    const t = montageTreatmentText({ concept: " The idea. ", throughLine: "A goat in a hi-vis vest keeps turning up.", scenes });
+    expect(t.concept).toBe("The idea.");
+    expect(t.narrative).toContain("Through-line: A goat in a hi-vis vest keeps turning up.");
+    expect(t.narrative).toContain(`Style: ${MONTAGE_STYLE_LINE}`);
+    expect(t.narrative).toContain('When he raps "Flip through green like a salad" — a casino floor: A dealer deals lettuce leaves');
+    expect(sceneParagraph(scenes[1])).toBe('When he raps "ten radios on me" — a bus stop: Ten radios hang off one man like a coat while a bus driver waits with the doors open.');
+    // one paragraph a scene, after the three that set the video up
+    expect(paragraphsOf(t.narrative).filter((p) => p.startsWith("When he raps"))).toHaveLength(2);
+  });
+
+  it("a run says which instructions wrote it: the fingerprint differs by style and does not depend on the project", () => {
+    const m = promptFingerprint("montage_twists");
+    const c = promptFingerprint("classic");
+    expect(m).not.toBe(c);
+    expect(promptFingerprint("montage_twists")).toBe(m);
+    expect(m).toMatch(/^\d+:[0-9a-z]+$/);
+  });
+});
+
+// ── after the first live run (writer run 52b0d405, 19 Nov 2026): fourteen scenes for a hundred lines, several of them
+//    merely stylish, one a variation of a scene the notes had scrapped ───────────────────────────────────────────────
+import { montageUserMessage, scenesOverLimit, scenesWanted, sungLines } from "./contract.ts";
+
+describe("a montage is asked for enough scenes, each one impossible, none that the notes scrapped", () => {
+  const g = (lyrics: string, i: number): GridShot => ({ key: `c${i}`, start: i * 2, end: i * 2 + 2, section: i < 3 ? "verse" : "hook", lyrics });
+
+  it("counts the sung lines once each, in order, across shots that share a line", () => {
+    const shots = [g("", 0), g("line one / line two", 1), g("line two / line three", 2), g("Line Three", 3), g("line one", 4)];
+    expect(sungLines(shots)).toEqual(["line one", "line two", "line three", "line one"]);
+    expect(sungLines([g("", 0)])).toEqual([]);
+  });
+
+  it("aims for about two scenes to every three lines, six at least and forty at most", () => {
+    const many = Array.from({ length: 110 }, (_, i) => g(`line ${i}`, i));
+    expect(scenesWanted(many)).toBe(40);
+    expect(scenesWanted(many.slice(0, 30))).toBe(20);
+    // never more scenes than there are places for one: a song of three lines is asked for three, a silent one for none
+    expect(scenesWanted(many.slice(0, 3))).toBe(3);
+    expect(scenesWanted([g("", 0)])).toBe(0);
+    // many lines sung in few shots (a slow cut): a scene needs a shot of its own, so the shots decide
+    const slow = Array.from({ length: 12 }, (_, i) => g(`a ${i} / b ${i} / c ${i}`, i));
+    expect(sungLines(slow)).toHaveLength(36);
+    expect(scenesWanted(slow)).toBe(8);
+  });
+
+  it("scenes past the limit are cut and reported, never silently lost", () => {
+    const raw = { scenes: Array.from({ length: 43 }, (_, i) => ({ words: `w${i}`, event: `e${i}`, place: "p", people: [] })) };
+    expect(montageScenes(raw)).toHaveLength(40);
+    const over = scenesOverLimit(raw);
+    expect(over.map((o) => o.words)).toEqual(["w40", "w41", "w42"]);
+    expect(over[0].why).toContain("more than 40 scenes");
+    expect(scenesOverLimit({ scenes: raw.scenes.slice(0, 40) })).toEqual([]);
+    expect(scenesOverLimit(null)).toEqual([]);
+  });
+
+  it("the writer is handed the count with its instructions", () => {
+    const shots = [g("a b c", 0), g("d e f", 1), g("", 2)];
+    expect(JSON.parse(montageUserMessage(shots, "  a hint "))).toEqual({ sections_of_the_song: "verse", shots: 3, sung_lines: 2, scenes_wanted: 2, hint: "a hint" });
+    expect(JSON.parse(montageUserMessage(shots, "")).hint).toBeNull();
+  });
+
+  it("the prompt says so: close to the count, an impossibility test, and nothing the notes scrap", () => {
+    const p = treatmentSystemPrompt({ projectType: "music_video", style: "montage_twists", hasPerformanceFootage: true });
+    expect(p).toContain("write close to `scenes_wanted`");
+    expect(p).toContain("A dozen scenes for a hundred lines is a regular rap video with a few inserts");
+    expect(p).toContain("could it be filmed on that street today with no effects? Then it is not a scene");
+    expect(p).toContain("Expensive, stylish, matching or unusual is not impossible");
+    expect(p).toContain("What the director's notes scrap, forbid or mark as never is not written in any form");
+    // a stretch the notes keep for something already built gets no scenes; the rest is not left bare — inside the limit
+    expect(p).toContain("spread your scenes over the rest of the song instead of leaving it bare");
+    expect(p).toContain("never more than the limit below");
+    expect(p).not.toContain("give every line or couplet OUTSIDE");
+    // the count never buys a weak scene
+    expect(p).toContain("A scene that fails this test is never kept to reach the count");
+    // and the built-in shapes pass their own test
+    expect(p).not.toContain("running car wash");
+  });
+});
