@@ -437,3 +437,162 @@ describe("the beats are held against the treatment itself", () => {
     expect(c.ok).toBe(false);
   });
 });
+
+// ── the montage style (Fendi, 19 Nov 2026) ─────────────────────────────────────────────────────────────────────────
+import { beatsFromScenes, BETWEEN_SCENES, MONTAGE_BEAT_CAP, MONTAGE_READING } from "./beats.ts";
+
+// twenty shots of 2 s; four lines of a verse, each sung in one shot, and a hook line sung twice
+const song: GridShot[] = Array.from({ length: 20 }, (_, i) => ({
+  key: `s${String(i + 1).padStart(2, "0")}`,
+  start: i * 2,
+  end: (i + 1) * 2,
+  section: i < 12 ? "verse" : "hook",
+  lyrics:
+    i === 2 ? "Flip through green like a salad" :
+    i === 5 ? "ten radios on me" :
+    i === 9 ? "books on the floor they float" :
+    i === 13 || i === 17 ? "cease and desist" :
+    "",
+}));
+
+describe("a montage: every scene sits on its own words, and no twist fills the board", () => {
+  it("the writer's own scenes become the beats, in the song's order, each with its words as the cue", () => {
+    const { beats, dropped } = beatsFromScenes(
+      [
+        { words: "Flip through green like a salad", event: "A dealer deals lettuce leaves across a casino table. The players stack them.", place: "a casino floor", people: ["RIDER", "NOBODY"] },
+        { words: "ten radios on me", event: "Ten radios hang off one man like a coat; a bus driver waits.", place: "a bus stop" },
+        { words: "a line the song does not have", event: "Something else.", place: "somewhere" },
+        { words: "books on the floor they float", event: "Library books lift off the floor. The librarian stamps one in mid-air.", place: "a library" },
+      ],
+      song,
+      people,
+    );
+    expect(beats.map((b) => b.lyricCue)).toEqual(["Flip through green like a salad", "ten radios on me", "books on the floor they float"]);
+    expect(beats.map((b) => b.id)).toEqual(["b01", "b02", "b03"]);
+    // only people on record are cast; the scene is never a performance beat; every scene weighs the same
+    expect(beats[0].people).toEqual(["RIDER"]);
+    expect(beats.every((b) => !b.artistPerforms && b.weight === 1 && b.ties.length === 0)).toBe(true);
+    expect(beats[0].scene).toBe("a casino floor");
+    expect(dropped).toEqual([{ words: "a line the song does not have", why: "the song does not sing these words" }]);
+  });
+
+  it("a scene whose words are sung only before the scene before it is dropped and said, never placed elsewhere", () => {
+    const { beats, dropped } = beatsFromScenes(
+      [
+        { words: "ten radios on me", event: "Radios.", place: "p" },
+        { words: "Flip through green like a salad", event: "Salad.", place: "p" },
+      ],
+      song,
+      people,
+    );
+    expect(beats).toHaveLength(1);
+    expect(dropped[0].why).toBe("its words are sung only before the scene before it");
+  });
+
+  it("each scene is pinned to the shot that sings its words — the salad on the salad line, not a minute later", () => {
+    const { beats } = beatsFromScenes(
+      [
+        { words: "Flip through green like a salad", event: "Lettuce is dealt.", place: "casino" },
+        { words: "ten radios on me", event: "Radios hang.", place: "bus stop" },
+        { words: "books on the floor they float", event: "Books float.", place: "library" },
+        { words: "cease and desist", event: "A letter is served to a goat.", place: "a porch" },
+      ],
+      song,
+      people,
+    );
+    const a = allocateBeats(beats, song, { cueOrder: true, beatCap: MONTAGE_BEAT_CAP });
+    expect(a.anchors.map((x) => x.shot)).toEqual(["s03", "s06", "s10", "s14"]);
+    expect(a.unanchored).toEqual([]);
+    expect(a.byBeat.b01[0]).toBe("s03");
+    // the classic rule would have called the early singing "too early to pin": the fourth scene's turn by weight is
+    // shot 15, the salad's is shot 0 — here the words decide
+    expect(a.uncovered).toEqual([]);
+  });
+
+  it("no scene holds more than the cap: a few shots, a few seconds; the rest is his performance", () => {
+    const { beats } = beatsFromScenes(
+      [
+        { words: "Flip through green like a salad", event: "Lettuce is dealt.", place: "casino" },
+        { words: "books on the floor they float", event: "Books float.", place: "library" },
+      ],
+      song,
+      people,
+    );
+    const a = allocateBeats(beats, song, { cueOrder: true, beatCap: MONTAGE_BEAT_CAP });
+    // without the cap the salad would run from s03 to s09 (seven shots, 14 s) and the books from s10 to the end
+    expect(a.byBeat.b01).toEqual(["s03", "s04"]);
+    expect(a.byBeat.b02).toEqual(["s10", "s11"]);
+    for (const id of ["b01", "b02"]) {
+      expect(a.byBeat[id].length).toBeLessThanOrEqual(MONTAGE_BEAT_CAP.shots);
+      const seconds = a.byBeat[id].reduce((n, k) => n + (song.find((g) => g.key === k)!.end - song.find((g) => g.key === k)!.start), 0);
+      expect(seconds).toBeLessThanOrEqual(MONTAGE_BEAT_CAP.seconds);
+    }
+    // every other shot carries no beat: the two before the first words, and everything between and after the scenes
+    expect(a.fill).toEqual(song.map((g) => g.key).filter((k) => !["s03", "s04", "s10", "s11"].includes(k)));
+    expect(a.fill!.every((k) => a.byShot[k] === undefined)).toBe(true);
+  });
+
+  it("a beat without a cue never spans more than the cap either, and a long shot counts by its seconds", () => {
+    const longShots: GridShot[] = Array.from({ length: 10 }, (_, i) => ({ key: `l${i + 1}`, start: i * 4, end: (i + 1) * 4, section: "verse", lyrics: "" }));
+    const a = allocateBeats([beat({ id: "b01" }), beat({ id: "b02" })], longShots, { cueOrder: true, beatCap: MONTAGE_BEAT_CAP });
+    // 4 s shots: one fits in 4.5 s, a second would not
+    expect(a.byBeat.b01).toEqual(["l1"]);
+    expect(a.byBeat.b02).toEqual(["l6"]);
+    expect(a.fill).toHaveLength(8);
+    const short = allocateBeats([beat({ id: "b01" })], song, { cueOrder: true, beatCap: { shots: 3, seconds: 60 } });
+    expect(short.byBeat.b01).toHaveLength(3);
+  });
+
+  it("a beat he performs in is never capped: his performance may hold as long as the treatment gives it", () => {
+    const a = allocateBeats([beat({ id: "b01", artistPerforms: true }), beat({ id: "b02" })], song, { cueOrder: true, beatCap: MONTAGE_BEAT_CAP });
+    expect(a.byBeat.b01).toHaveLength(10);
+    expect(a.byBeat.b02).toHaveLength(2);
+  });
+
+  it("a shot with no scene is briefed as his performance between two scenes, never as a beat", () => {
+    const { beats } = beatsFromScenes([{ words: "ten radios on me", event: "Radios hang.", place: "bus stop" }], song, people);
+    const a = allocateBeats(beats, song, { cueOrder: true, beatCap: MONTAGE_BEAT_CAP });
+    const briefs = shotBriefs(beats, a);
+    expect(briefs.s06.beat).toBe("b01");
+    expect(briefs.s01).toMatchObject({ fill: true, artistPerforms: true, beat: "", links: [] });
+    const handed = briefedShot(song[0], briefs.s01) as Record<string, unknown>;
+    expect(handed.between_scenes).toBe(BETWEEN_SCENES);
+    expect(handed.beat).toBeUndefined();
+    expect(BETWEEN_SCENES).toContain("never a repeat");
+    expect((briefedShot(song[5], briefs.s06) as Record<string, unknown>).beat).toMatchObject({ id: "b01" });
+    // a take-based method on a performance fill is left alone (he performs there)
+    const kept = withFeasibleProduction([{ key: "s01", production: { method: "footage", note: "" } }], briefs);
+    expect(kept.corrections).toEqual([]);
+  });
+
+  it("the board passes coverage with performance shots between the scenes: a shot with no beat is not a gap", () => {
+    const { beats } = beatsFromScenes(
+      [
+        { words: "Flip through green like a salad", event: "A dealer deals lettuce leaves across a casino table.", place: "casino" },
+        { words: "ten radios on me", event: "Ten radios hang off one man like a coat.", place: "bus stop" },
+      ],
+      song,
+      people,
+    );
+    const a = allocateBeats(beats, song, { cueOrder: true, beatCap: MONTAGE_BEAT_CAP });
+    const clips = song.map((g) => ({ key: g.key, cast: { members: [], none: false, open: true }, continuity: { links: [] } }));
+    const text = beats.map((b) => `When he raps "${b.lyricCue}" — ${b.scene}: ${b.action}`).join("\n\n");
+    const c = coverageOf(beats, a, clips, { treatment: text });
+    expect(c.verdict).toBe("pass");
+    expect(c.structural.lumped).toEqual([]);
+  });
+
+  it("the classic cut is untouched: with no options there is no fill, no cap, and the early rule still holds", () => {
+    const beats = [beat({ id: "b01" }), beat({ id: "b02", lyricCue: "ten radios on me" })];
+    const a = allocateBeats(beats, song);
+    expect(a.fill).toBeUndefined();
+    expect(Object.keys(a.byShot)).toHaveLength(song.length);
+    expect(a.byBeat.b02.length).toBeGreaterThan(MONTAGE_BEAT_CAP.shots);
+  });
+
+  it("a director's own montage text is read scene by scene: the reader is told a quoted line is its own beat", () => {
+    expect(beatsSystemPrompt(people, true, true)).toContain(MONTAGE_READING);
+    expect(MONTAGE_READING).toContain("never fold two quoted lines into one beat");
+    expect(beatsSystemPrompt(people, true)).not.toContain("This treatment is a montage");
+  });
+});

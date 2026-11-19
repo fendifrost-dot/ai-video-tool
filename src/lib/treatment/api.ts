@@ -193,6 +193,8 @@ export type TreatmentContext = {
   hasPerformanceFootage?: boolean;
   /** The project's continuity entities — what a shot may point at by key instead of describing again. */
   entities?: { key: string; kind: "location" | "prop" | "lighting" | "character"; name: string; description?: string | null }[];
+  /** The board's treatment style (cutSettings.ts). Unset = the writer's default for who writes the text. */
+  treatmentStyle?: "montage_twists" | "classic" | null;
 };
 
 function contextBody(input: TreatmentContext): Record<string, unknown> {
@@ -209,6 +211,8 @@ function contextBody(input: TreatmentContext): Record<string, unknown> {
     looks: (input.looks ?? []).map((l) => ({ name: l.name, description: l.description ?? null })),
     has_performance_footage: input.hasPerformanceFootage === true,
     continuity_entities: (input.entities ?? []).map((e) => ({ key: e.key, kind: e.kind, name: e.name, description: e.description ?? null })),
+    // sent only when the director chose one: with none, the writer decides by who writes the text
+    ...(input.treatmentStyle ? { treatment_style: input.treatmentStyle } : {}),
   };
 }
 

@@ -21,6 +21,12 @@
 //   continuity_entities  [{ key, kind: location|prop|lighting, name, description }] — what a shot may point at by key
 //   avt_variation_id the video variation the board belongs to (evidence only — the grid and the text come in on the request)
 //   lyric_inserts    false = a beat whose words are sung only before its turn gets no flash shot there (default true)
+//   treatment_style  "montage_twists" | "classic" — how the treatment is shaped. Absent: montage twists when the writer
+//                    writes the text of a music video, classic otherwise (the director's own text is cut as before
+//                    unless he says it is a montage). Montage twists: one impossible event per sung
+//                    line, deadpan, each scene pinned to its words; a scene holds a few shots at most and every shot
+//                    with no scene is his performance (allocation.fill). The project's own references
+//                    (video_projects.creative_exemplars) are read here and sent to the writer in both styles.
 // Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, beats, allocation, coverage, runId, missing,
 //          repeated, rewritten, relinked, usage, actualCostUsd, estimatedCostUsd }
 //        `repeated` = shots that came back with another shot's sentence; `rewritten` = those written again as their own.
@@ -38,8 +44,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { streamed } from "./stream.ts";
-import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
-import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, fewestBeats, normalizeTieKinds, paragraphsOf, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
+import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, writerExemplars, chunkGrid, linkedShots, linkUserMessage, montageScenes, montageTreatmentText, MONTAGE_TREATMENT_SCHEMA, promptFingerprint, repeatedScenes, rewriteUserMessage, sceneParagraph, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentStyleOf, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type MontageScene, type WriterContext } from "./contract.ts";
+import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsFromScenes, beatsSystemPrompt, coverageOf, fewestBeats, MONTAGE_BEAT_CAP, normalizeTieKinds, paragraphsOf, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,7 +91,7 @@ serve(async (req) => {
   if (body.mode !== "full_treatment") return fail(400, "INVALID_INPUT", "mode must be full_treatment");
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
-  const { data: project, error: pErr } = await admin.from("video_projects").select("id, user_id").eq("id", projectId).maybeSingle();
+  const { data: project, error: pErr } = await admin.from("video_projects").select("id, user_id, creative_exemplars").eq("id", projectId).maybeSingle();
   if (pErr) return fail(500, "INTERNAL", `The project could not be read: ${pErr.message}`);
   if (!project || project.user_id !== userData.user.id) return fail(403, "FORBIDDEN", "This project is not yours");
 
@@ -110,8 +116,13 @@ serve(async (req) => {
     looks: Array.isArray(body.looks) ? (body.looks as { name: string; description?: string | null }[]) : [],
     hasPerformanceFootage: body.has_performance_footage === true,
     entities: writerEntities(body.continuity_entities),
+    // the director's own references live on the project; they are read here, never trusted from the request
+    exemplars: writerExemplars((project as { creative_exemplars?: unknown }).creative_exemplars),
   };
   const writeText = body.write_text === true;
+  const style = treatmentStyleOf(body.treatment_style, ctx.projectType, writeText);
+  ctx.style = style;
+  const montage = style === "montage_twists";
   const given = text(body.concept) ?? "";
   if (!writeText && !given.trim()) return fail(400, "INVALID_INPUT", "There is no treatment text to write the shots from");
 
@@ -155,8 +166,20 @@ serve(async (req) => {
   let concept = given.trim();
   let narrative = "";
   let sections: { name: string; intent: string }[] = [];
-  if (writeText) {
-    const sectionNames = [...new Set(grid.map((g) => g.section).filter(Boolean))].join(", ");
+  // a montage the writer wrote itself comes back as scenes, each with the sung words it sits on
+  let scenes: MontageScene[] | null = null;
+  const sectionNames = [...new Set(grid.map((g) => g.section).filter(Boolean))].join(", ");
+  if (writeText && montage) {
+    const r = await ask(treatmentSystemPrompt(ctx), JSON.stringify({ sections_of_the_song: sectionNames, shots: grid.length, hint: given.trim() || null }), MONTAGE_TREATMENT_SCHEMA, 7000);
+    if (!r.ok) return fail(502, "PROVIDER_API_ERROR", `The treatment was not written: ${r.why}`);
+    const t = r.value as { concept?: string; through_line?: string; sections?: { name: string; intent: string }[] };
+    scenes = montageScenes(r.value);
+    const written = montageTreatmentText({ concept: String(t.concept ?? ""), throughLine: String(t.through_line ?? ""), scenes });
+    concept = written.concept;
+    narrative = written.narrative;
+    sections = Array.isArray(t.sections) ? t.sections : [];
+    if (!concept || scenes.length === 0) return fail(502, "PROVIDER_API_ERROR", "The treatment came back with no scenes");
+  } else if (writeText) {
     const r = await ask(treatmentSystemPrompt(ctx), JSON.stringify({ sections_of_the_song: sectionNames, shots: grid.length, hint: given.trim() || null }), TREATMENT_SCHEMA, 1500);
     if (!r.ok) return fail(502, "PROVIDER_API_ERROR", `The treatment was not written: ${r.why}`);
     const t = r.value as { concept?: string; narrative?: string; sections?: { name: string; intent: string }[] };
@@ -192,8 +215,20 @@ serve(async (req) => {
   const beatReadings: number[] = [];
   let allocation: Allocation | null = null;
   let briefs: Record<string, ShotBrief> = {};
-  {
-    const system = beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true);
+  // scenes the writer tied to words the song does not sing: left out and said (their lines fall back to his performance)
+  let droppedScenes: { words: string; why: string }[] = [];
+  const allot = { lyricInserts: body.lyric_inserts !== false, ...(montage ? { cueOrder: true, beatCap: MONTAGE_BEAT_CAP } : {}) };
+  if (scenes) {
+    // the writer's own scenes ARE the beats: no second reading, each pinned to the words it quoted
+    const made = beatsFromScenes(scenes, grid, ctx.entities ?? []);
+    beats = made.beats;
+    droppedScenes = made.dropped;
+    beatReadings.push(beats.length);
+    if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "None of the treatment's scenes sits on words the song sings — nothing was written");
+    allocation = allocateBeats(beats, grid, allot);
+    briefs = shotBriefs(beats, allocation);
+  } else {
+    const system = beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true, montage);
     const r = await ask(system, JSON.stringify({ treatment }), BEATS_SCHEMA, 6000);
     if (!r.ok) return failRun(502, "PROVIDER_API_ERROR", `The treatment's beats could not be read: ${r.why}`);
     let read = normalizeTieKinds(acceptBeats(r.value, ctx.entities ?? []));
@@ -211,7 +246,7 @@ serve(async (req) => {
     beats = read.beats;
     tieCorrections = read.corrections;
     if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "The treatment's beats came back empty — nothing was written");
-    allocation = allocateBeats(beats, grid, { lyricInserts: body.lyric_inserts !== false });
+    allocation = allocateBeats(beats, grid, allot);
     briefs = shotBriefs(beats, allocation);
   }
 
@@ -276,11 +311,16 @@ serve(async (req) => {
 
   // 7. does the board carry the treatment? said in parts, kept with the run, shown to the director — never an
   //    unqualified pass while anything was corrected, inserted or left out
-  const coverage = allocation ? coverageOf(beats, allocation, clips, { treatment, tieCorrections, productionCorrections: feasible.corrections, beatReadings }) : null;
+  //    (a montage the writer wrote is held against its scenes: the idea, the through-line and the style line are not beats)
+  const audited = scenes ? scenes.filter((sc) => !droppedScenes.some((d) => d.words === sc.words)).map(sceneParagraph).join("\n\n") : treatment;
+  const covered = allocation ? coverageOf(beats, allocation, clips, { treatment: audited, tieCorrections, productionCorrections: feasible.corrections, beatReadings }) : null;
+  // which instructions wrote this run, kept with its evidence (writer_runs.coverage_json.writer)
+  const writer = { style, promptFingerprint: promptFingerprint(style), exemplars: ctx.exemplars?.length ?? 0, droppedScenes, performanceShots: allocation?.fill?.length ?? 0 };
+  const coverage = covered ? { ...covered, writer } : null;
   // the actual cost is the provider's own token counts at list price; with no counts it is unknown, not estimated
   const actualCostUsd = usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null;
   await finish({ status: "succeeded", shots_written: clips.length, actual_cost_usd: actualCostUsd, beats_json: beats, allocation_json: allocation, coverage_json: coverage, clips_json: clips, missing_json: missing });
-  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, beats, allocation, coverage, runId, missing, repeated: [...repeated], rewritten, relinked, usage, actualCostUsd, estimatedCostUsd });
+  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, style, promptFingerprint: writer.promptFingerprint, droppedScenes, beats, allocation, coverage, runId, missing, repeated: [...repeated], rewritten, relinked, usage, actualCostUsd, estimatedCostUsd });
   }, corsHeaders);
 });
 
