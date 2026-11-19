@@ -7,7 +7,7 @@
 // The grid owns timing: the writer is told each shot's window and the words sung in it, and never moves a cut.
 
 import { acceptTimedBeats, TIMED_BEATS_PROPERTY, timedBeatsRules } from "../_shared/timedBeats.ts";
-import { BEAT_RULES, briefedShot, type ShotBrief } from "./beats.ts";
+import { BEAT_RULES, BETWEEN_SCENES_RULE, briefedShot, type ShotBrief } from "./beats.ts";
 
 export const SHOT_TYPES = ["performance", "b_roll", "narrative", "lyric_visual", "transition", "vfx"] as const;
 
@@ -43,7 +43,55 @@ export const PRIORITIES = ["normal", "high", "hero"] as const;
 
 export type GridShot = { key: string; start: number; end: number; section?: string | null; energy?: string | null; lyrics?: string | null };
 
+/**
+ * How a treatment is shaped. `montage_twists` is the house style of a music video (Fendi, 19 Nov 2026: "in line with
+ * the lyrics but ... crazy or viral twists that resemble a hip hop montage"); `classic` is the one-idea, few-places
+ * treatment the writer wrote until then, kept word for word.
+ */
+export const TREATMENT_STYLES = ["montage_twists", "classic"] as const;
+export type TreatmentStyle = (typeof TREATMENT_STYLES)[number];
+
+/**
+ * The style of a run: the one asked for. With none asked for, a music video whose text the WRITER writes is a montage
+ * of twists — when the song's words are timed on the shots, since a scene sits on the words it answers; everything
+ * else is classic. So the director's own text is cut exactly as before unless he says it is a montage, and a song
+ * with no timed lyrics (an instrumental, lyrics not synced yet) is written as it always was.
+ */
+export function treatmentStyleOf(requested: unknown, projectType: string | null | undefined, writerWritesText: boolean, shotsHaveWords = true): TreatmentStyle {
+  const asked = TREATMENT_STYLES.find((s) => s === requested);
+  if (asked) return asked;
+  return writerWritesText && shotsHaveWords && projectType !== "commercial" && projectType !== "social" ? "montage_twists" : "classic";
+}
+
+/** Whether any shot of the grid has sung words on it — what a montage needs before anything is paid for. */
+export const gridHasWords = (grid: readonly { lyrics?: string | null }[]) => grid.some((g) => (g.lyrics ?? "").trim().length > 0);
+
+/** The most scenes a montage treatment is asked for and kept: what fits the answer's size and a song's length. */
+export const MONTAGE_MAX_SCENES = 40;
+
+/** The one style line every scene of a montage obeys. */
+export const MONTAGE_STYLE_LINE =
+  "Shot like it was caught, not staged: handheld camerawork, quick optical zooms, 35mm film grain, muted warm colour, fast cuts. Deadpan: nobody in the picture reacts to the impossible thing — for them it is another normal day.";
+
+/**
+ * The shapes a twist takes, each with one example — the built-in exemplars of the montage style. They are shapes to
+ * build NEW events from for this song's words, never scenes to reuse (the examples are ours, written for this file).
+ */
+export const MONTAGE_PATTERNS = [
+  "A figure of speech in the line made literal and physical: \"money long\" — one banknote unrolls down six flights of stairs and out the front door, and a neighbour steps over it with her shopping.",
+  "People in uniform doing routine work on something that should not be there: an airport ground crew marshals a blue whale onto the stand with light wands.",
+  "A door, a lift or a fridge that opens straight onto another place: a corner-shop freezer door opens on a ski slope and a boy steps out carrying a sled.",
+  "An ordinary thing at the wrong size or made of the wrong stuff: two men roll a wristwatch the size of a manhole cover down the block.",
+  "The right event in the wrong room: a board meeting held inside a running car wash, nobody looking up from the papers.",
+  "A sound or a gesture that bends the physical world: on the snare every streetlight on the block bows, then straightens.",
+  "An animal or a crowd behaving as professionals: a goat in a hi-vis vest signs for a parcel at the door.",
+] as const;
+
 export type WriterContext = {
+  /** How the treatment is shaped (treatmentStyleOf). Absent = classic, so a caller that says nothing changes nothing. */
+  style?: TreatmentStyle | null;
+  /** The director's own references for the look and the kind of event (video_projects.creative_exemplars), in his words. */
+  exemplars?: string[];
   projectType?: string | null;
   songTitle?: string | null;
   lyrics?: string | null;
@@ -115,6 +163,83 @@ export const PRODUCTION_METHODS = ["footage", "restage", "generate", "edit_foota
 
 /** Where a shot's wardrobe comes from. `treatment` on a shot whose footage shows something else is a gap to be told. */
 export const WARDROBE_SOURCES = ["footage", "treatment", "none"] as const;
+
+/** The director's references, cleaned: strings only, trimmed, at most twelve, none longer than 600 characters. */
+export function writerExemplars(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const v of value) {
+    const t = typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 600) : "";
+    if (t && !out.includes(t)) out.push(t);
+    if (out.length === 12) break;
+  }
+  return out;
+}
+
+/** The references as a block the writer reads, or null when there are none. In the montage style the built-in shapes come first. */
+export function exemplarsBlock(ctx: WriterContext): string | null {
+  const own = ctx.exemplars ?? [];
+  const montage = ctx.style === "montage_twists";
+  if (!montage && own.length === 0) return null;
+  return [
+    montage ? `The shapes a twist takes (build new ones for THIS song's words; never reuse an example):\n${MONTAGE_PATTERNS.map((p) => `- ${p}`).join("\n")}` : null,
+    own.length ? `The director's own references — the kind of event and the tone he wants, in his words. Match their nerve; do not copy them:\n${own.map((e) => `- ${e}`).join("\n")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * The treatment of a montage, as the writer returns it: one scene per sung line or couplet, each carrying the words it
+ * sits on. The scenes become the beats without a second reading (beats.ts beatsFromScenes), so a scene lands on its
+ * own words and nowhere else.
+ */
+export const MONTAGE_TREATMENT_SCHEMA = {
+  name: "montage_treatment",
+  strict: true,
+  schema: {
+    type: "object", additionalProperties: false, required: ["concept", "through_line", "scenes", "sections"],
+    properties: {
+      concept: { type: "string", description: "the video in one or two sentences a director would say out loud" },
+      through_line: { type: "string", description: "what ties the scenes together from the first to the last — a person, an object or a running event that keeps coming back — in one sentence. Not a list of places" },
+      scenes: { type: "array", description: "the scenes in the order the song sings their words",
+        items: { type: "object", additionalProperties: false, required: ["words", "event", "place", "people"],
+          properties: {
+            words: { type: "string", description: "the sung words this scene sits on, copied VERBATIM from the lyrics: one line, or the few words of it the scene answers" },
+            event: { type: "string", description: "ONE impossible event that answers those words, written as a thing that physically happens in front of the camera, in one or two concrete sentences, with what the ordinary people around it carry on doing" },
+            place: { type: "string", description: "where it happens, in one phrase" },
+            people: { type: "array", items: { type: "string" }, description: "keys from the People list of anyone on record who is in this scene; empty when it has only people the project has no record for" },
+          } } },
+      sections: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "intent"],
+        properties: { name: { type: "string", description: "the song section, as the grid names it" }, intent: { type: "string", description: "what this section of the video is for, in one sentence" } } } },
+    },
+  },
+} as const;
+
+export type MontageScene = { words: string; event: string; place: string; people: string[] };
+
+/** The scenes a montage call returned, cleaned. */
+export function montageScenes(raw: unknown): MontageScene[] {
+  const list = Array.isArray((raw as { scenes?: unknown })?.scenes) ? ((raw as { scenes: unknown[] }).scenes as Record<string, unknown>[]) : [];
+  const str = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+  return list
+    .map((r) => ({ words: str(r?.words, 300), event: str(r?.event, 1200), place: str(r?.place, 400), people: Array.isArray(r?.people) ? (r.people as unknown[]).map((p) => str(p, 60)).filter(Boolean) : [] }))
+    .filter((sc) => sc.event)
+    .slice(0, MONTAGE_MAX_SCENES);
+}
+
+/** One scene as a paragraph of the treatment text: the words it sits on, quoted, then what happens. */
+export const sceneParagraph = (sc: MontageScene) => `When he raps "${sc.words}"${sc.place ? ` — ${sc.place}` : ""}: ${sc.event}`;
+
+/**
+ * A montage treatment as text the director reads and may edit: the idea, the through-line, the style, then one
+ * paragraph per scene with its words quoted — the shape the beats reader pins from if the text is ever written again
+ * by hand.
+ */
+export function montageTreatmentText(t: { concept: string; throughLine: string; scenes: readonly MontageScene[] }): { concept: string; narrative: string } {
+  const head = [t.throughLine.trim() ? `Through-line: ${t.throughLine.trim()}` : null, `Style: ${MONTAGE_STYLE_LINE}`, "Where a line has no scene of its own, the picture is his performance of it."].filter(Boolean).join("\n\n");
+  return { concept: t.concept.trim(), narrative: [head, ...t.scenes.map(sceneParagraph)].join("\n\n") };
+}
 
 export const TREATMENT_SCHEMA = {
   name: "treatment",
@@ -245,20 +370,34 @@ export const PRODUCTION_RULES = [
   "  When the method is not the obvious one for the shot type, `production.note` says in one sentence what decides it.",
 ].join("\n");
 
-const FOOTAGE_RULES = [
+/** How a montage is cut (replaces the two-in-three rule of the classic style): the treatment's scenes ARE the cut. */
+export const MONTAGE_CUT_RULE =
+  "- The cut is the treatment's: a shot that carries a scene of the treatment shows that scene on its words, and he is not in it unless the treatment puts him there; a shot that carries no scene is his performance. There is no fixed share of performance to cutaway — the scenes fall where the song sings their words, and his performance holds everything between them.";
+const CLASSIC_CUT_RULE =
+  "- Cut it like a real music video: his performance carries the song, and the picture keeps leaving him and coming back. Of every three shots about two are performance and one is a cutaway. Never four performance shots in a row; never more than two cutaways in a row — except where the treatment lays out its own run of scenes (an opening before he appears, a sequence that stays with other people): there the treatment's order is the cut.";
+const CLASSIC_CUTAWAY_RULE =
+  "- A cutaway goes where the words name something that can be shown — an object, a place, a move: show THAT thing, in the treatment's world. Where there are no words, a cutaway carries the section's mood.";
+/** What a scene of a montage is, said to the shot writer: an event, never an illustration. */
+export const MONTAGE_SCENE_RULE =
+  "- A scene of the treatment is an EVENT, not an illustration: write the impossible thing happening, physically, in front of the camera, and the ordinary people around it carrying on as if it were nothing. Never soften it into a symbol, a dream, a screen or a literal picture of the object the words name.";
+
+const footageRules = (montage: boolean) => [
   "The project has the artist's REAL performance footage, in sync with the song. That footage is the spine of the video: a `performance` shot IS that footage — his real performance, as filmed or re-shot inside the place you describe.",
   "- For a performance shot write the PLACE he performs in and how the camera sees him there. He keeps the body position and framing he was filmed in (the notes say how), so put him where a man could be standing like that. He wears what the notes say he wears in the footage — unless the treatment itself dresses him in something else for that part of the video: then `wardrobe` is exactly what the treatment names, `wardrobe_from` is `treatment`, and the footage's clothes are never written in their place. (That shot cannot come from the footage as filmed; saying so is how the director finds out before anything is made.)",
   "- He appears in performance shots. Every other shot shows the world around him — places, objects, details, other people — and not his face, unless the treatment stages him in a scene of its own (watching, arriving, walking in): that shot is `narrative` and says what he does.",
-  "- Cut it like a real music video: his performance carries the song, and the picture keeps leaving him and coming back. Of every three shots about two are performance and one is a cutaway. Never four performance shots in a row; never more than two cutaways in a row — except where the treatment lays out its own run of scenes (an opening before he appears, a sequence that stays with other people): there the treatment's order is the cut.",
-  "- A cutaway goes where the words name something that can be shown — an object, a place, a move: show THAT thing, in the treatment's world. Where there are no words, a cutaway carries the section's mood.",
+  montage ? MONTAGE_CUT_RULE : CLASSIC_CUT_RULE,
+  montage ? MONTAGE_SCENE_RULE : CLASSIC_CUTAWAY_RULE,
   "- Performance shots that follow each other may stay in one place, but each is a different frame of him — medium, medium close-up, close on the face, profile, over a shoulder, a slow push, a slow orbit — and you say which. Never a full-body or wide frame of him and never a low angle from below: he is framed from the waist up or closer, his shoes out of the frame.",
   TREATMENT_DECIDES,
 ].join("\n");
+const FOOTAGE_RULES = footageRules(false);
+const MONTAGE_FOOTAGE_RULES = footageRules(true);
 const NO_FOOTAGE_RULES =
   "There is no real footage of the artist yet: a `performance` shot is him performing the words to camera in the place you describe, dressed in one of the looks on file.";
 
 /** The system prompt of the call that writes the treatment itself. */
 export function treatmentSystemPrompt(ctx: WriterContext): string {
+  if (ctx.style === "montage_twists") return montageTreatmentSystemPrompt(ctx);
   return [
     `You are the director of a ${projectLabel(ctx.projectType)}. Write its treatment: ONE idea, strong enough to hold the whole song, that a crew could shoot and a viewer would remember.`,
     "It must come out of this song's own words and this artist — not a stock idea that would fit any song. Stage it in a small number of places that return, so the video feels like one world. Everything must be photoreal and filmable.",
@@ -266,10 +405,50 @@ export function treatmentSystemPrompt(ctx: WriterContext): string {
     ctx.entities?.length ? `The project already has these places, props and lighting states on file — stage the video in them where they fit, by name:\n${ctx.entities.map((e) => `- ${e.name}${e.description ? `: ${e.description}` : ""}`).join("\n")}` : null,
     "Do not write shot lists, timecodes, or camera specs here. Do not mention AI, prompts or generators.",
     "A shot may change while it plays. When the idea needs that — the light dying on a word, a move that begins on a hit — say in plain words what changes and on which words; the storyboard places it on the song.",
+    exemplarsBlock(ctx),
     contextBlocks(ctx),
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+/**
+ * The system prompt of the call that writes a montage treatment: a twist per sung line, deadpan, in the song's order,
+ * each scene carrying the words it sits on.
+ */
+export function montageTreatmentSystemPrompt(ctx: WriterContext): string {
+  return [
+    `You are the director of a ${projectLabel(ctx.projectType)}. Write its treatment as a hip-hop MONTAGE: a fast run of short, photoreal scenes, each one an impossible event that answers the words sung at that moment, played completely straight. A plain picture of what a line says is a regular rap video and is the failure here; the viewer must not be able to guess the next scene.`,
+    `One style for the whole video — ${MONTAGE_STYLE_LINE}`,
+    [
+      "How to write the scenes:",
+      "- Go through the lyrics in the order they are sung. For each line, or each couplet, write ONE scene: ONE impossible event that answers THOSE words — what they name, claim or boast, taken literally, at the wrong scale, in the wrong place, or done by the wrong people. Leave out a line only when it has no event worth a scene: his performance covers it.",
+      "- `words` are the sung words the scene sits on, copied verbatim from the lyrics. A scene with words the song does not sing is thrown away.",
+      "- The event physically happens in front of the camera, in a real place, in daylight or practical light, and could be filmed if the impossible thing were true. No dream, no vision, no screen, no 'symbolising', no animation, no text on screen.",
+      "- Nobody in the scene reacts to it. Say what the ordinary people around the event carry on doing.",
+      "- The place may change with every scene. What holds the video together is the style and the `through_line` — someone or something that keeps coming back — not a short list of places.",
+      "- No two scenes use the same trick. One event per scene: a scene is a few seconds on screen.",
+      `- At most ${MONTAGE_MAX_SCENES} scenes, each \`event\` in one or two sentences of 45 words at most. With more lines than that, keep the lines with the strongest events and spread the scenes over the whole song.`,
+      "- The artist is in a scene only when the event needs him there, and then he is not rapping. His performance to camera is the other half of the video and is not written here.",
+      "- What the director's notes mark as sincere — a person, a memory, a loss — is staged with care and is never the joke of a scene.",
+    ].join("\n"),
+    exemplarsBlock(ctx),
+    ctx.entities?.length ? `The project already has these people, places, props and lighting states on file — use them where a scene fits, by name (and a person's KEY in \`people\`):\n${ctx.entities.map((e) => `- ${e.key} — ${e.name}${e.description ? `: ${e.description}` : ""}`).join("\n")}` : null,
+    "Do not write shot lists, timecodes, or camera specs here. Do not mention AI, prompts or generators.",
+    contextBlocks(ctx),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * The fingerprint of the RULES a run was written under (no project in it): the treatment prompt and the shots prompt
+ * of a style, for an empty project. It changes when the instructions change, and only then — so a run's row says
+ * which instructions wrote it.
+ */
+export function promptFingerprint(style: TreatmentStyle): string {
+  const bare: WriterContext = { style, hasPerformanceFootage: true };
+  return fingerprint(`${style}\n${treatmentSystemPrompt(bare)}\n${shotsSystemPrompt(bare, "", [], true)}`);
 }
 
 /** The system prompt of the calls that write the shots. `treatment` is the one brief every shot serves. */
@@ -289,15 +468,19 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       PRODUCTION_RULES,
       CAST_RULES,
       allotted ? BEAT_RULES : null,
+      allotted && ctx.style === "montage_twists" ? BETWEEN_SCENES_RULE : null,
       "- A performance shot is its own picture too. He cannot be redirected — but the world around him can answer the words: say where in the place he stands in THIS shot and what the place and the light are doing around him. When its words name something the place can show or do, it happens there, on those words.",
       "- What the treatment says happens on certain words, or every time a section returns (in every hook), is binding on the shots: each shot in which those words are sung carries it — as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened. A shot never contradicts the treatment.",
+      ctx.style === "montage_twists" ? `- Every shot of a scene is in the montage's one style — ${MONTAGE_STYLE_LINE} Say the handheld frame and the zoom in \`camera_direction\`.` : null,
       "- Keep to the places the treatment names — and, where it leaves the place open, the ones the notes name. One clear subject per shot; a crowd, a formation or a group the treatment asks for IS the subject. Photoreal and filmable: an impossible event the treatment asks for is written as a thing that physically happens in front of the camera, never softened into something ordinary. No readable text or logos — except a mark the treatment itself calls for: name that one mark, where the treatment puts it, and nothing else.",
       "- Watch each shot's window. A shot under 2.5 s is a fast cut: ONE image and ONE action, readable at a glance — no build-up, no slow reveal, no camera move that needs time. Consecutive fast cuts switch angle, subject or place, so the edit moves.",
       "- `priority`: hero for the two or three shots the whole video is remembered by, high for the first shot of a hook, normal otherwise.",
     ].filter(Boolean).join("\n"),
     timedBeatsRules("scene_description"),
     entitiesBlock(ctx.entities),
-    ctx.hasPerformanceFootage ? FOOTAGE_RULES : NO_FOOTAGE_RULES,
+    ctx.hasPerformanceFootage ? (ctx.style === "montage_twists" ? MONTAGE_FOOTAGE_RULES : FOOTAGE_RULES) : NO_FOOTAGE_RULES,
+    // with no footage the rules above say nothing of scenes: a montage's scene is an event there too
+    ctx.style === "montage_twists" && !ctx.hasPerformanceFootage ? MONTAGE_SCENE_RULE : null,
     `The whole storyboard, so you know what comes before and after your shots (context only — write only the shots you are handed):\n${outline.map(outlineLine).join("\n")}`,
     contextBlocks({ ...ctx, lyrics: null }),
   ]
