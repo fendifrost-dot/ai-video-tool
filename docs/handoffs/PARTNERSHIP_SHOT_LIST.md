@@ -234,3 +234,18 @@ the sky ("as dark as in the reference or darker"), lists ordinary street rubbish
 not move at all" with no "tripod". The render took 18 minutes against 5 to 10 for the others; the job stayed "running"
 with no error and was not resubmitted. All ten slots now have a clip; five are his ACCEPTED, five are pending his word
 (2:24, 2:57, 3:04, 3:12, 3:27).
+
+## The memory photographs, people only, 19 Nov 2026 ($0.72; Fendi: "All the images need to be masked so just the people are in the shots. Please use the verified masking method")
+
+READING (mine): "the images" are the 20 photographs of him and Allen that blow through the storm, not the storm clips.
+Method: PROBLEM_INDEX "Him + a creature/prop": `matte-video-proxy` (veed) as delivered, as on the figure v2a (job
+`25829df9`). Each photo held as a 2 s clip (short side scaled up to 1080 with Lanczos when smaller), one matte job
+each, the middle frame of the matte as alpha over the photo's own pixels: `scripts/edit/photo_people_cutout.py`
+(`clip`, `cut`). One test first (m04, `cc04dd8b`), then the other 19. Nothing done to the matte afterwards.
+- Result: T7 `storm_scene/memory_cutouts/` (20 transparent PNGs, `mattes/`, `memory_cutouts_overview.jpg`); AVT
+  `project-references/.../memories/cutouts/`. Clips and jobs: T7 `work/allen/people_cutouts/` (`manifest.tsv`,
+  `asset_ids.json`, `jobs.json`); the 2 s clips are `project_assets` rows under `memories/` in `project-clips`.
+- OBSERVED, all 20 looked at over grey and black: 19 usable. WEAK: 14 (tiny club photo, the back man's head fades
+  out). Small or soft: 7, 19. 6 keeps the event's caption lettering across the bottom of the group. 2, 11, 13 keep
+  parts of bystanders at the edges. Per-photo notes: the Grokbot handoff's table.
+- NOT TRIED: re-running 14 from a tighter crop of the photo (3.6 cents); his word first.

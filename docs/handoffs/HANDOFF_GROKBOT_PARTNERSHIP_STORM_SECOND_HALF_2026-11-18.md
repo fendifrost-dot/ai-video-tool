@@ -66,9 +66,43 @@ the bottom edge: never use it uncropped). REJECTED, do not use: `storm_s02_knees
 
 ## Memories and debris (yours to build)
 
-- Memories take a physical form: printed photographs of him and Allen carried on the wind, at different depths, with
+- Memories take a physical form: him and Allen cut out of their photographs (below), carried on the wind, at different depths, with
   motion blur, catching the street light. Never glowing, never a hologram, never floating flat to the camera.
-- The 20 photographs of Allen: T7 `storm_scene/allen_photos/img/`. Use them as they are; never redraw Allen's face.
+- **The 20 photographs, cut out so only the people remain** (Fendi, 19 Nov 2026: "All the images need to be masked so just
+  the people are in the shots"). Use these, not the whole photographs: no backgrounds, no white borders, no story
+  frames. T7 `storm_scene/memory_cutouts/memory_mNN_people.png` (transparent PNG, straight alpha, the photo's own
+  pixels at the photo's own size, trimmed to the people); the matte alone, full frame, in `mattes/`; all 20 on one
+  sheet: `memory_cutouts_overview.jpg`. AVT copies: bucket `project-references`, `<owner>/<project>/memories/cutouts/`.
+  The originals stay in `storm_scene/allen_photos/img/`. Never redraw a face in them; never upscale them with a
+  model (a plain resampler only); never choke, fill or re-key the matte.
+- How they were cut (VERIFIED on the files): each photo held as a 2 s clip, `matte-video-proxy`
+  (veed/video-background-removal, the Hyenas / YSL showroom matte) used as delivered, the middle frame of the matte
+  taken as alpha (`scripts/edit/photo_people_cutout.py`). OBSERVED: the soft edge still carries the photo's old
+  background colour, so on the dark street a pale rim can show: remove it in the composite (edge decontamination;
+  light wrap 0.15 or less). Everyone in a photo is kept, bystanders included; who appears in the film is Fendi's call.
+
+| # | File, md5 | Size | OBSERVED |
+|---|---|---|---|
+| 1 | `memory_m01_people.png` `2a195aa7` | 916x807 | four men, full figure; the story's "RIP" and "Free" lettering is gone |
+| 2 | `memory_m02_people.png` `d386017e` | 740x987 | two men; part of a third person's sleeve at the right edge |
+| 3 | `memory_m03_people.png` `6b8583e8` | 720x960 | one man, close, with the drink he holds |
+| 4 | `memory_m04_people.png` `a6177bca` | 616x698 | two men, waist up |
+| 5 | `memory_m05_people.png` `15b9da42` | 508x612 | one man, mirror selfie in a graduation gown, phone in hand |
+| 6 | `memory_m06_people.png` `4a4511a3` | 622x605 | five people, close; the event's caption lettering is still on them at the bottom left: crop it off |
+| 7 | `memory_m07_people.png` `e9108e6f` | 610x517 | three men, small and heavily filtered: soft edges with a blue cast, the left man's feet smear |
+| 8 | `memory_m08_people.png` `d08e4d04` | 1125x1127 | two men, close |
+| 9 | `memory_m09_people.png` `46151f1d` | 1125x1075 | two men, close |
+| 10 | `memory_m10_people.png` `bd21b5df` | 941x769 | two men with cups |
+| 11 | `memory_m11_people.png` `a3b20543` | 916x1124 | two men; part of a woman at the right edge |
+| 12 | `memory_m12_people.png` `a67fed56` | 642x1005 | two men, full figure |
+| 13 | `memory_m13_people.png` `e75aeb8e` | 1125x1579 | two men; cords hang in front of both faces in the photo itself; parts of bystanders at both edges |
+| 14 | `memory_m14_people.png` `0e0385c5` | 633x404 | two men, tiny and blurred; the top of the back man's head fades out: WEAK, use small or skip |
+| 15 | `memory_m15_people.png` `0d868102` | 255x255 | one man, seated, waist up |
+| 16 | `memory_m16_people.png` `a83d4f6e` | 254x405 | one man, knees up, cup and bottle |
+| 17 | `memory_m17_people.png` `0b6daf34` | 331x286 | one man, smiling, close |
+| 18 | `memory_m18_people.png` `d4b75770` | 550x942 | one man, knees up |
+| 19 | `memory_m19_people.png` `343a5a44` | 108x255 | one man, very small (108 px wide): far background only |
+| 20 | `memory_m20_people.png` `fdf1d6ba` | 1280x999 | two men, waist up |
 - Never a white Challenger anywhere in frame (project notes).
 - The wind blows from behind the camera, past him, away down the street (Fendi, 16 Nov: "Front to back").
 
