@@ -58,3 +58,17 @@ describe("cut settings", () => {
     expect(g[g.length - 1].end).toBe(DUR);
   });
 });
+
+describe("the board's treatment style rides with its cut settings", () => {
+  it("is unset until the director chooses, kept when chosen, and anything else is ignored", async () => {
+    const { parseCutSettings, withCutSettings, DEFAULT_CUT } = await import("./cutSettings");
+    expect(parseCutSettings(null).style).toBeUndefined();
+    expect(parseCutSettings({ cut: { style: "nonsense" } }).style).toBeUndefined();
+    expect(parseCutSettings({ cut: { style: "montage_twists" } }).style).toBe("montage_twists");
+    const saved = withCutSettings({ text: "kept" }, { ...DEFAULT_CUT, style: "classic" });
+    expect(saved.text).toBe("kept");
+    expect(parseCutSettings(saved).style).toBe("classic");
+    // a board that never chose stores no style: the writer decides by who writes the text
+    expect((withCutSettings(null, DEFAULT_CUT).cut as Record<string, unknown>).style).toBeUndefined();
+  });
+});

@@ -8,7 +8,16 @@
  */
 import { DEFAULT_PACE, fastTargetsOf, type ClipEnergy, type GridPace } from "./grid";
 
+/** How a treatment is shaped (the writer's `treatment_style`; supabase/functions/treatment-writer-proxy/contract.ts — the same two words). */
+export const TREATMENT_STYLES = ["montage_twists", "classic"] as const;
+export type TreatmentStyle = (typeof TREATMENT_STYLES)[number];
+
 export type CutSettings = {
+  /**
+   * The board's treatment style. Unset = not chosen: a treatment the AI writes is a montage of twists, the director's
+   * own text is cut the classic way (the writer's default). Set = that style for both.
+   */
+  style?: TreatmentStyle | null;
   pace: GridPace;
   /** Fast pace: seconds per shot by energy (high, mid, low; a drop cuts like high unless set). */
   targets: Record<ClipEnergy, number>;
@@ -26,12 +35,13 @@ export function parseCutSettings(treatmentJson: unknown): CutSettings {
   const pace: GridPace = cut.pace === "cinematic" || cut.pace === "fast" ? cut.pace : DEFAULT_PACE;
   const t = asObject(cut.targets);
   const num = (v: unknown) => (typeof v === "number" ? v : undefined);
-  return { pace, targets: fastTargetsOf({ high: num(t.high), mid: num(t.mid), low: num(t.low), drop: num(t.drop) }) };
+  const style = TREATMENT_STYLES.find((x) => x === cut.style) ?? null;
+  return { ...(style ? { style } : {}), pace, targets: fastTargetsOf({ high: num(t.high), mid: num(t.mid), low: num(t.low), drop: num(t.drop) }) };
 }
 
 /** The treatment record with these cut settings in it (everything else kept). */
 export function withCutSettings(treatmentJson: unknown, cut: CutSettings): Record<string, unknown> {
-  return { ...asObject(treatmentJson), cut: { pace: cut.pace, targets: fastTargetsOf(cut.targets) } };
+  return { ...asObject(treatmentJson), cut: { ...(cut.style ? { style: cut.style } : {}), pace: cut.pace, targets: fastTargetsOf(cut.targets) } };
 }
 
 /** The grid options these settings give. */

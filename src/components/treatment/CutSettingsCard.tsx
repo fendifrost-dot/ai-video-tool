@@ -49,6 +49,26 @@ export function CutSettingsCard({ treatmentJson, analysis, lyricLines, busy, onS
       <div className="flex items-center gap-2 text-sm font-medium">
         <Scissors className="h-3.5 w-3.5" /> Pace and clip lengths
       </div>
+      <div className="flex flex-wrap items-center gap-2" data-testid="cut-style">
+        <span className="text-xs text-muted-foreground">Treatment style</span>
+        <Button size="sm" variant={cut.style === "montage_twists" ? "default" : "outline"} onClick={() => setCut((c) => ({ ...c, style: "montage_twists" }))} data-testid="cut-style-montage">
+          Montage twists
+        </Button>
+        <Button size="sm" variant={cut.style === "classic" ? "default" : "outline"} onClick={() => setCut((c) => ({ ...c, style: "classic" }))} data-testid="cut-style-classic">
+          Classic
+        </Button>
+        <Button size="sm" variant={!cut.style ? "default" : "outline"} onClick={() => setCut(({ style: _style, ...c }) => c)} data-testid="cut-style-auto">
+          Not chosen
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {cut.style === "montage_twists"
+          ? "Montage twists: one impossible event per sung line, played straight, each scene on its own words for a few seconds; everything between is his performance."
+          : cut.style === "classic"
+            ? "Classic: one idea in a few places that return, about two performance shots to every cutaway."
+            : "Not chosen: a treatment the AI writes is a montage of twists (when the lyrics are synced); a treatment you wrote is cut the classic way. Choose one to cut both the same way."}{" "}
+        The choice applies once saved below.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant={cut.pace === "fast" ? "default" : "outline"} onClick={() => setCut((c) => ({ ...c, pace: "fast" }))} data-testid="cut-pace-fast">
           Fast cut
@@ -74,7 +94,7 @@ export function CutSettingsCard({ treatmentJson, analysis, lyricLines, busy, onS
               />
             </label>
           ))}
-          <Button size="sm" variant="ghost" onClick={() => setCut(DEFAULT_CUT)}>
+          <Button size="sm" variant="ghost" onClick={() => setCut((c) => ({ ...DEFAULT_CUT, ...(c.style ? { style: c.style } : {}) }))}>
             Reset
           </Button>
         </div>

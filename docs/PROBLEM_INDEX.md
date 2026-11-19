@@ -30,7 +30,7 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 | Pale rim / halo round him on a dark plate | edge decontamination (unmix, feather stops at the raw matte), light wrap ≤ 0.15 or 0 | c033 v6 (`lens.wrap` 0.15), `pixels.ts cleanEdges` | wrap 0.5 (pale rim on cap, jaw, shoulders) |
 | He looks pasted on a still; the scene is flat, nothing moves (smoke, glare, lights, trees) | a BUILT scene: the still split into layers moved in Blender (smoke, light flicker, tree sway, a camera move with parallax), his light following the scene's; `scripts/edit/blender/` | SHOT_RULES 3; c033 showroom | a still JPG plate with a 3 % push-in (Hyenas, 13 Nov: "looks 2D … no smoke no glare no lights or tree movement") |
 | A swapped creature does not move like the animal it replaces (dog lying, hyena standing) | before any put-back: side by side, take vs swap, pose matched frame by frame; reference still in the animal's pose and size, placed where it is | Hyenas, 13 Nov (failed) | judging the swap from stills; patching the matte of a swap that already fails this |
-| Room motion looks AI-made | Blender: `room_layers.py`, `snow.py`, `room_motion.py`, `comp_scene.py` (5.3) | c033 showroom v9 `436ffebe` | — |
+| Room motion looks AI-made | Blender: `room_layers.py`, `snow.py`, `room_motion.py`, `comp_scene.py` (5.3) | v9 `436ffebe`, NOT judged | — |
 
 ## His face, the put-back and the swap
 
