@@ -1,8 +1,9 @@
 // Job, worker, and cache decisions. dry_run defaults to true. Cost is always 0.
 import { checkCompatibility, parseDependencies, type ToolManifest } from "../_shared/skillDeps.ts";
 import { assetsToFetch, evictionPlan, isProtected, type CacheEntry } from "../_shared/workerCache.ts";
+import { planPutback } from "../_shared/putback.ts";
 
-export const JOB_KINDS = ["edit", "vfx", "qc", "blender", "beat_cut"] as const;
+export const JOB_KINDS = ["edit", "vfx", "qc", "blender", "beat_cut", "putback"] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,6 +43,11 @@ export function planJobSubmit(args: Record<string, unknown>, deps: unknown, mani
   if (!Array.isArray(inputs) || inputs.some((id) => typeof id !== "string" || !UUID.test(id))) return fail("input_asset_ids must be uuids");
   if (args.settings !== undefined && (typeof args.settings !== "object" || args.settings === null || Array.isArray(args.settings))) {
     return fail("settings must be an object");
+  }
+  // a put-back is a preset and two asset ids (the original window, then its swap) — refused here, before it is queued
+  if (args.job_kind === "putback") {
+    const putback = planPutback(args.settings, inputs);
+    if (!putback.ok) return fail(putback.error);
   }
   let compatibility = null;
   if (deps !== undefined && deps !== null) {
@@ -132,11 +138,11 @@ export function planCacheReport(args: Record<string, unknown>, now = Date.now())
 export const JOB_TOOL_DEFS = [
   {
     name: "avt_job_submit",
-    description: "Queue a render job on the existing edit_renders row (edit, vfx, qc, blender, or beat_cut). dry_run defaults to true and inserts nothing. cost_usd is 0. Pins the skill and effect versions. Refuses a worker whose tools do not satisfy the skill when dry_run is false. Audited only when a row is written.",
+    description: "Queue a render job on the existing edit_renders row (edit, vfx, qc, blender, beat_cut, or putback). A putback is the face-preserving put-back of a clothing or creature swap (docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md), run unchanged by a worker: settings is { preset } and nothing else (c033_showroom for clothes on his take, hyenas_verse_creature for a creature or prop beside him), input_asset_ids is exactly [the take's window, the swap made from that window]; both must be files of that project under the owner's own folder, and the swap must say which window it was made from (a dress-clip result does by itself; a creature or prop swap made through the provider call is filed with metadata_json.swap_of = { asset_id: the window }). avt_job_status gives a put-back's reason when it fails and the asset it filed. The clip is filed only when the script's proof prints 0 AND it found his face in every scene; it is filed unselected and unapproved. A worker that can run a put-back must be started for it (workers/edit-render/run-once-putback.sh): a queued one waits, at no cost. dry_run defaults to true and inserts nothing. cost_usd is 0. Pins the skill and effect versions. Refuses a worker whose tools do not satisfy the skill when dry_run is false. Audited only when a row is written.",
     inputSchema: {
       type: "object",
       properties: {
-        job_kind: { type: "string", enum: ["edit", "vfx", "qc", "blender", "beat_cut"] },
+        job_kind: { type: "string", enum: ["edit", "vfx", "qc", "blender", "beat_cut", "putback"] },
         project_id: { type: "string" },
         sequence_id: { type: "string" },
         skill_version_id: { type: "string" },

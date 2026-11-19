@@ -1,4 +1,5 @@
 // Render jobs, worker registration, and cache reports. dry_run inserts nothing.
+import { planPutback, queuePutbackArgs } from "../_shared/putback.ts";
 import { planCacheReport, planCancel, planJobSubmit, planWorkerRegister } from "./jobContract.ts";
 import { isUuid } from "./storeContract.ts";
 
@@ -47,6 +48,15 @@ async function submit(ctx: Ctx, args: Record<string, unknown>) {
   const plan = planJobSubmit(args, deps, manifest);
   if (!plan.ok) throw new Error(plan.error);
   if (plan.value.dryRun) return { ...plan.value, inserted: false };
+  // A put-back is queued through its own door (SQL queue_putback_job): the job table's policy admits only rows tied
+  // to an edit sequence, and that door checks the project and both files are the caller's own.
+  if (plan.value.job_kind === "putback") {
+    const putback = planPutback(plan.value.settings, plan.value.input_asset_ids);
+    if (!putback.ok) throw new Error(putback.error);
+    const id = bang(await ctx.db.rpc("queue_putback_job", queuePutbackArgs(plan.value.project_id, putback.value)));
+    const logged = await audit(ctx, "avt_job_submit", "queue", "edit_renders", String(id), { job_kind: "putback", preset: putback.value.preset, dry_run: false, cost_usd: 0 });
+    return { id, status: "queued", dryRun: false, costUsd: 0, inserted: true, next: "start a worker that can run a put-back (workers/edit-render/README.md), then read avt_job_status", ...logged };
+  }
   const row = bang(
     await ctx.db.from("edit_renders").insert({
       user_id: ctx.userId,
@@ -71,11 +81,15 @@ async function submit(ctx: Ctx, args: Record<string, unknown>) {
 
 async function job(ctx: Ctx, id: unknown): Promise<Row> {
   if (!isUuid(id)) throw new Error("job_id must be a uuid");
+  // a put-back has no edit sequence, so the table's own policy does not show it: it is read through its own door
+  const { data: putback } = await ctx.db.rpc("putback_job", { p_id: id });
+  if (putback && typeof putback === "object") return putback as Row;
   return owned(ctx, "edit_renders", id);
 }
 
 async function cancel(ctx: Ctx, args: Record<string, unknown>) {
   const row = await job(ctx, args.job_id);
+  if (row.job_kind === "putback") throw new Error("a put-back is not cancelled from here: a queued one that no worker takes costs nothing, and a running one finishes or fails on its own");
   const plan = planCancel(String(row.status));
   if (!plan.ok) throw new Error(plan.error);
   bang(await ctx.db.from("edit_renders").update({ status: "cancelled" }).eq("id", row.id).eq("user_id", ctx.userId));
@@ -134,6 +148,10 @@ export async function runJobTool(db: Db, userId: string, credentialId: string, n
   if (name === "avt_job_submit") return submit(ctx, args);
   if (name === "avt_job_status") {
     const row = await job(ctx, args.job_id);
+    // a put-back says why it failed and what it filed: that is the whole of its status
+    if (row.job_kind === "putback") {
+      return { id: row.id, status: row.status, job_kind: "putback", preset: row.preset ?? null, attempts: row.attempts ?? 0, error: row.error ?? null, output_asset_id: row.output_asset_id ?? null, worker_id: row.worker_id ?? null, created_at: row.created_at ?? null, finished_at: row.finished_at ?? null };
+    }
     return { id: row.id, status: row.status, progress: row.progress ?? 0, job_kind: row.job_kind };
   }
   if (name === "avt_job_logs") {

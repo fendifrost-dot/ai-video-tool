@@ -2,10 +2,18 @@
 //
 // The narrow door for the durable edit-render worker (workers/edit-render). The worker host holds only a
 // worker secret, never the service-role key. Actions:
+//   claim    → `kinds` (default ["edit"]) says which job kinds this worker can run. For the edit queue alone the
+//              claim is exactly as before. A PUT-BACK job (job_kind "putback": scripts/edit/body_only_swap.py run
+//              unchanged by the worker, _shared/putback.ts) is handed only when (1) its settings are a known preset
+//              and nothing else, (2) its user is the owner of the worker that asks, and (3) its two input assets
+//              belong to that same user and project; the two files are signed here. Anything else fails the row.
+//              The edit queue:
 //   claim    → claims the oldest queued edit_renders row (SKIP LOCKED, reaps stale rows first), re-signs every
 //              plan input from its bucket/path (the URLs stored in the plan may have expired), and hands back a
 //              signed upload URL for project-exports/{user_id}/{project_id}/renders/{render_id}.mp4
-//   complete → checks the uploaded MP4 exists, files it as a project asset, marks the row complete
+//   complete → checks the uploaded MP4 exists, files it as a project asset, marks the row complete. A put-back is
+//              filed only with its proof record, checked again here: max |out-original| on face/hair/skin must be 0.
+//              It is filed unselected and unapproved: only the director's words approve a result.
 //   fail     → marks the row failed with a reason
 // No provider is ever called; cost stays 0. Auth: x-worker-secret (SHA-256 matched against edit_render_workers).
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -14,8 +22,10 @@ import {
   EDIT_MEDIA_BUCKETS,
   SIGN_TTL_SECONDS,
   alignSigned,
+  bucketOfStoredAsset,
   signAssets,
 } from "../_shared/editMedia.ts";
+import { acceptPutbackRecord, claimKinds, isWholeFrameDress, planPutback, putbackInputItems, putbackNote, putbackOutputPath, swapBinding } from "../_shared/putback.ts";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -57,18 +67,122 @@ serve(async (req) => {
   } catch {
     return json(400, { ok: false, error: "invalid_json" });
   }
-  const workerId = `${worker.label}:${String(body.workerId ?? "").slice(0, 80)}`;
+  // the worker row's own id is in the name a claimed job carries: two workers with one label are not one worker
+  const workerId = `${worker.label}:${worker.id}:${String(body.workerId ?? "").slice(0, 80)}`;
+
+  const failRow = async (id: string, why: string) => {
+    await db.from("edit_renders").update({ status: "failed", error: why.slice(0, 2000), finished_at: new Date().toISOString() }).eq("id", id);
+  };
+
+  // WHOSE jobs this worker runs. A job is work done on the worker's own machine — an edit job's plan can carry a
+  // command line — so a worker runs only the jobs of the account it belongs to, never a visitor's (found 19 Nov
+  // 2026: the claim handed any signed-in visitor's row to the always-on worker; RISK_REGISTER SEC-6). The owner is
+  // the worker row's `owner_user_id` (a table no client can read or write; set by hand, SQL 20261120100000). Until
+  // that column is there, EDIT_WORKER_OWNERS (a comma list of user ids, an edge secret) says it. With neither, the
+  // worker is handed NOTHING: there is no "any real account" fallback (sign-up is open).
+  const { data: ownerRow } = await db.from("edit_render_workers").select("owner_user_id").eq("id", worker.id).maybeSingle();
+  const ownerId: string | null = typeof ownerRow?.owner_user_id === "string" && UUID.test(ownerRow.owner_user_id) ? ownerRow.owner_user_id : null;
+  const allowed = (Deno.env.get("EDIT_WORKER_OWNERS") ?? "").split(",").map((v) => v.trim().toLowerCase()).filter((v) => UUID.test(v));
+  const serves = (userId: unknown): boolean => {
+    if (typeof userId !== "string" || !UUID.test(userId)) return false;
+    if (ownerId) return userId.toLowerCase() === ownerId.toLowerCase();
+    return allowed.includes(userId.toLowerCase());
+  };
+  const ownsProject = async (userId: string, projectId: string): Promise<boolean> => {
+    if (!UUID.test(projectId)) return false;
+    const { data } = await db.from("video_projects").select("id").eq("id", projectId).eq("user_id", userId).maybeSingle();
+    return !!data;
+  };
 
   if (body.action === "claim") {
-    const { data: rows, error } = await db.rpc("claim_edit_render", { p_worker: workerId });
+    let kinds = claimKinds(body.kinds);
+    // a worker with no owner on record and no allow-list is handed nothing at all
+    if (!ownerId && allowed.length === 0) return json(200, { ok: true, render: null, note: "this worker has no owner on record: it is handed nothing until one is set" });
+    // a put-back is handed only to a worker with an owner on record
+    if (!ownerId) kinds = kinds.filter((k) => k !== "putback");
+    if (kinds.length === 0) return json(200, { ok: true, render: null, note: "this worker has no owner on record: it is handed no put-back" });
+    // with an owner on record the claim itself takes only that user's rows (another user's row never leaves the
+    // queue through this worker). Before SQL 20261120100000 that function is not there: the old claim is used and
+    // the row is checked below.
+    let claimed = ownerId ? await db.rpc("claim_edit_render_kinds", { p_worker: workerId, p_kinds: kinds, p_owner: ownerId }) : null;
+    if (!claimed || (claimed.error && /claim_edit_render_kinds/.test(claimed.error.message ?? ""))) {
+      if (kinds.includes("edit")) claimed = await db.rpc("claim_edit_render", { p_worker: workerId });
+      else return json(200, { ok: true, render: null, note: "the by-kind claim is not installed" });
+    }
+    const { data: rows, error } = claimed;
     if (error) return json(500, { ok: false, error: "claim_failed", message: error.message });
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row) return json(200, { ok: true, render: null });
+    if (!serves(row.user_id)) {
+      await failRow(row.id, "this worker does not run jobs for this account");
+      return json(200, { ok: true, render: null, skipped: row.id });
+    }
+
+    if (row.job_kind === "putback") {
+      const jobProject = typeof row.project_id === "string" ? row.project_id : "";
+      const planned = planPutback(row.settings, row.input_asset_ids);
+      if (!planned.ok) {
+        await failRow(row.id, planned.error);
+        return json(200, { ok: true, render: null, skipped: row.id });
+      }
+      // checked again on the row that came back: its user owns this worker, and owns the project it names
+      if (!ownerId || ownerId !== row.user_id || !(await ownsProject(row.user_id, jobProject))) {
+        await failRow(row.id, "a put-back runs only on a worker of the job's own user, for a project of theirs");
+        return json(200, { ok: true, render: null, skipped: row.id });
+      }
+      // a finished put-back set back to queued is not run again over the file an asset already points at
+      if (row.output_asset_id) {
+        await failRow(row.id, "this put-back already filed its clip; queue a new one to run it again");
+        return json(200, { ok: true, render: null, skipped: row.id });
+      }
+      const { data: assets } = await db
+        .from("project_assets")
+        .select("id, user_id, project_id, asset_type, file_url, metadata_json")
+        .in("id", [planned.value.originalAssetId, planned.value.swapAssetId])
+        .eq("user_id", row.user_id)
+        .eq("project_id", jobProject);
+      const items = putbackInputItems(planned.value, (assets ?? []) as Record<string, unknown>[], { userId: row.user_id, projectId: jobProject }, (r) => bucketOfStoredAsset(r as { asset_type: string | null; metadata_json: unknown }), EDIT_MEDIA_BUCKETS);
+      if (!items.ok) {
+        await failRow(row.id, items.error);
+        return json(200, { ok: true, render: null, skipped: row.id });
+      }
+      const signedInputs = await signAssets([items.value.original, items.value.swap], async (bucket, paths) => {
+        const { data } = await db.storage.from(bucket).createSignedUrls(paths, SIGN_TTL_SECONDS);
+        return alignSigned(paths, data ?? null);
+      });
+      const originalUrl = signedInputs[items.value.original.assetId];
+      const swapUrl = signedInputs[items.value.swap.assetId];
+      // one object per attempt, never overwritten: a retry does not replace bytes an earlier attempt uploaded
+      const outPath = putbackOutputPath(row.user_id, jobProject, row.id, Number(row.attempts) || 1);
+      const { data: up, error: upErr } = await db.storage.from(OUTPUT_BUCKET).createSignedUploadUrl(outPath, { upsert: false });
+      if (!originalUrl || !swapUrl || upErr || !up) {
+        // signing can fail for a passing reason: the job goes back to the queue — twice. A file that is gone would
+        // otherwise come back for ever as the oldest row and block every put-back behind it
+        if ((Number(row.attempts) || 1) < 3) {
+          await db.from("edit_renders").update({ status: "queued", worker_id: null, claimed_at: null, error: "the put-back's files could not be signed; queued again" }).eq("id", row.id);
+          return json(200, { ok: true, render: null, requeued: row.id });
+        }
+        await failRow(row.id, "the put-back's files could not be signed three times: one of the two files is missing from storage");
+        return json(200, { ok: true, render: null, skipped: row.id });
+      }
+      return json(200, {
+        ok: true,
+        render: row,
+        inputs: { original: { assetId: items.value.original.assetId, signedUrl: originalUrl }, swap: { assetId: items.value.swap.assetId, signedUrl: swapUrl } },
+        upload: { path: outPath, signedUrl: up.signedUrl, token: up.token },
+      });
+    }
+
     const plan = (row.plan ?? {}) as {
       inputs?: { items?: Item[] };
       sequence?: { projectId?: string };
     };
     const projectId = plan.sequence?.projectId || (row.project_id as string) || "";
+    // the project a row names must be its own user's: no file of another account is signed for a worker
+    if (!(await ownsProject(row.user_id, projectId))) {
+      await failRow(row.id, "the job names a project that is not its user's");
+      return json(200, { ok: true, render: null, skipped: row.id });
+    }
     const items = (plan.inputs?.items ?? []).filter(
       (i) =>
         (EDIT_MEDIA_BUCKETS as readonly string[]).includes(i.bucket) &&
@@ -123,11 +237,17 @@ serve(async (req) => {
   if (body.action === "complete") {
     const sha256 = typeof body.sha256 === "string" ? body.sha256 : "";
     if (!/^[0-9a-f]{64}$/.test(sha256)) return json(400, { ok: false, error: "sha256_required" });
-    const projectId =
-      (row.plan as { sequence?: { projectId?: string } })?.sequence?.projectId ||
-      (row.project_id as string) ||
-      "";
-    const path = `${row.user_id}/${projectId}/renders/${row.id}.mp4`;
+    const isPutback = row.job_kind === "putback";
+    // a put-back's project is the row's own column, the same one the claim signed for; an edit's is its sequence's
+    const projectId = isPutback
+      ? ((row.project_id as string) || "")
+      : (row.plan as { sequence?: { projectId?: string } })?.sequence?.projectId || (row.project_id as string) || "";
+    // the same checks as at the claim: this worker runs this account's jobs, and the project is that account's
+    if (!serves(row.user_id) || !(await ownsProject(row.user_id, projectId)) || (isPutback && ownerId !== row.user_id)) {
+      await failRow(renderId, "this worker does not run jobs for this account or project");
+      return json(403, { ok: false, error: "not_this_workers_job" });
+    }
+    const path = isPutback ? putbackOutputPath(row.user_id, projectId, row.id, Number(row.attempts) || 1) : `${row.user_id}/${projectId}/renders/${row.id}.mp4`;
     const { data: check, error: checkErr } = await db.storage
       .from(OUTPUT_BUCKET)
       .createSignedUrl(path, 60);
@@ -135,6 +255,26 @@ serve(async (req) => {
     const head = await fetch(check.signedUrl, { headers: { Range: "bytes=0-0" } });
     if (!head.ok) return json(400, { ok: false, error: "upload_missing", status: head.status });
     const duration = Number(body.durationSeconds);
+    // a put-back is filed only with its proof, checked again here; without it the row fails and no asset is made
+    let putback: Record<string, unknown> | null = null;
+    if (row.job_kind === "putback") {
+      const planned = planPutback(row.settings, row.input_asset_ids);
+      const record = planned.ok ? acceptPutbackRecord(body.putback, planned.value) : planned;
+      if (!planned.ok || !record.ok) {
+        const why = !record.ok ? record.error : "the job's own plan no longer reads";
+        await failRow(renderId, why);
+        return json(400, { ok: false, error: "putback_not_proven", message: why });
+      }
+      // what the two inputs are, read again from their rows: how the swap is tied to the window, and whether the
+      // "original" is itself a whole-frame Dress output (then the face kept is the generator's, and the note says so)
+      const { data: inputRows } = await db.from("project_assets").select("id, metadata_json").in("id", [planned.value.originalAssetId, planned.value.swapAssetId]);
+      const metaOf = (id: string) => (inputRows ?? []).find((r: { id: string }) => r.id === id)?.metadata_json;
+      putback = {
+        ...record.value,
+        binding: swapBinding(metaOf(planned.value.swapAssetId), planned.value.originalAssetId),
+        original_is_whole_frame_dress: isWholeFrameDress(metaOf(planned.value.originalAssetId)),
+      };
+    }
     const { data: asset, error: assetErr } = await db
       .from("project_assets")
       .insert({
@@ -142,7 +282,7 @@ serve(async (req) => {
         user_id: row.user_id,
         asset_type: "edited_clip",
         file_url: path,
-        notes: `Timeline ${row.kind} render (free, ffmpeg worker)`,
+        notes: putback ? putbackNote(putback) : `Timeline ${row.kind} render (free, ffmpeg worker)`,
         metadata_json: {
           bucket: OUTPUT_BUCKET,
           edit_render_id: row.id,
@@ -150,8 +290,14 @@ serve(async (req) => {
           duration_seconds: Number.isFinite(duration) ? duration : null,
           bytes: Number(body.bytes) || null,
           sha256,
-          probe: body.probe ?? null,
+          // a put-back's probe is its checked record's `output`; the worker's raw summary is not kept beside it
+          probe: putback ? (putback.output ?? null) : (body.probe ?? null),
           cost_usd: 0,
+          // what it was made from, in the shape the provenance walk reads (_shared/performanceProvenance.ts): the
+          // take's window, by the put-back, so his performance is still the take's
+          // (method "dressed" is that walk's word for a face-preserving wardrobe change; `putback: true` says this
+          // one is the put-back itself, not the whole-frame Dress output)
+          ...(putback ? { putback, derived_from: { asset_id: putback.original_asset_id, method: "dressed", putback: true, swap_asset_id: putback.swap_asset_id, job_id: row.id } } : {}),
         },
       })
       .select("id")

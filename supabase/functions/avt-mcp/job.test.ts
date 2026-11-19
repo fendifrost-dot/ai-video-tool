@@ -188,3 +188,26 @@ describe("vfx scripts", () => {
     expect(out).toMatch(/vfx synthetic checks passed/);
   });
 });
+
+describe("a put-back job is refused before it is queued unless it is a preset and two asset ids", () => {
+  const project_id = "00000000-0000-4000-8000-000000000001";
+  const a = "11111111-1111-4111-8111-111111111111";
+  const b = "22222222-2222-4222-8222-222222222222";
+  it("accepts the three presets, dry run by default, at $0", async () => {
+    const { planJobSubmit, JOB_KINDS } = await import("./jobContract.ts");
+    expect(JOB_KINDS).toContain("putback");
+    const plan = planJobSubmit({ job_kind: "putback", project_id, settings: { preset: "hyenas_verse_creature" }, input_asset_ids: [a, b] }, null, null);
+    expect(plan.ok).toBe(true);
+    if (plan.ok) expect(plan.value).toMatchObject({ dryRun: true, costUsd: 0, job_kind: "putback", input_asset_ids: [a, b] });
+  });
+  it("refuses an unknown preset, extra settings, and anything but two asset ids", async () => {
+    const { planJobSubmit } = await import("./jobContract.ts");
+    const no = (over: Record<string, unknown>) => planJobSubmit({ job_kind: "putback", project_id, settings: { preset: "c033_showroom" }, input_asset_ids: [a, b], ...over }, null, null);
+    expect(no({ settings: { preset: "improvised" } }).ok).toBe(false);
+    expect(no({ settings: { preset: "c033_showroom", env: { AVT_HEAD_FIT: "1" } } }).ok).toBe(false);
+    expect(no({ settings: undefined }).ok).toBe(false);
+    expect(no({ input_asset_ids: [a] }).ok).toBe(false);
+    expect(no({ input_asset_ids: [a, a] }).ok).toBe(false);
+    expect(no({ input_asset_ids: undefined }).ok).toBe(false);
+  });
+});

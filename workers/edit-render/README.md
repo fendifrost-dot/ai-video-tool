@@ -9,8 +9,9 @@ The host holds only a **worker secret**, not the service-role key. The worker ta
 and completes the row. Register a secret (SQL editor, service role):
 
 ```sql
-insert into public.edit_render_workers (label, secret_hash)
-values ('box', encode(digest('<secret>', 'sha256'), 'hex'));  -- or compute sha256 hex locally
+-- owner_user_id is whose jobs this worker runs; a worker with no owner is handed nothing (SEC-6)
+insert into public.edit_render_workers (label, secret_hash, owner_user_id)
+values ('box', '<sha256 hex of the secret, computed locally>', '<the owner's auth.users id>');
 ```
 
 Requirements: Node ≥ 22.6 (`--experimental-strip-types`), ffmpeg/ffprobe on PATH.
@@ -26,3 +27,28 @@ The process runs one job at a time. It checks free disk before each claim. It do
 - Test one job: `node --experimental-strip-types workers/edit-render/worker.mjs --once`.
 
 Rows stuck in `rendering` for 20 min are re-queued (up to 3 attempts) then failed.
+
+## Put-back jobs (job kind `putback`)
+
+The face-preserving put-back (`scripts/edit/body_only_swap.py`, run unchanged) as a job. Design, threat model and
+what is and is not proven: `docs/design/DRESS_AND_PLACE_PIPELINE_2026-11.md`.
+
+- **A worker says which kinds it takes: `AVT_WORKER_KINDS`, default `edit`.** An edit job's plan can carry a command
+  line from its row, so a host takes edit jobs only on purpose. A put-back is taken only by a worker that lists
+  `putback` and has: Python with numpy, OpenCV and MediaPipe (`AVT_PUTBACK_PYTHON`), ffmpeg, the two model files
+  with the recorded hashes (`AVT_MODELS`), and a scratch folder it was told (`AVT_SCRATCH_DIR`).
+- **A worker runs only its owner's jobs.** `edit_render_workers.owner_user_id` is set in Lovable's SQL editor when
+  the worker is registered; a worker with no owner is handed nothing.
+- **On Fendi's Mac the worker is started for one job and exits** (8 GB of memory; one heavy job at a time):
+
+  ```bash
+  AVT_SCRATCH_DIR="/Volumes/T7/_avt_work/worker_scratch" AVT_MODELS="/Volumes/T7/Hyenas AVT edit/_avt_work/models" AVT_PUTBACK_PYTHON="$HOME/.avt-venv/bin/python" workers/edit-render/run-once-putback.sh
+  ```
+
+  It reads its secret from `~/.secrets/avt_render_worker_mac.env` (mode 600), refuses to start when more than 4 GB
+  of swap is in use or another put-back worker is running, asks for put-backs only, and removes a failed job's
+  files. Media never touches the internal disk.
+- Queue one: MCP `avt_job_submit` with `job_kind: "putback"`, `settings: { preset }`, `input_asset_ids: [window,
+  its conformed dress-clip output]` (`dry_run` first). Read it: `avt_job_status`.
+- Container: `Dockerfile.putback` (never built; see its header).
+

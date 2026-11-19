@@ -1,0 +1,30 @@
+# The edit-render worker with the put-back runtime (job_kind "putback": scripts/edit/body_only_swap.py, unchanged).
+# Build from the repo root:  docker build -f workers/edit-render/Dockerfile.putback -t avt-edit-render-putback .
+# Run:                        docker run -e AVT_WORKER_SECRET=... -e AVT_WORKER_API=... -v /path/to/models:/models:ro avt-edit-render-putback
+#
+# The two MediaPipe model files are MOUNTED at /models, never baked into the image and never committed:
+#   selfie_multiclass_256x256.tflite  sha256 c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0
+#   face_landmarker.task              sha256 64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff
+# The worker checks both hashes at start and before every job; with either missing it claims edit jobs only.
+#
+# NOT BUILT YET (19 Nov 2026): this image has never been built or run. The pins are the versions of the Mac
+# environment the Hyenas put-backs ran in (~/.avt-venv, read with pip freeze on 19 Nov: Python 3.9.6, numpy 2.0.2,
+# opencv-python-headless 5.0.0.93, scipy 1.13.1, mediapipe 1.2.3 installed --no-deps). The c033 reproduction script
+# was tested on other versions (Python 3.13, mediapipe 1.1.1, numpy 2.5.4), and its decoded-frame MD5 is only
+# expected to match there. On any version the gate is the proof line (max |out-original| 0), never the MD5.
+# Whoever builds this first runs scripts/edit/reproduce_body_only_c033.sh inside it and records what it prints.
+FROM node:22-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates python3 python3-venv libgl1 libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/putback \
+ && /opt/putback/bin/pip install --no-cache-dir numpy==2.0.2 opencv-python-headless==5.0.0.93 scipy==1.13.1 \
+ && /opt/putback/bin/pip install --no-cache-dir --no-deps mediapipe==1.2.3 \
+ && /opt/putback/bin/pip install --no-cache-dir absl-py==2.3.1 flatbuffers==25.12.19 protobuf==6.33.6 sounddevice==0.5.6 matplotlib==3.9.4
+WORKDIR /app
+COPY scripts/edit-render ./scripts/edit-render
+COPY scripts/edit ./scripts/edit
+COPY supabase/functions/_shared ./supabase/functions/_shared
+COPY workers/edit-render ./workers/edit-render
+ENV AVT_PUTBACK_PYTHON=/opt/putback/bin/python AVT_MODELS=/models
+USER node
+CMD ["node", "--experimental-strip-types", "workers/edit-render/worker.mjs"]

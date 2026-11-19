@@ -65,6 +65,13 @@ the wrong workflow.
    **Pass mark, both printed by the script:** his face found on all, or all but a few, frames; `max |out-original| on
    face/hair/skin: 0`. Then `scripts/edit/face_check.py` for the sheet against his face pictures in the tool, posted
    with the clip. Fendi judges the face.
+
+   **As a job (CODED on PR #512; live only when `docs/design/DRESS_AND_PLACE_PIPELINE_2026-11.md` §9 says so):**
+   `avt_job_submit {job_kind: "putback", project_id, settings: {preset: "hyenas_verse_creature"}, input_asset_ids:
+   [<the take's window>, <the swap>]}` runs the same script with these same settings on the render worker and files
+   the result only when the proof prints 0. A swap made with step 3 goes through the provider call, so nothing
+   records which window it came from: when you file it as a `project_assets` row, put
+   `swap_of: {asset_id: <the window's asset id>}` in its `metadata_json`. Without that the job is refused.
 5. **Into another set: the YSL showroom method, unchanged.** This is recipe E1' of
    [`HIS_FACE_IN_ANY_SCENE.md`](HIS_FACE_IN_ANY_SCENE.md) (c033 showroom, `8a527bab`). Do not build another cut-out.
    - File the step-4 result as a `project_assets` row (`metadata_json`: `bucket`, `mime_type` video/mp4,

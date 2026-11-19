@@ -234,6 +234,40 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 
 ---
 
+## SEC-6 — The edit-render worker ran any signed-in visitor's job, command line included
+
+- **Severity:** Critical · **Confidence:** Confirmed (traced and probed by an independent security review, 19 Nov 2026; the live policy and claim function read the same day) · **Status:** Mitigated at the database 2026-11-19 (SQL applied in Lovable, `box` given its owner, a second account's row shown not to be claimed); open for the items under "Not fixed here" · **Owner:** Platform (AVT) · **Opened:** 2026-11-19
+- **Summary:** `claim_edit_render` handed the oldest queued `edit_renders` row to whichever worker asked. The table's policy lets any signed-in user insert rows of their own (an anonymous sign-in is a signed-in user; anonymous sign-in is live). The edit runner (`scripts/edit-render/encode.mjs`) executes `plan.argv` from the row when the plan lists no media, behind a word blocklist only. So a visitor could have the always-on worker `box` run a command line of their choosing, as that machine's user, since 18 Oct 2026. `edit_renders` held three rows on 19 Nov, all the owner's and all complete: no sign of use, which is not proof of none (a row can be deleted by the user who wrote it).
+- **Fix (PR #512):** a worker belongs to an account (`edit_render_workers.owner_user_id`, service role only, set by hand in Lovable) and both claim functions hand it that account's rows alone; the worker API checks it again at claim and at complete and checks the project is that account's; a worker says which job kinds it takes; a claimed job carries the worker row's id. Until the SQL is applied the redeployed API still refuses an anonymous account's row.
+- **Not fixed here:** the edit runner still executes a command line from the plan of the OWNER's own rows. The right end state is that the worker API rebuilds the plan from the sequence at claim (`planForSequence`) and the runner takes no `argv` from a row at all. The worker `box` runs whatever checkout it was started from; its host is not reachable from the repo.
+- **Applied 2026-11-19 ≈23:48 UTC** (Lovable `query_database`, on the director's "Yes, apply it" in chat): `20261120100000_putback_job_kind.sql`, then `box`'s `owner_user_id` set by hand. VERIFIED in the same editor by a test that was rolled back: a queued edit row of a second account was claimed 0 times by `claim_edit_render`, 0 by `claim_edit_render_kinds` for the owner and 0 with no owner; the owner's own queued row was claimed once. The table's policy is unchanged; both claim functions are `security definer`, `search_path = public, pg_temp`, executable by the service role only.
+- **DoD:** ~~SQL applied and `box`'s owner set~~ done; ~~a row written by a second account is shown not to be claimed~~ done; `edit-render-worker-api` redeployed from the merged PR #512 (the second check at the door); the runner no longer takes `argv` from a row.
+
+---
+
+## ARCH-2 — The proven put-back, matte and light-match methods run only as offline scripts
+
+- **Severity:** High (money and time, not data) · **Confidence:** Confirmed · **Status:** Open (design proposed, slice a coded on a draft branch, nothing live) · **Owner:** Products (AVT) · **Opened:** 2026-11-19
+- **Summary:** The face-preserving put-back (`scripts/edit/body_only_swap.py`), the matte repair and stability
+  check, the measured light match and the four face checks exist only as offline Python. An agent working in the
+  app cannot finish a clothing swap there, so it improvises. Measured cost across YSL, Hyenas and Partnership:
+  about $146 of swap spend thrown away, about $46 of it against a note that already existed
+  ([`docs/audit/METHODS_ACCOUNTING_2026-11.md`](docs/audit/METHODS_ACCOUNTING_2026-11.md) §3). `CLAUDE.md`
+  ("Integration gap") and four recipe pages have named the gap since 18 Oct.
+- **What the fix adds, and its own risk:** a worker that runs Python on rows of `edit_renders`. With SEC-4 open any
+  visitor can insert such a row, so the job is a closed preset plus two asset ids, the script path is fixed,
+  inputs are resolved and signed server-side for the job's own user and project, and a put-back is handed only to a
+  worker that user registered ([`docs/design/DRESS_AND_PLACE_PIPELINE_2026-11.md`](docs/design/DRESS_AND_PLACE_PIPELINE_2026-11.md) §5).
+- **Also found:** neither November migration is applied (STORE-5), so the put-back's SQL is self-contained; the
+  job table's policy admits only rows tied to an edit sequence, so a put-back is queued and read through two
+  functions of its own; the worker `box` is alive and polling but has claimed nothing since 18 Oct 2026; and SEC-6.
+- **Pointer:** `docs/handoffs/HANDOFF_AVT_BUILT_IN_METHODS_2026-11-19.md` §4; the design note above.
+- **DoD (target):** a put-back queued from the app or the MCP runs on a registered worker, files a clip only with
+  proof 0 recorded on the asset, the c033 fixture reproduces through it, a whole-frame Dress output cannot be made a
+  shot's primary without that proof, and `CLAUDE.md`'s "Integration gap" paragraph is gone.
+
+---
+
 ## OPS-1 — No CI gate
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Platform (AVT)
