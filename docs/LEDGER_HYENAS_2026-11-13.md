@@ -33,3 +33,19 @@ From `docs/handoffs/HANDOFF_HYENAS_PERFORMANCE_OVERHAUL_2026-11-13.md` (the chat
 nine Genjutsu swaps ($24.48), one refused 2 s job and one Bad Gateway submit whose charges are not known, nine mattes
 (about $0.65), about ten single-frame SAM calls of unknown cost, earlier plates, stills, cutaways and tests. No row
 of that is in a ledger. An agent with the time should rebuild it from `provider_jobs` for this project.
+
+## Found in the app's job table on 19 Nov 2026 (audit, `docs/audit/METHODS_ACCOUNTING_2026-11.md` section 4)
+
+VERIFIED: `provider_jobs` for this project, read through the AVT MCP on 19 Nov. None of these is a row above.
+
+| When (UTC) | What | Jobs | At the job's own estimate |
+|---|---|---|---|
+| 12 Nov 19:36–22:43 | Seedance clips through `montage-shot` | 25 succeeded | $48.82 (7 x $2.219 + 18 x $1.849, the rows' `estimateUsd`) |
+| 12 Nov 07:37 – 13 Nov 01:04 | Gemini stills, `gemini-nano-banana-2.1` | 37 succeeded | about $9.99 (37 x $0.27; ESTIMATE, the size is not on the row) |
+| 13 Nov 01:51, 02:00 | Genjutsu swaps through `proxy-provider-call` | 1 failed, 1 succeeded | $2.72; the other eight swaps of the chat session ($21.76 of the $24.48 above) are in no table |
+| 13 Nov 07:02–08:53 | veed mattes | 9 | about $0.65 (ESTIMATE) |
+| 14 Nov 16:35–21:27 | veed mattes, after this ledger closed | 8 | about $0.6 (ESTIMATE) |
+
+Every veed matte row of this project (26 of 26) still reads `status: running`: the matte lane does not finalise its
+job row. With the session above, Hyenas comes to about **$127 at estimate**, invoices unknown.
+

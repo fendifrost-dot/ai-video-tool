@@ -1,0 +1,73 @@
+project,row,category,method,outcome,rework_usd,covered_by_note,fendi_words,note
+partnership,1,,none,kept,0,,,LaSalle picked; the other two stills were options
+partnership,2,,FACE_PRESERVING_CLOTHING_SWAP,rejected,4.086,build skill section 3 motion budget (9 Nov): no fan or moving cloth on a swap take,,flicker below the belt on a take shot with a fan
+partnership,3,,BROLL_WITH_HIM_STILL_MOUTH,rejected,3.328,BROLL_WITH_HIM_STILL_MOUTH: dress the window first; motion calm,,window not in the look and motion lively (PARTNERSHIP_STORM_VERSE_METHOD_PLAN.md:17)
+partnership,4,,none,kept,0,,,
+partnership,5,,FACE_PRESERVING_CLOTHING_SWAP,rejected,3.405,build skill section 3: a swap never runs on a frame with crossing motion,,swap run on generated storm footage; lavender patches at both hips
+partnership,6,,PROBLEM_INDEX matte row,rejected,0.135,HIS_FACE_IN_ANY_SCENE step 0: a plain background behind him,Refer to our masking techniques used in hyenas,the matte kept the quilt behind him on 180/180 frames; the take was the problem
+partnership,7,,none,rejected,1.08,CLAUDE.md MODELS AND HIS LIKENESS: never a generated still of him as his face (Hyenas 12 Nov),the one I called amazing was only referencing the clothing swap and scenery not my face,Gemini drew his face on all four
+partnership,8,,none,rejected,2.311,CLAUDE.md MODELS AND HIS LIKENESS: never a generated still of him fed to a video model,,animation of the still with Gemini's drawing of his face
+partnership,9,,still_face_putback,kept,0,,,the YSL cover method; proof 0
+partnership,10,relight,none,rejected,0.27,,,Gemini blend pass redrew his head; a paid light-match attempt
+partnership,11,,still_face_putback,kept,0,,,
+partnership,12,,still_face_putback,mixed,0.27,,,A passes; B fails the head check (glasses doubled)
+partnership,13,,PROBLEM_INDEX matte row,kept,0,,,
+partnership,14,,none,rejected,0.27,,,no gain: third time words alone did not lower the hat
+partnership,15,,still_face_putback,kept,0,,,
+partnership,16,,still_face_putback,mixed,0.54,,fix my face and produce more like it,one of three passed; two rejected
+partnership,17,,still_face_putback,rejected,0.54,,,not posted: Gemini's own glasses show round his
+partnership,18,,none,rejected,0.54,,,no gain: the pass redrew the whole face both times
+partnership,19,,still_face_putback,approved,0,,"whatever has been done to get the desired results, let's just keep doing more of that",
+partnership,20,,still_face_putback,mixed,0.27,,,five of six usable; one rejected
+partnership,21,,montage-shot continuous,test,0,,,motion test; face too small to judge
+partnership,22,,montage-shot continuous,mixed,5.546,,,two of the eight clips were rejected and redone in row 23 (wrong trousers and shoes from a knees-up still)
+partnership,23,,montage-shot continuous,kept,0,,Use whatever methodology is most consistent with the results we desire.,
+partnership,24,,montage-shot continuous,unstated,0,,"Yes, make it",pending his word on the result
+partnership,25,,photo_people_cutout,kept,0,,All the images need to be masked so just the people are in the shots. Please use the verified masking method,19 of 20 usable
+partnership,26,,none,superseded,0.54,,,generated likeness of Allen; replaced by the clothes-only edit of his real photo (row 27 on)
+partnership,27,,still_face_putback,superseded,0.27,,,the navy sweater was the agent's pick; replaced by row 28
+partnership,28,,still_face_putback,kept,0,,,the red Martini Bear sweater Fendi sent; put-back printed 0
+partnership,29,,still_face_from_photo,rejected,0.27,HIS_FACE_IN_ANY_SCENE / PROBLEM_INDEX: his face from his photo's own pixels,,v1 rejected: the default face mode flattened his face (commit 427524f9)
+partnership,30,,PROBLEM_INDEX matte row,kept,0,,,
+partnership,31,relight,none,rejected,0.27,,,dead end: a Gemini blend pass changed almost nothing; a paid light-match attempt
+partnership,32,,still_face_from_photo AVT_FACE_EXACT,approved,0,,"if you can dial it in, that's fine",v3 passed by Fendi (commit 0069fa24); asset 077a3515
+partnership,33,,still_face_from_photo AVT_FACE_EXACT,kept,0,,,the dial-in he allowed; asset 14f9d5dd
+partnership,34,,treatment-writer,rejected,0.0712,,,not usable: ten beats with no lyric ties
+partnership,35,,treatment-writer,rejected,0.0844,,,written but not filed: the in-place rewrite refuses when a beat has no shot
+partnership,36,,treatment-writer,rejected,0.0831,,too basic and honestly boring,the plain line-by-line board; archived with his words
+partnership,37,,treatment-writer (text by hand),kept,0,,,board fa7f6b85; the text was written by hand
+hyenas,0,,none,kept,0,,,
+hyenas,1,,none,approved,0,,The scene looks good,
+hyenas,2–3,,none,kept,0,,,
+hyenas,4,,none,kept,0,,,
+hyenas,5,,none,kept,0,,,
+hyenas,6,,none,kept,0,,,
+hyenas,7–19,,FACE_PRESERVING_CLOTHING_SWAP base swap,mixed,13.60,,,eight of thirteen swaps used; five attempts not used (5 x 2.72)
+hyenas,20–28,,PROBLEM_INDEX matte row,kept,0,,Perfect,used as delivered (verse 0.9 is the one with his word)
+hyenas,29,,none,rejected,0.33,YSL ledger row 58 (16 Oct): Beeble SwitchX redraws what it relights,,it redrew his face
+ysl,36,,dress (Genjutsu whole frame),mixed,11.58,,You can build freely,six grouped windows; coldW1 and coldW2 (17 billed s) were re-run cap-first in rows 37-38; the other four windows' verdicts are not on the row
+ysl,38,,dress (Genjutsu whole frame),mixed,5.45,,,coldW1 rejected (8 billed s); coldW2 passed
+ysl,100,,dress-clip,approved,0,,C041 is fine,
+ysl,103,,dress-clip,kept,0,,,
+ysl,114–119,,montage-shot,mixed,1.849,,,c005 not used and redone in row 121
+ysl,124,,montage-shot,rejected,5.547,,,three renders blocked by the provider's content safety after generation
+ysl,127,,dress-clip,mixed,21.79,,,13 dresses: 5 passed; 8 missed (8 x 2.724)
+ysl,128,,dress-clip,mixed,16.34,,,15 redresses: 6 missed across three rounds (6 x 2.724)
+ysl,130,,montage-shot,mixed,24.41,,,24 renders: 9 made from wrong-clothing takes and 2 misses on c010 (11 x 2.219)
+ysl,137,lipsync,none,rejected,0.404,,a lot of the lip sync footage alters my face and looks crazy,the rule against lip-sync entered CLAUDE.md the next day (18 Oct); first-time
+ysl,138,lipsync,none,rejected,3.838,,a lot of the lip sync footage alters my face and looks crazy,all 21 results marked usable:false (row 139)
+ysl,141,,montage-shot continuous,mixed,3.883,,redo any clip necessary,E1 was a wardrobe miss; E2 kept
+ysl,142,,montage-shot continuous,rejected,3.883,,I hate the hand placements and the unnatural head movement,E1 v2 marked usable:false
+ysl,159,,dress-clip whole frame,rejected,3.405,FACE_PRESERVING_CLOTHING_SWAP (18 Oct) existed; the shot was first delivered without the swap,You didn't do the clothing swap,unusable: Genjutsu re-staged him 2.5x larger
+ysl,174,,FACE_PRESERVING_CLOTHING_SWAP crop,kept,0,FACE_PRESERVING_CLOTHING_SWAP (18 Oct): the swap was owed on the first pass,you didn't do the outfit swap,the swap itself was needed; counted as kept
+ysl,186,,FACE_PRESERVING_CLOTHING_SWAP,kept,0,,You didn't do a full clothing swap to remove the camo shirt for the YSL jacket,the swap itself was needed; counted as kept
+ysl,203,,BROLL_WITH_HIM_STILL_MOUTH,rejected,2.219,the scene's outfit was on the 16 Oct source takes; the five renders of rows 198-202 used his own black outfit,None of these had clothing swap… Use the outfit from the original scene you are regenerating,redo of c042; the cap was lost
+ysl,204,,BROLL_WITH_HIM_STILL_MOUTH,rejected,2.219,same as row 203,None of these had clothing swap,redo of c045; the cap was lost
+ysl,205,,BROLL_WITH_HIM_STILL_MOUTH,kept,2.219,same as row 203,None of these had clothing swap,redo of c046; kept but a redo a right first pass would not have needed
+ysl,206,,FACE_PRESERVING_CLOTHING_SWAP on a render,kept,3.405,same as row 203,None of these had clothing swap,the swap the first pass left out
+ysl,207,,FACE_PRESERVING_CLOTHING_SWAP on a render,kept,3.405,same as row 203,None of these had clothing swap,the swap the first pass left out
+ysl,208,,BROLL_WITH_HIM_STILL_MOUTH,kept,2.219,same as row 203,None of these had clothing swap,third render of c042
+ysl,209,,BROLL_WITH_HIM_STILL_MOUTH,kept,2.219,same as row 203,None of these had clothing swap,third render of c045
+ysl,216,,dress-clip,rejected,3.405,the put-back's own alignment was the fault; the first swap was fine,,second roll sent before the cause was found; a spare
+ysl,55,relight,none,rejected,0.397,,,Beeble SwitchX redrew the wardrobe (row 58)
+ysl,65,relight,none,rejected,0.397,,run it all and let's see what works the best,variant test; Beeble's relight stays a recommendation only (row 68)
