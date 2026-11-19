@@ -517,3 +517,30 @@ plan on putting his head pixels back afterwards, as Fendi said.
 Evidence is thin everywhere: no independent 2026 test of real-person likeness from stills was found, only single-run
 vendor posts. Whatever moves him, the check is the same: `face_check.py` sheet against his photographs, `mouth_scan.py`,
 frame by frame at the mouth corners, jaw and where he meets the seat; Fendi judges the face.
+
+### Allen nod test 1, 19 Nov 2026 (LivePortrait, local, $0). NOT VERIFIED: a test, waiting for Fendi's eyes
+
+Fendi, 19 Nov: "Then download live portrait". Downloaded to `/Volumes/T7/tools/LivePortrait` from the official release
+(code `github.com/KlingAIResearch/LivePortrait` at `9b294b3`; model files `huggingface.co/KlingTeam/LivePortrait`, people
+only, 632 MB, every size and sha256 checked). Its packages sit in `site-packages` beside it (no environment on the Mac;
+run with `PYTHONPATH=/Volumes/T7/tools/LivePortrait/site-packages /usr/bin/python3 -s`). Licence: code MIT; the bundled
+InsightFace detection models are "for non-commercial research purposes only" (its LICENSE, lines 25-29), so a shot that
+ships needs the detector replaced (MediaPipe, which we already use) or only the motion taken from it, as in version B.
+
+Test: the approved still `14f9d5dd` (v4), 3 s at 24 fps, one nod of 6 degrees, head pose only. No driving clip of
+another person: LivePortrait's own retargeting moves only the head pitch; expression, lips and eyes keep the still's
+values (VERIFIED in its code: `animation_region: "pose"` exists, and `execute_image_retargeting` takes a pitch change).
+Scripts on the T7: `work/allen/nod_test/liveportrait_nod.py`, `nod_hispixels.py`.
+
+| Version | What it is | Measured |
+|---|---|---|
+| A `nod_p6_raw.mp4` | LivePortrait's own picture | outside its mask: 0 difference from the still. Inside, even with no motion, it redraws him (mean 1.7, 99th pct 11 of 255): softer skin, changed eyes and earring. Not his pixels |
+| B `nod_p6_hispixels.mp4` | the still's own pixels, moved by the motion measured from A (optical flow) | 48 of 72 frames identical to the still bit for bit; the head moves up to 12.8 px in the other 24 |
+
+OBSERVED: mouth stays closed in both (`mouth_scan.py`, lip gap never above 0.016 through the nod); no smile; cap and
+headrest edge hold. Not yet done: over the real car take (his still is one frame; the cabin does not move), a longer or
+second movement, a larger nod. RECOMMENDATION: version B is the route (his pixels, and nothing from the research-only
+detector reaches the picture). Fendi judges whether the nod reads as him.
+
+The engineering handoff written the same day is `docs/handoffs/HANDOFF_AVT_BUILT_IN_METHODS_2026-11-19.md` (audit of
+YSL / Hyenas / Partnership, the Treatment writer fix, the four methods built into the app).
