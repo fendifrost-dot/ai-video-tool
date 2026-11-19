@@ -321,3 +321,14 @@ face, cap, ear and earring are the photo's pixels). T7 `work/allen/dressed_v1/al
 (1152x928), check sheets `allen_dressed_v1_check.jpg`, `allen_dressed_v1_heads.jpg`. Pending his word.
 NEXT (not started): the same on a seated photo for the passenger seat (ref 03 is seated, three-quarter, 316x398), then
 Allen placed in the car and by the cars as his own pixels; quote before each.
+
+**ALLEN'S SWEATER IS THE RED MARTINI BEAR (Fendi, 19 Nov 2026: he sent the site's picture of it).** Polo Ralph Lauren
+Martini Bear Sweater, Regal Carmine, code AI710B28797001: T7 `wardrobe/11_allen_martini_bear_sweater_regal_carmine/`
+(his screenshot kept there), flat front `27e951ad` (approved). The navy one above was the agent's pick while the choice
+was open: SUPERSEDED, do not use (`400b40c3`, `d77de245`).
+Dressed v2, same method, $0.27: ref 05 as `screen` + the red flat as `garment`, prompt
+`allen_dressed_photo_v2_martini_bear`, job `f44e74d5` → `3cb21b17`; `still_face_putback.py`: ECC 0.926, `max
+|out-original| inside the hard head mask: 0` (73,582 px). T7
+`work/allen/dressed_v2_martini_bear/allen_dressed_martini_bear_red_realface.png` (1152x928), `allen_dressed_v2_check.jpg`,
+`allen_dressed_v2_heads.jpg`. OBSERVED: no collar under it, the tuxedo bear with the martini as on the product, the
+picture still reads as the same old phone photo. Pending his word.
