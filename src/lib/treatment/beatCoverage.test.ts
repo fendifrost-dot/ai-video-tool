@@ -95,3 +95,32 @@ describe("a montage scene that could not be placed is said to have no shot — n
     ]);
   });
 });
+
+describe("a coverage survives being stored with the board and read back", () => {
+  it("parsing its own output keeps every part's verdict and every line (the board stores the parsed shape)", async () => {
+    const { parseBeatCoverage, coverageSections } = await import("./beatCoverage");
+    const reply = {
+      ok: false, verdict: "gaps", writer: { style: "montage_twists" },
+      structural: { verdict: "pass", lumped: [{ beat: "b1", shots: 9, share: 60 }], readings: [3, 5] },
+      lyrics: { verdict: "gaps", inserts: [{ beat: "b1", shot: "c002", cue: "w", takenFrom: "b1" }], dropped: [{ words: "ice on my wrist", why: "the song does not sing these words" }] },
+      relationships: { verdict: "pass", corrected: [{ beat: "b1", to: "b0", from: "reveals", kind: "screen_shows", words: "on a screen" }], mistyped: [] },
+      production: { verdict: "gaps", corrected: [{ shot: "c001", from: "footage", to: "generate", why: "x" }] },
+      treatment: { verdict: "pass", uncovered: [{ index: 2, text: "a paragraph" }] },
+      beats: [{ id: "b1", title: "Radios", shots: ["c001"], people: [], emptied: [], ties: [] }],
+      uncoveredBeats: [], missingPeople: [], missingLinks: [], anchors: [], unanchored: [],
+    };
+    const once = parseBeatCoverage(reply)!;
+    const twice = parseBeatCoverage(JSON.parse(JSON.stringify(once)))!;
+    expect(twice).toEqual(once);
+    expect(twice.sections).toEqual({ structural: "pass", lyrics: "gaps", relationships: "pass", production: "gaps", treatment: "pass" });
+    expect(twice.style).toBe("montage_twists");
+    expect(twice.dropped).toHaveLength(1);
+    expect(twice.inserts).toHaveLength(1);
+    expect(twice.tieCorrections).toHaveLength(1);
+    expect(twice.productionCorrections).toHaveLength(1);
+    expect(twice.treatmentUncovered).toHaveLength(1);
+    expect(twice.lumped).toHaveLength(1);
+    expect(twice.readings).toEqual([3, 5]);
+    expect(coverageSections(twice).find((s) => s.name.startsWith("Lyric alignment"))!.lines.join(" ")).toContain("ice on my wrist");
+  });
+});

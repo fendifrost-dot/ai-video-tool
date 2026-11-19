@@ -780,13 +780,15 @@ export const BETWEEN_SCENES_MOOD =
 
 /**
  * The paragraphs of a montage text that are scenes: the ones that OPEN by quoting sung words ("When he raps "…"",
- * "On "…"", "As he says ‘…’", or the quote itself first). A quote further in — a song title in the idea, a
- * possessive in the through-line — does not make a paragraph a scene. With no such paragraph, every paragraph.
+ * "On '…'", "He raps ‘…’", or the quote itself first). A quote further in — a song title in the idea, a possessive
+ * in the through-line — does not make a paragraph a scene, and the first paragraph (the idea) never is one. With no
+ * such paragraph, every paragraph.
  */
 export function montageSceneParagraphs(treatment: string): string[] {
   const all = paragraphsOf(treatment);
-  const opener = /^(?:(?:when|as|on|at|while|where|for)\b[^"“”‘’]{0,40})?["“‘][^"“”‘’]{3,}["”’]/i;
-  const scenes = all.filter((p) => opener.test(p));
+  // a short lead-in with no quote in it, then an opening quote (straight or curly, double or single), words, a closing quote
+  const opener = /^(?:[^"“”‘’']{0,48}[\s—:,(-])?["“‘'][^"“”]{1,}?["”’'](?=[\s,.;:—)-]|$)/;
+  const scenes = all.filter((p, i) => i > 0 && opener.test(p));
   return scenes.length ? scenes : all;
 }
 

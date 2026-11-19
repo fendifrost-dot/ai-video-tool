@@ -76,7 +76,13 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
   const v = value as Record<string, unknown>;
   if (!Array.isArray(v.beats)) return null;
   const verdict = (x: unknown): Verdict | null => (x === "pass" || x === "gaps" || x === "fail" ? x : null);
-  const sec = (name: string) => verdict((v[name] as Record<string, unknown> | undefined)?.verdict);
+  // Two shapes are read: the writer's reply (parts nested: lyrics.inserts, relationships.corrected, …) and THIS
+  // function's own output, which is what the board stores and reads back (treatmentDoc.ts). Until 19 Nov 2026 the
+  // stored copy was parsed as if it were the reply, so after a reload every part but structure read "not checked"
+  // and its lines were gone.
+  const own = v.sections && typeof v.sections === "object" && !Array.isArray(v.sections) ? (v.sections as Record<string, unknown>) : null;
+  const sec = (name: string) => verdict(own ? own[name] : (v[name] as Record<string, unknown> | undefined)?.verdict);
+  const list = (flat: unknown, nested: unknown): Record<string, unknown>[] => (Array.isArray(flat) ? flat : Array.isArray(nested) ? nested : []) as Record<string, unknown>[];
   const rel = (v.relationships ?? {}) as Record<string, unknown>;
   const prod = (v.production ?? {}) as Record<string, unknown>;
   const lyr = (v.lyrics ?? {}) as Record<string, unknown>;
@@ -86,11 +92,11 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
     ok: v.ok === true,
     verdict: verdict(v.verdict),
     sections: { structural: sec("structural"), lyrics: sec("lyrics"), relationships: sec("relationships"), production: sec("production"), treatment: sec("treatment") },
-    inserts: Array.isArray(lyr.inserts) ? (lyr.inserts as Record<string, unknown>[]).map((i) => ({ beat: str(i.beat), shot: str(i.shot), cue: str(i.cue), takenFrom: str(i.takenFrom) })) : [],
-    tieCorrections: Array.isArray(rel.corrected) ? (rel.corrected as Record<string, unknown>[]).map((c) => ({ beat: str(c.beat), to: str(c.to), from: str(c.from), kind: str(c.kind), words: str(c.words) })) : [],
-    mistyped: Array.isArray(rel.mistyped) ? (rel.mistyped as Record<string, unknown>[]).map((m) => ({ beat: str(m.beat), kind: str(m.kind), statedKind: str(m.statedKind), to: str(m.to) })) : [],
-    productionCorrections: Array.isArray(prod.corrected) ? (prod.corrected as Record<string, unknown>[]).map((c) => ({ shot: str(c.shot), from: str(c.from), to: str(c.to), why: str(c.why) })) : [],
-    treatmentUncovered: Array.isArray(tr.uncovered) ? (tr.uncovered as Record<string, unknown>[]).map((u) => ({ index: Number(u.index ?? 0), text: str(u.text) })) : [],
+    inserts: list(v.inserts, lyr.inserts).map((i) => ({ beat: str(i.beat), shot: str(i.shot), cue: str(i.cue), takenFrom: str(i.takenFrom) })),
+    tieCorrections: list(v.tieCorrections, rel.corrected).map((c) => ({ beat: str(c.beat), to: str(c.to), from: str(c.from), kind: str(c.kind), words: str(c.words) })),
+    mistyped: list(v.mistyped, rel.mistyped).map((m) => ({ beat: str(m.beat), kind: str(m.kind), statedKind: str(m.statedKind), to: str(m.to) })),
+    productionCorrections: list(v.productionCorrections, prod.corrected).map((c) => ({ shot: str(c.shot), from: str(c.from), to: str(c.to), why: str(c.why) })),
+    treatmentUncovered: list(v.treatmentUncovered, tr.uncovered).map((u) => ({ index: Number(u.index ?? 0), text: str(u.text) })),
     beats: (v.beats as Record<string, unknown>[]).map((b) => ({
       id: str(b.id),
       title: str(b.title),
@@ -104,10 +110,10 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
     missingLinks: Array.isArray(v.missingLinks) ? (v.missingLinks as Record<string, unknown>[]).map((m) => ({ beat: str(m.beat), kind: str(m.kind), to: str(m.to) })) : [],
     anchors: Array.isArray(v.anchors) ? (v.anchors as Record<string, unknown>[]).map((a) => ({ beat: str(a.beat), shot: str(a.shot), cue: str(a.cue) })) : [],
     unanchored: Array.isArray(v.unanchored) ? (v.unanchored as Record<string, unknown>[]).map((a) => ({ beat: str(a.beat), cue: str(a.cue), ...(a.sung === "earlier" || a.sung === "never" || a.sung === "early" ? { sung: a.sung } : {}), ...(typeof a.shot === "string" ? { shot: a.shot } : {}) })) : [],
-    style: ((w) => (w === "montage_twists" || w === "classic" ? w : null))((v.writer as Record<string, unknown> | undefined)?.style),
-    dropped: Array.isArray(lyr.dropped) ? (lyr.dropped as Record<string, unknown>[]).map((d) => ({ words: str(d.words), why: str(d.why) })) : [],
-    lumped: Array.isArray(structural.lumped) ? (structural.lumped as Record<string, unknown>[]).map((l) => ({ beat: str(l.beat), shots: Number(l.shots) || 0, share: Number(l.share) || 0 })) : [],
-    readings: Array.isArray(structural.readings) ? (structural.readings as unknown[]).map(Number).filter((n) => Number.isFinite(n)) : [],
+    style: ((w) => (w === "montage_twists" || w === "classic" ? w : null))(v.style ?? (v.writer as Record<string, unknown> | undefined)?.style),
+    dropped: list(v.dropped, lyr.dropped).map((d) => ({ words: str(d?.words), why: str(d?.why) })),
+    lumped: list(v.lumped, structural.lumped).map((l) => ({ beat: str(l.beat), shots: Number(l.shots) || 0, share: Number(l.share) || 0 })),
+    readings: ((Array.isArray(v.readings) ? v.readings : Array.isArray(structural.readings) ? structural.readings : []) as unknown[]).map(Number).filter((n) => Number.isFinite(n)),
   };
 }
 

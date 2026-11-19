@@ -726,9 +726,19 @@ describe("a director's own montage text: a scene that cannot sit on its words ge
       "“cease and desist” — a letter is served to a goat on a porch in the rain.",
     ].join("\n\n");
     const found = montageSceneParagraphs(prose);
-    expect(found).toHaveLength(4);
-    expect(found.some((p) => p.startsWith("Through-line"))).toBe(false);
-    // (the idea that opens on the quoted title is the one prose paragraph that still reads as a scene: it opens with a quote)
+    // the idea opens on the quoted title and is still not a scene: the first paragraph never is
+    expect(found).toHaveLength(3);
+    expect(found.some((p) => p.startsWith("Through-line") || p.startsWith('"Ice On"'))).toBe(false);
+    // straight single quotes (the form the reader's own instructions show), a contraction inside the words, other lead-ins
+    const forms = [
+      "The idea of the video in a sentence of more than eight words here.",
+      "When he raps 'ten radios on me' ten radios hang off one man like a coat.",
+      "“I’m on ten radios” — the radios hang off one man like a winter coat.",
+      "He raps \"books on the floor they float\" and the library books lift off the floor.",
+      "Then, on “cease and desist”, a letter is served to a goat on a porch.",
+      "Hook — \"flip through green like a salad\": lettuce is dealt across a casino table.",
+    ].join("\n\n");
+    expect(montageSceneParagraphs(forms)).toHaveLength(5);
     // a text that quotes nothing is audited whole, as before
     expect(montageSceneParagraphs("One paragraph of eight words or more goes here.\n\nAnd a second paragraph of eight words is here.")).toHaveLength(2);
   });
