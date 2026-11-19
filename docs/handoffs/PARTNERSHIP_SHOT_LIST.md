@@ -362,3 +362,20 @@ is 1 or less and the scene is as dark and soft as his photo.
 real footage (recipe F). Allen has no footage and his face here is about 100 px at 720p, so Seedance would redraw it
 on every frame with nothing but the still to hold it. Put to Fendi before spending. If run: one clip, judged by a head
 strip against `34bd95ac` and `mouth_scan.py`; a drifting face is a reject, not a re-roll loop.
+
+## Passenger seat v1 REJECTED; v3 with his whole head as his pixels, 19 Nov 2026 ($0.58)
+
+**Fendi on v1: "His face is off use the Verified method to restore his pixels for his face."** VERIFIED cause (the
+script's own print): the default mode of `still_face_from_photo.py` matched his face to the dark still by HALVING its
+contrast (`Lab L ... gain 0.5`), laid the still's shading over it, and replaced only brows to chin, so the head shape,
+ears, hairline and cap stayed the model's. Its "proof 0" compared the result with that altered face, not with his photo.
+v1 `100483dd` is marked rejected and `usable: false`.
+
+| Try | What | Result |
+|---|---|---|
+| v2, $0.31 (matte $0.036 + blend $0.27) | his whole approved photo cut out (`matte-video-proxy` job `6c738856`, as delivered; edges by the composite lane's recipe) and pasted UNSCALED over the real car frame (101,009 px exactly the photo's), then a Gemini blend pass | DEAD END, not posted: a flash-lit cut-out in a dark car; the blend pass changed almost nothing. T7 `work/allen/passenger_seat_v2/` |
+| v3, $0.27 | NEW MODE `AVT_FACE_EXACT=<his matte>` on `still_face_from_photo.py`: his WHOLE head (face, ears, hair, cap) from `34bd95ac` onto the v1 Gemini still by similarity (scale 0.97, turn -3.1 deg), colour by ONE linear gain per channel (0.60 / 0.29 / 0.19: exposure and white balance, no contrast change, no shade), mask = the solid inside of his own matte down to the chin; `still_face_putback.py` (0); then a Gemini clean-up of the drawn cap left round his own (`58a81a22` → `84582ab9`) and the SAME put-back again: `max |out-original| inside the hard head mask: 0` (39,734 px) | posted: `077a3515`, T7 `work/allen/passenger_seat_v3/allen_passenger_seat_v3_final.png`, `..._head_check.jpg` |
+OBSERVED on v3: his face, ear, earring and cap are the photo's; the scene is still the real car frame; at 3x a little of
+the drawn cap still shows as a brighter band outside his cap on the right, against the red headrest. The clean-up
+pass itself redrew his face (mean difference 9 of 255 inside the mask), which is why the put-back runs last.
+RULE for Allen from here: `AVT_FACE_EXACT` always; the default mode never on him. Pending his word on v3.

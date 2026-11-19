@@ -8,6 +8,11 @@ brows down to the chin: the hat, brim and collar stay the still's). Then:
   AVT_STILL_HEAD_MASK=<prefix>_facemask.png still_face_putback.py <prefix>_photo_in_frame.png still.png out.png
 which prints the proof (0 inside the mask). The likeness is his pixels; the POSE is the still's, so pick the photo whose
 angle matches (the printed turn and residual say how well). Never for footage.
+AVT_FACE_EXACT=<matte of the photo, PNG>: HIS PIXELS, WHOLE HEAD (Partnership, Allen, 19 Nov 2026: the default mode halved
+the contrast of his face to match a dark still and replaced only brows-to-chin, and Fendi said "His face is off use the
+Verified method to restore his pixels"). The colour match is then ONE gain per colour channel in linear light (exposure and
+white balance, measured on cheeks and nose: no contrast change, no shade), and the mask is his whole head from the photo's
+own matte (face, ears, hair, cap) down to the chin. Nothing of his head is the still's.
 usage: still_face_from_photo.py <his_photo> <still> <x,y,w,h head box in the still> <prefix> [models_dir]"""
 import sys, os, numpy as np, cv2
 from PIL import Image, ImageOps
@@ -32,6 +37,18 @@ print("photo -> still: scale", round(sc, 4), "turn deg", round(rot, 2), "| face 
 Ab = cv2.GaussianBlur(A, (0, 0), 0.45 / sc) if sc < 0.8 else A
 O = cv2.warpAffine(Ab, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
 skin = np.zeros((H, W), np.uint8); cv2.fillConvexPoly(skin, cv2.convexHull(pw[[117, 118, 101, 36, 205, 187, 123, 346, 347, 330, 266, 425, 411, 352, 6, 197, 195, 5, 4]].astype(np.int32)), 255); k = skin > 0
+EXACT = os.environ.get("AVT_FACE_EXACT")
+if EXACT:
+    lin = lambda x: (x.astype(np.float32) / 255) ** 2.2; gains = lin(B)[k].mean(0) / np.maximum(lin(O)[k].mean(0), 1e-4)
+    O = (np.clip(lin(O) * gains, 0, 1) ** (1 / 2.2) * 255).round().astype(np.uint8); print("exact mode: one linear gain per channel (R, G, B)", gains.round(3).tolist(), "| no contrast change, no shade")
+    am = cv2.warpAffine(cv2.imread(EXACT, cv2.IMREAD_GRAYSCALE), M, (W, H), flags=cv2.INTER_LINEAR, borderValue=0)
+    mk = (cv2.erode(am, np.ones((3, 3), np.uint8)) >= 247).astype(np.uint8) * 255                      # the solid inside of his own matte
+    mk[int(round(pw[:, 1].max() + 0.02 * fh)):, :] = 0                                                # nothing below the chin: the neck and collar are the still's
+    reach = np.zeros((H, W), np.uint8); cv2.ellipse(reach, (int(pw[:, 0].mean()), int(pw[:, 1].mean() - 0.35 * fh)), (int(1.1 * fw), int(1.35 * fh)), 0, 0, 360, 255, -1)
+    mk = cv2.bitwise_and(mk, reach)                                                                   # his head only, not a shoulder the matte also holds
+    hullm = np.zeros((H, W), np.uint8); cv2.fillConvexPoly(hullm, cv2.convexHull(pw.astype(np.int32)), 255); hullm = cv2.dilate(hullm, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(0.08 * fw) | 1, int(0.08 * fw) | 1)))
+    mouth = int(round(float(pw[13][1]))); mk[mouth:] = cv2.bitwise_and(mk[mouth:], hullm[mouth:])     # from the mouth down only his face: beside the jaw the matte holds his collar and shoulder
+    Image.fromarray(O).save(pre + "_photo_in_frame.png"); cv2.imwrite(pre + "_facemask.png", mk); print("wrote", pre + "_photo_in_frame.png", pre + "_facemask.png", "| head mask px", int((mk > 0).sum())); sys.exit(0)
 la, lb = cv2.cvtColor(O, cv2.COLOR_RGB2LAB).astype(np.float32), cv2.cvtColor(B, cv2.COLOR_RGB2LAB).astype(np.float32)
 for c in range(3):
     ma, sa, mb, sb = la[..., c][k].mean(), la[..., c][k].std(), lb[..., c][k].mean(), lb[..., c][k].std()
