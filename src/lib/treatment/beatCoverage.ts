@@ -46,6 +46,10 @@ export type BeatCoverage = {
   missingLinks: { beat: string; kind: string; to: string }[];
   anchors: { beat: string; shot: string; cue: string }[];
   unanchored: { beat: string; cue: string; sung?: "earlier" | "never" | "early"; shot?: string }[];
+  /** Scenes the writer wrote that the board does not carry: their words could not be placed on the song (montage). */
+  dropped: { words: string; why: string }[];
+  /** The style the run was written in, when the run says (a montage places a scene on its words or gives it no shot). */
+  style: "montage_twists" | "classic" | null;
   /** Beats holding more than half the board: the reader folded several scenes into one. */
   lumped: { beat: string; shots: number; share: number }[];
   /** How many beats each reading of the treatment returned (a second reading is asked for when the first is too few). */
@@ -72,7 +76,13 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
   const v = value as Record<string, unknown>;
   if (!Array.isArray(v.beats)) return null;
   const verdict = (x: unknown): Verdict | null => (x === "pass" || x === "gaps" || x === "fail" ? x : null);
-  const sec = (name: string) => verdict((v[name] as Record<string, unknown> | undefined)?.verdict);
+  // Two shapes are read: the writer's reply (parts nested: lyrics.inserts, relationships.corrected, …) and THIS
+  // function's own output, which is what the board stores and reads back (treatmentDoc.ts). Until 19 Nov 2026 the
+  // stored copy was parsed as if it were the reply, so after a reload every part but structure read "not checked"
+  // and its lines were gone.
+  const own = v.sections && typeof v.sections === "object" && !Array.isArray(v.sections) ? (v.sections as Record<string, unknown>) : null;
+  const sec = (name: string) => verdict(own ? own[name] : (v[name] as Record<string, unknown> | undefined)?.verdict);
+  const list = (flat: unknown, nested: unknown): Record<string, unknown>[] => (Array.isArray(flat) ? flat : Array.isArray(nested) ? nested : []) as Record<string, unknown>[];
   const rel = (v.relationships ?? {}) as Record<string, unknown>;
   const prod = (v.production ?? {}) as Record<string, unknown>;
   const lyr = (v.lyrics ?? {}) as Record<string, unknown>;
@@ -82,11 +92,11 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
     ok: v.ok === true,
     verdict: verdict(v.verdict),
     sections: { structural: sec("structural"), lyrics: sec("lyrics"), relationships: sec("relationships"), production: sec("production"), treatment: sec("treatment") },
-    inserts: Array.isArray(lyr.inserts) ? (lyr.inserts as Record<string, unknown>[]).map((i) => ({ beat: str(i.beat), shot: str(i.shot), cue: str(i.cue), takenFrom: str(i.takenFrom) })) : [],
-    tieCorrections: Array.isArray(rel.corrected) ? (rel.corrected as Record<string, unknown>[]).map((c) => ({ beat: str(c.beat), to: str(c.to), from: str(c.from), kind: str(c.kind), words: str(c.words) })) : [],
-    mistyped: Array.isArray(rel.mistyped) ? (rel.mistyped as Record<string, unknown>[]).map((m) => ({ beat: str(m.beat), kind: str(m.kind), statedKind: str(m.statedKind), to: str(m.to) })) : [],
-    productionCorrections: Array.isArray(prod.corrected) ? (prod.corrected as Record<string, unknown>[]).map((c) => ({ shot: str(c.shot), from: str(c.from), to: str(c.to), why: str(c.why) })) : [],
-    treatmentUncovered: Array.isArray(tr.uncovered) ? (tr.uncovered as Record<string, unknown>[]).map((u) => ({ index: Number(u.index ?? 0), text: str(u.text) })) : [],
+    inserts: list(v.inserts, lyr.inserts).map((i) => ({ beat: str(i.beat), shot: str(i.shot), cue: str(i.cue), takenFrom: str(i.takenFrom) })),
+    tieCorrections: list(v.tieCorrections, rel.corrected).map((c) => ({ beat: str(c.beat), to: str(c.to), from: str(c.from), kind: str(c.kind), words: str(c.words) })),
+    mistyped: list(v.mistyped, rel.mistyped).map((m) => ({ beat: str(m.beat), kind: str(m.kind), statedKind: str(m.statedKind), to: str(m.to) })),
+    productionCorrections: list(v.productionCorrections, prod.corrected).map((c) => ({ shot: str(c.shot), from: str(c.from), to: str(c.to), why: str(c.why) })),
+    treatmentUncovered: list(v.treatmentUncovered, tr.uncovered).map((u) => ({ index: Number(u.index ?? 0), text: str(u.text) })),
     beats: (v.beats as Record<string, unknown>[]).map((b) => ({
       id: str(b.id),
       title: str(b.title),
@@ -100,8 +110,10 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
     missingLinks: Array.isArray(v.missingLinks) ? (v.missingLinks as Record<string, unknown>[]).map((m) => ({ beat: str(m.beat), kind: str(m.kind), to: str(m.to) })) : [],
     anchors: Array.isArray(v.anchors) ? (v.anchors as Record<string, unknown>[]).map((a) => ({ beat: str(a.beat), shot: str(a.shot), cue: str(a.cue) })) : [],
     unanchored: Array.isArray(v.unanchored) ? (v.unanchored as Record<string, unknown>[]).map((a) => ({ beat: str(a.beat), cue: str(a.cue), ...(a.sung === "earlier" || a.sung === "never" || a.sung === "early" ? { sung: a.sung } : {}), ...(typeof a.shot === "string" ? { shot: a.shot } : {}) })) : [],
-    lumped: Array.isArray(structural.lumped) ? (structural.lumped as Record<string, unknown>[]).map((l) => ({ beat: str(l.beat), shots: Number(l.shots) || 0, share: Number(l.share) || 0 })) : [],
-    readings: Array.isArray(structural.readings) ? (structural.readings as unknown[]).map(Number).filter((n) => Number.isFinite(n)) : [],
+    style: ((w) => (w === "montage_twists" || w === "classic" ? w : null))(v.style ?? (v.writer as Record<string, unknown> | undefined)?.style),
+    dropped: list(v.dropped, lyr.dropped).map((d) => ({ words: str(d?.words), why: str(d?.why) })),
+    lumped: list(v.lumped, structural.lumped).map((l) => ({ beat: str(l.beat), shots: Number(l.shots) || 0, share: Number(l.share) || 0 })),
+    readings: ((Array.isArray(v.readings) ? v.readings : Array.isArray(structural.readings) ? structural.readings : []) as unknown[]).map(Number).filter((n) => Number.isFinite(n)),
   };
 }
 
@@ -110,10 +122,18 @@ export function verdictLabel(v: Verdict | null): string {
   return v === "pass" ? "passes" : v === "gaps" ? "passes with gaps" : v === "fail" ? "fails" : "not checked";
 }
 
+/** In a montage: the beats that got no shot because their words could not be placed (never "placed in order"). */
+const unplacedScenes = (c: BeatCoverage) => new Set(c.style === "montage_twists" ? c.unanchored.filter((u) => c.uncoveredBeats.includes(u.beat)).map((u) => u.beat) : []);
+const unplacedLine = (title: string, cue: string) => `“${title}” is tied to the words “${cue}”, which could not be placed on the song in the treatment's order — it got no shot.`;
+
+/** A scene the writer wrote and left out, as a line the director reads. */
+const droppedLine = (d: { words: string; why: string }) => `A scene written for “${d.words || "no words"}” was left out: ${d.why}. That line has no scene of its own.`;
+
 /** The five parts of a coverage, each with its word and what it says — for a reader who must not see one green light. */
 export function coverageSections(c: BeatCoverage, shotLabel: (key: string) => string = (k) => k): { name: string; verdict: Verdict | null; lines: string[] }[] {
   const title = (id: string) => c.beats.find((b) => b.id === id)?.title || id;
   const structural: string[] = [];
+  const unplaced = unplacedScenes(c);
   for (const id of c.uncoveredBeats) structural.push(`“${title(id)}” got no shot.`);
   for (const m of c.missingPeople) structural.push(`“${title(m.beat)}” puts ${m.key} in it, and no shot of it casts them.`);
   for (const b of c.beats) if (b.emptied.length) structural.push(`“${b.title}” has people, and shot${b.emptied.length === 1 ? "" : "s"} ${b.emptied.map(shotLabel).join(", ")} came back with nobody in ${b.emptied.length === 1 ? "it" : "them"}.`);
@@ -122,8 +142,13 @@ export function coverageSections(c: BeatCoverage, shotLabel: (key: string) => st
   for (const i of c.inserts) lyrics.push(`“${title(i.beat)}” is sung at shot ${shotLabel(i.shot)} (“${i.cue}”), before its turn: that shot is a flash of it, taken from “${title(i.takenFrom)}”; the beat continues in full later.`);
   for (const u of c.unanchored) {
     if (c.inserts.some((i) => i.beat === u.beat)) continue;
+    if (unplaced.has(u.beat)) {
+      lyrics.push(unplacedLine(title(u.beat), u.cue));
+      continue;
+    }
     lyrics.push(u.sung === "never" ? `“${title(u.beat)}” is tied to “${u.cue}”, which the song never sings.` : u.sung === "early" ? `“${title(u.beat)}” is tied to “${u.cue}”, sung at shot ${shotLabel(u.shot ?? "")} — long before the beat's turn; pinning it there would crush the beats before it — placed in order, NOT on its words.` : `“${title(u.beat)}” is tied to “${u.cue}”, sung only before its turn — placed in order, NOT on its words.`);
   }
+  for (const d of c.dropped) lyrics.push(droppedLine(d));
   const relationships: string[] = [];
   for (const t of c.tieCorrections) relationships.push(`“${title(t.beat)}” → “${title(t.to)}”: the writer said ${t.from.replace("_", " ")}; its words (“${t.words.slice(0, 60)}…”) say ${t.kind.replace("_", " ")} — corrected.`);
   for (const m of c.mistyped) relationships.push(`“${title(m.beat)}” → “${title(m.to)}” is typed ${m.kind.replace("_", " ")} but its words say ${m.statedKind.replace("_", " ")}.`);
@@ -150,11 +175,19 @@ export function parseWriterRun(value: unknown): WriterRunRecord | null {
 export function coverageGaps(c: BeatCoverage, shotLabel: (key: string) => string = (k) => k): string[] {
   const title = (id: string) => c.beats.find((b) => b.id === id)?.title || id;
   const out: string[] = [];
-  for (const id of c.uncoveredBeats) out.push(`“${title(id)}” got no shot — the song has fewer shots than the treatment has beats there.`);
+  // a montage gives a scene whose words cannot be placed NO shot; the classic cut places it in order instead
+  const unplaced = unplacedScenes(c);
+  for (const id of c.uncoveredBeats) if (!unplaced.has(id)) out.push(`“${title(id)}” got no shot — the song has fewer shots than the treatment has beats there.`);
   for (const m of c.missingPeople) out.push(`“${title(m.beat)}” puts ${m.key} in it, and no shot of it casts them.`);
   for (const b of c.beats) if (b.emptied.length) out.push(`“${b.title}” has people, and shot${b.emptied.length === 1 ? "" : "s"} ${b.emptied.map(shotLabel).join(", ")} came back with nobody in ${b.emptied.length === 1 ? "it" : "them"}.`);
   for (const m of c.missingLinks) out.push(`“${title(m.beat)}” is cut from “${title(m.to)}” (${m.kind.replace("_", " ")}) and no shot carries that link.`);
-  for (const u of c.unanchored) out.push(`“${title(u.beat)}” is tied to the words “${u.cue}”, which the song does not sing after the beat before it — it was placed in order instead.`);
+  for (const u of c.unanchored)
+    out.push(
+      unplaced.has(u.beat)
+        ? unplacedLine(title(u.beat), u.cue)
+        : `“${title(u.beat)}” is tied to the words “${u.cue}”, which the song does not sing after the beat before it — it was placed in order instead.`,
+    );
+  for (const d of c.dropped) out.push(droppedLine(d));
   return out;
 }
 

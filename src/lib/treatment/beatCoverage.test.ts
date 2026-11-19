@@ -60,3 +60,67 @@ describe("the structural section tells a lumped reading and an early cue apart",
   });
 });
 
+
+describe("scenes the writer left out are read back and shown", () => {
+  it("keeps them from the lyrics part of a coverage and writes a line for each", async () => {
+    const { parseBeatCoverage, coverageSections, coverageGaps } = await import("./beatCoverage");
+    const c = parseBeatCoverage({ ok: false, verdict: "gaps", beats: [], lyrics: { verdict: "gaps", dropped: [{ words: "ice on my wrist", why: "its words are sung only in a shot another scene holds, or out of the song's order" }, { junk: 1 }] } });
+    expect(c?.dropped).toEqual([{ words: "ice on my wrist", why: "its words are sung only in a shot another scene holds, or out of the song's order" }, { words: "", why: "" }]);
+    const lines = coverageSections(c!).find((s) => s.name.startsWith("Lyric alignment"))!.lines;
+    expect(lines[0]).toContain("A scene written for “ice on my wrist” was left out");
+    expect(lines[0]).toContain("That line has no scene of its own.");
+    expect(coverageGaps(c!).some((l) => l.includes("ice on my wrist"))).toBe(true);
+    // an older coverage with no such field reads as none
+    expect(parseBeatCoverage({ ok: true, beats: [] })?.dropped).toEqual([]);
+  });
+});
+
+describe("a montage scene that could not be placed is said to have no shot — never 'placed in order'", () => {
+  const raw = { ok: false, beats: [{ id: "b1", title: "Radios", shots: [], people: [], emptied: [], ties: [] }], uncoveredBeats: ["b1"], unanchored: [{ beat: "b1", cue: "ten radios on me", sung: "earlier" }], lyrics: {} };
+  it("in a montage run", async () => {
+    const { parseBeatCoverage, coverageSections, coverageGaps } = await import("./beatCoverage");
+    const c = parseBeatCoverage({ ...raw, writer: { style: "montage_twists" } })!;
+    expect(c.style).toBe("montage_twists");
+    const gaps = coverageGaps(c);
+    expect(gaps).toEqual(["“Radios” is tied to the words “ten radios on me”, which could not be placed on the song in the treatment's order — it got no shot."]);
+    expect(coverageSections(c).find((s) => s.name.startsWith("Lyric alignment"))!.lines[0]).toContain("it got no shot");
+  });
+  it("a classic run, or one that does not say, reads as it always did", async () => {
+    const { parseBeatCoverage, coverageGaps } = await import("./beatCoverage");
+    const c = parseBeatCoverage(raw)!;
+    expect(c.style).toBeNull();
+    expect(coverageGaps(c)).toEqual([
+      "“Radios” got no shot — the song has fewer shots than the treatment has beats there.",
+      "“Radios” is tied to the words “ten radios on me”, which the song does not sing after the beat before it — it was placed in order instead.",
+    ]);
+  });
+});
+
+describe("a coverage survives being stored with the board and read back", () => {
+  it("parsing its own output keeps every part's verdict and every line (the board stores the parsed shape)", async () => {
+    const { parseBeatCoverage, coverageSections } = await import("./beatCoverage");
+    const reply = {
+      ok: false, verdict: "gaps", writer: { style: "montage_twists" },
+      structural: { verdict: "pass", lumped: [{ beat: "b1", shots: 9, share: 60 }], readings: [3, 5] },
+      lyrics: { verdict: "gaps", inserts: [{ beat: "b1", shot: "c002", cue: "w", takenFrom: "b1" }], dropped: [{ words: "ice on my wrist", why: "the song does not sing these words" }] },
+      relationships: { verdict: "pass", corrected: [{ beat: "b1", to: "b0", from: "reveals", kind: "screen_shows", words: "on a screen" }], mistyped: [] },
+      production: { verdict: "gaps", corrected: [{ shot: "c001", from: "footage", to: "generate", why: "x" }] },
+      treatment: { verdict: "pass", uncovered: [{ index: 2, text: "a paragraph" }] },
+      beats: [{ id: "b1", title: "Radios", shots: ["c001"], people: [], emptied: [], ties: [] }],
+      uncoveredBeats: [], missingPeople: [], missingLinks: [], anchors: [], unanchored: [],
+    };
+    const once = parseBeatCoverage(reply)!;
+    const twice = parseBeatCoverage(JSON.parse(JSON.stringify(once)))!;
+    expect(twice).toEqual(once);
+    expect(twice.sections).toEqual({ structural: "pass", lyrics: "gaps", relationships: "pass", production: "gaps", treatment: "pass" });
+    expect(twice.style).toBe("montage_twists");
+    expect(twice.dropped).toHaveLength(1);
+    expect(twice.inserts).toHaveLength(1);
+    expect(twice.tieCorrections).toHaveLength(1);
+    expect(twice.productionCorrections).toHaveLength(1);
+    expect(twice.treatmentUncovered).toHaveLength(1);
+    expect(twice.lumped).toHaveLength(1);
+    expect(twice.readings).toEqual([3, 5]);
+    expect(coverageSections(twice).find((s) => s.name.startsWith("Lyric alignment"))!.lines.join(" ")).toContain("ice on my wrist");
+  });
+});
