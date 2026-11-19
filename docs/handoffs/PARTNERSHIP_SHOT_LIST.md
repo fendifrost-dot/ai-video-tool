@@ -332,3 +332,13 @@ Dressed v2, same method, $0.27: ref 05 as `screen` + the red flat as `garment`, 
 `work/allen/dressed_v2_martini_bear/allen_dressed_martini_bear_red_realface.png` (1152x928), `allen_dressed_v2_check.jpg`,
 `allen_dressed_v2_heads.jpg`. OBSERVED: no collar under it, the tuxedo bear with the martini as on the product, the
 picture still reads as the same old phone photo. Pending his word.
+
+**Fendi, 19 Nov, on dressed v2: "Perfect".** Filed approved: `34bd95ac` (the real-face PNG, in `cast/allen/`), set as
+`ALLEN.approved_asset_id`; the method and the Never list are on the `ALLEN` record and in PROBLEM_INDEX ("Allen's
+likeness"). The navy assets are marked rejected (superseded). The cap stays as in the photo (asked; he answered
+"Perfect" to the picture as it is).
+NEXT, not started, to quote first: Allen in the passenger seat of the Lexus at night (lyric 0:15 "My partner Allen"),
+as a Gemini whole-scene still with `34bd95ac` as the man and frames of the car takes as the place (red seats, grain),
+his head at the photo's angle and no larger than in the photo (about 160 px), then his real face from `34bd95ac`
+(`still_face_from_photo.py` + `still_face_putback.py`); the car takes show only the driver's side from the steering
+column, so the passenger side is drawn. Then the same for him and Allen by the cars.

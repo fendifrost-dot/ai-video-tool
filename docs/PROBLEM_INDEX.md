@@ -1,6 +1,6 @@
 # PROBLEM INDEX: symptom → the tool that already fixed it
 
-**Every AVT session sees this file at start (`.claude/hooks/session-start.sh`).** Fendi, 13 Nov 2026: "the agent
+**Every AVT session sees this file at start.** Fendi, 13 Nov 2026: "the agent
 overlooked the notes each time, and then when I pointed it out, the agent found the notes and fixed the issue almost
 immediately each time, but I still ended up wasting money in hours."
 
@@ -17,7 +17,7 @@ immediately each time, but I still ended up wasting money in hours."
 Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.md`, build skill
 `.claude/skills/avt-music-video-build/SKILL.md`.
 
-## Mattes and composites (him, a creature, a prop, over a plate)
+## Mattes and composites
 
 | Symptom | Use (proven) | Proven on | Never |
 |---|---|---|---|
@@ -28,7 +28,7 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 | His outline flashes on every new picture | cadence: `matte_stability.py --fg` prints repeated frames (24p content in a 59.94 file); compositing-only fix: `edge_tween_px 3`, `edge_colour_from_inside_px 1.5`, `edge_choke 0.15`, `wrap 0` (`scripts/edit/blender/comp_scene.py`) | c033 room 2 v2 `b2ad4ae6` (outline 3.7× → 1.1×) | per-pixel matte hold, whole-frame hold, optical-flow-carried matte (all three rejected) |
 | A strip of the take's white wall inside his outline on fast moves | pair matte and picture **frame by frame**; frame counts must match (`matte_stability.py --fg`) | c044, 16 Oct (`pixels.ts pairingFor`) | pairing by clock with header lengths |
 | Pale rim / halo round him on a dark plate | edge decontamination (unmix, feather stops at the raw matte), light wrap ≤ 0.15 or 0 | c033 v6 (`lens.wrap` 0.15), `pixels.ts cleanEdges` | wrap 0.5 (pale rim on cap, jaw, shoulders) |
-| He looks pasted on a still; the scene is flat, nothing moves (smoke, glare, lights, trees) | a BUILT scene: the still split into layers moved in Blender (smoke, light flicker, tree sway, a camera move with parallax), his light following the scene's; method: `scripts/edit/blender/` (c033 showroom) | SHOT_RULES 3; c033 showroom | a still JPG plate with a 3 % push-in (Hyenas, 13 Nov: "looks 2D … no smoke no glare no lights or tree movement") |
+| He looks pasted on a still; the scene is flat, nothing moves (smoke, glare, lights, trees) | a BUILT scene: the still split into layers moved in Blender (smoke, light flicker, tree sway, a camera move with parallax), his light following the scene's; `scripts/edit/blender/` | SHOT_RULES 3; c033 showroom | a still JPG plate with a 3 % push-in (Hyenas, 13 Nov: "looks 2D … no smoke no glare no lights or tree movement") |
 | A swapped creature does not move like the animal it replaces (dog lying, hyena standing) | before any put-back: side by side, take vs swap, pose matched frame by frame; reference still in the animal's pose and size, placed where it is | Hyenas, 13 Nov (failed) | judging the swap from stills; patching the matte of a swap that already fails this |
 | Room motion looks AI-made | Blender room layers: `room_layers.py`, `snow.py`, `room_motion.py`, `comp_scene.py` (Blender 5.3) | c033 showroom v9 `436ffebe` | — |
 
@@ -55,10 +55,11 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 | A bystander who looks like him talks | `mouth_scan.py`; a talking lookalike is a reject | c013 | posting it "for the record" |
 | A still that must look like a photograph | Gemini `gemini-nano-banana-2.1` via `world-still-proxy`, `model` named on every request | YSL plates | Grok (the tool's default is still Grok) |
 | Animating a still / clothing on real footage | Seedance (`montage-shot`) / Genjutsu (`dress-clip`) | YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
+| Allen's likeness | clothes-only Gemini edit of his real photo + `still_face_putback.py` | `3cb21b17` | pasting his face on a render |
 | Generated clip: wrong trousers/shoes | animate a full-figure still; crop for knees-up | storm s04 `ca645fd0` | a knees-up still as source |
 | Grok is the right tool | Fendi makes it in Grok Imagine, or his words go in `grok_approval` on `avt_call` | 12 Nov | a Grok generation without his words |
 
-## The build (storyboard, slots, handoffs)
+## The build
 
 | Symptom | Use (proven) | Never |
 |---|---|---|
