@@ -607,3 +607,40 @@ see my depth".
   direction of the shadow (front left). Judged by eye only.
 - OBSERVED, still open: 720p; his face is evenly lit while Fendi's light moves; the still looks at eye level and the
   phone sits low; no verdict from Fendi yet. Not a row in `PROBLEM_INDEX.md` until he approves a version.
+
+## Allen beside him in the real car take, test 3 ($0, local; 1080p asset `f2b78e6a`, pending)
+
+Fendi on test 2 (19 Nov): "Let's try to fix it and remember I'm not here to micromanage I think we can make it happen".
+
+- VERIFIED (measured on test 2, frame 41): his skin sat at Lab a,b (8, 10) beside Fendi's (19, 15) under the same
+  cabin light: grey. Test 2's 0.88 saturation made it worse. Test 3: (14, 14).
+- Test 3 = test 2 plus the light: his colour brought to the take's warm light, a front-and-low ramp over his head
+  (the cabin's light is the dash and phone glow), the dashboard's shade on his chest, the red knit held no louder
+  than the seats. `two_shot/allen_two_shot_v3.py -250 75 1.0 48`, `S=1.5` for 1080p from the 4K original
+  (`take1080/`, frame-matched to the 720p frames, PSNR 49+).
+- Tried and dropped: a rim light from the window side in the flare frames. It drew a glowing outline round him.
+- Printed: outside Allen's outline and his shadow on the seat 0; Fendi's half 0. Flicker: his face changes 1.61 per
+  frame against 1.43 on the take's own bare headrest; the largest steps are the nod.
+- Also posted, not filed: `allen_two_shot_test3_camera_over.mp4`, the frame starting close on Fendi and moving over
+  to Allen for the nod, cut from the 1080p test 3 (720p out).
+
+### Direction from Fendi, same day (DECISION: his, quoted)
+
+- "If we can get it right we can always generate him perfectly swap inside one of the appropriate AI tools and use it
+  as a cut scene. We can pull the camera in on me or change the angle and motion the camera over to him at certain
+  parts or just do montage style cuts. We have options is all I'm saying but setting for the unrealistic 2D isn't the
+  best look unless we can fold my performance down into the same 2D look that might be dope".
+- "I just saw Wan 3.0 is on runway and the prices look ridiculously cheap we should test the realism on that too. If I
+  need to top up my API credits I will but I believe you can run a test straight through the mcp".
+
+### Wan 3.0 test: not run (VERIFIED blockers, 19 Nov)
+
+- Runway connector: the connected workspace (his personal one) is on the Free plan, 2 credits, no video models
+  available; top-up is not offered on Free. Two other workspaces exist on his account; their plans are not visible
+  from this connection, and switching needs the connector disconnected and reconnected.
+- AVT's own Runway route (`runway-video-edit-proxy`, billed to the API key Control Center holds) lists three models
+  (Aleph 2.0, a Runway edit mode, Seedance 2.5 edit) and is built for wardrobe edits of a take; Wan 3.0 is not a row
+  in it. Adding it is a provider change (Class C).
+- Planned test when access exists, no call made, nothing of Allen sent out: (A) the still `44788e06` animated as a
+  cutaway of him alone; (B) the test 3 two-shot edited on his side only, Fendi's half put back from the take (0).
+  A generated face is checked against his photo `34bd95ac`; who he is stays Fendi's word.
