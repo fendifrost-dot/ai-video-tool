@@ -263,3 +263,16 @@ the images of him to create his likeness". Filed: `continuity_entities` `ALLEN` 
 - Once he names the letters: crop Allen from each photo (his own pixels, no upscaling by a model), pick the clearest
   for face-on, three-quarter, smiling and full figure, file them as `ALLEN`'s reference pictures, then the two test
   stills (Gemini, about $0.54, not yet approved).
+
+**Fendi, 19 Nov: "There's got to be a better way than having to go picture by picture to identify him." / "Yes, the 7 solo
+photos are him." / "The photos range from a span of 15 years".** DECISION (mine): the likeness needs only the seven solo
+photos and the blue-polo man of photo 4; the group photos are not needed and nobody goes through them.
+- Reference set, $0: T7 `work/allen/reference_set/allen_ref_01..08_*.png` (his real photos, white borders trimmed,
+  photo 4 cropped to him, no upscaling), sheet `allen_reference_set_sheet.jpg`; AVT `project-references/.../cast/allen/`,
+  rows in `asset_ids.json` there, all eight on `ALLEN.reference_asset_ids`. Clearest: 01-06; 07 yellow cast; 08 tiny.
+- The 15 years matter: references from different ages blend into a man of no age. OPEN (his): which Allen the film
+  shows (my RECOMMENDATION: the latest look, with the older photos as support for the bone structure only), and
+  which of the eight are the latest. OBSERVED from the files only, not from his face: 03, 04, 05, 06, 08 are small
+  old-phone pictures (406 to 1280 px, no filter); 01, 02, 07 are later phone / Instagram pictures.
+- Test stills NOT made. Dry run of the first (prompt `allen_likeness_v1`, six references as `cast`, 16:9, 2k):
+  accepted, $0.27. Two stills $0.54: waiting for his go and the age answer.
