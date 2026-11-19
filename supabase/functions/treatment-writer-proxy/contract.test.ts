@@ -532,3 +532,63 @@ describe("the treatment style: montage twists by default for a music video the w
     expect(m).toMatch(/^\d+:[0-9a-z]+$/);
   });
 });
+
+// ── after the first live run (writer run 52b0d405, 19 Nov 2026): fourteen scenes for a hundred lines, several of them
+//    merely stylish, one a variation of a scene the notes had scrapped ───────────────────────────────────────────────
+import { montageUserMessage, scenesOverLimit, scenesWanted, sungLines } from "./contract.ts";
+
+describe("a montage is asked for enough scenes, each one impossible, none that the notes scrapped", () => {
+  const g = (lyrics: string, i: number): GridShot => ({ key: `c${i}`, start: i * 2, end: i * 2 + 2, section: i < 3 ? "verse" : "hook", lyrics });
+
+  it("counts the sung lines once each, in order, across shots that share a line", () => {
+    const shots = [g("", 0), g("line one / line two", 1), g("line two / line three", 2), g("Line Three", 3), g("line one", 4)];
+    expect(sungLines(shots)).toEqual(["line one", "line two", "line three", "line one"]);
+    expect(sungLines([g("", 0)])).toEqual([]);
+  });
+
+  it("aims for about two scenes to every three lines, six at least and forty at most", () => {
+    const many = Array.from({ length: 110 }, (_, i) => g(`line ${i}`, i));
+    expect(scenesWanted(many)).toBe(40);
+    expect(scenesWanted(many.slice(0, 30))).toBe(20);
+    // never more scenes than there are places for one: a song of three lines is asked for three, a silent one for none
+    expect(scenesWanted(many.slice(0, 3))).toBe(3);
+    expect(scenesWanted([g("", 0)])).toBe(0);
+    // many lines sung in few shots (a slow cut): a scene needs a shot of its own, so the shots decide
+    const slow = Array.from({ length: 12 }, (_, i) => g(`a ${i} / b ${i} / c ${i}`, i));
+    expect(sungLines(slow)).toHaveLength(36);
+    expect(scenesWanted(slow)).toBe(8);
+  });
+
+  it("scenes past the limit are cut and reported, never silently lost", () => {
+    const raw = { scenes: Array.from({ length: 43 }, (_, i) => ({ words: `w${i}`, event: `e${i}`, place: "p", people: [] })) };
+    expect(montageScenes(raw)).toHaveLength(40);
+    const over = scenesOverLimit(raw);
+    expect(over.map((o) => o.words)).toEqual(["w40", "w41", "w42"]);
+    expect(over[0].why).toContain("more than 40 scenes");
+    expect(scenesOverLimit({ scenes: raw.scenes.slice(0, 40) })).toEqual([]);
+    expect(scenesOverLimit(null)).toEqual([]);
+  });
+
+  it("the writer is handed the count with its instructions", () => {
+    const shots = [g("a b c", 0), g("d e f", 1), g("", 2)];
+    expect(JSON.parse(montageUserMessage(shots, "  a hint "))).toEqual({ sections_of_the_song: "verse", shots: 3, sung_lines: 2, scenes_wanted: 2, hint: "a hint" });
+    expect(JSON.parse(montageUserMessage(shots, "")).hint).toBeNull();
+  });
+
+  it("the prompt says so: close to the count, an impossibility test, and nothing the notes scrap", () => {
+    const p = treatmentSystemPrompt({ projectType: "music_video", style: "montage_twists", hasPerformanceFootage: true });
+    expect(p).toContain("write close to `scenes_wanted`");
+    expect(p).toContain("A dozen scenes for a hundred lines is a regular rap video with a few inserts");
+    expect(p).toContain("could it be filmed on that street today with no effects? Then it is not a scene");
+    expect(p).toContain("Expensive, stylish, matching or unusual is not impossible");
+    expect(p).toContain("What the director's notes scrap, forbid or mark as never is not written in any form");
+    // a stretch the notes keep for something already built gets no scenes; the rest is not left bare — inside the limit
+    expect(p).toContain("spread your scenes over the rest of the song instead of leaving it bare");
+    expect(p).toContain("never more than the limit below");
+    expect(p).not.toContain("give every line or couplet OUTSIDE");
+    // the count never buys a weak scene
+    expect(p).toContain("A scene that fails this test is never kept to reach the count");
+    // and the built-in shapes pass their own test
+    expect(p).not.toContain("running car wash");
+  });
+});
