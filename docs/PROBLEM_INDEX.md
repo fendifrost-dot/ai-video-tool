@@ -1,6 +1,6 @@
 # PROBLEM INDEX: symptom → the tool that already fixed it
 
-**Every AVT session sees this file at start (`.claude/hooks/session-start.sh`).** Fendi, 13 Nov 2026: "the agent
+**Every AVT session sees this file at start.** Fendi, 13 Nov 2026: "the agent
 overlooked the notes each time, and then when I pointed it out, the agent found the notes and fixed the issue almost
 immediately each time, but I still ended up wasting money in hours."
 
@@ -14,10 +14,10 @@ immediately each time, but I still ended up wasting money in hours."
    Look at the final file yourself before posting it. A metric must not share thresholds with the fix it judges.
 6. A new fix Fendi approves gets a row here in the same PR as the fix.
 
-Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`recipes/HIS_FACE_IN_ANY_SCENE.md`](recipes/HIS_FACE_IN_ANY_SCENE.md)
-(the pipeline), [`SHOT_RULES.md`](SHOT_RULES.md), build skill `.claude/skills/avt-music-video-build/SKILL.md`.
+Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.md`, build skill
+`.claude/skills/avt-music-video-build/SKILL.md`.
 
-## Mattes and composites (him, a creature, a prop, over a plate)
+## Mattes and composites
 
 | Symptom | Use (proven) | Proven on | Never |
 |---|---|---|---|
@@ -28,9 +28,9 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 | His outline flashes on every new picture | cadence: `matte_stability.py --fg` prints repeated frames (24p content in a 59.94 file); compositing-only fix: `edge_tween_px 3`, `edge_colour_from_inside_px 1.5`, `edge_choke 0.15`, `wrap 0` (`scripts/edit/blender/comp_scene.py`) | c033 room 2 v2 `b2ad4ae6` (outline 3.7× → 1.1×) | per-pixel matte hold, whole-frame hold, optical-flow-carried matte (all three rejected) |
 | A strip of the take's white wall inside his outline on fast moves | pair matte and picture **frame by frame**; frame counts must match (`matte_stability.py --fg`) | c044, 16 Oct (`pixels.ts pairingFor`) | pairing by clock with header lengths |
 | Pale rim / halo round him on a dark plate | edge decontamination (unmix, feather stops at the raw matte), light wrap ≤ 0.15 or 0 | c033 v6 (`lens.wrap` 0.15), `pixels.ts cleanEdges` | wrap 0.5 (pale rim on cap, jaw, shoulders) |
-| He looks pasted on a still; the scene is flat, nothing moves (smoke, glare, lights, trees) | a BUILT scene: the still split into layers moved in Blender (smoke, light flicker, tree sway, a camera move with parallax), his light following the scene's; method: `scripts/edit/blender/` (c033 showroom) | SHOT_RULES 3; c033 showroom | a still JPG plate with a 3 % push-in (Hyenas, 13 Nov: "looks 2D … no smoke no glare no lights or tree movement") |
+| He looks pasted on a still; the scene is flat, nothing moves (smoke, glare, lights, trees) | a BUILT scene: the still split into layers moved in Blender (smoke, light flicker, tree sway, a camera move with parallax), his light following the scene's; `scripts/edit/blender/` | SHOT_RULES 3; c033 showroom | a still JPG plate with a 3 % push-in (Hyenas, 13 Nov: "looks 2D … no smoke no glare no lights or tree movement") |
 | A swapped creature does not move like the animal it replaces (dog lying, hyena standing) | before any put-back: side by side, take vs swap, pose matched frame by frame; reference still in the animal's pose and size, placed where it is | Hyenas, 13 Nov (failed) | judging the swap from stills; patching the matte of a swap that already fails this |
-| Room motion looks AI-made | Blender room layers: `room_layers.py`, `snow.py`, `room_motion.py`, `comp_scene.py` (Blender 5.3) | c033 showroom v9 `436ffebe` | — |
+| Room motion looks AI-made | Blender: `room_layers.py`, `snow.py`, `room_motion.py`, `comp_scene.py` (5.3) | c033 showroom v9 `436ffebe` | — |
 
 ## His face, the put-back and the swap
 
@@ -42,9 +42,9 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 | Cap pulses every ~12 frames | no mp4v intermediate (its GOP pulsed the cap) | c044 v9 `c0619701` | calling it mask jitter |
 | Clothes update slower than he moves | `swap_rate.py` interpolates the swap to the source's rate (inside the put-back) | 24 Oct rule, c033 / c044 | per-frame swaps of the full take |
 | Brim or seam flickers | `ring_flicker.py` and `hat_geometry.py` against the original's own numbers | c041 v2 | `AVT_HEAD_FIT=1` (2–6 px jitter); judging from stills |
-| Proof of the put-back | `max \|out-original\| on face/hair/skin: 0` printed by the script; `face_check.py` sheet posted with the clip | every approved swap | posting without the printed 0 |
+| Proof of the put-back | `max \|out-original\| on face/hair/skin: 0` printed; `face_check.py` sheet posted with the clip | every approved swap | posting without the printed 0 |
 | A swap window refused | Genjutsu needs ≥ 4 s; cut the window once, the 720p copy and the working copy from the same frames | Hyenas 12 Nov | two separate cuts (frames drift) |
-| A light or a train crossing behind him smears the swap | keep it out of his frame (build skill §3); gap G1 in `capability/GAPS.md` | YSL headlights, train | promising a fix no tool has |
+| A light, a train or a fan on his coat smears the swap | keep it out of his frame (build skill §3); gap G1 in `capability/GAPS.md` | YSL headlights, train | promising a fix no tool has |
 
 ## Him in generated shots, models
 
@@ -55,16 +55,19 @@ Deep docs: [`recipes/README.md`](recipes/README.md) (every method with him), [`r
 | A bystander who looks like him talks | `mouth_scan.py`; a talking lookalike is a reject | c013 | posting it "for the record" |
 | A still that must look like a photograph | Gemini `gemini-nano-banana-2.1` via `world-still-proxy`, `model` named on every request | YSL plates | Grok (the tool's default is still Grok) |
 | Animating a still / clothing on real footage | Seedance (`montage-shot`) / Genjutsu (`dress-clip`) | YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
+| Allen's likeness | his photo: clothes-only Gemini edit + `still_face_putback.py`; in a scene: whole head, `AVT_FACE_EXACT` | `34bd95ac`, `077a3515` | the default face mode |
+| Generated clip: wrong trousers/shoes | animate a full-figure still; crop after | storm s04 `ca645fd0` | a knees-up still as source |
 | Grok is the right tool | Fendi makes it in Grok Imagine, or his words go in `grok_approval` on `avt_call` | 12 Nov | a Grok generation without his words |
 
-## The build (storyboard, slots, handoffs)
+## The build
 
 | Symptom | Use (proven) | Never |
 |---|---|---|
-| Unwanted people or props in a shot | they come from the plate: one clean plate per scene, the cast only in cutaways (skill lesson 4) | re-rolling the prompt |
-| Shots in one outfit look the same | vary lens, distance, side, action at storyboard time (lesson 5) | more rolls of the same staging |
+| Unwanted people or props in a shot | one clean plate per scene, the cast only in cutaways (lesson 4) | re-rolling the prompt |
+| Shots in one outfit look the same | vary lens, distance, side, action at storyboard time (lesson 5) | more rolls |
 | Times disagree between people | write both clocks, song and file (lesson 3) | one unlabeled time |
-| A beat Fendi loved never reached the screen | a slot holds one beat; name the beat per slot (lesson 2) | squeezing a 4 s render into a short slot |
-| A scrapped stretch came back | demote its primaries the same hour (lesson 1) | listing it in a later handoff |
-| A delivered cut is "done" | verify the file: frames, audio vs the master, per-frame PSNR vs the last version, mouth scan (skill §6) | watching it and trusting the cutter's claims |
-| A decision lives in an open PR | merge it; a policy on a branch does not exist for the next agent (lesson 15) | starting a video from `main` without it |
+| A beat Fendi loved never reached the screen | a slot holds one beat; name the beat per slot (lesson 2) | a 4 s render in a short slot |
+| A scrapped stretch came back | demote its primaries the same hour (lesson 1) | listing it again |
+| A delivered cut is "done" | verify the file (skill §6): frames, audio, PSNR, mouth scan | trusting the cutter's claims |
+| A decision lives in an open PR | merge it (lesson 15) | starting from `main` without it |
+| Treatment reads like a plain rap video | per line ONE impossible event, deadpan, cued to its words (`research/references/THUGGPAPI_*.md`, lesson 19) | a literal picture per line; the AI writer's text |

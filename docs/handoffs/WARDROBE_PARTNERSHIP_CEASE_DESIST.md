@@ -76,3 +76,11 @@ images exist for this hat.
 
 Update all three copies in the same pass: the `character_features` row (or a new one, photos to `wardrobe-refs`),
 the outfit row (bump `version`), `video_projects.wardrobe_notes`, the T7 folder's `source.txt`, and this page.
+
+## Storm verse, plan B (Fendi, 17 Nov 2026): the full figure
+
+He is seen head to foot, small in the frame: "if Gemini needs to create legs and shoes it's fine. All black Americas cup
+pradas are preferred." The look for that shot is `LAST_SHOT_PRADA_COAT_YELLOW_CAPELET` (coat 06 with the capelet, hat
+09) **plus Prada America's Cup sneakers, black patent** (`character_features` `a4eaa2da-5e2a-4d31-b625-90a0aef0091f`,
+already in the wardrobe from an earlier project) **and dark jeans** (the rule above: YSL Mick Long black denim
+`df104591-5015-4b1f-98a7-7842c5001037`). Method and evidence: `PARTNERSHIP_STORM_VERSE_METHOD_PLAN.md`, "PLAN B".

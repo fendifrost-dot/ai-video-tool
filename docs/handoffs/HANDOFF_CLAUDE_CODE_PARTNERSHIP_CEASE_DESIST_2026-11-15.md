@@ -52,7 +52,76 @@ jacket, five passes incl. a side profile; storm verse S1–S5, trench coat and b
 take per lyric line. Footage is 1080p 30 Cinematic (not 4K; his Cinematic setting), on the T7 in `performance shots/`;
 work files in `work/performance/` (`coverage.json`, `lyric_lines.json` from `scripts/lyrics/align_lyrics.py`, lip scans).
 Photos of him with Allen (20, from his artifact) are on the T7 in `storm_scene/allen_photos/`, for the storm's frames and memory cards.
-Next: match the 3D storm camera to the low angle he shot from; not yet filed in AVT (originals ~0.9 GB each).
+**The 3D storm camera now stands where his phone stood (17 Nov, Fendi: "use your best judgement" on technical matters).**
+Measured from the room's lines in his storm takes (`storm_set.json` `camera.footage`): lens 0.38 m up, tilted up 24.5°,
+rolled 6°, him 1.67 m away, focal 1629 px. The 3D lens is wider (900 px) and tilted 40° from the same spot, and the
+D → C → D move is a camera TURN (yaw), so his take re-projects exactly (one homography per frame, no parallax).
+This low angle sees storm sky and debris, not the ground. `storm_set_build.py --passes back,front` + `storm_him_comp.py`
+lay back pass → him → front pass. First test with the real him: T7 `storm_scene/preview_v4/storm_v4_him_test.mp4`
+(take S5, song 2:16.5–2:22.5). Its matte is the local segmenter (preview only); the shipping matte is `matte-video-proxy`
+(PROBLEM_INDEX), a paid call to quote. The 16:9 shooting sheet's C/D camera is superseded by this.
+
+**REJECTED by Fendi, 17 Nov 2026 (the look, not the camera match):** "it doesn't stick to our core principles of
+photorealism, extremely real ... We want to make the viewer believe that the scene actually happened. So this looks
+completely AI generated and unrealistic ... it's like a fantasy land. That's not what I'm going for, particularly with
+this shot." The Blender sky-and-stand-in storm is not the look and must not be shown to him again as one. What stays:
+the measured camera (`camera.footage`), the re-projection and the back / him / front layering. What changes: the storm
+happens in a REAL place, a photographic plate (Gemini) seen from his phone's low angle, built into moving layers
+(PROBLEM_INDEX: "He looks pasted on a still"), with only physically possible things in the wind (rain, leaves, paper,
+printed photographs of him and Allen). No glowing holograms, no flying cars, no abstract sky. He sees a photoreal still
+of the place before any motion is built.
+
+**Real-place round 1 (17 Nov 2026, Fendi: "Use downtown chicago for the real place pick an iconic location that
+easiest to recreate"; "You can do both ... I'm giving you autonomy"; approved up to $12).** All on project `0c5c4421`,
+board `c9b766a2`. Spent about $8.50 (estimates; invoices unknown):
+
+| What | Asset / job | Cost | Result |
+|---|---|---|---|
+| Gemini stills, downtown Chicago in a hurricane, nobody in them: A LaSalle Street canyon `2fade1e8`, B under the L `7fa33a08`, C Michigan Avenue bridge `63a72b2e` | jobs `487c133d`, `8528a692`, `e9cefbd5` | 3 x ~$0.27 | all usable; A picked to build (two walls, an end tower, a sky: the simplest layers) |
+| A again, tilted up 40 deg as his phone saw him (no ground: his take ends at the knees) `574af09f`, reference = `2fade1e8` as `place` | job `222020d4` | ~$0.27 | matches `storm_set.json` camera (pitch 40, focal 900) closely enough to re-project his take onto |
+| Prada coat + capelet `d3b89147` and Fendi FF bucket hat `d94f1cd4` on his real take S5, 6 s (`4f67ef7b`, shot `storm_test` `f61abad7`, sync `cfb46127`) | dress-clip job `100f9dfb` -> `bae4910b` | $4.09 | put-back `AVT_HEAD_ZOOM=3`: face on 180/180, `max |out-original| on face/hair/skin: 0`. ring_flicker 8.4 -> 11.4. Frame-to-frame change: head as the original, coat 6 spikes, below the belt 27 spikes (the skirt of the coat under the fan), pale lining patches at both hips, a few green specks of the blanket on the coat |
+| Walking shot, recipe F: silent window `895cb1b4` (file 667.5-673.5 s, waist up, mouth 0.017), plate `2fade1e8`, shot `storm_walk_test` `54507929`, scene `48ecb6c9` | montage-shot job `f57a66ff` -> `0f7fd085` | $3.33 | mouth at rest (0.017 / 0.010, 73 of 73 samples); the model shortened his trench to a jacket; still his own clothes |
+
+Set up for it: `continuity_entities` `5b9a5879` (primary artist), `variation_scenes` `48ecb6c9` (124.5-228 s, provisional).
+T7: `storm_scene/places_chicago_v1/`, `storm_scene/preview_v5_chicago/chicago_v5_prada_test.mp4` (the dressed take
+re-projected onto the tilted still with `storm_him_comp.py`; still background with a 4 % push, local preview matte),
+`work/swap_test_s5/`, `work/walk_shot/`. Posted to Fendi; no verdict yet. Not done: a moving, layered plate
+(PROBLEM_INDEX: a still with a push-in is not a scene), a clean plate without the baked-in newspapers, the shipping
+matte (`matte-video-proxy`, to quote), the Prada swap on the walking shot (~$4.09).
+
+**Fendi on round 1 (17 Nov 2026) and round 2.** On the real-take shot: "A lot of drift in the clothing swap performance
+shot ... when I'm placed in the scene, I'm forefront, and it looks as if I'm floating back and forth ... I should be
+stationary ... placed further back into the scene ... a close-up at about 50 to 100 millimeters, so you can still see
+some background, but also ... a close-up of me." On the walk: "I'm clearly running ... we could do super slow motion,
+but there's no clothing swap in that generation." Rules from this: **no camera turn or push on a shot with his real take
+(locked camera); long-lens framing (50-100 mm equivalent), chest up, the place out of focus behind him; every shot of him
+that is shown wears the look's clothes** (never post a generated shot in his own clothes as a candidate).
+Round 2 ($3.41, total $11.90 of $12):
+- `storm_scene/preview_v6_longlens/chicago_v6_longlens_720.mp4`: the same put-back, `storm_set_v6.json` = camera pitch 36,
+  focal 2667 px (50 mm equivalent), no move; background = the tilted still `574af09f` re-projected to that lens with the
+  street turned 12 deg and a 7 px defocus, rain from `storm_set_comp.py`. Still a frozen background.
+- `work/walk_shot/walk_prada_slow.mp4` / `walk_prada_realtime.mp4`: dress-clip job `cb3c119a` -> `fdbcc936` on `67183e6f`,
+  put-back proof 0 on 120/120, half speed by minterpolate.
+- OBSERVED on both swaps: pale lavender patches at both hips. HYPOTHESIS: the coat's reference picture or its
+  description (pockets, lining) causes it; test by changing one of them on the next swap. Not yet measured: the swap's
+  drift inside the chest-up frame.
+
+**Fendi on v6 (17 Nov 2026): "Refer to our masking techniques used in hyenas there is still a lot of warping."** He was
+right about the method: v5 and v6 were cut out with the local selfie segmenter plus a colour gate inside
+`storm_him_comp.py` and re-projected by a homography, none of which is the proven lane. v7 uses the lane
+(PROBLEM_INDEX, "Him + a creature/prop"): `matte-video-proxy` on the put-back (`c5a3cb1a`, job `88509139`, $0.135) and
+`composite_over_plate.py` (`--scale 1 --cx 960 --push 0`), the take and matte cropped to the chest-up frame by one
+ffmpeg filter (rotate -6 deg for the phone's roll, crop 1171x659, no perspective warp).
+- FINDING: the veed matte holds the green quilt behind him solid on all 180 frames (it touches his outline). No row of
+  the index covers a backdrop the matte keeps. TEST added: `matte_repair.py --drop-backdrop-hue 35,95`
+  (`drop_backdrop`, a chroma key that only lowers; `matte_stability.py --baseline` prints `added 0` in all three
+  regions). It is a per-frame colour rule on the matte, so it stays a test until Fendi passes the picture; it gets an
+  index row only then. The cleaner fix is at the shoot: nothing draped behind him, a plain wall.
+- OBSERVED in v7: the outline is clean; the capelet's edge, collar flap and pockets still change shape frame to frame.
+  That is the swap (Genjutsu on a take with the fan on and his arm crossing the coat), not the matte.
+  HYPOTHESIS: the same swap on take S1 (no fan) drifts less; ~$4.09 to test, not approved.
+- T7: `storm_scene/preview_v7_hyenas_matte/` (`chicago_v7_720.mp4`, `comp.mp4`, `alpha_crop.mkv`), `work/swap_test_s5/matte/`.
+Not yet filed in AVT: the take originals (~0.9 GB each).
 
 ## Read first, in this order
 
@@ -184,3 +253,11 @@ reading list and first steps. Media is on the T7 only, never iCloud. No Grok on 
 mouth are always my real footage. Spend nothing until you have quoted it and I have approved it. Tell me what you
 need from me first.
 ```
+
+**The storm verse obeys the motion budget (Fendi, 17 Nov 2026: "The headlights behind me in the YSL shoot and the train
+were all generated not in my footage either please refer to the notes").** Build skill section 3 is binding here and
+was not read before the storm set was designed: v1-v4 put debris behind and in front of him, which the budget forbids.
+The verse is two kinds of shot: (1) his real take, swapped, alone in a calm, locked, long-lens frame of the place
+(v7 is the pattern); (2) the storm, in cutaways without him and in generated shots of him (recipe F). Whether debris
+or rain layered after the swap and matte holds up in his frame is a HYPOTHESIS; it is tested on a short clip and
+measured (`ring_flicker.py`, `matte_stability.py`) before anyone says it is safe.
