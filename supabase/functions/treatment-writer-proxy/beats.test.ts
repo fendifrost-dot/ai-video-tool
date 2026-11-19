@@ -717,6 +717,18 @@ describe("a director's own montage text: a scene that cannot sit on its words ge
     const scenes = montageSceneParagraphs(text);
     expect(scenes).toHaveLength(2);
     expect(scenes[0]).toContain("casino floor");
+    // a quote further in — the song's title in the idea, possessives in the through-line — does not make a scene
+    const prose = [
+      '"Ice On" as a city where every boast comes true and nobody looks up from their phone.',
+      "Through-line: The artist's late partner's red Lexus keeps turning up at every corner.",
+      'When he raps "ten radios on me" ten radios hang off one man like a coat.',
+      "As he says ‘books on the floor they float’ the library books lift off the floor.",
+      "“cease and desist” — a letter is served to a goat on a porch in the rain.",
+    ].join("\n\n");
+    const found = montageSceneParagraphs(prose);
+    expect(found).toHaveLength(4);
+    expect(found.some((p) => p.startsWith("Through-line"))).toBe(false);
+    // (the idea that opens on the quoted title is the one prose paragraph that still reads as a scene: it opens with a quote)
     // a text that quotes nothing is audited whole, as before
     expect(montageSceneParagraphs("One paragraph of eight words or more goes here.\n\nAnd a second paragraph of eight words is here.")).toHaveLength(2);
   });

@@ -330,7 +330,7 @@ serve(async (req) => {
   const audited = scenes ? scenes.map(sceneParagraph).join("\n\n") : montage ? montageSceneParagraphs(treatment).join("\n\n") : treatment;
   const covered = allocation ? coverageOf(beats, allocation, clips, { treatment: audited, tieCorrections, productionCorrections: feasible.corrections, beatReadings, droppedScenes }) : null;
   // which instructions wrote this run, kept with its evidence (writer_runs.coverage_json.writer)
-  const writer = { style, promptFingerprint: promptFingerprint(style), exemplars: ctx.exemplars?.length ?? 0, droppedScenes, performanceShots: allocation?.fill?.length ?? 0 };
+  const writer = { style, promptFingerprint: promptFingerprint(style), exemplars: ctx.exemplars?.length ?? 0, droppedScenes, performanceShots: Object.values(briefs).filter((b) => b.fill === "performance").length, worldShots: Object.values(briefs).filter((b) => b.fill === "mood").length };
   const coverage = covered ? { ...covered, writer } : null;
   // the actual cost is the provider's own token counts at list price; with no counts it is unknown, not estimated
   const actualCostUsd = usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null;

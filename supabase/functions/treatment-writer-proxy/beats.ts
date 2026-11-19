@@ -263,7 +263,8 @@ export function pinScenes(matches: readonly (readonly number[])[]): (number | nu
   type Node = { count: number; shot: number; scene: number; prev: Node | null };
   // best chain ending at each shot so far; `better` = more scenes, then an earlier end
   const byShot = new Map<number, Node>();
-  let best: Node | null = null;
+  // held in an object: assigned inside a callback, a bare `let` is narrowed to null by the type checker (Deno)
+  const state: { best: Node | null } = { best: null };
   const better = (a: Node, b: Node | null) => !b || a.count > b.count || (a.count === b.count && a.shot < b.shot);
   matches.forEach((list, scene) => {
     const made: Node[] = [];
@@ -276,11 +277,11 @@ export function pinScenes(matches: readonly (readonly number[])[]): (number | nu
     for (const node of made) {
       const held = byShot.get(node.shot);
       if (!held || node.count > held.count) byShot.set(node.shot, node);
-      if (better(node, best)) best = node;
+      if (better(node, state.best)) state.best = node;
     }
   });
   const pins: (number | null)[] = matches.map(() => null);
-  for (let node: Node | null = best; node; node = node.prev) pins[node.scene] = node.shot;
+  for (let node: Node | null = state.best; node; node = node.prev) pins[node.scene] = node.shot;
   return pins;
 }
 
@@ -535,7 +536,9 @@ export function withFeasibleProduction(clips: readonly Record<string, unknown>[]
     const production = (c.production ?? {}) as { method?: string; note?: string };
     const method = String(production.method ?? "");
     if (!brief || brief.artistPerforms || !TAKE_METHODS.has(method)) return c;
-    const why = `the take shows him performing; in this beat he ${brief.action.slice(0, 80).replace(/\s+/g, " ") || "does something else"} — drawn with his identity pictures, not cut from the take`;
+    const why = brief.fill
+      ? "no scene sits here and he does not perform here: a shot of the world, made, not cut from his take"
+      : `the take shows him performing; in this beat he ${brief.action.slice(0, 80).replace(/\s+/g, " ") || "does something else"} — drawn with his identity pictures, not cut from the take`;
     corrections.push({ shot: key, from: method, to: "generate", why });
     return { ...c, production: { method: "generate", note: [production.note, why].filter(Boolean).join(" ") } };
   });
@@ -775,10 +778,15 @@ export const BETWEEN_SCENES =
 export const BETWEEN_SCENES_MOOD =
   "no scene of the treatment sits here and he does not perform here: one plain, real shot of the world of the scene nearest to it, in the montage's style, that carries the section's mood — nobody rapping, no new impossible event, and never a repeat, a continuation or another angle of the scene before it or after it";
 
-/** The paragraphs of a montage text that are scenes: the ones that quote words. With none quoted, every paragraph. */
+/**
+ * The paragraphs of a montage text that are scenes: the ones that OPEN by quoting sung words ("When he raps "…"",
+ * "On "…"", "As he says ‘…’", or the quote itself first). A quote further in — a song title in the idea, a
+ * possessive in the through-line — does not make a paragraph a scene. With no such paragraph, every paragraph.
+ */
 export function montageSceneParagraphs(treatment: string): string[] {
   const all = paragraphsOf(treatment);
-  const scenes = all.filter((p) => /["“”][^"“”]{3,}["“”]|[‘'][^‘’']{6,}[’']/.test(p));
+  const opener = /^(?:(?:when|as|on|at|while|where|for)\b[^"“”‘’]{0,40})?["“‘][^"“”‘’]{3,}["”’]/i;
+  const scenes = all.filter((p) => opener.test(p));
   return scenes.length ? scenes : all;
 }
 

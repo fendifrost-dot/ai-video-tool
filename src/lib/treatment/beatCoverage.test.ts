@@ -68,9 +68,30 @@ describe("scenes the writer left out are read back and shown", () => {
     expect(c?.dropped).toEqual([{ words: "ice on my wrist", why: "its words are sung only in a shot another scene holds, or out of the song's order" }, { words: "", why: "" }]);
     const lines = coverageSections(c!).find((s) => s.name.startsWith("Lyric alignment"))!.lines;
     expect(lines[0]).toContain("A scene written for “ice on my wrist” was left out");
-    expect(lines[0]).toContain("That line is his performance.");
+    expect(lines[0]).toContain("That line has no scene of its own.");
     expect(coverageGaps(c!).some((l) => l.includes("ice on my wrist"))).toBe(true);
     // an older coverage with no such field reads as none
     expect(parseBeatCoverage({ ok: true, beats: [] })?.dropped).toEqual([]);
+  });
+});
+
+describe("a montage scene that could not be placed is said to have no shot — never 'placed in order'", () => {
+  const raw = { ok: false, beats: [{ id: "b1", title: "Radios", shots: [], people: [], emptied: [], ties: [] }], uncoveredBeats: ["b1"], unanchored: [{ beat: "b1", cue: "ten radios on me", sung: "earlier" }], lyrics: {} };
+  it("in a montage run", async () => {
+    const { parseBeatCoverage, coverageSections, coverageGaps } = await import("./beatCoverage");
+    const c = parseBeatCoverage({ ...raw, writer: { style: "montage_twists" } })!;
+    expect(c.style).toBe("montage_twists");
+    const gaps = coverageGaps(c);
+    expect(gaps).toEqual(["“Radios” is tied to the words “ten radios on me”, which could not be placed on the song in the treatment's order — it got no shot."]);
+    expect(coverageSections(c).find((s) => s.name.startsWith("Lyric alignment"))!.lines[0]).toContain("it got no shot");
+  });
+  it("a classic run, or one that does not say, reads as it always did", async () => {
+    const { parseBeatCoverage, coverageGaps } = await import("./beatCoverage");
+    const c = parseBeatCoverage(raw)!;
+    expect(c.style).toBeNull();
+    expect(coverageGaps(c)).toEqual([
+      "“Radios” got no shot — the song has fewer shots than the treatment has beats there.",
+      "“Radios” is tied to the words “ten radios on me”, which the song does not sing after the beat before it — it was placed in order instead.",
+    ]);
   });
 });
