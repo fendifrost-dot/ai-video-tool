@@ -246,6 +246,9 @@ each, the middle frame of the matte as alpha over the photo's own pixels: `scrip
   `project-references/.../memories/cutouts/`. Clips and jobs: T7 `work/allen/people_cutouts/` (`manifest.tsv`,
   `asset_ids.json`, `jobs.json`); the 2 s clips are `project_assets` rows under `memories/` in `project-clips`.
 - OBSERVED, all 20 looked at over grey and black: 19 usable. WEAK: 14 (tiny club photo, the back man's head fades
-  out). Small or soft: 7, 19. 6 keeps the event's caption lettering across the bottom of the group. 2, 11, 13 keep
+  out). Small or soft: 7, 19. 6 kept the event's caption lettering across the bottom of the group: CROPPED OFF at his
+  word ("Crop the lettering out if it's from a caption"; "Some of these are pulled straight from instagram"), rows
+  0-519 of the cut-out kept, the uncropped one stays in T7 `work/allen/people_cutouts/cutouts/`; all 20 then checked
+  for Instagram lettering, none left. 2, 11, 13 keep
   parts of bystanders at the edges. Per-photo notes: the Grokbot handoff's table.
 - NOT TRIED: re-running 14 from a tighter crop of the photo (3.6 cents); his word first.

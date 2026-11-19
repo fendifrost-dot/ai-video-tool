@@ -80,6 +80,9 @@ the bottom edge: never use it uncropped). REJECTED, do not use: `storm_s02_knees
   taken as alpha (`scripts/edit/photo_people_cutout.py`). OBSERVED: the soft edge still carries the photo's old
   background colour, so on the dark street a pale rim can show: remove it in the composite (edge decontamination;
   light wrap 0.15 or less). Everyone in a photo is kept, bystanders included; who appears in the film is Fendi's call.
+- No Instagram lettering in any memory (Fendi, 19 Nov: "Some of these are pulled straight from instagram"): captions,
+  tags, story text and frames are not part of the memory. CHECKED on all 20 cut-outs: none left (6 was cropped; the
+  story text on 1 and the tag on 7 fell outside the matte). Lettering that is on their clothes or a bottle stays.
 
 | # | File, md5 | Size | OBSERVED |
 |---|---|---|---|
@@ -88,7 +91,7 @@ the bottom edge: never use it uncropped). REJECTED, do not use: `storm_s02_knees
 | 3 | `memory_m03_people.png` `6b8583e8` | 720x960 | one man, close, with the drink he holds |
 | 4 | `memory_m04_people.png` `a6177bca` | 616x698 | two men, waist up |
 | 5 | `memory_m05_people.png` `15b9da42` | 508x612 | one man, mirror selfie in a graduation gown, phone in hand |
-| 6 | `memory_m06_people.png` `4a4511a3` | 622x605 | five people, close; the event's caption lettering is still on them at the bottom left: crop it off |
+| 6 | `memory_m06_people.png` `a21609e4` | 622x520 | five people, close; cropped above the event's caption lettering (Fendi, 19 Nov: "Crop the lettering out if it's from a caption"), so they end at the waist |
 | 7 | `memory_m07_people.png` `e9108e6f` | 610x517 | three men, small and heavily filtered: soft edges with a blue cast, the left man's feet smear |
 | 8 | `memory_m08_people.png` `d08e4d04` | 1125x1127 | two men, close |
 | 9 | `memory_m09_people.png` `46151f1d` | 1125x1075 | two men, close |
