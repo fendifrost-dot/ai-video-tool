@@ -252,6 +252,39 @@ export type BeatCap = { shots: number; seconds: number };
 export const MONTAGE_BEAT_CAP: BeatCap = { shots: 2, seconds: 4.5 };
 
 /**
+ * Where each scene of a montage sits, given every shot that sings its words (`matches[i]`, ascending; empty = the
+ * song never sings them). The pins must rise strictly in scene order — two scenes never share a shot — and the choice
+ * keeps the MOST scenes: a scene whose words are also sung later (a hook) is never pinned to that later singing at the
+ * price of the scenes between (review of 19 Nov 2026: "ice on my wrist", sung in the shot of the scene before it and
+ * again in the hook, took the hook and dropped three verse scenes). Among equal counts the earlier singing wins.
+ * Returns a shot index per scene, or null for a scene that could not be kept.
+ */
+export function pinScenes(matches: readonly (readonly number[])[]): (number | null)[] {
+  type Node = { count: number; shot: number; scene: number; prev: Node | null };
+  // best chain ending at each shot so far; `better` = more scenes, then an earlier end
+  const byShot = new Map<number, Node>();
+  let best: Node | null = null;
+  const better = (a: Node, b: Node | null) => !b || a.count > b.count || (a.count === b.count && a.shot < b.shot);
+  matches.forEach((list, scene) => {
+    const made: Node[] = [];
+    for (const shot of list) {
+      let prev: Node | null = null;
+      for (const node of byShot.values()) if (node.shot < shot && better(node, prev)) prev = node;
+      made.push({ count: (prev?.count ?? 0) + 1, shot, scene, prev });
+    }
+    // added only after every singing of THIS scene was weighed, so a scene is never chained to itself
+    for (const node of made) {
+      const held = byShot.get(node.shot);
+      if (!held || node.count > held.count) byShot.set(node.shot, node);
+      if (better(node, best)) best = node;
+    }
+  });
+  const pins: (number | null)[] = matches.map(() => null);
+  for (let node: Node | null = best; node; node = node.prev) pins[node.scene] = node.shot;
+  return pins;
+}
+
+/**
  * The grid's shots allotted to the beats, in order. A beat with a cue the song sings is pinned to the first shot that
  * sings it (never earlier than the beat before it). Between two pins the shots are shared by weight, every beat
  * getting at least one while shots remain. Beats after the last pin share what is left the same way. The order of the
@@ -263,8 +296,9 @@ export function allocateBeats(
   options: {
     lyricInserts?: boolean;
     /**
-     * Montage style: a scene sits ON its words. Its pin is the first singing of its cue after the scene before it
-     * (the treatment is written in the song's order), wherever that falls; no "too early to pin" rule.
+     * Montage style: a scene sits ON its words or nowhere. The pins are chosen to keep the most scenes in the song's
+     * order (pinScenes); there is no "too early to pin" rule and no flash insert. A scene whose words cannot be
+     * placed gets NO shot (it is reported uncovered and unanchored) — it is never put on other words.
      */
     cueOrder?: boolean;
     /** Montage style: a beat he does not perform in keeps at most this much; what is left goes back to him (`fill`). */
@@ -286,7 +320,20 @@ export function allocateBeats(
   const totalWeight = beats.reduce((n, b) => n + b.weight, 0) || beats.length;
   let floor = -1;
   let weightBefore = 0;
+  if (options.cueOrder) {
+    const cued = beats.map((b, i) => ({ b, i })).filter((x) => x.b.lyricCue);
+    const lists = cued.map((x) => cueMatches(grid, x.b.lyricCue));
+    pinScenes(lists).forEach((at, n) => {
+      const { b, i } = cued[n];
+      if (at === null) unanchored.push({ beat: b.id, cue: b.lyricCue, sung: lists[n].length ? "earlier" : "never" });
+      else {
+        pin[i] = at;
+        anchors.push({ beat: b.id, shot: grid[at].key, cue: b.lyricCue });
+      }
+    });
+  }
   beats.forEach((b, i) => {
+    if (options.cueOrder) return;
     const expected = Math.floor((grid.length * weightBefore) / totalWeight);
     weightBefore += b.weight;
     if (!b.lyricCue) return;
@@ -297,8 +344,8 @@ export function allocateBeats(
       unanchored.push({ beat: b.id, cue: b.lyricCue, sung: all.length ? "earlier" : "never" });
       return;
     }
-    const at = options.cueOrder ? hits[0] : hits.reduce((best, x) => (Math.abs(x - expected) < Math.abs(best - expected) ? x : best));
-    if (!options.cueOrder && at < Math.floor(expected / 2)) {
+    const at = hits.reduce((best, x) => (Math.abs(x - expected) < Math.abs(best - expected) ? x : best));
+    if (at < Math.floor(expected / 2)) {
       unanchored.push({ beat: b.id, cue: b.lyricCue, sung: "early", shot: grid[at].key });
       return;
     }
@@ -325,7 +372,8 @@ export function allocateBeats(
     const start = pin[i] !== null ? Math.max(cursor, pin[i] as number) : cursor;
     if (previous && start > cursor) give(previous, cursor, start);
     const end = j < beats.length ? Math.max(start, pin[j] as number) : grid.length;
-    const run = beats.slice(i, j);
+    // montage: a scene whose words could not be placed takes no shot of this run
+    const run = beats.slice(i, j).filter((b, k) => !(options.cueOrder && b.lyricCue && pin[i + k] === null));
     const shares = share(run.map((b) => b.weight), end - start);
     let at = start;
     run.forEach((b, k) => {
@@ -340,7 +388,7 @@ export function allocateBeats(
 
   // 3. inserts: a cue sung only before its beat's turn gets that one shot as a flash of the beat, taken from the beat
   //    that holds it — unless that would leave the holder with nothing
-  if (lyricInserts) {
+  if (lyricInserts && !options.cueOrder) {
     for (const u of unanchored) {
       if (u.sung === "never") continue;
       const at = u.shot ? grid.findIndex((g) => g.key === u.shot) : cueIndex(grid, u.cue, 0);
@@ -367,14 +415,20 @@ export function allocateBeats(
       if (b.artistPerforms) continue;
       let kept = 0;
       let held = 0;
+      // a scene keeps a RUN of shots from its first one: once a shot does not fit, nothing after it is kept either
+      // (a later, shorter shot would put him between two halves of one scene)
+      let closed = false;
       byBeat[b.id] = byBeat[b.id].filter((key) => {
         if (flashes.has(key)) return true;
         const length = seconds.get(key) ?? 0;
-        const keep = kept === 0 || (kept < Math.max(1, cap.shots) && held + length <= cap.seconds);
+        const keep = !closed && (kept === 0 || (kept < Math.max(1, cap.shots) && held + length <= cap.seconds));
         if (keep) {
           kept++;
           held += length;
-        } else delete byShot[key];
+        } else {
+          closed = true;
+          delete byShot[key];
+        }
         return keep;
       });
     }
@@ -419,12 +473,19 @@ export type ShotBrief = {
   links: { kind: BeatTieKind; shot: string; note: string }[];
   /** A flash of the beat on its words, before the beat's own run (allocateBeats inserts). */
   insert: boolean;
-  /** No beat on purpose (allocation `fill`): his performance of the words sung here, between two scenes. */
-  fill?: boolean;
+  /**
+   * No beat on purpose (allocation `fill`). `performance`: his real performance of the words sung here. `mood`: no
+   * words are sung here, or the project has no footage of him — a plain shot of the world, never him rapping.
+   */
+  fill?: "performance" | "mood";
 };
 
 /** The brief of every allotted shot: the beat's facts, and the links its ties resolve to (first shot ← last shot of the earlier beat). */
-export function shotBriefs(beats: readonly Beat[], allocation: Allocation): Record<string, ShotBrief> {
+export function shotBriefs(
+  beats: readonly Beat[],
+  allocation: Allocation,
+  fillWith: { grid?: readonly GridShot[]; hasPerformanceFootage?: boolean } = {},
+): Record<string, ShotBrief> {
   const out: Record<string, ShotBrief> = {};
   const byId = new Map(beats.map((b) => [b.id, b]));
   const inserted = new Set(allocation.inserts.map((i) => i.shot));
@@ -445,9 +506,12 @@ export function shotBriefs(beats: readonly Beat[], allocation: Allocation): Reco
       out[key] = { beat: b.id, title: b.title, scene: b.scene, action: b.action, people: b.people, unnamedPeople: b.unnamedPeople, artistPerforms: b.artistPerforms, wardrobe: b.wardrobe, first, last: !insert && n === run.length - 1, links, insert };
     });
   }
+  const sung = new Map((fillWith.grid ?? []).map((g) => [g.key, (g.lyrics ?? "").trim().length > 0]));
   for (const key of allocation.fill ?? []) {
     if (out[key]) continue;
-    out[key] = { beat: "", title: "His performance, between two scenes", scene: "", action: "", people: [], unnamedPeople: false, artistPerforms: true, wardrobe: "", first: false, last: false, links: [], insert: false, fill: true };
+    // he performs only where there is real footage of him AND words to perform; anything else is a shot of the world
+    const performs = fillWith.hasPerformanceFootage === true && sung.get(key) === true;
+    out[key] = { beat: "", title: performs ? "His performance, between two scenes" : "The world, between two scenes", scene: "", action: "", people: [], unnamedPeople: false, artistPerforms: performs, wardrobe: "", first: false, last: false, links: [], insert: false, fill: performs ? "performance" : "mood" };
   }
   return out;
 }
@@ -543,6 +607,8 @@ export type Coverage = {
     anchors: Allocation["anchors"];
     inserts: Allocation["inserts"];
     unanchored: Allocation["unanchored"];
+    /** Scenes the writer wrote and the board does not carry: their words could not be placed (montage). */
+    dropped: { words: string; why: string }[];
   };
   relationships: {
     verdict: Verdict;
@@ -575,7 +641,14 @@ export function coverageOf(
   beats: readonly Beat[],
   allocation: Allocation,
   clips: readonly Record<string, unknown>[],
-  extra: { treatment?: string; tieCorrections?: TieCorrection[]; productionCorrections?: ProductionCorrection[]; beatReadings?: number[] } = {},
+  extra: {
+    treatment?: string;
+    tieCorrections?: TieCorrection[];
+    productionCorrections?: ProductionCorrection[];
+    beatReadings?: number[];
+    /** Scenes the writer wrote that could not be placed on their words and were left out (montage). */
+    droppedScenes?: { words: string; why: string }[];
+  } = {},
 ): Coverage {
   const byKey = new Map(clips.map((c) => [String(c.key ?? ""), c]));
   const inserted = new Set(allocation.inserts.map((i) => i.shot));
@@ -620,7 +693,13 @@ export function coverageOf(
   // a beat holding more than half the board while the treatment has several: the reader folded scenes into it
   const lumped = beats.length >= 3 ? rows.filter((r) => r.shots.length * 2 > clips.length).map((r) => ({ beat: r.id, shots: r.shots.length, share: Math.round((100 * r.shots.length) / Math.max(1, clips.length)) })) : [];
   const structuralVerdict: Verdict = allocation.uncovered.length || missingPeople.length || rows.some((r) => r.emptied.length) ? "fail" : lumped.length ? "gaps" : "pass";
-  const lyricsVerdict: Verdict = allocation.unanchored.some((u) => u.sung !== "never" && !allocation.inserts.some((i) => i.beat === u.beat)) ? "fail" : allocation.unanchored.length || allocation.inserts.length ? "gaps" : "pass";
+  // scenes left out are never silent: any is a gap, and losing a third of them or more is a failure of the run
+  const dropped = extra.droppedScenes ?? [];
+  const droppedVerdict: Verdict = dropped.length === 0 ? "pass" : dropped.length * 3 >= dropped.length + beats.length ? "fail" : "gaps";
+  const lyricsVerdict: Verdict = worst(
+    allocation.unanchored.some((u) => u.sung !== "never" && !allocation.inserts.some((i) => i.beat === u.beat)) ? "fail" : allocation.unanchored.length || allocation.inserts.length ? "gaps" : "pass",
+    droppedVerdict,
+  );
   const relationshipsVerdict: Verdict = missingLinks.length || mistyped.length || ties.some((t) => !t.directionOk) ? "fail" : (extra.tieCorrections?.length ?? 0) ? "gaps" : "pass";
   const productionVerdict: Verdict = (extra.productionCorrections?.length ?? 0) ? "gaps" : "pass";
   const audit = extra.treatment ? auditBeatsAgainstTreatment(extra.treatment, beats) : { ok: true, paragraphs: 0, uncovered: [] };
@@ -630,7 +709,7 @@ export function coverageOf(
     ok: verdict === "pass",
     verdict,
     structural: { verdict: structuralVerdict, beats: rows.map(({ ties: _t, ...r }) => r), uncoveredBeats: allocation.uncovered, missingPeople, lumped, readings: extra.beatReadings ?? [beats.length] },
-    lyrics: { verdict: lyricsVerdict, anchors: allocation.anchors, inserts: allocation.inserts, unanchored: allocation.unanchored },
+    lyrics: { verdict: lyricsVerdict, anchors: allocation.anchors, inserts: allocation.inserts, unanchored: allocation.unanchored, dropped },
     relationships: { verdict: relationshipsVerdict, ties, corrected: extra.tieCorrections ?? [], missing: missingLinks, mistyped },
     production: { verdict: productionVerdict, corrected: extra.productionCorrections ?? [] },
     treatment: { ...audit, verdict: treatmentVerdict },
@@ -668,7 +747,7 @@ export function briefedShot(s: GridShot, brief: ShotBrief | undefined) {
     energy: s.energy ?? "",
     lyrics: (s.lyrics ?? "").trim(),
     ...(brief?.fill
-      ? { between_scenes: BETWEEN_SCENES }
+      ? { between_scenes: brief.fill === "performance" ? BETWEEN_SCENES : BETWEEN_SCENES_MOOD }
       : brief
       ? {
           beat: {
@@ -692,34 +771,47 @@ export function briefedShot(s: GridShot, brief: ShotBrief | undefined) {
 export const BETWEEN_SCENES =
   "no scene of the treatment sits on these words: this shot is his performance of them — `shot_type` performance, him delivering these words to camera. It is never a repeat, a continuation or another angle of the scene before it or after it";
 
+/** The same, where no words are sung or there is no footage of him: a shot of the world, not him and not a new twist. */
+export const BETWEEN_SCENES_MOOD =
+  "no scene of the treatment sits here and he does not perform here: one plain, real shot of the world of the scene nearest to it, in the montage's style, that carries the section's mood — nobody rapping, no new impossible event, and never a repeat, a continuation or another angle of the scene before it or after it";
+
+/** The paragraphs of a montage text that are scenes: the ones that quote words. With none quoted, every paragraph. */
+export function montageSceneParagraphs(treatment: string): string[] {
+  const all = paragraphsOf(treatment);
+  const scenes = all.filter((p) => /["“”][^"“”]{3,}["“”]|[‘'][^‘’']{6,}[’']/.test(p));
+  return scenes.length ? scenes : all;
+}
+
 /**
  * The beats of a montage treatment the writer wrote itself, made from its own scenes — no second reading by a model.
  * A scene's sung words are its cue; a scene whose words the song never sings is dropped and reported (its line falls
  * back to his performance), never placed somewhere else.
  */
-export function beatsFromScenes(
-  scenes: readonly { words: string; event: string; place: string; people?: readonly string[] }[],
+export function beatsFromScenes<S extends { words: string; event: string; place: string; people?: readonly string[] }>(
+  scenes: readonly S[],
   grid: readonly GridShot[],
   people: readonly WriterEntity[],
-): { beats: Beat[]; dropped: { words: string; why: string }[] } {
+): { beats: Beat[]; kept: S[]; dropped: { words: string; why: string }[] } {
   const known = new Set(people.filter((p) => p.kind === "character").map((p) => p.key));
+  const clean = (v: unknown, max: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+  const usable = scenes.slice(0, 80).filter((sc) => clean(sc.event, 1200));
+  const lists = usable.map((sc) => cueMatches(grid, clean(sc.words, 300)));
+  const pins = pinScenes(lists);
   const beats: Beat[] = [];
+  const kept: S[] = [];
   const dropped: { words: string; why: string }[] = [];
-  let floor = -1;
-  for (const sc of scenes.slice(0, 80)) {
-    const words = String(sc.words ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
-    const event = String(sc.event ?? "").replace(/\s+/g, " ").trim().slice(0, 1200);
-    if (!event) continue;
-    const at = cueMatches(grid, words).find((x) => x > floor);
-    if (at === undefined) {
-      dropped.push({ words, why: words ? (cueMatches(grid, words).length ? "its words are sung only before the scene before it" : "the song does not sing these words") : "it quotes no words" });
-      continue;
+  usable.forEach((sc, n) => {
+    const words = clean(sc.words, 300);
+    const event = clean(sc.event, 1200);
+    if (pins[n] === null) {
+      dropped.push({ words, why: !words ? "it quotes no words" : lists[n].length === 0 ? "the song does not sing these words" : "its words are sung only in a shot another scene holds, or out of the song's order" });
+      return;
     }
-    floor = at;
+    kept.push(sc);
     beats.push({
       id: `b${String(beats.length + 1).padStart(2, "0")}`,
       title: event.split(/[.;:]/)[0].slice(0, 80),
-      scene: String(sc.place ?? "").replace(/\s+/g, " ").trim().slice(0, 400),
+      scene: clean(sc.place, 400),
       action: event,
       people: [...new Set((sc.people ?? []).map((p) => String(p).trim()).filter((p) => known.has(p)))],
       unnamedPeople: false,
@@ -729,8 +821,8 @@ export function beatsFromScenes(
       ties: [],
       weight: 1,
     });
-  }
-  return { beats, dropped };
+  });
+  return { beats, kept, dropped };
 }
 
 /** What the writer is told about beats, once, in the system prompt. */
@@ -744,4 +836,5 @@ export const BEAT_RULES = [
 ].join("\n");
 
 /** The one beat rule the montage style adds (kept apart so the classic prompt stays word for word what it was). */
-export const BETWEEN_SCENES_RULE = "- A shot that carries `between_scenes` instead of a beat has no scene of the treatment: write it as that field says.";
+export const BETWEEN_SCENES_RULE =
+  "- A shot that carries `between_scenes` instead of a beat has no scene of the treatment: write it as that field says. This holds even when the words sung in it are words a scene quotes — that scene has its own shots, and this is not one of them.";

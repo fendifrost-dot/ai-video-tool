@@ -186,6 +186,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       await saveNotes();
       if (!project.active_variation_id) throw new Error("this project has no video variation");
       const candidate = asCandidate || recut ? candidateName() : null;
+      const fallbackName = candidateName();
       const res = await writeStoryboardFromTreatment({
         projectId,
         variationId: project.active_variation_id,
@@ -206,7 +207,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         notes: "",
         candidate: candidate ? { name: candidate, recut } : null,
         // a rewrite of this board whose shots do not carry the treatment is filed beside it, never thrown away
-        fallbackCandidateName: candidate ? null : candidateName(),
+        fallbackCandidateName: candidate ? null : fallbackName,
       });
       await refresh();
       await qc.invalidateQueries({ queryKey: variationsKeys.forProject(projectId) });
@@ -214,7 +215,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       const cov = res.draft.coverage;
       const covLine = cov ? `; coverage ${verdictLabel(cov.verdict ?? (cov.ok ? "pass" : "fail"))} — see Coverage` : "";
       if (res.candidateVariationId && res.candidateBecause === "coverage") {
-        toast.warning(`The shots that came back do not carry the whole treatment, so this board was not replaced. They are filed as a candidate (${res.written} shots${covLine}) so the run is not lost: switch to it under the project title to review it beside this board.`, { duration: 15000 });
+        toast.warning(`The shots that came back do not carry the whole treatment, so this board was not replaced. They are filed as the candidate “${fallbackName}” (${res.written} shots${covLine}) so the run is not lost${res.editsLeftBehind ? `; ${res.editsLeftBehind} of your edits here were not carried over` : ""}. Switch to it under the project title to review it beside this board.`, { duration: 15000 });
       } else if (res.candidateVariationId) {
         toast.success(`Candidate written — ${res.written} shots in “${candidate}”; this board is untouched${res.editsLeftBehind ? ` (${res.editsLeftBehind} of your edits here were not carried over)` : ""}${covLine}. Switch to it under the project title to review it.`, { duration: 12000 });
       } else {

@@ -378,7 +378,7 @@ describe("who is in a shot (cast)", () => {
 });
 
 // ── the montage style (Fendi, 19 Nov 2026) ─────────────────────────────────────────────────────────────────────────
-import { exemplarsBlock, MONTAGE_CUT_RULE, MONTAGE_PATTERNS, MONTAGE_SCENE_RULE, MONTAGE_STYLE_LINE, MONTAGE_TREATMENT_SCHEMA, montageScenes, montageTreatmentSystemPrompt, montageTreatmentText, promptFingerprint, sceneParagraph, TREATMENT_STYLES, treatmentStyleOf, writerExemplars } from "./contract.ts";
+import { exemplarsBlock, gridHasWords, MONTAGE_MAX_SCENES, MONTAGE_CUT_RULE, MONTAGE_PATTERNS, MONTAGE_SCENE_RULE, MONTAGE_STYLE_LINE, MONTAGE_TREATMENT_SCHEMA, montageScenes, montageTreatmentSystemPrompt, montageTreatmentText, promptFingerprint, sceneParagraph, TREATMENT_STYLES, treatmentStyleOf, writerExemplars } from "./contract.ts";
 import { BETWEEN_SCENES_RULE, paragraphsOf } from "./beats.ts";
 
 describe("the treatment style: montage twists by default for a music video the writer writes, classic kept word for word", () => {
@@ -417,6 +417,27 @@ describe("the treatment style: montage twists by default for a music video the w
     expect(treatmentStyleOf(undefined, "commercial", true)).toBe("classic");
     expect(treatmentStyleOf(undefined, "social", true)).toBe("classic");
     expect(treatmentStyleOf("anything else", "music_video", true)).toBe("montage_twists");
+    // a montage sits on timed words: with none on any shot, an unasked style stays classic (an instrumental, lyrics not synced)
+    expect(treatmentStyleOf(undefined, "music_video", true, false)).toBe("classic");
+    expect(treatmentStyleOf(undefined, "music_video", true, true)).toBe("montage_twists");
+    // asked for outright it is still returned — the function refuses it before any paid call (index.ts)
+    expect(treatmentStyleOf("montage_twists", "music_video", true, false)).toBe("montage_twists");
+    expect(gridHasWords([{ lyrics: "" }, { lyrics: null }, {}])).toBe(false);
+    expect(gridHasWords([{ lyrics: "" }, { lyrics: " a line " }])).toBe(true);
+  });
+
+  it("the montage is bounded: at most forty scenes are asked for and kept, and the shot writer is not handed the shapes", () => {
+    const p = treatmentSystemPrompt({ ...fixed(true), style: "montage_twists" });
+    expect(p).toContain(`At most ${MONTAGE_MAX_SCENES} scenes`);
+    expect(MONTAGE_MAX_SCENES).toBe(40);
+    expect(montageScenes({ scenes: Array.from({ length: 70 }, (_, i) => ({ words: `w${i}`, event: `e${i}`, place: "p", people: [] })) })).toHaveLength(40);
+    // the shapes invite NEW twists: they belong to the call that writes the treatment, not to the calls that write inside its beats
+    const shots = shotsSystemPrompt({ ...fixed(true), style: "montage_twists", exemplars: ["a reference of his"] }, "the treatment", fixedGrid, true);
+    expect(shots).not.toContain(MONTAGE_PATTERNS[0]);
+    expect(shots).not.toContain("a reference of his");
+    expect(shots).toContain("This holds even when the words sung in it are words a scene quotes");
+    // with no footage of him a scene is still an event
+    expect(shotsSystemPrompt({ ...fixed(false), style: "montage_twists" }, "the treatment", fixedGrid, true)).toContain(MONTAGE_SCENE_RULE);
   });
 
   it("the montage treatment prompt asks for a twist per sung line, deadpan, on its own words — and never for one idea in a few places", () => {

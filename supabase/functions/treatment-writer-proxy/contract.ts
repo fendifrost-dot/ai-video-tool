@@ -53,14 +53,21 @@ export type TreatmentStyle = (typeof TREATMENT_STYLES)[number];
 
 /**
  * The style of a run: the one asked for. With none asked for, a music video whose text the WRITER writes is a montage
- * of twists; everything else is classic — so the director's own text is cut exactly as before unless he says it is a
- * montage.
+ * of twists — when the song's words are timed on the shots, since a scene sits on the words it answers; everything
+ * else is classic. So the director's own text is cut exactly as before unless he says it is a montage, and a song
+ * with no timed lyrics (an instrumental, lyrics not synced yet) is written as it always was.
  */
-export function treatmentStyleOf(requested: unknown, projectType: string | null | undefined, writerWritesText: boolean): TreatmentStyle {
+export function treatmentStyleOf(requested: unknown, projectType: string | null | undefined, writerWritesText: boolean, shotsHaveWords = true): TreatmentStyle {
   const asked = TREATMENT_STYLES.find((s) => s === requested);
   if (asked) return asked;
-  return writerWritesText && projectType !== "commercial" && projectType !== "social" ? "montage_twists" : "classic";
+  return writerWritesText && shotsHaveWords && projectType !== "commercial" && projectType !== "social" ? "montage_twists" : "classic";
 }
+
+/** Whether any shot of the grid has sung words on it — what a montage needs before anything is paid for. */
+export const gridHasWords = (grid: readonly { lyrics?: string | null }[]) => grid.some((g) => (g.lyrics ?? "").trim().length > 0);
+
+/** The most scenes a montage treatment is asked for and kept: what fits the answer's size and a song's length. */
+export const MONTAGE_MAX_SCENES = 40;
 
 /** The one style line every scene of a montage obeys. */
 export const MONTAGE_STYLE_LINE =
@@ -216,9 +223,9 @@ export function montageScenes(raw: unknown): MontageScene[] {
   const list = Array.isArray((raw as { scenes?: unknown })?.scenes) ? ((raw as { scenes: unknown[] }).scenes as Record<string, unknown>[]) : [];
   const str = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
   return list
-    .slice(0, 80)
     .map((r) => ({ words: str(r?.words, 300), event: str(r?.event, 1200), place: str(r?.place, 400), people: Array.isArray(r?.people) ? (r.people as unknown[]).map((p) => str(p, 60)).filter(Boolean) : [] }))
-    .filter((sc) => sc.event);
+    .filter((sc) => sc.event)
+    .slice(0, MONTAGE_MAX_SCENES);
 }
 
 /** One scene as a paragraph of the treatment text: the words it sits on, quoted, then what happens. */
@@ -421,6 +428,7 @@ export function montageTreatmentSystemPrompt(ctx: WriterContext): string {
       "- Nobody in the scene reacts to it. Say what the ordinary people around the event carry on doing.",
       "- The place may change with every scene. What holds the video together is the style and the `through_line` — someone or something that keeps coming back — not a short list of places.",
       "- No two scenes use the same trick. One event per scene: a scene is a few seconds on screen.",
+      `- At most ${MONTAGE_MAX_SCENES} scenes, each \`event\` in one or two sentences of 45 words at most. With more lines than that, keep the lines with the strongest events and spread the scenes over the whole song.`,
       "- The artist is in a scene only when the event needs him there, and then he is not rapping. His performance to camera is the other half of the video and is not written here.",
       "- What the director's notes mark as sincere — a person, a memory, a loss — is staged with care and is never the joke of a scene.",
     ].join("\n"),
@@ -471,7 +479,8 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
     timedBeatsRules("scene_description"),
     entitiesBlock(ctx.entities),
     ctx.hasPerformanceFootage ? (ctx.style === "montage_twists" ? MONTAGE_FOOTAGE_RULES : FOOTAGE_RULES) : NO_FOOTAGE_RULES,
-    ctx.style === "montage_twists" ? exemplarsBlock({ ...ctx, exemplars: ctx.exemplars ?? [] }) : null,
+    // with no footage the rules above say nothing of scenes: a montage's scene is an event there too
+    ctx.style === "montage_twists" && !ctx.hasPerformanceFootage ? MONTAGE_SCENE_RULE : null,
     `The whole storyboard, so you know what comes before and after your shots (context only — write only the shots you are handed):\n${outline.map(outlineLine).join("\n")}`,
     contextBlocks({ ...ctx, lyrics: null }),
   ]

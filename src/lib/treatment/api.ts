@@ -174,6 +174,8 @@ export type StructuredTreatment = {
   /** From a writer that read the treatment's beats: the check of the board against them, and the run's evidence. */
   coverage?: BeatCoverage | null;
   run?: WriterRunRecord | null;
+  /** The style the writer wrote this in (its reply): kept with the board so a later pass cuts the same way. */
+  style?: "montage_twists" | "classic" | null;
 };
 
 export type TreatmentContext = {
@@ -440,6 +442,7 @@ export async function draftTreatmentClips(
     text: [concept, narrative].filter(Boolean).join("\n\n"),
     coverage: parseBeatCoverage(data.coverage),
     run: parseWriterRun({ id: data.runId ?? null, model: data.model ?? null, actualCostUsd: data.actualCostUsd ?? null, estimatedCostUsd: data.estimatedCostUsd ?? null }),
+    style: data.style === "montage_twists" || data.style === "classic" ? data.style : null,
   };
   return structured;
 }

@@ -46,6 +46,8 @@ export type BeatCoverage = {
   missingLinks: { beat: string; kind: string; to: string }[];
   anchors: { beat: string; shot: string; cue: string }[];
   unanchored: { beat: string; cue: string; sung?: "earlier" | "never" | "early"; shot?: string }[];
+  /** Scenes the writer wrote that the board does not carry: their words could not be placed on the song (montage). */
+  dropped: { words: string; why: string }[];
   /** Beats holding more than half the board: the reader folded several scenes into one. */
   lumped: { beat: string; shots: number; share: number }[];
   /** How many beats each reading of the treatment returned (a second reading is asked for when the first is too few). */
@@ -100,6 +102,7 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
     missingLinks: Array.isArray(v.missingLinks) ? (v.missingLinks as Record<string, unknown>[]).map((m) => ({ beat: str(m.beat), kind: str(m.kind), to: str(m.to) })) : [],
     anchors: Array.isArray(v.anchors) ? (v.anchors as Record<string, unknown>[]).map((a) => ({ beat: str(a.beat), shot: str(a.shot), cue: str(a.cue) })) : [],
     unanchored: Array.isArray(v.unanchored) ? (v.unanchored as Record<string, unknown>[]).map((a) => ({ beat: str(a.beat), cue: str(a.cue), ...(a.sung === "earlier" || a.sung === "never" || a.sung === "early" ? { sung: a.sung } : {}), ...(typeof a.shot === "string" ? { shot: a.shot } : {}) })) : [],
+    dropped: Array.isArray(lyr.dropped) ? (lyr.dropped as Record<string, unknown>[]).map((d) => ({ words: str(d.words), why: str(d.why) })) : [],
     lumped: Array.isArray(structural.lumped) ? (structural.lumped as Record<string, unknown>[]).map((l) => ({ beat: str(l.beat), shots: Number(l.shots) || 0, share: Number(l.share) || 0 })) : [],
     readings: Array.isArray(structural.readings) ? (structural.readings as unknown[]).map(Number).filter((n) => Number.isFinite(n)) : [],
   };
@@ -109,6 +112,9 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
 export function verdictLabel(v: Verdict | null): string {
   return v === "pass" ? "passes" : v === "gaps" ? "passes with gaps" : v === "fail" ? "fails" : "not checked";
 }
+
+/** A scene the writer wrote and left out, as a line the director reads. */
+const droppedLine = (d: { words: string; why: string }) => `A scene written for “${d.words || "no words"}” was left out: ${d.why}. That line is his performance.`;
 
 /** The five parts of a coverage, each with its word and what it says — for a reader who must not see one green light. */
 export function coverageSections(c: BeatCoverage, shotLabel: (key: string) => string = (k) => k): { name: string; verdict: Verdict | null; lines: string[] }[] {
@@ -124,6 +130,7 @@ export function coverageSections(c: BeatCoverage, shotLabel: (key: string) => st
     if (c.inserts.some((i) => i.beat === u.beat)) continue;
     lyrics.push(u.sung === "never" ? `“${title(u.beat)}” is tied to “${u.cue}”, which the song never sings.` : u.sung === "early" ? `“${title(u.beat)}” is tied to “${u.cue}”, sung at shot ${shotLabel(u.shot ?? "")} — long before the beat's turn; pinning it there would crush the beats before it — placed in order, NOT on its words.` : `“${title(u.beat)}” is tied to “${u.cue}”, sung only before its turn — placed in order, NOT on its words.`);
   }
+  for (const d of c.dropped) lyrics.push(droppedLine(d));
   const relationships: string[] = [];
   for (const t of c.tieCorrections) relationships.push(`“${title(t.beat)}” → “${title(t.to)}”: the writer said ${t.from.replace("_", " ")}; its words (“${t.words.slice(0, 60)}…”) say ${t.kind.replace("_", " ")} — corrected.`);
   for (const m of c.mistyped) relationships.push(`“${title(m.beat)}” → “${title(m.to)}” is typed ${m.kind.replace("_", " ")} but its words say ${m.statedKind.replace("_", " ")}.`);
@@ -155,6 +162,7 @@ export function coverageGaps(c: BeatCoverage, shotLabel: (key: string) => string
   for (const b of c.beats) if (b.emptied.length) out.push(`“${b.title}” has people, and shot${b.emptied.length === 1 ? "" : "s"} ${b.emptied.map(shotLabel).join(", ")} came back with nobody in ${b.emptied.length === 1 ? "it" : "them"}.`);
   for (const m of c.missingLinks) out.push(`“${title(m.beat)}” is cut from “${title(m.to)}” (${m.kind.replace("_", " ")}) and no shot carries that link.`);
   for (const u of c.unanchored) out.push(`“${title(u.beat)}” is tied to the words “${u.cue}”, which the song does not sing after the beat before it — it was placed in order instead.`);
+  for (const d of c.dropped) out.push(droppedLine(d));
   return out;
 }
 

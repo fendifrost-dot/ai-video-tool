@@ -60,3 +60,17 @@ describe("the structural section tells a lumped reading and an early cue apart",
   });
 });
 
+
+describe("scenes the writer left out are read back and shown", () => {
+  it("keeps them from the lyrics part of a coverage and writes a line for each", async () => {
+    const { parseBeatCoverage, coverageSections, coverageGaps } = await import("./beatCoverage");
+    const c = parseBeatCoverage({ ok: false, verdict: "gaps", beats: [], lyrics: { verdict: "gaps", dropped: [{ words: "ice on my wrist", why: "its words are sung only in a shot another scene holds, or out of the song's order" }, { junk: 1 }] } });
+    expect(c?.dropped).toEqual([{ words: "ice on my wrist", why: "its words are sung only in a shot another scene holds, or out of the song's order" }, { words: "", why: "" }]);
+    const lines = coverageSections(c!).find((s) => s.name.startsWith("Lyric alignment"))!.lines;
+    expect(lines[0]).toContain("A scene written for “ice on my wrist” was left out");
+    expect(lines[0]).toContain("That line is his performance.");
+    expect(coverageGaps(c!).some((l) => l.includes("ice on my wrist"))).toBe(true);
+    // an older coverage with no such field reads as none
+    expect(parseBeatCoverage({ ok: true, beats: [] })?.dropped).toEqual([]);
+  });
+});

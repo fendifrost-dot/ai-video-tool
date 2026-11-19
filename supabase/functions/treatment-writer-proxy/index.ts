@@ -25,8 +25,11 @@
 //                    writes the text of a music video, classic otherwise (the director's own text is cut as before
 //                    unless he says it is a montage). Montage twists: one impossible event per sung
 //                    line, deadpan, each scene pinned to its words; a scene holds a few shots at most and every shot
-//                    with no scene is his performance (allocation.fill). The project's own references
-//                    (video_projects.creative_exemplars) are read here and sent to the writer in both styles.
+//                    with no scene is his performance (allocation.fill). A montage needs the song's words timed on
+//                    the shots: with none, an unasked style is classic and an asked montage is refused before any
+//                    paid call. The project's own references (video_projects.creative_exemplars) are read here and
+//                    reach the call that WRITES the treatment text, in both styles; they are not sent when the text
+//                    is the director's own.
 // Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, beats, allocation, coverage, runId, missing,
 //          repeated, rewritten, relinked, usage, actualCostUsd, estimatedCostUsd }
 //        `repeated` = shots that came back with another shot's sentence; `rewritten` = those written again as their own.
@@ -44,8 +47,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { streamed } from "./stream.ts";
-import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, writerExemplars, chunkGrid, linkedShots, linkUserMessage, montageScenes, montageTreatmentText, MONTAGE_TREATMENT_SCHEMA, promptFingerprint, repeatedScenes, rewriteUserMessage, sceneParagraph, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentStyleOf, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type MontageScene, type WriterContext } from "./contract.ts";
-import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsFromScenes, beatsSystemPrompt, coverageOf, fewestBeats, MONTAGE_BEAT_CAP, normalizeTieKinds, paragraphsOf, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
+import { costOf, estimateCostUsd, fingerprint, gridHasWords, SHOTS_PER_CALL, acceptShots, writerEntities, writerExemplars, chunkGrid, linkedShots, linkUserMessage, montageScenes, montageTreatmentText, MONTAGE_TREATMENT_SCHEMA, promptFingerprint, repeatedScenes, rewriteUserMessage, sceneParagraph, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentStyleOf, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type MontageScene, type WriterContext } from "./contract.ts";
+import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsFromScenes, montageSceneParagraphs, beatsSystemPrompt, coverageOf, fewestBeats, MONTAGE_BEAT_CAP, normalizeTieKinds, paragraphsOf, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +67,8 @@ function json(status: number, body: unknown) {
 }
 const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, status, errorCode, errorMessage });
 const text = (v: unknown, max = MAX_TEXT) => (typeof v === "string" ? v.slice(0, max) : null);
+// the director's treatment text: a montage of forty scenes is about 12,000 characters before its idea is counted
+const MAX_TREATMENT_TEXT = 24000;
 
 type Usage = { prompt_tokens: number; completion_tokens: number };
 
@@ -120,10 +125,13 @@ serve(async (req) => {
     exemplars: writerExemplars((project as { creative_exemplars?: unknown }).creative_exemplars),
   };
   const writeText = body.write_text === true;
-  const style = treatmentStyleOf(body.treatment_style, ctx.projectType, writeText);
+  const hasWords = gridHasWords(grid);
+  const style = treatmentStyleOf(body.treatment_style, ctx.projectType, writeText, hasWords);
   ctx.style = style;
   const montage = style === "montage_twists";
-  const given = text(body.concept) ?? "";
+  // a montage scene sits on the words it answers: with no words on any shot nothing could be placed — said before any paid call
+  if (montage && !hasWords) return fail(400, "INVALID_INPUT", "A montage puts each scene on the words it answers, and no shot of this board has sung words on it. Sync the lyrics first, or write it in the classic style.");
+  const given = text(body.concept, MAX_TREATMENT_TEXT) ?? "";
   if (!writeText && !given.trim()) return fail(400, "INVALID_INPUT", "There is no treatment text to write the shots from");
 
   // from here the work is long: it answers as a stream (see `streamed`)
@@ -168,17 +176,25 @@ serve(async (req) => {
   let sections: { name: string; intent: string }[] = [];
   // a montage the writer wrote itself comes back as scenes, each with the sung words it sits on
   let scenes: MontageScene[] | null = null;
+  let sceneBeats: Beat[] = [];
+  // scenes the writer tied to words that could not be placed: left out and said (their lines fall back to his performance)
+  let droppedScenes: { words: string; why: string }[] = [];
   const sectionNames = [...new Set(grid.map((g) => g.section).filter(Boolean))].join(", ");
   if (writeText && montage) {
-    const r = await ask(treatmentSystemPrompt(ctx), JSON.stringify({ sections_of_the_song: sectionNames, shots: grid.length, hint: given.trim() || null }), MONTAGE_TREATMENT_SCHEMA, 7000);
+    const r = await ask(treatmentSystemPrompt(ctx), JSON.stringify({ sections_of_the_song: sectionNames, shots: grid.length, hint: given.trim() || null }), MONTAGE_TREATMENT_SCHEMA, 9000);
     if (!r.ok) return fail(502, "PROVIDER_API_ERROR", `The treatment was not written: ${r.why}`);
     const t = r.value as { concept?: string; through_line?: string; sections?: { name: string; intent: string }[] };
-    scenes = montageScenes(r.value);
+    // the scenes are placed on their words NOW: the text the director reads holds only the scenes the board carries,
+    // and the ones that could not be placed are reported with the run, never left in the text as if they were there
+    const made = beatsFromScenes(montageScenes(r.value), grid, ctx.entities ?? []);
+    scenes = made.kept;
+    sceneBeats = made.beats;
+    droppedScenes = made.dropped;
     const written = montageTreatmentText({ concept: String(t.concept ?? ""), throughLine: String(t.through_line ?? ""), scenes });
     concept = written.concept;
     narrative = written.narrative;
     sections = Array.isArray(t.sections) ? t.sections : [];
-    if (!concept || scenes.length === 0) return fail(502, "PROVIDER_API_ERROR", "The treatment came back with no scenes");
+    if (!concept || scenes.length === 0) return fail(502, "PROVIDER_API_ERROR", made.dropped.length ? "None of the treatment's scenes sits on words the song sings — nothing was written" : "The treatment came back with no scenes");
   } else if (writeText) {
     const r = await ask(treatmentSystemPrompt(ctx), JSON.stringify({ sections_of_the_song: sectionNames, shots: grid.length, hint: given.trim() || null }), TREATMENT_SCHEMA, 1500);
     if (!r.ok) return fail(502, "PROVIDER_API_ERROR", `The treatment was not written: ${r.why}`);
@@ -215,28 +231,26 @@ serve(async (req) => {
   const beatReadings: number[] = [];
   let allocation: Allocation | null = null;
   let briefs: Record<string, ShotBrief> = {};
-  // scenes the writer tied to words the song does not sing: left out and said (their lines fall back to his performance)
-  let droppedScenes: { words: string; why: string }[] = [];
   const allot = { lyricInserts: body.lyric_inserts !== false, ...(montage ? { cueOrder: true, beatCap: MONTAGE_BEAT_CAP } : {}) };
+  const fillWith = { grid, hasPerformanceFootage: ctx.hasPerformanceFootage === true };
   if (scenes) {
     // the writer's own scenes ARE the beats: no second reading, each pinned to the words it quoted
-    const made = beatsFromScenes(scenes, grid, ctx.entities ?? []);
-    beats = made.beats;
-    droppedScenes = made.dropped;
+    beats = sceneBeats;
     beatReadings.push(beats.length);
-    if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "None of the treatment's scenes sits on words the song sings — nothing was written");
     allocation = allocateBeats(beats, grid, allot);
-    briefs = shotBriefs(beats, allocation);
+    briefs = shotBriefs(beats, allocation, fillWith);
   } else {
     const system = beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true, montage);
-    const r = await ask(system, JSON.stringify({ treatment }), BEATS_SCHEMA, 6000);
+    // a montage is read scene by scene: forty short beats need more room than a dozen long ones
+    const beatTokens = montage ? 10000 : 6000;
+    const r = await ask(system, JSON.stringify({ treatment }), BEATS_SCHEMA, beatTokens);
     if (!r.ok) return failRun(502, "PROVIDER_API_ERROR", `The treatment's beats could not be read: ${r.why}`);
     let read = normalizeTieKinds(acceptBeats(r.value, ctx.entities ?? []));
     beatReadings.push(read.beats.length);
     // too few beats for the treatment's length: the reader folded scenes together — read it once more, with that said
     const fewest = fewestBeats(treatment);
     if (read.beats.length > 0 && read.beats.length < fewest) {
-      const again = await ask(system, JSON.stringify({ treatment, note: `A previous reading listed only ${read.beats.length} beats for a treatment of ${paragraphsOf(treatment).length} paragraphs — it folded several scenes into one beat. List every scene the treatment describes as its own beat, in order; expect at least ${fewest}.` }), BEATS_SCHEMA, 6000);
+      const again = await ask(system, JSON.stringify({ treatment, note: `A previous reading listed only ${read.beats.length} beats for a treatment of ${paragraphsOf(treatment).length} paragraphs — it folded several scenes into one beat. List every scene the treatment describes as its own beat, in order; expect at least ${fewest}.` }), BEATS_SCHEMA, beatTokens);
       if (again.ok) {
         const reread = normalizeTieKinds(acceptBeats(again.value, ctx.entities ?? []));
         beatReadings.push(reread.beats.length);
@@ -247,7 +261,7 @@ serve(async (req) => {
     tieCorrections = read.corrections;
     if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "The treatment's beats came back empty — nothing was written");
     allocation = allocateBeats(beats, grid, allot);
-    briefs = shotBriefs(beats, allocation);
+    briefs = shotBriefs(beats, allocation, fillWith);
   }
 
   // 3. the shots, a few per call, all at once — each inside its beat
@@ -311,9 +325,10 @@ serve(async (req) => {
 
   // 7. does the board carry the treatment? said in parts, kept with the run, shown to the director — never an
   //    unqualified pass while anything was corrected, inserted or left out
-  //    (a montage the writer wrote is held against its scenes: the idea, the through-line and the style line are not beats)
-  const audited = scenes ? scenes.filter((sc) => !droppedScenes.some((d) => d.words === sc.words)).map(sceneParagraph).join("\n\n") : treatment;
-  const covered = allocation ? coverageOf(beats, allocation, clips, { treatment: audited, tieCorrections, productionCorrections: feasible.corrections, beatReadings }) : null;
+  //    A montage is held against its SCENES — the idea, the through-line and the style line are not beats: the
+  //    writer's own scenes when it wrote them, the paragraphs that quote words when the text is the director's.
+  const audited = scenes ? scenes.map(sceneParagraph).join("\n\n") : montage ? montageSceneParagraphs(treatment).join("\n\n") : treatment;
+  const covered = allocation ? coverageOf(beats, allocation, clips, { treatment: audited, tieCorrections, productionCorrections: feasible.corrections, beatReadings, droppedScenes }) : null;
   // which instructions wrote this run, kept with its evidence (writer_runs.coverage_json.writer)
   const writer = { style, promptFingerprint: promptFingerprint(style), exemplars: ctx.exemplars?.length ?? 0, droppedScenes, performanceShots: allocation?.fill?.length ?? 0 };
   const coverage = covered ? { ...covered, writer } : null;

@@ -289,7 +289,9 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     model: draft.model,
     generated_at: at,
     // the cut settings the shots were cut with go with them (a candidate is cut, and re-cut, the same way)
-    cut: withCutSettings(null, parseCutSettings(input.treatmentJson)).cut,
+    // …and the style: a text the WRITER wrote as a montage is a montage on every later pass (rewrite, candidate,
+    // re-cut all send the text back as the director's, which without this would be cut the classic way)
+    cut: withCutSettings(null, { ...parseCutSettings(input.treatmentJson), ...(input.aiWritesText && draft.style ? { style: draft.style } : {}) }).cut,
   };
   // a new text replaces the old one: the old one is kept as a version, labelled as replaced by this generation
   await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(record, doc, { what: "generate", at }) : withTreatmentDoc(record, doc), targetVariationId);
