@@ -464,6 +464,41 @@ windshield"; 42, 44, 45 put the radio dial "on a small screen beside him"; 28-31
 54-59 are six performance shots in a row (1:29-1:39); 70-73 stretch the yell over 2:03-2:16. The second half is written
 as the storm already handed to Grokbot; nothing there is new work.
 
+### REJECTED by Fendi, 19 Nov 2026: the plain line-by-line treatment (v3, board `a27d2ac1`, archived)
+
+His words: "Investigate what happened with the treatment and why it didn't produce viable results. Our treatments are
+supposed to be in line with the lyrics but produce mostly dynamic photorealistic results with crazy or viral twists
+that resemble a hip hop montage prompting similar to how thugpappi makes his videos in Higgsfield. Your treatment is
+too basic and honestly boring. Nothing unpredictable or engaging just a regular rap video that will get overlooked."
+
+What the investigation found:
+
+- VERIFIED: his standard was already in the repo and neither the tool nor the agent used it:
+  `docs/research/references/THUGGPAPI_SEEDANCE_MONTAGE_PROMPTS_2026-10.md` (16 Oct: "something absurd that catches
+  attention, shot like it is normal"; firemen rescuing a tiger, a city bus with chandeliers) and his own YSL treatment
+  "Interrupted Broadcast" (geese in tiny Canada Goose jackets, a control room inside a Maybach).
+- VERIFIED (`treatment-writer-proxy/contract.ts`, `treatmentSystemPrompt`): the writer is told to write "ONE idea" staged
+  in "a small number of places that return", "photoreal and filmable", and to "cut it like a real music video: ... of
+  every three shots about two are performance". Nothing asks for a twist, a montage or a deadpan impossible event, and
+  the reference is never sent (`video_projects.creative_exemplars` is empty and no code reads it). A regular rap video
+  is what those instructions describe. Same result on YSL: the AI text "Paris Black Runway" was plain; the treatment
+  that worked was hand-written.
+- VERIFIED: the AI's text carried no lyric cues, so its ten beats were shared out in equal blocks (the salad at 1:08).
+- The agent's part: the brief it gave the writer said "calm frames with one clear idea each" and "warm and plain", and
+  its own treatment illustrated each line literally. It did not look up the reference before writing.
+
+Treatment v4 (T7 `work/treatment_v4_montage_twists.txt`), written by the agent in the reference's shape: one style line
+(shaky handheld, quick optical zooms, 35mm grain, muted warm colours, fast cuts, deadpan), one impossible event per line
+that answers its words, ordinary people who do not react; Allen is never part of a joke; the first half's objects (the
+gift-wrapped sedan, the bills, the filing cabinets, the two sweaters, their photographs) are what the storm blows past
+him. The board's mood, visual direction and notes now say the same. Written as a candidate, run `44e78b11` ($0.0849),
+renamed "Montage twists" (`fa7f6b85`), ACTIVE. Every twist is a proposal until he marks it. OBSERVED on the board:
+twists sit on their lines for shots 4-69; slips: 56-59 repeat the floating books (1:32-1:39), 28-31 spread the radios
+over 6 s, 35-38 hold the wrestling ring 6.6 s, 70-73 stretch the yell.
+
+Fixing the writer itself (so its own text comes out in this style) is a code change to `treatment-writer-proxy`
+(Class B, one reviewer, then a Lovable redeploy): proposed as its own session, not done here.
+
 ### Making Allen move: research, 19 Nov 2026 ($0, nothing generated). NOT VERIFIED: every route below is a test
 
 The job: the approved passenger-seat still (`14f9d5dd` / `077a3515`) as 3-6 s of him riding, mouth closed, small natural

@@ -63,10 +63,11 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 
 | Symptom | Use (proven) | Never |
 |---|---|---|
-| Unwanted people or props in a shot | they come from the plate: one clean plate per scene, the cast only in cutaways (skill lesson 4) | re-rolling the prompt |
-| Shots in one outfit look the same | vary lens, distance, side, action at storyboard time (lesson 5) | more rolls of the same staging |
+| Unwanted people or props in a shot | one clean plate per scene, the cast only in cutaways (lesson 4) | re-rolling the prompt |
+| Shots in one outfit look the same | vary lens, distance, side, action at storyboard time (lesson 5) | more rolls |
 | Times disagree between people | write both clocks, song and file (lesson 3) | one unlabeled time |
-| A beat Fendi loved never reached the screen | a slot holds one beat; name the beat per slot (lesson 2) | squeezing a 4 s render into a short slot |
-| A scrapped stretch came back | demote its primaries the same hour (lesson 1) | listing it in a later handoff |
-| A delivered cut is "done" | verify the file: frames, audio vs the master, per-frame PSNR vs the last version, mouth scan (skill §6) | watching it and trusting the cutter's claims |
-| A decision lives in an open PR | merge it; a policy on a branch does not exist for the next agent (lesson 15) | starting a video from `main` without it |
+| A beat Fendi loved never reached the screen | a slot holds one beat; name the beat per slot (lesson 2) | a 4 s render in a short slot |
+| A scrapped stretch came back | demote its primaries the same hour (lesson 1) | listing it again |
+| A delivered cut is "done" | verify the file (skill §6): frames, audio, PSNR, mouth scan | trusting the cutter's claims |
+| A decision lives in an open PR | merge it (lesson 15) | starting from `main` without it |
+| Treatment reads like a plain rap video | per line ONE impossible event, deadpan, cued to its words (`research/references/THUGGPAPI_*.md`, lesson 19) | a literal picture per line; the AI writer's text |
