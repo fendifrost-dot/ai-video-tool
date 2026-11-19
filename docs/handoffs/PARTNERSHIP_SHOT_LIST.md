@@ -644,3 +644,23 @@ Fendi on test 2 (19 Nov): "Let's try to fix it and remember I'm not here to micr
 - Planned test when access exists, no call made, nothing of Allen sent out: (A) the still `44788e06` animated as a
   cutaway of him alone; (B) the test 3 two-shot edited on his side only, Fendi's half put back from the take (0).
   A generated face is checked against his photo `34bd95ac`; who he is stays Fendi's word.
+
+## Wan 3.0 realism test 1: Allen alone in the passenger seat ($0.50, ledger row 42)
+
+Fendi, 19 Nov: "Just use the API instead of the connector."
+
+- Route (VERIFIED, worked): `avt_call proxy-provider-call` with `endpoint: video-providers-runway-generate`, body
+  `{mode: "image_to_video", modelVariant: "wan3", duration: 5, aspectRatio: "auto_720p", promptText,
+  referenceImageUrl: <temporary link to the still>}`; Control Center passes `modelVariant` and `aspectRatio` straight to
+  the Runway API. Poll `video-providers-job-status` with `query {provider: "runway", id: <task>}`. Runway API price
+  (docs, 19 Nov): `wan3` 5 / 10 / 20 credits per second at 480p / 720p / 1080p, a credit is $0.01. Control Center's
+  own estimate for this model is wrong (25 cents returned); Runway's task estimate and charge were 50 credits.
+- Result `bfb93450` (as delivered): OBSERVED it reads as real handheld footage: the light moves over him, the seat and
+  cabin have depth, a street light passes. OBSERVED it redraws his face from about 1 s on: eyes open wide (his photo is
+  heavy-lidded), sharper skin, a smirk in the last second. Mouth closed throughout. Not judged by Fendi.
+- `212f2c5e`, $0 local (`wan3_test/wan_face_putback.py`, `FLOW_SIGMA=16`): the same clip with the face rebuilt from the
+  still's own pixels, moved by Wan's smooth head movement and lit by Wan's slow light change. It keeps his photo's
+  expression; it is softer than Wan's redraw and is not pixel-exact after the first frame. Following Wan's fine motion
+  (sigma 2) dragged his eyes and mouth out of shape by the last third: do not use it.
+- Not tested yet: the two-shot (his side regenerated, Fendi's side put back from the take), which needs the
+  video-to-video endpoint; Wan 3.0 Prime; 1080p.
