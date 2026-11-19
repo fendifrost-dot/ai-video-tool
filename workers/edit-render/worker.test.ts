@@ -113,3 +113,64 @@ describe.skipIf(!hasFfmpeg)("worker runOnce", () => {
     expect(id).toBeNull();
   });
 });
+
+describe("worker runOnce with a put-back job", () => {
+  const A = "11111111-1111-4111-8111-111111111111";
+  const B = "22222222-2222-4222-8222-222222222222";
+  const render = { id: "r-putback", kind: "job", job_kind: "putback", attempts: 1, settings: { preset: "c033_showroom" }, input_asset_ids: [A, B] };
+  const claimed = { ok: true, render, inputs: { original: { assetId: A, signedUrl: "u1" }, swap: { assetId: B, signedUrl: "u2" } }, upload: { signedUrl: "up", path: "p" } };
+
+  it("tells the door which kinds it can run, hands the runner the claim, and sends the proof back with the result", async () => {
+    const calls: Record<string, unknown>[] = [];
+    const api = async (body: Record<string, unknown>) => {
+      calls.push(body);
+      if (body.action === "claim") return claimed;
+      return { ok: true, sha256_match: true, assetId: "asset-1", path: "p" };
+    };
+    const seen: Record<string, unknown>[] = [];
+    const id = await runOnce({
+      api,
+      workerId: "t",
+      kinds: ["edit", "putback"],
+      upload: async () => {},
+      hashFile: async () => "a".repeat(64),
+      runJob: async (r: unknown, _dir: string, ctx: Record<string, unknown>) => {
+        seen.push({ r, ctx });
+        return { durationSeconds: 4, bytes: 10, sha256: "a".repeat(64), putback: { proof_max: 0, preset: "c033_showroom" } };
+      },
+    });
+    expect(id).toBe("r-putback");
+    expect(calls[0]).toMatchObject({ action: "claim", kinds: ["edit", "putback"] });
+    expect((seen[0].ctx as { claim: unknown }).claim).toBe(claimed);
+    expect(String((seen[0].ctx as { out: string }).out)).toMatch(/r-putback\.mp4$/);
+    expect(calls[1]).toMatchObject({ action: "complete", renderId: "r-putback", putback: { proof_max: 0, preset: "c033_showroom" } });
+  });
+
+  it("a put-back that does not prove itself is reported failed with the reason, and nothing is uploaded", async () => {
+    const calls: Record<string, unknown>[] = [];
+    let uploaded = 0;
+    await runOnce({
+      api: async (body: Record<string, unknown>) => {
+        calls.push(body);
+        return body.action === "claim" ? claimed : { ok: true };
+      },
+      workerId: "t",
+      kinds: ["edit", "putback"],
+      upload: async () => {
+        uploaded++;
+      },
+      runJob: async () => {
+        throw new Error("max |out-original| on face/hair/skin is 4, not 0: his face is not his own pixels");
+      },
+    });
+    expect(uploaded).toBe(0);
+    expect(calls[1]).toMatchObject({ action: "fail", renderId: "r-putback" });
+    expect(String(calls[1].error)).toContain("is 4, not 0");
+  });
+
+  it("a worker that says nothing claims the edit queue, as before", async () => {
+    const calls: Record<string, unknown>[] = [];
+    await runOnce({ api: async (body: Record<string, unknown>) => (calls.push(body), { ok: true, render: null }), workerId: "t" });
+    expect(calls[0]).toEqual({ action: "claim", workerId: "t", kinds: ["edit"] });
+  });
+});

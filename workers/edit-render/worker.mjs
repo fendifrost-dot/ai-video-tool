@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { encodePlan } from "../../scripts/edit-render/encode.mjs";
 import { capabilityManifest } from "./blenderProbe.mjs";
 import { mayClearScratch } from "./cache.mjs";
+import { putbackCapability, runPutback } from "./putback.mjs";
 import { verifyMp4 } from "./verify.mjs";
 
 let busy = false;
@@ -76,6 +77,8 @@ export async function runOnce({
   disk = () => assertDisk(tmpdir(), 64 * 1024 * 1024),
   hashFile = sha256File,
   runJob = null,
+  // the job kinds this host can run; sent with every claim so it is never handed a job it has no runner for
+  kinds = ["edit"],
 }) {
   if (busy) throw new Error("one job at a time");
   busy = true;
@@ -84,7 +87,7 @@ export async function runOnce({
   let render = null;
   try {
     disk();
-    const claim = await api({ action: "claim", workerId });
+    const claim = await api({ action: "claim", workerId, kinds });
     if (!claim.render) return null;
     render = claim.render;
     log("claimed", { renderId: render.id, kind: render.kind, jobKind: render.job_kind ?? "edit", attempts: render.attempts });
@@ -94,7 +97,7 @@ export async function runOnce({
     let summary = { durationSeconds: null, bytes: null };
     if (jobKind !== "edit") {
       if (!runJob) throw new Error(`no runner for ${jobKind}`);
-      summary = await runJob(render, dir);
+      summary = await runJob(render, dir, { claim, out });
     } else {
       await encode(render.plan, out, {
         urls: claim.signed ?? {},
@@ -115,6 +118,8 @@ export async function runOnce({
       bytes: summary.bytes,
       probe: summary,
       sha256,
+      // a put-back's proof record; the door checks it again (proof 0, this job's assets) before anything is filed
+      ...(summary.putback ? { putback: summary.putback } : {}),
     });
     clearScratch = mayClearScratch({ uploaded: true, sha256Match: done.sha256_match === true, jobComplete: done.ok !== false });
     log("complete", {
@@ -158,9 +163,19 @@ async function main() {
       log("stopping", { sig });
     });
   const tools = await capabilityManifest();
+  // a put-back needs Python with numpy, OpenCV and MediaPipe, and the two model files with the right hashes
+  const putback = await putbackCapability();
+  const kinds = ["edit", ...(putback.ok ? ["putback"] : [])];
+  const runJob = (render, dir, ctx) => {
+    if (render.job_kind === "putback")
+      return runPutback(render, dir, { ...ctx, log: (line) => log("putback", { renderId: render.id, line }) });
+    throw new Error(`no runner for ${render.job_kind}`);
+  };
   log("start", {
     workerId,
     once,
+    kinds,
+    putback: putback.ok ? putback.versions : putback.problems,
     blender: tools.tool_versions.blender ?? null,
     blender_bin: tools.blender_bin,
     blender_dependency: tools.skill_dependency.constraint,
@@ -168,7 +183,7 @@ async function main() {
   do {
     let handled = null;
     try {
-      handled = await runOnce({ api, workerId });
+      handled = await runOnce({ api, workerId, kinds, runJob });
     } catch (error) {
       log("poll_error", { error: error instanceof Error ? error.message : String(error) });
     }

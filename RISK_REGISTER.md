@@ -234,6 +234,29 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 
 ---
 
+## ARCH-2 — The proven put-back, matte and light-match methods run only as offline scripts
+
+- **Severity:** High (money and time, not data) · **Confidence:** Confirmed · **Status:** Open (design proposed, slice a coded on a draft branch, nothing live) · **Owner:** Products (AVT) · **Opened:** 2026-11-19
+- **Summary:** The face-preserving put-back (`scripts/edit/body_only_swap.py`), the matte repair and stability
+  check, the measured light match and the four face checks exist only as offline Python. An agent working in the
+  app cannot finish a clothing swap there, so it improvises. Measured cost across YSL, Hyenas and Partnership:
+  about $146 of swap spend thrown away, about $46 of it against a note that already existed
+  ([`docs/audit/METHODS_ACCOUNTING_2026-11.md`](docs/audit/METHODS_ACCOUNTING_2026-11.md) §3). `CLAUDE.md`
+  ("Integration gap") and four recipe pages have named the gap since 18 Oct.
+- **What the fix adds, and its own risk:** a worker that runs Python on rows of `edit_renders`. With SEC-4 open any
+  visitor can insert such a row, so the job is a closed preset plus two asset ids, the script path is fixed,
+  inputs are resolved and signed server-side for the job's own user and project, and a put-back is handed only to a
+  worker that user registered ([`docs/design/DRESS_AND_PLACE_PIPELINE_2026-11.md`](docs/design/DRESS_AND_PLACE_PIPELINE_2026-11.md) §5).
+- **Also found:** the job-kind queue this depends on is not live (`edit_renders.job_kind` does not exist in the
+  database: migration `20261113120000_asset_store_extensions.sql` is unapplied), no worker has claimed a job since
+  18 Oct 2026, and `claim_edit_render` hands any kind of job to a worker with no runner for it.
+- **Pointer:** `docs/handoffs/HANDOFF_AVT_BUILT_IN_METHODS_2026-11-19.md` §4; the design note above.
+- **DoD (target):** a put-back queued from the app or the MCP runs on a registered worker, files a clip only with
+  proof 0 recorded on the asset, the c033 fixture reproduces through it, a whole-frame Dress output cannot be made a
+  shot's primary without that proof, and `CLAUDE.md`'s "Integration gap" paragraph is gone.
+
+---
+
 ## OPS-1 — No CI gate
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Platform (AVT)
