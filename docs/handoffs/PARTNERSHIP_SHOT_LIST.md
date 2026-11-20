@@ -1127,9 +1127,15 @@ behind me. So me getting out, and then that's when the back-to-back Lexus don't 
 |---|---|---|---|
 | I1 | The cream-yellow Mercedes-AMG GT 55 in a marble showroom | HIS Gemini clip, asset `9585c415` (10 s, 720p, 24 fps; T7 `work/fendi_gemini_shots/gemini_video_E64007F9.mp4`) | "This one is solid." TO DO in post (Grokbot): blur the dealer plates |
 | I2 top | The same Benz driving through the Austin hills, scenic, far; shown UPSIDE DOWN in the top half | Gemini still `cb347ac1` (job `ded0f406`, three frames of his clip as the car reference) → Wan 3.0, Runway task `cec5edbc` | still and clip posted (T7 `work/intro/benz_hills_H1_wan.mp4`, 1284x716, 5 s): the drone tracks the car, the scenery slides past. Layout test with the clip rotated 180 degrees in the top half (crop y 200-561 of 716, scaled to 1920x540): `work/intro/intro_I2_split_layout_top_only.mp4`. OBSERVED: the strip is 720p scaled up 1.5x; a 1080p render would be sharper. Pending his word |
-| I2 bottom | Him getting out of a pearl 2006 Lexus, Allen's green Lexus behind him; right side up; lands on "Back to back Lexus" (song 0:06-0:09) | NOT STARTED. Needs: which 2006 Lexus (model) or a photograph of it. Method: recipe F (his face set + his real non-rapping footage `98c51f4d`) on a Gemini still of the two cars; the montage tool refuses a full-body him, so the still route (full-figure still, animated) as for the storm | waiting on the car |
+| I2 bottom | Him getting out of a pearl 2006 Lexus, Allen's green Lexus behind him; right side up; lands on "Back to back Lexus" (song 0:06-0:09) | Gemini still `1f24a44a` (job `e6cce72f`; place = green Lexus day plate `45a98a55`, cast = a REAL frame of him `32b267e5`) → his real face put back (`still_face_from_photo.py` default mode + `still_face_putback.py`: face 60 x 70 px, turn -2.7 degrees, residual 3.1 %, proof 0 on 3,147 px, brows to chin) `617ed1bc` → Wan 3.0 at 1080p, Runway task `b451ff93` ($1.00) | Fendi: "I like the shot let's do the bottom half." The pearl car is drawn as a GS 430: the AGENT'S PICK, he has not named the model. Strip crop: he is a little taller than half the frame, so the 32:9 strip cuts him at the ankles |
 
 I1's beats: 0-1 whole car front (dealer plate), 1-2 headlight, 2-3 wheel with yellow caliper, 3-4 side, 4-6.17 GT 55
 badge and tail light, 6.17-7.46 rear bumper (dealer plate large), 7.46-10 rear three-quarter (dealer plate).
 Song: no lyrics until 0:06.16; "Back to back Lexus" starts there. The old intro shots `c001`-`c002` (radio, knob) are
 replaced by this plan; nothing is filed on them yet.
+
+Fendi on the hills shot (`334eb73a`): **"I like the shot let's do the bottom half. Should we do all the 1080 renders now?"**
+ANSWER given (RECOMMENDATION): not all now. A 1080p render is a NEW roll (different motion), not the liked 720p clip
+made sharper, and costs twice as much (VERIFIED on task `b451ff93`: 100 credits against 50). So: new shots with him
+render at 1080p from the first roll; shots already liked at 720p stay until the cut is locked, then either an upscale of
+the liked clip (keeps its motion; no upscaler is proven here yet) or a re-roll he judges again.
