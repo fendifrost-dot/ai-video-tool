@@ -1274,7 +1274,7 @@ better"**, and on the double-speed preview: **"That's better"**.
   `7b9bd643`) are kept, not primary.
 - Beats used now: 2 and most of 3. Unused: 1 (the pair beside the car), 4-6 (the second pass).
 
-## The walk to the Lexus and the GX starting up, 20 Nov 2026 ($2.08, ledger rows 79-83; both clips PENDING Fendi)
+## The walk to the Lexus and the GX starting up, 20 Nov 2026 ($2.08, ledger rows 79-83; ACCEPTED by Fendi and ON THE BOARD, see the end of this section)
 
 Made in the session "AVT proven methods" on Fendi's request there; recorded here from its report. The assets were
 checked in AVT (VERIFIED: all fourteen rows exist; `b3f755f6` and `f9ccc042` pending). The pictures themselves were
@@ -1302,4 +1302,20 @@ and the yellow mercedes is literally in the wall"**. He has not judged the resul
   car against it again). References: `8ad6d0a9` (real frame), `b0c941b0` / `81469534` / `f1a40011` (rear views),
   `ae2aa7c1` / `250dd395` (front views), all frames of his own Gemini clips `a7255ac8` and `9585c415`.
 - Preview with the song (T7 only, never committed): `work/walk_to_lexus_6496/PREVIEW_economy_to_GX_with_song.mp4`.
-- NOT on the board yet: which shots hold 0:08.78-0:12.56 is still to be set, after his word on the two clips.
+
+**Accepted and placed, 20 Nov 2026 ($0, local).** Fendi: **"my walk slow motion"**; then on the slow-motion preview:
+**"that's hard"** and **"I like it"** ("that's hard" is his approval). Placed by the session "AVT proven methods";
+VERIFIED in AVT from this branch: both assignments are primary, both assets approved, on variation `fa7f6b85`.
+
+| Slot | Song | Line | Primary | What it is | Assignment | Displaced planned twist |
+|---|---|---|---|---|---|---|
+| `c004` | 0:09.24-0:11.44 | "Economy really don't affect us" | `e930c8fe` | his real walk-in from IMG_6496 (take 12.38-13.46 s) at half speed, the two Benzes backed in; 53 frames, 24 fps, 1080p | `0138f2ef` | the egg on a velvet cushion (not made) |
+| `c005` | 0:11.44-0:13.64 | "Put the G in GX acting extra" | `1052ce84` | the satin black GX 460, lights coming on; source `f9ccc042` 0.80-3.01 s, conformed to 24 fps, silent | `3d2e882e` | the Lexus in the jewellery store (not made) |
+
+- Half speed is the other session's pick (DECISION). Every other frame of `e930c8fe` is an ffmpeg minterpolate
+  in-between of two of his real frames, so those frames are not his camera's own pixels; reported checked on
+  consecutive frames, no ghosting (OBSERVED from the report, not looked at from this branch).
+- OPEN, his: he judged a preview cut to the lyric times (the cut to the GX at 0:10.86); on the board's slots the cut
+  falls at 0:11.44. The board-timed version was shown to him (T7
+  `work/walk_to_lexus_6496/PREVIEW_v3_board_slots_c004_c005_with_song.mp4`); no word on it yet.
+- **Nothing else goes on `c004` or `c005` without his word.**
