@@ -180,7 +180,7 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 | 2b. The live worker `box` is given its owner, by hand, in the same editor (never derived from rows a visitor can write) | **DONE** with step 2. VERIFIED by a rolled-back test in the same editor: a queued edit row of another account was claimed 0 times by the old claim, 0 by the owner-scoped claim and 0 with no owner; the owner's own row was claimed once |
 | 3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`** | **DONE** 19 Nov ≈23:59 UTC: merged as `cc350791`; Lovable deployed both from that commit (source hashes `1478994b…` and `2d314774…`; the file hashes it reported match the commit's `index.ts`, `jobContract.ts`, `jobHandlers.ts`). An unsigned call to each is refused. Frontend not published: nothing in the app changed |
 | 4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`). The secret is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); never in chat, the repo or SQL | **DONE** 20 Nov ≈00:35 UTC on Fendi's "Yes, register it": worker row `mac-putback` (`338c72fd`), owner his account. VERIFIED: a claim as that worker for `putback` through the deployed function answers HTTP 200 with no job (none is queued); a wrong secret answers 401 |
-| 5. The c033 fixture through the worker, proof 0, reported with the printed numbers | **NOT RUN**: the Mac's memory (pressure level 2 of 1/2/4 on 19 Nov) |
+| 5. The c033 fixture through the worker, proof 0, reported with the printed numbers | **QUEUED, NOT RUN** (job `98cac066`): the Mac's memory (pressure level 2 of 1/2/4, 12.2 of 13.3 GB swap in use, 19–20 Nov) |
 
 ## 10. Order of slices (from the handoff §4.6, with what this note changes)
 
@@ -224,12 +224,17 @@ NOT DONE:
 - The Mac is registered (§9 step 4) but runs only when started by hand (`workers/edit-render/run-once-putback.sh`),
   and that script refuses to start while the Mac's memory pressure is above normal. A put-back queued meanwhile
   waits, at no cost: `box` asks only for edit jobs.
-- **The input check merged in #512 would have refused the real c033 pair** (dress-clip records the take, not the
-  window, as the swap's source). Found on the live rows before any run; corrected in PR #516, which must be merged
-  and `edit-render-worker-api` redeployed before the fixture is queued.
-- **No put-back has been submitted through the deployed functions.** The session that deployed them could not call
-  `avt_job_submit` (its tool list was older than the tool). First check, $0: `avt_job_submit` with `dry_run: true`,
-  `job_kind: "putback"`, a preset and two asset ids → the plan comes back with `costUsd: 0`.
+- The input check merged in #512 would have refused the real c033 pair (dress-clip records the take, not the
+  window, as the swap's source). Found on the live rows before any run; corrected in PR #516 (`13beee45`, reviewed:
+  APPROVE), both functions redeployed from it 20 Nov ≈01:53 UTC (Lovable's file hashes match the commit).
+- **The c033 job is queued and has passed the door, and has not run.** Job `98cac066`, queued through
+  `queue_putback_job` on 20 Nov 01:54 UTC. VERIFIED: a claim as `mac-putback` through the deployed function was
+  handed that job with both inputs signed and an upload path `…/renders/98cac066…_a1.mp4`. That claim was a door
+  check, not a run: it used attempt 1 of 3, and the row goes back to the queue 20 minutes later. The script itself
+  has not run on it.
+- **`avt_job_submit` / `avt_job_status` for a put-back are deployed and not called yet.** The session that deployed
+  them could not (its tool list was older than the tools); the c033 job was queued through the same SQL door the
+  tool calls. First check, $0: `avt_job_status {job_id: "98cac066-3d1e-4b4d-bfb2-55aa5ad5e050"}`.
 - **The c033 fixture through the runner.** The Mac's swap was 9–12 GB of 10–13 GB in use all of 19 Nov with other
   sessions working; one heavy job at a time there.
 - Stage 1 of the handoff's table (cutting the window in the worker) and the checks of slice b.
