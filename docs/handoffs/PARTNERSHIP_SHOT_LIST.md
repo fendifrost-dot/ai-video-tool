@@ -664,3 +664,18 @@ Fendi, 19 Nov: "Just use the API instead of the connector."
   (sigma 2) dragged his eyes and mouth out of shape by the last third: do not use it.
 - Not tested yet: the two-shot (his side regenerated, Fendi's side put back from the take), which needs the
   video-to-video endpoint; Wan 3.0 Prime; 1080p.
+
+### Fendi's verdict on Wan 3.0 test 1 (19 Nov) and what follows
+
+- Fendi on both versions (`bfb93450` as delivered, `212f2c5e` with his photo face): "I think both are solid the redraw
+  they did wasn't terrible or ridiculous looking". Recorded on both assets; both stay `pending` (test clips, not on a
+  shot).
+- Posted, not filed: `work/allen/cut_demo/allen_dreams_line_cut_demo.mp4`, the "See you frequently up in my dreams"
+  slot as a cut (88 frames, with the song): his real take punched in on him for 44 frames (the empty seat out of
+  frame), then 44 frames of the Wan cutaway, his-photo-face version, clip seconds 1.55-3.38.
+- VERIFIED blocker for the two-shot through Wan: Control Center's `video-providers-runway-video-edit` allows only
+  `aleph2`, `gemini_omni_flash_1.1` and `seedance2_5` (its `contract.ts` on `main`); `wan3` video-to-video needs a row
+  there (sister repo, provider change, Class C). Image-to-video needs no change.
+- RECOMMENDATION: Allen appears in cutaways made this way (a Gemini still with his head put back, then Wan 3.0
+  image-to-video, about $0.77 a shot), cut against Fendi's real takes; the wide two-shot (test 3) only inside a camera
+  move. One test is not a benchmark: `docs/capability/GAPS.md` G2 keeps Wan 3.0 as a candidate until more shots pass.
