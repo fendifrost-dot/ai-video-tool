@@ -120,9 +120,12 @@ branch: `| 40 | 19 Nov 18:38 | Writer live check after PR #511: the AI's own mon
 #   avt_select edit_renders, columns "job_kind", limit 1
 # a row or an empty list → the put-back SQL is applied (state since 19 Nov 23:48 UTC); an error "column edit_renders.job_kind
 # does not exist" → it is not.
-# Has a put-back ever run?  avt_select edit_renders, filter job_kind eq putback: one row on 20 Nov, 98cac066.
-#   status queued or rendering → not run yet; complete with output_asset_id → it ran and filed (read the asset's
-#   metadata_json.putback: proof_max must be 0, face_found 240 of 240); failed → read its error.
+# Has a put-back ever run?  NOT avt_select: the table's policy shows an owner only rows tied to an edit sequence, so
+#   a put-back row is invisible to it and the answer is [] whatever the truth (seen 20 Nov 03:27 UTC). Read it with
+#   avt_job_status {job_id: "98cac066-3d1e-4b4d-bfb2-55aa5ad5e050"}, or read-only in Lovable's SQL editor:
+#     select id, status, attempts, error, output_asset_id from public.edit_renders where job_kind = 'putback'
+#   queued or rendering → not run yet (20 Nov 03:27 UTC: queued, attempts 1); complete with output_asset_id → it ran
+#   and filed (read the asset's metadata_json.putback: proof_max must be 0, face_found 240 of 240); failed → its error.
 ```
 
 ```bash
