@@ -1012,3 +1012,21 @@ P1:
 - OBSERVED: the middle second (he looks down, the photo's face does not) reads less wrong inside a portrait, but it
   is still there; a cut can use 0.0-1.7 s or 3.1-5.0 s only.
 - Open for him: the room (this panelled wall, or the cathedral of his performance idea), and the other half.
+
+## The living portrait, corrected (Fendi, 20 Nov 2026): HIS gallery scene, test G1 ($0)
+
+Fendi on P1 (the panelled wall and the split-screen example): **"That's not what I meant by split screen and I used
+the wrong terminology the portrait can work but we need a more creative realistic scene with it. Try the image I
+uploaded."** So: NO split screen; the panelled room P1 (`3ea1cd75`, plate `8d4b9e7a`) is set aside. His image: a
+bright gallery wall with four pieces in a row: a walnut shadow box with a white winged rose on blue, an EMPTY ornate
+gilt frame, a small plaque with a dark metal rose, a red rose painting. Allen's portrait goes in the empty frame.
+
+G1, $0, his image untouched outside the frame's opening (printed: max change outside the opening 0):
+- `scripts/edit/clip_in_wall_frame.py` with `RECT=449,172,567,333` (the opening, in his image's pixels), `SUPER=2`
+  (built at 3840x2160), the opening's own light laid over the picture, GAIN 0.82. Clip crop x 72-597.
+- Push-in (`ZOOM=2.6`, eased, from the whole wall to the frame) and the wide shot held: T7
+  `work/allen/portrait_wall/allen_portrait_gallery_G1_push.mp4`, `..._wide.mp4`.
+- OBSERVED: his image is 1024x572, so the wall and the gilt frame go soft as the camera closes in; the portrait itself
+  stays sharp. The room is a still: nothing in it moves but the camera and the portrait.
+- RECOMMENDATION if he likes the direction: one sharper copy of his scene (Gemini, his image as the reference, 2k,
+  $0.27) so the push-in holds up, and life in the room (window light drifting across the wall) built in layers.
