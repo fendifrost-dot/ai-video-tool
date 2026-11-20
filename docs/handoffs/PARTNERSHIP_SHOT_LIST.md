@@ -800,3 +800,25 @@ version of him."
   (still `33152dfa`, clip `402f7c28`) is that shot; it is pending his word on the face.
 - NOT SAID, so not touched: the other solo clips (door `e473e93e`, gas station `bb4c15a4`, headlights `1642f563`,
   Mercedes `b054afcb`). His drift note on them stands; nothing is redone or re-aged on them without his word.
+
+## Older Allen T3: ONE photo, his own pixels (Fendi, 20 Nov 2026; $1.04, ledger rows 58-60)
+
+His words on T2: "the older version does not look like him. Those are not his pixels. It's close, but pick one of the
+images and not a collection of them. Pick one and use that one as opposed to trying to merge his likeness into several
+different images, because it's multiple different stages of his life over a culmination of about 15 years ... Over time,
+he got heavier and heavier and bigger. So just pick one of him in the club ... Whichever one is the cleanest looking as
+far as the highest quality".
+
+- RULE (his): ONE photo of Allen per likeness. Never several photos of him as references in one request: they are 15
+  years apart and blend into a man who is not him. T2 (`33152dfa`, `402f7c28`) is REJECTED for that reason.
+- The photo: 09 (IMG_3071, the club, Allen on the left), crop `a4753c00`: the largest, sharpest later head, face-on,
+  whole head, mouth closed. DECISION (the agent's pick among the club photos; his to overrule).
+- What made his pixels sit (VERIFIED on this still): grade the WHOLE scene to the photo's own look, not his head to
+  the scene. Per channel, fit the still's drawn face to the photo's face by percentiles (here B, G, R gain 0.52 / 0.78 /
+  0.73, lift 89 / 65 / 73), apply to the whole still, add the photo's softness and grain; then `AVT_FACE_EXACT` needs
+  gains of 0.98 / 1.04 / 1.05, i.e. his head goes on untouched. Asking Gemini for the faded look in words did nothing.
+  Then the verified join clean-up and the same put-back (proof 0, 43,149 px): still `fa83826a`.
+- Clip: Wan 3.0, camera locked, he only breathes and blinks. His head moves 17 px at most, so `wan_face_putback.py`
+  holds his photo face for all 150 frames. Two versions filed, both pending: as delivered, and his face held.
+- OBSERVED, open: the whole picture is as faded as photo 09 (lifted blacks); a single grade over the finished clip can
+  bring it toward the cut's look without separating him from the scene. 720p.
