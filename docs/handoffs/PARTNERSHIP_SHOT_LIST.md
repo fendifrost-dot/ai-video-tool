@@ -772,3 +772,16 @@ OBSERVED on the older-Allen stills (ledger rows 55-56):
   the result LOOKS PASTED: photo 09 carries a faded filter (lifted blacks, low contrast) and one gain per channel
   cannot make it sit in a crisp flash picture. Not posted. So for the older Allen the exact-pixels head has no clean
   source among these photos; the still as Gemini drew it from 09A and 04A is what was animated, for Fendi to judge.
+
+## Older Allen, test shot T2 ($0.77; ledger rows 56-57; still `33152dfa`, clip `402f7c28`, both pending)
+
+- Still: Gemini, 16:9, references 09A + 04A (cast, Fendi cropped out), the green Lexus plate, the navy sweater; night
+  flash snapshot in front of the car; bare head, no chain, mouth closed. The face is DRAWN from his photos.
+- Clip: Wan 3.0, 5 s, 720p, prompt "the camera is locked on a tripod ... he stays the same size ... the same eyes,
+  nose, lips, goatee, beard and hairline as in the first frame". OBSERVED: the same features hold from the first frame
+  to the last, which the five kitchen-photo clips did not do; lips part slightly near 2 s; eyes closed at the end.
+- HYPOTHESIS for why this one held: a sharp, detailed starting face at a size the clip never exceeds, and a camera that
+  does not move. One clip; not a benchmark.
+- DEVIATION, stated to Fendi before the clip: this shot does not carry his photo's own pixels (PROBLEM_INDEX "Allen's
+  likeness" row). Cause: the only whole, sharp, later head (photo 09) is filtered and looks pasted when put back.
+  Whether a drawn likeness of this standard stands in for him is Fendi's call; nothing here is approved.
