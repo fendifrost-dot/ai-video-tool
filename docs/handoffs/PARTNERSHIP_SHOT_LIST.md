@@ -1273,3 +1273,33 @@ better"**, and on the double-speed preview: **"That's better"**.
 - PRIMARY on `c022` (0-1.32 s of it) and `c023` (1.32-2.64 s). The normal-speed windows (assignments `744fc9ea`,
   `7b9bd643`) are kept, not primary.
 - Beats used now: 2 and most of 3. Unused: 1 (the pair beside the car), 4-6 (the second pass).
+
+## The walk to the Lexus and the GX starting up, 20 Nov 2026 ($2.08, ledger rows 79-83; both clips PENDING Fendi)
+
+Made in the session "AVT proven methods" on Fendi's request there; recorded here from its report. The assets were
+checked in AVT (VERIFIED: all fourteen rows exist; `b3f755f6` and `f9ccc042` pending). The pictures themselves were
+not looked at from this branch (OBSERVED from the report only).
+
+Fendi, 20 Nov 2026: **"I just added another car shot to the folder it's a video of me walking to the Lexus. I want one
+change to the video. Change the cars in front to the two Benz's parked in sight next to each other and as I walk in
+frame cut to the light's coming on in a satin silk Black wrapped 2022 GX 460 lights coming on as if the car is starting
+similar to the other car montages"**; then **"this is going to go right at the Economy really don't affect us, Put the
+G in GX actin Extra"**; on the first still: **"mercedes should be faced the other direction as if they were backed in
+and the yellow mercedes is literally in the wall"**. He has not judged the result.
+
+- Source: T7 `car shots/IMG_6496.mov` (4K, 24 fps, 27 s, the camera locked on the hood of his GX; he walks in from the
+  right at take 11.1 s). Work folder: T7 `work/walk_to_lexus_6496/`.
+
+| Line | Song | Asset | What it is | Suggested window |
+|---|---|---|---|---|
+| "Economy really don't affect us" | 0:08.78-0:10.86 | `b3f755f6` (edited_clip) | his real take 8.00-13.92 s; the two parked cars changed to the grey and the cream-yellow AMG GT 55, backed in, facing the camera | take 11.42-13.50 s = frames 82-131 of the file |
+| "Put the G in GX acting extra" | 0:10.86-0:12.56 | `f9ccc042` (generated_clip) | the satin black GX 460 starting up, its lights coming on; Runway Wan 3.0 1080p, 5 s, 30 fps, from the Gemini start still `5327587d` of his own photo `c232ea7d` | source 0.80-2.50 s |
+
+- His pixels: only the car area and its hood reflection (18.7 % of the frame) come from the Gemini still `0c9ca075`;
+  reported proof: max |out - take| outside the mask is 0 on all 142 frames, and he never enters the mask in this window.
+- Stills: `0c9ca075` used (backed in, an edit of a tight crop of the bays, reference crop `580a9c1c`); `89b7751b`
+  REJECTED by Fendi (nose-in, the yellow car on the pillar); `81688652` not used and not posted (the pillar moved, the
+  car against it again). References: `8ad6d0a9` (real frame), `b0c941b0` / `81469534` / `f1a40011` (rear views),
+  `ae2aa7c1` / `250dd395` (front views), all frames of his own Gemini clips `a7255ac8` and `9585c415`.
+- Preview with the song (T7 only, never committed): `work/walk_to_lexus_6496/PREVIEW_economy_to_GX_with_song.mp4`.
+- NOT on the board yet: which shots hold 0:08.78-0:12.56 is still to be set, after his word on the two clips.
