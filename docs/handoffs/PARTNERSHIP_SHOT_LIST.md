@@ -957,3 +957,38 @@ effects."
    stock he owns), his take matted over it (`matte-video-proxy` + `composite_over_plate.py`); the pixelation is a
    VFX-pass step (Grokbot / After Effects) and needs the collage delivered as its own layer.
 Open for him: which take(s) these go on, and the tuxedo's exact product picture.
+
+## Older Allen T10: real movement, his photo's face held while he moves (20 Nov 2026, $0.50)
+
+Fendi on T9: **"What are you prompting for the movement because it looks like a picture ... Alan is perfectly still. No
+hand movement, no head movement ... nothing to symbolize that it's a video as opposed to an image."** Then: **"if the
+motion gets too crazy, as long as there's something we can keep, a couple seconds ... we need a good 2 to 4 seconds of
+solid movement ... if the prompt generates something crazy, as long as there's something in there that is keepable,
+let's put it aside and use it as a montage to cut."**
+
+Cause (VERIFIED, the prompt of Runway task `3cc872b8`): it said "his head does not turn or tilt ... he only breathes,
+shifts his weight very slightly and blinks once". The agent wrote that to protect the face hold. RULE: never ask a
+video model for stillness to protect a put-back; ask for the movement and make the hold follow it.
+
+T10 (Runway task `f1cd363d`, Wan 3.0, 5 s, from still `e77ee30f`): the prompt asks for weight rocking, two nods, the
+hand sign bounced then lowered, the other hand at his hem; head facing the camera; hands never above his chest.
+OBSERVED as delivered (`4f53c575`): he steps about 150 px toward the car, bounces and drops the hand sign, looks down
+at his hand in the middle; the camera drifts although the prompt locked it; the model redraws him as a slimmer,
+different man from the first second (never usable as his face).
+
+The flow-based hold (`wan_face_putback.py`) TORE his face from frame 40 (163 px of travel). New, $0:
+- `scripts/edit/wan_face_putback_track.py`: the still's head and neck are moved onto every frame by the face
+  landmarks of the render (one similarity transform, smoothed 1.5 frames), brightness-only light. It prints how far
+  the render's head is turned from the still's view and lists the usable stretches. It cannot turn a face.
+- The mask must be his silhouette only (head and neck mask AND person segmentation of the still): a loose mask carried
+  a patch of the still's brick wall around his moving head (seen on the first run, fixed).
+- `scripts/edit/neck_match_clip.py` now takes a folder of per-frame head masks (written by the tracker).
+- Printed: face found 150/150; head travels 154 px; turned median 9.1, max 18.7 degrees; fit max 0.047 of the eye
+  distance; neck's brightest part 128 -> 80; max change inside his head mask by the neck step 0.
+- Held clip `838dce7e` (pending). KEEP frames 1-52 (0.0-1.7 s) and 93-150 (3.1-5.0 s). CUT 53-92: he looks down and
+  the photo's face stays facing the camera.
+- NOT checked by the agent: the clip in motion (only frames at 2x). A trembling head on his body would show only in
+  playback; Fendi's eye decides.
+
+For the next roll (each $0.50): keep the movement, ask again for the head to face the camera throughout (no looking
+down), feet planted or one step only; keep every usable stretch as a montage cut.

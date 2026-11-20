@@ -8,7 +8,7 @@ Neck = skin (MediaPipe multiclass, this frame) below his head mask, above the ga
 Target = the median Lab colour of his cheeks in this frame, at LIGHT x their lightness (the neck is under his chin);
 the neck's own light and dark patches are kept at KEEP of their size. His head is not touched (printed).
 
-usage: neck_match_clip.py <frames_dir> <head_mask_in_frame.png> <out_dir> <models_dir>   env LIGHT (0.90) KEEP (0.45)
+usage: neck_match_clip.py <frames_dir> <head_mask_in_frame.png | folder of per-frame head masks> <out_dir> <models_dir>   env LIGHT (0.90) KEEP (0.45)
 """
 import sys, os, glob, numpy as np, cv2
 import mediapipe as mp
@@ -16,17 +16,25 @@ from mediapipe.tasks.python import vision, BaseOptions
 fdir, m_p, out_dir, models = sys.argv[1:5]; LIGHT = float(os.environ.get("LIGHT", "0.95")); KEEP = float(os.environ.get("KEEP", "0.45")); MODE = os.environ.get("MODE", "cap"); SOFT = float(os.environ.get("SOFT", "0.1")); CAP = float(os.environ.get("CAP", "1.3"))
 os.makedirs(out_dir, exist_ok=True)
 fs = sorted(glob.glob(os.path.join(fdir, "f_*.png"))); f0 = cv2.imread(fs[0]); H, W = f0.shape[:2]
-m = cv2.resize(cv2.imread(m_p, 0), (W, H), interpolation=cv2.INTER_AREA) > 127
-ys, xs = np.where(m); x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max(); hh = y1 - y0
-head = cv2.dilate(m.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))) > 0
-cheek = cv2.erode(m.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) > 0
-cheek[:int(y0 + 0.45 * hh)] = False; cheek[int(y0 + 0.80 * hh):] = False
-jaw = cv2.erode(m.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) > 0; jaw[:int(y0 + 0.80 * hh)] = False
-box = np.zeros((H, W), bool); box[int(y0 + 0.5 * hh):int(y1 + 0.75 * hh), max(0, x0 - 20):x1 + 20] = True
+def regions(mask_file):
+    """his head mask on this frame, and the parts measured from it (cheeks, jaw, the box the neck is looked for in)"""
+    m = cv2.resize(cv2.imread(mask_file, 0), (W, H), interpolation=cv2.INTER_AREA) > 127
+    ys, xs = np.where(m); x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max(); hh = y1 - y0
+    head = cv2.dilate(m.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))) > 0
+    cheek = cv2.erode(m.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) > 0
+    cheek[:int(y0 + 0.45 * hh)] = False; cheek[int(y0 + 0.80 * hh):] = False
+    jaw = cv2.erode(m.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) > 0; jaw[:int(y0 + 0.80 * hh)] = False
+    box = np.zeros((H, W), bool); box[int(y0 + 0.5 * hh):int(y1 + 0.75 * hh), max(0, x0 - 20):x1 + 20] = True
+    return m, head, cheek, jaw, box
+
+
+PER_FRAME = os.path.isdir(m_p)          # a folder of head masks, one per frame (he moves): from wan_face_putback_track.py
+if not PER_FRAME: m, head, cheek, jaw, box = regions(m_p)
 seg = vision.ImageSegmenter.create_from_options(vision.ImageSegmenterOptions(base_options=BaseOptions(model_asset_path=os.path.join(models, "selfie_multiclass_256x256.tflite")), output_category_mask=True))
 rows = []; worst = 0
 for k, f in enumerate(fs):
     img = cv2.imread(f)
+    if PER_FRAME: m, head, cheek, jaw, box = regions(os.path.join(m_p, os.path.basename(f)))
     cat = seg.segment(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))).category_mask.numpy_view().squeeze()
     skin = ((cat == 2) | (cat == 3)) & box & ~head
     skin = cv2.morphologyEx(skin.astype(np.uint8), cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)))
