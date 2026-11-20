@@ -1211,3 +1211,19 @@ INTRO I2 bottom, version 2 (cream Pradas):
   residual 2.6 %, 0 pixels differ from his source inside the mask (3,734 px). T7 `work/intro/lexus_out_B3_realface.png`.
 - Posted BEFORE the video: the still, the shoe close-up beside the product picture, the face sheet.
 - Video: Runway task `751d7f4e`, Wan 3.0 1080p.
+- Video result (task `751d7f4e`, 1926x1074, 5 s, $1.00) and the DOUBLE CHECK run after it (his rule):
+  - `wan_face_putback_track.py`: face found 150/150; head travels 55 px; turned median 4.8, max 12.1 degrees; fit max
+    0.040; usable stretches frames 1-83 and 85-150 (frame 84 alone is at 12.1 degrees).
+  - Sheet T7 `work/intro/I2_bottom_v2_double_check.jpg` (clip / the model's own drawing / his footage / the shoes, seven
+    moments). OBSERVED: his eyes, glasses, nose, lips and beard hold on every sampled frame with his mouth closed; the
+    model's own drawing parts its lips from 1 s; a faint pale edge on his left cheek at 1.8 s; the cap, ears and jaw
+    edge are the model's (mask = brows to chin). The shoes stay cream with grey mesh, slim and low, on every sample.
+  - `mouth_scan.py` on the held clip: face found 42/60, lip gap mean 0.057, spread 0.025 (at rest by the rule; noisy at
+    this face size). On the model's own clip: mean 0.074.
+  - NOT checked: the clip in motion (frames only).
+- Held clip: T7 `work/intro/intro_I2_bottom_lexus_v2_cream_pradas_1080.mp4`.
+- Split screen v2 (1920x1080, 5 s): top 482 px = the hills clip rotated 180 degrees (crop y 215-537 of 716); bottom
+  594 px = the Lexus clip rows 294-890 of 1074, so he shows HEAD TO SHOES with the cream Pradas; 4 px black line.
+  T7 `work/intro/intro_I2_split_screen_v2.mp4`. SHOT_RULES: 1 pass (mouth at rest), 2 his pixels brows to chin, 3 the
+  scene moves (leaves, light), 4 no other people, 5 OBSERVED match of light, 6 pass; 7 (waist up, never his shoes) is
+  SET ASIDE on this shot by his own words of 20 Nov ("change them to ... cream Pradas").
