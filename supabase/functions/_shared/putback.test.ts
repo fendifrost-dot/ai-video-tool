@@ -229,6 +229,11 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
     // another window of the same take, or another take, is refused
     expect(putbackInputItems(plan, [original, row(B, { metadata_json: swapMeta({ source_window: [60.056, 64.056] }, { sourcePath: `${U}/${P}/dress/other_src.mp4` }) })], job, bucketOf, buckets).ok).toBe(false);
     expect(putbackInputItems(plan, [original, row(B, { metadata_json: swapMeta({ asset_id: "55555555-5555-4555-8555-555555555555" }, { sourcePath: undefined }) })], job, bucketOf, buckets).ok).toBe(false);
+    // the whole take as the original: the Dress record says it sent the window file, not the take
+    const take = { ...row(A), file_url: `${U}/${P}/takes/take.mp4`, metadata_json: { bucket: "project-clips" } };
+    expect(putbackInputItems(plan, [take, row(B, { metadata_json: swapMeta({ asset_id: A }) })], job, bucketOf, buckets).ok).toBe(false);
+    // stray whitespace round the stored path does not change the answer
+    expect(swapBinding(swapMeta(), A, { path: ` ${windowPath} `, metadata: original.metadata_json })).toBe("dress_source");
     // reversed: the take and window agree both ways, so the rule also asks which of the two is the Dress result
     const reversed = planPutback({ preset: "c033_showroom" }, [B, A]);
     if (!reversed.ok) throw new Error("expected ok");

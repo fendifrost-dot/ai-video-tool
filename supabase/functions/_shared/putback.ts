@@ -299,8 +299,11 @@ export function swapBinding(
   const from = meta.derived_from;
   const same = (v: unknown) => typeof v === "string" && v.toLowerCase() === originalAssetId.toLowerCase();
   const sent = from?.dress?.sourcePath;
-  if (original?.path && typeof sent === "string" && sent === original.path) return "dress_source";
-  if (same(from?.asset_id)) return "derived_from";
+  const path = typeof original?.path === "string" ? original.path.trim() : "";
+  if (path && typeof sent === "string" && sent === path) return "dress_source";
+  // a Dress record that names ANOTHER file as the one it sent was made from a cut of this asset, not from the asset
+  // itself (dress-clip's asset_id is the take): the take is not the swap's original
+  if (same(from?.asset_id) && !(typeof sent === "string" && sent && path && sent !== path)) return "derived_from";
   const origFrom = ((original?.metadata ?? {}) as { derived_from?: Derived }).derived_from;
   const w1 = windowOf(from?.source_window);
   const w2 = windowOf(origFrom?.source_window);
