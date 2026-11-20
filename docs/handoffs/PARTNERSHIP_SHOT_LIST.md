@@ -1139,3 +1139,19 @@ ANSWER given (RECOMMENDATION): not all now. A 1080p render is a NEW roll (differ
 made sharper, and costs twice as much (VERIFIED on task `b451ff93`: 100 credits against 50). So: new shots with him
 render at 1080p from the first roll; shots already liked at 720p stay until the cut is locked, then either an upscale of
 the liked clip (keeps its motion; no upscaler is proven here yet) or a re-roll he judges again.
+
+INTRO I2, first full version (20 Nov 2026):
+- Bottom clip: Runway task `b451ff93`, Wan 3.0 at 1080p (1926x1074, 5 s, $1.00). OBSERVED as delivered: he straightens
+  up, steps clear, shuts the door, adjusts his jacket and stands by the car; both cars stay put; the model's own face
+  drifts and its mouth parts on some frames.
+- His real face held: `wan_face_putback_track.py` with the real-face still `617ed1bc` and the brows-to-chin mask.
+  Printed: face found 150/150 (eye distance 28 px); head travels 69 px; turned median 4.9, max 18.2 degrees; fit max
+  0.080; usable stretches frames 1-69 (0.0-2.3 s) and 92-150 (3.0-5.0 s); 70-91 he turns his head while shutting the door.
+  T7 `work/intro/intro_I2_bottom_lexus_his_face_1080.mp4`.
+- Split screen v1 (1920x1080, 5 s): top = the hills clip rotated 180 degrees (crop y 200-561 of 716); bottom = the Lexus
+  clip cropped y 286-828 of 1074 (he is cut at the shins; his shoes are below the frame); a 4 px black line between.
+  T7 `work/intro/intro_I2_split_screen_v1.mp4`.
+- NOT checked by the agent: either clip in motion (frames only), and no `mouth_scan.py` / `face_check.py` sheet was run
+  on the held clip yet (SHOT_RULES check owed before it is called final).
+- OPEN (his): the pearl car's model (drawn as a GS 430); how the 6.2 s of intro is split between I1 and I2; the cut
+  point after "Back to back Lexus".
