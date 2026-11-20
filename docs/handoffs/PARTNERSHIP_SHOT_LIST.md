@@ -1439,3 +1439,38 @@ the words if the slots look late.
 - The bear-logo wall's bears: Gemini redrew his picture's chest lettering, OBSERVED as unreadable both in his picture and
   in the still.
 - `face_check.py` / `mouth_scan.py` on the wall composite (his mouth there is his real take; the pause is silent).
+
+## Fendi's notes, 20 Nov 2026 (day): salad, Austin, profile, suede, his cap
+
+His words, in order: "The salad scene is a bit too long and should be a wide cut or zoom out of the scene of a view of
+the money table and then to the shot of the eating salad". "I'm in the wrong Prada jacket for the wall scene it should
+be the suede one". "That's not the wall. Stop right quick". "I thought you were building that scene in blender from the
+image I provided of the wall". "I need a larry June style shot where im inside the yellow Mercedes with the window down
+and the camera catches my side profile from a dope angle. The other hill country shot doesn't look like a real hill
+country location I want one that's in Austin and not generic ... I like the one we have now worse case scenario we keep
+it. Still want to cut that shot in half and have a side profile shot". "Do not use my car footage". "Put me the suede
+Prada Jacket with my modest hat". "I don't have the hat it's a mockup or the jacket and we need to dial in the details
+for the hat as well because key details are missing in the back that make it unique".
+
+- **Salad (c009+c010), v2, pending:** T7 `clips/c009_c010_salad_v2_wide_then_salad.mp4` = 1.5 s pull-back from the
+  money table to the whole bear wall, built in Blender on HIS wall (`bear_wall/money_table.py`, $0: bundles of banded
+  hundreds drawn by `bill_face.py`, bowl, salad, fork, napkin, chair), then 1.57 s of the salad insert `85d3d4df`.
+  OBSERVED: the Blender room still reads somewhat like a render; the insert still shows the black puffer sleeve and a
+  Gemini wall. Not on the board yet.
+- **Austin (c011+c012 first half), pending:** the yellow Benz crossing the Pennybacker (360) Bridge over Lake Austin,
+  clip `744ea54c` (T7 `clips/A1_raw.mp4`, half cut `c011_austin_360bridge_half.mp4` = file 2.6-4.14). The old hills
+  shot `984a23a7` stays as his fallback. Second half: the side profile, not made.
+- **Side profile in the yellow Benz: BLOCKED.** Four Gemini stills (ledger row 106) failed the face rule: his real side
+  photo (`d74c1f3b`, the only uncut profile; `b07ec732` is cut through the nose and lips) does not sit on Gemini's head
+  (head turned toward camera, longer nose, shorter face), and Gemini drew the car right-hand drive every time. The
+  frame-to-frame face tracker also finds no face in a true profile. Options put to him: he films 5 s side-on (any cap,
+  any zip jacket, no wind) and the swap dresses it; or the video model draws his face from his photos (not his pixels).
+- **Wall take in the suede bomber:** gold-cap swap `c9299284`, face put-back proof 0 (119 frames). NOT USABLE YET: it
+  kept the two round patches of his own bomber, the cap came out plain sand (no python front, no pin, no buckle), dark
+  specks by the right cuff on fast moves. Natural-cap swap failed at the provider.
+- **His cap is a mockup, and so is the jacket on him:** every shot of either is a swap. Wardrobe now holds four cap
+  colourways: gold `10ab7ccd`, natural `0a7923b2`, grey `30b6da33`, brown/black `abb36ad0`, all with the back spelled
+  out (python centre-back panel, suede band over the opening, strap with three holes, antique-brass buckle and keeper
+  on his right, the red-jacket bear pin on his left, python top button), and the pin set `70bd48ad` (pin cut-out for
+  pasting: `17_modest_bear_pins/pin_red_jacket_cutout.png`). Side views of the gold cap (`417cd64d` left, `59b74706`
+  right) await his check. Plan: pin and buckle pasted from his mockup pixels, tracked, never left to the model.
