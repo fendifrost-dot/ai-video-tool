@@ -1183,3 +1183,16 @@ INTRO I2 bottom, Fendi's notes and the double check (20 Nov 2026):
   frames. The full-frame clip still shows white sneakers and is not for use full frame.
 - DOCUMENTED ROUTE not yet used for this shot: recipe F (`montage-shot`, his face pictures + the at-rest window
   `98c51f4d`, waist up, $2.22). The fallback if he rejects the face in the cut.
+
+Fendi on the double check, 20 Nov 2026: **"It'll do After you generate the video, please go back and double check to
+make sure, and if you have to do the face swap, to add my original pixels on, make sure you do that. Also, don't forget
+about the products."**
+- The split screen `a98d8671` stands for now ("It'll do"), using clip stretches 0-2.3 s or 3.0-5.0 s. Not approved in
+  the strong sense; not on the board yet (the intro's timing is not set).
+- RULE (his): every generated video is checked again AFTER it is made, and his original pixels go on wherever the
+  model's face shows.
+- "The products" (READING, the agent's): the wardrobe pieces filed for this video (T7 `wardrobe/` 01-11, the America's
+  Cup sneakers `a4eaa2da`). A generated shot of him wears those exact products from their product pictures. In I2 bottom
+  he wears his own tan leather jacket from the raw footage and invented white sneakers: neither is a product. OPEN (his):
+  whether the intro shot is left as filmed (as the car takes are) or dressed in a product look (A Polo Bears, B Prada
+  puffer, C Prada suede shearling bomber). No product picture of cream Prada sneakers is filed.
