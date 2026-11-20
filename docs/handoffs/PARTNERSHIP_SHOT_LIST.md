@@ -1066,3 +1066,37 @@ HIM in the shot (method: his REAL footage, placed; `docs/recipes/HIS_FACE_IN_ANY
 - NEXT, needs his word: the OUTFIT (a picture of the exact garment for the swap). Then `dress-clip` (Genjutsu,
   about $0.68 per source second, 4.1 s = about $2.80) on `98c51f4d`, `body_only_swap.py` put-back (his face 0),
   matte of the put-back + the quilt step, the same placement. Swap takes need still air: this stretch has none moving.
+
+## On the board, 20 Nov 2026: the gallery shot and Fendi's Mercedes shot ($0)
+
+Fendi: **"I'll shoot a shot for this so it looks more natural and full body. Adding me to the fore front of this shot
+looks crazy. Just position this shot on the timeline for now and we'll come back to it if necessary it's fine as is."**
+- READING (the agent's): "looks crazy" is against the foreground test of him (`gallery_him_T1_own_clothes.mp4`): it is
+  dropped, no swap is bought, and he will film himself full body for the gallery. The gallery shot WITHOUT him is
+  "fine as is". The at-rest footage `98c51f4d` and `matte_minus_green_backdrop.py` stay on the shelf.
+- PLACED: `c025`, song 0:45.31-0:47.07 ("Every time I put the polo on"), asset `c627f5cf` (primary, pending): the
+  push-in on the sharp plate retimed to the slot's 1.76 s, Allen's frames 93-145. The line is the agent's pick among
+  the lines that reference Allen; he has not named it. The slot's planned twist (hands pulling on a Polo Bears sweater
+  at a mirror) is not made and is displaced for now.
+
+His own Gemini video, **"I have another shot that i had Gemini create i love the car sound effects but hate the
+background music Gemini created maybe we can fix that later. Where do you think this shot can be positioned?"** then
+**"Should go in the all my business partners got Benz's line"**:
+- A grey Mercedes-AMG GT 55 on a rooftop parking deck, skyline behind; 10 s, 1280x720, 24 fps; asset `a7255ac8`
+  (T7 `work/fendi_gemini_shots/gemini_video_76DEC3A9.mp4`).
+- PLACED: `c017`, song 0:32.55-0:33.87 (the Benz line's picture slot, 1.32 s), source 0.00-1.32 s = beats 1-2.
+  `c016` (0:30.79-0:32.55) stays his performance of the line. The slot's planned twist (six black sedans round a
+  conference table) is not made and is displaced for now.
+
+| Beat | Source (s) | Shows | Status |
+|---|---|---|---|
+| 1 | 0.00-0.96 | the whole car on the rooftop, skyline | on `c017` |
+| 2 | 0.96-2.00 | headlight coming on | on `c017` (first 0.36 s) |
+| 3 | 2.00-3.29 | front wheel, red caliper | unused |
+| 4 | 3.29-4.33 | steering wheel and screens through the open door | unused |
+| 5 | 4.33-5.25 | engine bay | unused |
+| 6 | 5.25-10.00 | tail light and GT 55 badge, the spoiler rising, skyline at dusk | unused |
+
+- SOUND, for later (his): keep the car sound effects, lose Gemini's music. Not started. HYPOTHESIS: a stem separation
+  (music / effects) on the clip's audio; to be tested and heard by him before it goes near the song.
+- OPEN: 720p and 24 fps against a 1080p cut; whether the unused beats go on other car lines.
