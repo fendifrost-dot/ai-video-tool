@@ -1155,3 +1155,31 @@ INTRO I2, first full version (20 Nov 2026):
   on the held clip yet (SHOT_RULES check owed before it is called final).
 - OPEN (his): the pearl car's model (drawn as a GS 430); how the 6.2 s of intro is split between I1 and I2; the cut
   point after "Back to back Lexus".
+
+INTRO I2 bottom, Fendi's notes and the double check (20 Nov 2026):
+- Fendi on the first version: **"The white shoes have to go. You can probably cut those out of frame maybe, or change
+  them to ... brown Pradas, or cream Pradas. Cream would probably be better. Make sure that they don't generate huge
+  shoes. Pradas are slim and sleek. Also, you need to regenerate my pixels. Please always follow the workflow. That's
+  not my face. Anytime you generate any B-roll, you're going to have to do the face swap and put my original pixels
+  onto the generated image or generated video."** Then: **"Please check your work before you generate the video. That's
+  not my face."** Then: **"I'm sorry, I just saw the close-up, and that looks about right. Just do a double check real
+  quick."** READING (the agent's): "the close-up" is the full-frame 1080p clip `d8428287`; the split-screen strip, where
+  he is small, is what read as not him.
+- AGENT ERRORS on the first version: SHOT_RULES 7 broken (full body, centre, shoes in frame); the face sheet and the
+  mouth check were not run before posting; the still's face was put back in the DEFAULT mode (brows to chin, re-toned).
+- Waist-up remake `11a6d1f8` ($0.27) with his whole head put on in EXACT mode from the 1080p at-rest frame: coverage of
+  his face outline 0.979, 0 pixels differ from his source, face 196 px wide in the still (his source face is about
+  120 px, so it is upscaled 1.6x): OBSERVED soft, a cut-out edge, the model's larger cap showing round his. FAILED the
+  agent's check; not posted; no video. LESSON: a whole real head on a generated body needs a source at least as large
+  as the target and a generated head no larger than his; otherwise it is a paste-up (the Allen T3 lesson again).
+- Double check of the posted clip `d8428287` ($0): sheet T7 `work/intro/I2_bottom_double_check.jpg` (clip / the model's
+  own drawing / his footage, seven moments). OBSERVED: his eyes, glasses, nose, lips and beard hold steady and his mouth
+  stays closed on every sampled frame, while the model's own drawing parts its lips from 1 s on. A pale edge shows on
+  his left cheek at 1.8-2.6 s (head turned 10-16 degrees). The cap, ears and jaw edge are the model's (mask = brows to
+  chin). `mouth_scan.py`: face found on 44 of 60 samples, lip gap mean 0.064, spread 0.026 (at rest by the rule; the
+  face is about 42 px wide, so the scan is noisy). `face_check.py` found his face on only 5 of 7 samples at this size
+  and cropped his jacket patch twice: its sheet is not usable for a face this small.
+- SHOES: in the split screen the strip is rows 286-828 of 1074; his shoes are below row 850, out of frame on all 150
+  frames. The full-frame clip still shows white sneakers and is not for use full frame.
+- DOCUMENTED ROUTE not yet used for this shot: recipe F (`montage-shot`, his face pictures + the at-rest window
+  `98c51f4d`, waist up, $2.22). The fallback if he rejects the face in the cut.
