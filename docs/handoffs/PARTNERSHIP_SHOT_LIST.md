@@ -1361,3 +1361,74 @@ image; the wall is built, and built whole, because it serves the b-roll too.
 - Which look he wears there (his rule of 18 Nov: any room shot gets a clothing swap).
 - Which slots the standing performance takes after `c006`: `c007`-`c008` were planned for the Allen passenger-seat
   shots.
+
+## Overnight build, 20 Nov 2026: the bear-head wall, his hat, and 0:15-0:31 shot by shot ($16.40, ledger rows 84-101; ALL PENDING his word)
+
+Fendi, 20 Nov 2026 (going to sleep, full authority): **"The wall is attached please rebuild it in blender to give the room
+depth and the lighting we need. I've attached a prototype of my hat designs see if you can put this on me. I've included
+two different color ways because I'm unsure which matches the jacket best. Let's do the Prada jacket and instead of the
+Prada hat I've attached a mockup of my hat design. So after pull up you can still smell the leather cut to the wall during
+the brief pause in between bars then cut back to the car scene with Allen in the car for 'my partner Allen had it
+automatic'. For run the green treat it like it's salad cut back to the wall scene but with a table made of money with me
+sitting picking through a salad (slow motion) then cut back to the yellow Mercedes driving through a different hill
+country scene for 'remember all them days i ain't have it now I'm steady jumping tax brackets' with different angle than
+before (need to generate this). Carbon fiber slicker than some satin need a montage of the interior of Grey Mercedes
+generated with carbon fiber turning into satin (photo realistic) then cutting to new wall backdrop made from wood and
+stone with modest bear logos on it (attached). Add grey Mercedes in front of wall then cut to no gimmicks shot. ... you
+have full authority to generate the scenes I've stated and do all face and clothing swaps necessary ... don't over think
+it ... any adjustments needed will be handled in the am"**. His six pictures: T7 `wardrobe/_screenshots_from_fendi/20nov_night/`.
+
+Work folder: T7 `work/night_20nov/` (specs, stills, clips, `bear_wall/`, `wall_take/`, `salad/`, `car_c015/`, `preview/`).
+Preview with the song: T7 `work/night_20nov/preview/PREVIEW_night20_c006_to_c015_with_song.mp4` (0:13.64-0:30.79).
+
+### The pieces
+
+- **The bear-head wall, BUILT** (Blender 5.3 Cycles, $0; T7 `work/night_20nov/bear_wall/`): `bear_maps.py` traces the
+  pieces of his picture by hand into a label and height map (only the outlines come from it); `bear_wall_build.py`
+  builds the room: the panelled wall after his picture's layout, the bear head as upholstered pieces (burgundy and
+  cognac leather, suede, marble, pebbled-leather muzzle, carbon nose, gold piping), the fur pad and walnut slab, floor,
+  ceiling, side walls, a window's daylight from the left (his take is lit from his right) and a warm wall-wash.
+  Renders `out_v1/bear_wall_{perf,wide,close}.png`. The perf camera is the other session's MEASURED room camera (1.30 m,
+  tilt 7) with its ESTIMATED 62 degrees and 2.5 m. OBSERVED weak: the suede panels read a little like wood, the fur is a
+  shaded pelt (particle hair blew up in this Blender build), everything is cleaner than his footage. `matlib.py` is a copy
+  of the other session's material helpers (`work/material_wall/`), unchanged.
+- **His hat, filed in the wardrobe:** `character_features` `10ab7ccd` (GOLD) and `0a7923b2` (NATURAL), his front and
+  back pictures in `wardrobe-refs` (`13_fendi_python_cap_gold`, `14_fendi_python_cap_natural`).
+- **The jacket:** READING (the agent's): "the Prada jacket ... instead of the Prada hat" = look B, the black Prada
+  Re-Nylon puffer (`336666fd`), whose look had the Prada Re-Nylon cap. If he meant the suede bomber (`782db74d`), it is
+  one more $2.72 swap on the same window.
+- **The swap, both colourways** (room take E, song 13.5-17.5, window `d5c76e02`): Genjutsu + `body_only_swap.py`
+  (`AVT_HEAD_ZOOM=4`): his face found 119/119, `max |out-original| on face/hair/skin: 0`, both. Matte `matte-video-proxy`
+  (veed) kept the green quilt; `matte_minus_green_backdrop.py` took it out (removes only). `matte_stability.py`:
+  dropouts flagged on 65 / 54 / 92 frames top / middle / bottom (the bottom is below the waist-up crop). Composite over
+  the perf render with `composite_over_plate.py --scale 1 --cx 860 --push 0`, then cropped waist up. Assets `b4a7de97`
+  (gold) and `f5c40742` (natural). OBSERVED: the python pattern shows only when the cap turns side-on; from the front
+  Genjutsu draws it plain sand. A close-up crop pass (row 93) changed nothing.
+- **The salad** (c009+c010): three stills of him seated at a table of banded hundreds failed the agent's face check
+  (his only source is the standing room take, filmed from below; at a seated angle his pixels read as a cut-out, or had
+  to be enlarged 2.25x). Not posted, no video. Made instead: a close insert with NO face, his Prada sleeve and ringed
+  hand forking salad on the money table, the bear-head wall soft behind (still `b7f2eacc`, clip `dc2cdf4a`), half speed
+  (`85d3d4df`). FOR THE WIDE WITH HIS FACE: a real 5 s take of him seated, picking at a plate, phone at table height.
+
+### On the board (variation `fa7f6b85`; every slot was empty; all PENDING)
+
+| Slot | Board time | Line | Primary | Source |
+|---|---|---|---|---|
+| (c006 tail) | song 15.05-15.85 | the pause after "leather" | NOT on the board: wall composite `b4a7de97` (gold) or `f5c40742` (natural), clip 1.55-2.35 s | the pause sits inside `c006` (13.64-15.84), which is the other session's slot |
+| `c007` + `c008` | 15.84-18.48 | My partner Allen / Had it automatic | `212f2c5e` 0-2.64 (the LOCKED passenger-seat shot, his photo face held) | twin as delivered `bfb93450`; which one is still his |
+| `c009` + `c010` | 18.48-21.55 | Flip through green / Treat it like it's salad | `85d3d4df` salad insert, slow motion | planned twists displaced: restaurant cash table, bear at the next table |
+| `c011` + `c012` | 21.55-24.63 | Remember all them days ... tax brackets | `984a23a7` yellow Benz, new road, from `4e239bb3` 0.5-3.58 | displaced: magnet tow truck, old photos |
+| `c013` | 24.63-26.83 | Carbon fiber slicker than some satin | `ee9769e1` montage: console `43747031` 2.2-3.3, door `1cee7d0d` 2.3-3.4 | displaced: tax-office hurdler |
+| `c014` | 26.83-28.15 | Wood grain car feel like a cabinet | `6a134b62`: his bear-logo wall `d5e3af8e` 0.5-1.0, then the grey AMG starting `e7290b9d` 1.6-2.42 | displaced: tailor ironing satin |
+| `c015` | 28.15-30.79 | No exaggeration no gimmicks | `0f0bada9` his real car take 6467, file 24.75-27.39, as filmed | displaced: glovebox cupboard |
+
+Song-clock note for the cutter: the board's slots run up to about a second after the sung words (the lyric file has
+"Remember all them days" at 21.76, "Carbon fiber" at 25.84, "Wood grain" at 27.44, "No exaggeration" at 28.90). Cut on
+the words if the slots look late.
+
+### Not checked by the agent
+
+- Any clip in motion at full speed (frames and contact sheets only).
+- The bear-logo wall's bears: Gemini redrew his picture's chest lettering, OBSERVED as unreadable both in his picture and
+  in the still.
+- `face_check.py` / `mouth_scan.py` on the wall composite (his mouth there is his real take; the pause is silent).
