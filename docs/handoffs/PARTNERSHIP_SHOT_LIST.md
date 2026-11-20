@@ -1422,6 +1422,13 @@ Preview with the song: T7 `work/night_20nov/preview/PREVIEW_night20_c006_to_c015
 | `c014` | 26.83-28.15 | Wood grain car feel like a cabinet | `6a134b62`: his bear-logo wall `d5e3af8e` 0.5-1.0, then the grey AMG starting `e7290b9d` 1.6-2.42 | displaced: tailor ironing satin |
 | `c015` | 28.15-30.79 | No exaggeration no gimmicks | `0f0bada9` his real car take 6467, file 24.75-27.39, as filmed | displaced: glovebox cupboard |
 
+OPEN, his (the wall cut in the pause): OBSERVED by the other session on the c006 cut (`e09f76e2`, 53 frames from song
+13.64): his hand-to-nose "smell the leather" gesture, the reason take 6467 was picked, starts rising at song 15.14 and is
+at his nose 15.39-15.84, so it falls INSIDE the vocal pause (15.05-15.85). The two cannot both play in full there:
+(a) the wall shot on the pause, the car take ends at 15.05 and the gesture is cut; (b) the gesture kept to 15.84, then
+"My partner Allen" starts at 15.84 on the Allen shot, leaving no room for the wall unless it moves to another gap or
+replaces part of the Allen cut. Nothing is changed until he chooses.
+
 Song-clock note for the cutter: the board's slots run up to about a second after the sung words (the lyric file has
 "Remember all them days" at 21.76, "Carbon fiber" at 25.84, "Wood grain" at 27.44, "No exaggeration" at 28.90). Cut on
 the words if the slots look late.
