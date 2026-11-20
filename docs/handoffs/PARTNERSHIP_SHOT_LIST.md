@@ -721,3 +721,25 @@ OBSERVED, open: the stills are 5:4 (his photo's shape), so the clips are 1068x86
 shown as snapshots in their own frame. Wan redraws his face in every clip; `wan_face_putback.py` can hold his photo
 face on the ones where his head barely turns (L1, L3, L4, M1), not on L2. All ten assets are `pending`. T7
 `work/allen/solo_shots/` (stills, head checks) and `solo_shots/wan/` (clips as delivered and muted).
+
+## Fendi on the five solo clips, 20 Nov 2026: the face drifts too much; an older Allen, from the photos of the two of them
+
+His words: "The facial drift on these is way too much and but I actually think on these we do a little bit older version
+of Allen pull up some of the pictures with me and him and crop me out so you can get his likeness right".
+
+- DECISION (his): the five clips `8211213f`, `e473e93e`, `bb4c15a4`, `1642f563`, `b054afcb` are not accepted as they
+  are (drift). The Allen of these shots is a little OLDER than the kitchen photo. This replaces "the YOUNGER Allen"
+  of 19 Nov for the solo shots. His likeness is to come from the photos of the two of them, Fendi cropped out.
+- The photos with exactly two people: 02, 04, 08, 09, 10, 11, 12, 14, 20 (`people_points.json`). Who Allen is: 04 = A
+  (his word, 19 Nov). 20 = B by the clothes and room of his confirmed solo photo 18 (not by his face). 02, 08, 09, 10,
+  11, 12, 14: NOT KNOWN, his word needed. Sheet posted: T7 `work/allen/together_sheet_two_rows.jpg`.
+- TESTED, $0, FAILED, not posted: `wan_face_putback.py` on clips L1 and L4. It holds his photo face only while his head
+  barely moves (test 1). On L1 the camera pushes in to twice the size and his eyes come out uneven by the end; on L4
+  the frame moves 460 px and it leaves streaks above his cap. RULE: no push-in and no travelling camera on a clip whose
+  face must be held; a face may shrink in a clip, never grow past its size in the still.
+- TESTED, $0.27 (ledger row 55): older-Allen still T1 from photo 3 (`0882dfee`). OBSERVED: a convincing photograph;
+  the face is Gemini's drawing from his photo. His real head could not be put back from photo 3: the photo cuts his
+  head off above the brow line, tilts it and lights it in a warm shade (gains 3.2 / 7.0 / 8.5, residual 4.3 %), so the
+  exact-pixels mode has no whole head to use. Photo 3 is a likeness reference, not a head source.
+- NEXT, waiting on his word (which man is Allen in 08, 09, 11 and the rest; whether a drawn face of this standard is
+  acceptable or only his photo's pixels): one older-Allen shot end to end, camera locked, before the other four.
