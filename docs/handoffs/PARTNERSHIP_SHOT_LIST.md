@@ -901,3 +901,59 @@ T8, $0:
 - `scripts/edit/wan_face_putback.py` on the same Wan clip (no new render) with the mask of head AND neck, and
   `LIGHT=luma` (Wan's brightness change only, not its colour drift, which had tinted his face violet).
 - Clip: T7 `older_v1/allen_older_T8_wan3_his_face_and_neck.mp4`, filed under `allen_solo/`, pending his word on the neck.
+
+## Older Allen: T8's neck REJECTED; the cause found and fixed in T9 ($0, local, 20 Nov 2026)
+
+Fendi on T8 (`333bfb56`): **"The neck is still super light. It doesn't match the skin tone of his face. It's extremely
+apparent. And when you generate it, there was absolutely no movement at all. There should be just some slight
+movement. But fix the neck first before generating anything, and then come back."**
+
+What was wrong with T8 (VERIFIED by measuring frame 76, lightness 0-255):
+- The neck is not light all over. Under his chin it is 46, at the collar 63-68; his jaw and chin are 50-52.
+- A PALE BAND runs down the left side of his neck (viewer's left) at 104, up to 190 where it meets the collar. The light
+  in the scene comes from the other side (forehead 126, that cheek 117; the cheek above the band is 77). A bright band
+  on the shadow side is what he saw.
+- T8's fix never reached the screen: the band is too thin to survive inside the hold's eroded mask, so the clip showed
+  the video model's band, not the toned still's.
+- Two agent errors on the way: (1) comparing the MEDIAN of the neck with the median of his cheeks said "neck darker
+  than face" and hid the band; (2) the agent blamed a colour-cast difference; measured, the colour offset was 1 unit.
+  Rule: for a tone complaint, measure small patches side by side (jaw, each cheek, each side of the neck), not medians.
+- Dead ends, not posted: flattening the neck to one tone (a grey bib), scaling the whole neck (the band stays).
+
+T9, `scripts/edit/neck_match_clip.py` (default `MODE=cap`), per frame:
+- reference = his JAW (bottom fifth of his head mask), not his cheeks; any neck pixel lighter than 1.3 x the jaw is
+  pulled down to it and takes his cheeks' colour; darker pixels keep their own shading;
+- the bright sliver at the collar that the segmenter labels garment is included;
+- his head is untouched (printed: max change inside the head mask 0). Only x 206-304, y 186-268 of the frame changed.
+- Printed: brightest part of the neck 138 -> 89 on the clip (his face's brightest 157), 152 -> 70 on the still.
+  Frame-to-frame change of the band: 0.42 before, 0.48 after (no new flicker).
+- Filed, pending his word: clip `c8681178` (T8 with the fix, no new render), still `e77ee30f` (T7 still with the fix:
+  the source for the next generation).
+
+NEXT, only after his word on the neck: one Wan 3.0 generation from still `e77ee30f` ($0.50), camera locked, with
+SLIGHT MOVEMENT asked for in the prompt (a small weight shift, a slow turn of the head of a few degrees, the sweater
+moving with his breath); then `wan_face_putback.py` (his photo's face) and `neck_match_clip.py` on the result.
+Risk to check: the face hold breaks on large head movement (10 px was fine on T7).
+
+## Performance-shot ideas from Fendi (20 Nov 2026), recorded, NOT started
+
+His words: "I have an idea for the performance shots. I was thinking stained glass windows, cathedral stained glass
+windows, amazing scenery. You can find a real location to place me in or rebuild in Blender for possibly for that shot.
+We may have to swap my outfit to a tuxedo, a purple label Ralph Lauren tuxedo, and also I was thinking about another
+shot being a collage of different patterns and textures and materials, suede, leather, carbon fiber, wood grain, oak,
+etc. I want that the background, the collage background, to be colorful because we're going to do some pixelation
+effects."
+
+1. **Cathedral, stained glass.** His real performance take placed in a cathedral with stained-glass windows: a real
+   location plate (a photograph, or a Gemini still that reads as one) or a Blender rebuild (`scripts/edit/blender/`).
+   Possible outfit swap to a Ralph Lauren Purple Label tuxedo. RECOMMENDATION (methods already proven): Genjutsu
+   `dress-clip` + the face-preserving put-back for the tuxedo (`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`), a
+   product picture of the exact tuxedo as the garment reference; a BUILT scene, not a flat still (PROBLEM INDEX: "He
+   looks pasted on a still"); the motion budget of the build skill §3 (coloured light through the glass must stay
+   constant on him: no sweeping light shafts across his jacket). Swap takes need still air.
+2. **Collage of materials.** A colourful background collage of patterns, textures and materials (suede, leather, carbon
+   fibre, wood grain, oak, ...) behind his performance, made colourful on purpose because pixelation effects come on
+   top. RECOMMENDATION: build the collage from photographs of real materials in panels (Gemini stills per material or
+   stock he owns), his take matted over it (`matte-video-proxy` + `composite_over_plate.py`); the pixelation is a
+   VFX-pass step (Grokbot / After Effects) and needs the collage delivered as its own layer.
+Open for him: which take(s) these go on, and the tuxedo's exact product picture.
