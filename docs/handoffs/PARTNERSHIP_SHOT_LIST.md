@@ -743,3 +743,32 @@ of Allen pull up some of the pictures with me and him and crop me out so you can
   exact-pixels mode has no whole head to use. Photo 3 is a likeness reference, not a head source.
 - NEXT, waiting on his word (which man is Allen in 08, 09, 11 and the rest; whether a drawn face of this standard is
   acceptable or only his photo's pixels): one older-Allen shot end to end, camera locked, before the other four.
+
+## Who Allen is in the nine two-person photos (Fendi's word, 20 Nov 2026) and the older-Allen reference set
+
+His words: "Photo 04, he's to the left in the blue shirt. Photo 20, he's to the right in the red polo. Photo 08, he's on
+the left hand side holding the bottle. Photo 9, These to the left. Photo 11. He's to the left. Photo 2, he's to the
+right. Photo 10, he's to the right. Photo 12, he's to the right. Photo 14, he's to the right. And just for
+clarification ... A is left, B is right." Also: "the collage is not okay" and "In the pictures where it's just me and
+him, he's the obvious other person." RULE (his): no lettered collage and no picture-by-picture questions again; this
+table is the record.
+
+| Photo | File | Allen | Era (OBSERVED from the picture, not from his face) | Crop, Fendi cut out (T7 `work/allen/older_refs/`) |
+|---|---|---|---|---|
+| 04 | IMG_1758 | A, left, blue | later; daylight, face-on, head about 130 px | `allen_older_04A.png` (also ref 01 `862fcdcf`) |
+| 08 | IMG_3070 | A, left, bottle | later; big open smile | `allen_older_08A.png` |
+| 09 | IMG_3071 | A, left | later; sharp, face-on, whole head, mouth closed, faded filter | `allen_older_09A.png`, filed `a4753c00`, matte `allen_older_09A_alpha.png` |
+| 11 | IMG_3073 | A, left | later; dark, soft | `allen_older_11A.png` |
+| 02 | D593AEDD | B, right | younger; profile | `allen_older_02B.png` |
+| 10 | IMG_3072 | B, right | younger; cap | `allen_older_10B.png` |
+| 12 | IMG_3074 | B, right | small | `allen_older_12B.png` |
+| 14 | IMG_3076 | B, right | small, club light | `allen_older_14B.png` |
+| 20 | IMG_3344 | B, right | younger; the kitchen | `allen_older_20B.png` |
+
+OBSERVED on the older-Allen stills (ledger rows 55-56):
+- T1 from photo 3: its head is cut off at the top, so it cannot be a head source.
+- T2 from photo 09 (`33152dfa`, references 09A + 04A + the car + the navy sweater): `still_face_from_photo.py`
+  `AVT_FACE_EXACT` fits (scale 0.67, turn -1.2 deg, residual 2.3 %, gains 0.79 / 0.63 / 0.69, proof 0, 35,322 px) but
+  the result LOOKS PASTED: photo 09 carries a faded filter (lifted blacks, low contrast) and one gain per channel
+  cannot make it sit in a crisp flash picture. Not posted. So for the older Allen the exact-pixels head has no clean
+  source among these photos; the still as Gemini drew it from 09A and 04A is what was animated, for Fendi to judge.
