@@ -1104,3 +1104,32 @@ background music Gemini created maybe we can fix that later. Where do you think 
 Fendi, 20 Nov 2026, after the placement: **"Still place the gallery shot for now it may be better without me in it."**
 The gallery shot stays on `c025` (`c627f5cf`) WITHOUT him. Him in the gallery is no longer assumed: it is only done
 if he asks again after seeing the cut.
+
+## THE INTRO, rebuilt shot by shot with Fendi (20 Nov 2026)
+
+Fendi on the planned intro (the Lexus radio and a hand on the volume knob): **"That's not strong enough. The first 6
+seconds determine if somebody watches or not we need the most powerful visuals in the first few seconds."** When the
+agent started cutting an opening from existing shots (storm peak, portrait, Mercedes): **"The strongest existing shots
+are irrelevant and not intended for the intro we are creating the intro now and working through shot by shot."**
+RULE: the intro is made of NEW shots, one at a time, with him. Do not recut existing shots into it.
+
+HIS PLAN (his words, speech-to-text: "bends"/"bins" = Benz, "Rockbot" = Grokbot):
+"I created this one in Gemini. This one is solid. The only thing that I would change or implement is blur on the
+license plates. But aside from that, I can actually have Rockbot do that and post. But I think we start off with
+something like this, and then ... cut to a shot with this same bends, and have that shot upside down with a split
+screen. So the top of the screen will be the yellow bends upside down driving through the hills, and we can do Austin
+Hills to make it realistic. And if you can generate me inside the bins, that's fine, but the shot will be far away, so
+it doesn't really matter ... it'll be a scenic shot basically, but it'll be upside down, split screen. At the bottom of
+the split screen, it'll be right side up, and it'll be me getting out a 2006 Pearl Lexus with Allen's green Lexus
+behind me. So me getting out, and then that's when the back-to-back Lexus don't stress us, and then cut to another shot."
+
+| # | Shot | Source | Status |
+|---|---|---|---|
+| I1 | The cream-yellow Mercedes-AMG GT 55 in a marble showroom | HIS Gemini clip, asset `9585c415` (10 s, 720p, 24 fps; T7 `work/fendi_gemini_shots/gemini_video_E64007F9.mp4`) | "This one is solid." TO DO in post (Grokbot): blur the dealer plates |
+| I2 top | The same Benz driving through the Austin hills, scenic, far; shown UPSIDE DOWN in the top half | Gemini still `cb347ac1` (job `ded0f406`, three frames of his clip as the car reference) → Wan 3.0, Runway task `cec5edbc` | still posted; clip rendering |
+| I2 bottom | Him getting out of a pearl 2006 Lexus, Allen's green Lexus behind him; right side up; lands on "Back to back Lexus" (song 0:06-0:09) | NOT STARTED. Needs: which 2006 Lexus (model) or a photograph of it. Method: recipe F (his face set + his real non-rapping footage `98c51f4d`) on a Gemini still of the two cars; the montage tool refuses a full-body him, so the still route (full-figure still, animated) as for the storm | waiting on the car |
+
+I1's beats: 0-1 whole car front (dealer plate), 1-2 headlight, 2-3 wheel with yellow caliper, 3-4 side, 4-6.17 GT 55
+badge and tail light, 6.17-7.46 rear bumper (dealer plate large), 7.46-10 rear three-quarter (dealer plate).
+Song: no lyrics until 0:06.16; "Back to back Lexus" starts there. The old intro shots `c001`-`c002` (radio, knob) are
+replaced by this plan; nothing is filed on them yet.
