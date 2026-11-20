@@ -1242,3 +1242,25 @@ motion and we're good"**.
   the slow motion below = he straightens up, steps clear and begins to shut the door).
 - "we're good" = his acceptance of the intro's split screen in this form. Still to set: its place and length on the
   board, and the cut out of it at "Back to back Lexus".
+
+Fendi on the slow-motion split screen (`90f8077a`), 20 Nov 2026: **"I like it."** (his word on intro shot I2 as built).
+
+His third Gemini clip, the giant Pradas: **"Add this clip when I say, 'I'm [Prada] like my partner still living.'"**
+(speech-to-text wrote "proud of") and **"May need to chop it up to fit"**.
+- Asset `f889c598` (T7 `work/fendi_gemini_shots/gemini_video_45F39D53.mp4`): 20 s, 1280x720, 24 fps, two passes of ten
+  seconds: a giant pair of cream Prada America's Cup in the marble showroom steps over the cream-yellow Benz.
+- The line: song 0:41.80-0:44.94 (`work/lyrics_timed.lrc`). PLACED on `c022` + `c023` (0:41.35-0:43.99, 2.64 s) as one
+  continuous cut, source 2.50-5.14 s. `c024` (0:43.99-0:45.31) stays his performance of the end of the line. The two
+  slots' planned picture (the supermarket dance) is not made and is displaced for now.
+
+| Beat | Source (s) | Shows | Status |
+|---|---|---|---|
+| 1 | 0.0-2.5 | the Benz and the giant pair side by side | unused |
+| 2 | 2.5-5.2 | one giant shoe lifts and steps over the Benz, the camera moving round | on `c022` + `c023` (2.50-5.14) |
+| 3 | 5.2-10.0 | the shoe over the car from the side and rear | unused |
+| 4 | 10.0-13.0 | second pass: the Benz from the front, a shoe up on its toe | unused |
+| 5 | 13.0-17.0 | the shoe walks over the roof | unused |
+| 6 | 17.0-20.0 | the shoe lands by the rear of the car | unused |
+
+- To do in post (Grokbot): blur the dealer plate on the Benz. 720p, 24 fps against a 1080p cut. Its sound is not used.
+- Preview with the song under it (T7 only, never committed): `work/fendi_gemini_shots/prada_line_slot_c022_c023_preview.mp4`.
