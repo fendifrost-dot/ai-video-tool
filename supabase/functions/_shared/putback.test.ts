@@ -212,6 +212,36 @@ describe("the server's side: what a claimed put-back is handed, and what it may 
     expect(swapBinding(null, A)).toBe(null);
   });
 
+  it("accepts the real c033 pair: the swap's Dress record names the take, and the window file it sent", () => {
+    // the shape read from the live rows on 19 Nov 2026 (ids shortened to the test's): dress-clip's derived_from.asset_id
+    // is the TAKE, the window is dress.sourcePath, and the window was registered as an asset of its own afterwards
+    const TAKE = "70304981-d375-47a9-81df-aa062c62c6ec";
+    const job = { userId: U, projectId: P };
+    const windowPath = `${U}/${P}/dress/storyboard_c033_src.mp4`;
+    const original = { ...row(A), file_url: windowPath, metadata_json: { bucket: "project-clips", role: "source_cut", derived_from: { method: "cut", asset_id: TAKE, source_window: [56.056, 60.056] } } };
+    const swapMeta = (over: Record<string, unknown> = {}, dress: Record<string, unknown> = {}) => ({ bucket: "project-clips", conformed_duration: 4, derived_from: { method: "dressed", asset_id: TAKE, source_window: [56.056, 60.056], dress: { sourcePath: windowPath, ...dress }, ...over } });
+    const ok = putbackInputItems(plan, [original, row(B, { metadata_json: swapMeta() })], job, bucketOf, buckets);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.value.binding).toBe("dress_source");
+    // no file named: the same take and the same window still tie them
+    const win = putbackInputItems(plan, [original, row(B, { metadata_json: swapMeta({}, { sourcePath: undefined }) })], job, bucketOf, buckets);
+    expect(win.ok && win.value.binding).toBe("same_window");
+    // another window of the same take, or another take, is refused
+    expect(putbackInputItems(plan, [original, row(B, { metadata_json: swapMeta({ source_window: [60.056, 64.056] }, { sourcePath: `${U}/${P}/dress/other_src.mp4` }) })], job, bucketOf, buckets).ok).toBe(false);
+    expect(putbackInputItems(plan, [original, row(B, { metadata_json: swapMeta({ asset_id: "55555555-5555-4555-8555-555555555555" }, { sourcePath: undefined }) })], job, bucketOf, buckets).ok).toBe(false);
+    // the whole take as the original: the Dress record says it sent the window file, not the take
+    const take = { ...row(A), file_url: `${U}/${P}/takes/take.mp4`, metadata_json: { bucket: "project-clips" } };
+    expect(putbackInputItems(plan, [take, row(B, { metadata_json: swapMeta({ asset_id: A }) })], job, bucketOf, buckets).ok).toBe(false);
+    // stray whitespace round the stored path does not change the answer
+    expect(swapBinding(swapMeta(), A, { path: ` ${windowPath} `, metadata: original.metadata_json })).toBe("dress_source");
+    // reversed: the take and window agree both ways, so the rule also asks which of the two is the Dress result
+    const reversed = planPutback({ preset: "c033_showroom" }, [B, A]);
+    if (!reversed.ok) throw new Error("expected ok");
+    expect(putbackInputItems(reversed.value, [original, row(B, { metadata_json: swapMeta() })], job, bucketOf, buckets).ok).toBe(false);
+    // two Dress results of the same window are not a pair either
+    expect(putbackInputItems(plan, [{ ...original, metadata_json: swapMeta({}, { sourcePath: undefined }) }, row(B, { metadata_json: swapMeta({}, { sourcePath: undefined }) })], job, bucketOf, buckets).ok).toBe(false);
+  });
+
   it("knows a whole-frame Dress output from a take and from a put-back", () => {
     expect(isWholeFrameDress({ derived_from: { asset_id: A, method: "dressed", dress: {} } })).toBe(true);
     expect(isWholeFrameDress({ derived_from: { asset_id: A, method: "montage", dress: {} } })).toBe(true);

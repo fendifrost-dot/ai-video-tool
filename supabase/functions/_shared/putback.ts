@@ -230,10 +230,9 @@ export type PutbackItem = { assetId: string; bucket: string; path: string };
 /**
  * The two files of a put-back, resolved from the asset rows the SERVER read. An input is handed over only when:
  * its row belongs to the same user and the same project as the job; it sits in an allowed bucket; its path is a
- * plain storage path under THAT USER'S own folder and that project (`{user}/{project}/…`); and the swap is the Dress
- * output made FROM the original (`metadata_json.derived_from.asset_id`, written by dress-clip when it files a
- * conformed result) — so the two cannot be handed in reversed, and a raw provider file cannot stand in for the
- * conformed one. The worker never names a path.
+ * plain storage path under THAT USER'S own folder and that project (`{user}/{project}/…`); and the swap's own record
+ * ties it to the original (`swapBinding` below) — so the two cannot be handed in reversed, and a raw provider file
+ * cannot stand in for the conformed one. The worker never names a path.
  *
  * What this does not settle while every bucket and `project_assets` are open (RISK-001 / SEC-4): a stranger can
  * plant a file under the owner's folder with a row to match. It reaches a worker only if the OWNER then queues a
@@ -264,24 +263,57 @@ export function putbackInputItems(
   if (!original.ok) return original;
   const swap = item(plan.swapAssetId, "the swap");
   if (!swap.ok) return swap;
-  const binding = swapBinding(rowOf(plan.swapAssetId)?.metadata_json, plan.originalAssetId);
+  const binding = swapBinding(rowOf(plan.swapAssetId)?.metadata_json, plan.originalAssetId, { path: original.value.path, metadata: rowOf(plan.originalAssetId)?.metadata_json });
   if (!binding) {
-    return { ok: false, error: `the swap (${plan.swapAssetId.slice(0, 8)}) does not say it was made from the original (${plan.originalAssetId.slice(0, 8)}): a put-back takes the window, then the swap made from that same window, in that order. A dress-clip result says so by itself; a swap made another way (a creature or prop through the provider call, a pasted region) is filed with metadata_json.swap_of = { asset_id: <the window's asset id> }` };
+    return { ok: false, error: `the swap (${plan.swapAssetId.slice(0, 8)}) does not say it was made from the original (${plan.originalAssetId.slice(0, 8)}): a put-back takes the window, then the swap made from that same window, in that order. A dress-clip result says so by itself (it names the window file it sent, or the same take and window); a swap made another way (a creature or prop through the provider call, a pasted region) is filed with metadata_json.swap_of = { asset_id: <the window's asset id> }` };
   }
   return { ok: true, value: { original: original.value, swap: swap.value, binding } };
 }
 
 /**
- * How a swap says which window it was made from. `derived_from`: dress-clip (and the Region swap page) write it when
- * they file a conformed result. `swap_of`: declared by whoever files a swap made another way — the creature or prop
- * swap of docs/recipes/CREATURE_OR_PROP_SWAP_ON_HIS_TAKE.md goes through the provider call, and a pasted region is
- * a local file — so those lanes are not shut out; the declaration is the filer's word, and is recorded as such.
+ * How a swap is tied to the window it was made from, strongest first:
+ * - `dress_source`: the swap's own Dress record names the exact file sent to the provider
+ *   (`derived_from.dress.sourcePath`), and that file is the original's. This is what dress-clip writes: its
+ *   `derived_from.asset_id` is the TAKE the window was cut from, never the window (c033: take 70304981, window file
+ *   `dress/storyboard_c033_…_src.mp4`, registered afterwards as asset c45e30c6).
+ * - `derived_from`: the swap's `derived_from.asset_id` is the original itself (a clip sent whole).
+ * - `same_window`: both were cut from the same take over the same window (`derived_from.asset_id` and
+ *   `source_window` agree to a millisecond), and the swap carries a Dress record while the original does not — so
+ *   the pair cannot be handed in reversed.
+ * - `swap_of`: declared by whoever files a swap made another way — the creature or prop swap of
+ *   docs/recipes/CREATURE_OR_PROP_SWAP_ON_HIS_TAKE.md goes through the provider call, and a pasted region is a
+ *   local file — so those lanes are not shut out; the declaration is the filer's word, and is recorded as such.
+ * It is a consistency check on the owner's own job (the two cannot be handed in reversed or from different takes),
+ * not an access control: the rows it reads are the owner's, and are writable while SEC-4 is open.
  */
-export type SwapBinding = "derived_from" | "swap_of";
-export function swapBinding(metadata: unknown, originalAssetId: string): SwapBinding | null {
-  const meta = (metadata ?? {}) as { derived_from?: { asset_id?: unknown }; swap_of?: { asset_id?: unknown } };
+export type SwapBinding = "dress_source" | "derived_from" | "same_window" | "swap_of";
+type Derived = { asset_id?: unknown; source_window?: unknown; method?: unknown; dress?: { sourcePath?: unknown } };
+const windowOf = (v: unknown): [number, number] | null =>
+  Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === "number" && Number.isFinite(n)) ? [v[0] as number, v[1] as number] : null;
+export function swapBinding(
+  swapMetadata: unknown,
+  originalAssetId: string,
+  original?: { path?: string | null; metadata?: unknown },
+): SwapBinding | null {
+  const meta = (swapMetadata ?? {}) as { derived_from?: Derived; swap_of?: { asset_id?: unknown } };
+  const from = meta.derived_from;
   const same = (v: unknown) => typeof v === "string" && v.toLowerCase() === originalAssetId.toLowerCase();
-  if (same(meta.derived_from?.asset_id)) return "derived_from";
+  const sent = from?.dress?.sourcePath;
+  const path = typeof original?.path === "string" ? original.path.trim() : "";
+  if (path && typeof sent === "string" && sent === path) return "dress_source";
+  // a Dress record that names ANOTHER file as the one it sent was made from a cut of this asset, not from the asset
+  // itself (dress-clip's asset_id is the take): the take is not the swap's original
+  if (same(from?.asset_id) && !(typeof sent === "string" && sent && path && sent !== path)) return "derived_from";
+  const origFrom = ((original?.metadata ?? {}) as { derived_from?: Derived }).derived_from;
+  const w1 = windowOf(from?.source_window);
+  const w2 = windowOf(origFrom?.source_window);
+  const isDress = (d: Derived | undefined) => !!d && (d.method === "dressed" || (!!d.dress && typeof d.dress === "object"));
+  if (
+    isDress(from) && !isDress(origFrom) &&
+    w1 && w2 && typeof from?.asset_id === "string" && typeof origFrom?.asset_id === "string" &&
+    from.asset_id.toLowerCase() === origFrom.asset_id.toLowerCase() &&
+    Math.abs(w1[0] - w2[0]) < 0.001 && Math.abs(w1[1] - w2[1]) < 0.001
+  ) return "same_window";
   if (same(meta.swap_of?.asset_id)) return "swap_of";
   return null;
 }
