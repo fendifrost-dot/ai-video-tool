@@ -822,3 +822,37 @@ far as the highest quality".
   holds his photo face for all 150 frames. Two versions filed, both pending: as delivered, and his face held.
 - OBSERVED, open: the whole picture is as faded as photo 09 (lifted blacks); a single grade over the finished clip can
   bring it toward the cut's look without separating him from the scene. 720p.
+
+## Older Allen T6: his WHOLE REAL FIGURE from one photo ($1.12, ledger rows 61-65; still `d2ca81b7`, pending)
+
+Fendi on T3 (20 Nov): "His beard is off" / "Your cutting off his goatee" / "And he never connected his goatee" / "the face
+looks glued onto another face around his ear it looks slightly un natural" / "It wasn't that long" / "You should probably
+use another image" / "His black shirt is throwing you off on getting his beard pixels accurate" / "You can see from his
+other pics how he kept his goatee length they are almost identical". T3 (`fa83826a`, `5fb6d7f9`, `b16148a3`) REJECTED.
+
+FACTS about Allen (his word): a thin moustache and a SHORT goatee on the chin; the goatee is NOT connected to the
+moustache; no beard along the jaw; the same length in every photo. Never lengthen, thicken or join it in a prompt.
+
+VERIFIED causes of the T3 faults:
+- The head mask stopped at his chin and the join clean-up was told to clear "the beard under his chin".
+- In photo 09 a black shirt sits right under his chin; brightened, it read as a long beard. It is shirt.
+- A real head on a GENERATED body always leaves a join at the ear and jaw, and the generated neck is lit differently.
+
+**RULE for Allen from here (replaces "whole head, AVT_FACE_EXACT" for any new picture of him):** his whole REAL FIGURE,
+from ONE photo, with only the garment changed. Never a real head on a generated body.
+1. Clothes-only Gemini edit of the one photo (`screen` = the photo, `garment` = the flat sweater; "change ONLY what
+   the man is wearing"; 9:16 for a standing photo).
+2. `still_face_putback.py <photo warped into the edit's frame> <edit> <out>` (the photo is first laid into the wider
+   edit by SIFT similarity: here scale 1.953, shift 82 px). Take the OLD garment's collar out of the head mask
+   (colour test low on the head) or its stripes come back at his neck. Here: ECC 0.88, proof 0, 63,541 px.
+3. `matte-video-proxy` (veed) on a 2 s clip of the dressed photo, as delivered.
+4. `older_v1/figure_over_plate_still.py`: the figure resized (0.52, so his head is no larger than in the photo) over
+   an EMPTY plate; rim colours from inside him. Proof 0 on 156,248 px.
+5. One small grade over the whole finished picture.
+Source photo: 04 (the White House fence), the sharpest by far (Laplacian 666 against 32-89 for the club photos),
+plain daylight, no filter, his goatee against a light collar.
+
+DEAD ENDS this round, not posted: T5 (`4013059a`: photo 04 as `screen` with place AND clothes changed in one edit:
+Gemini enlarged him 1.2x and lit his face 6x brighter; his head at gain 6 was wrecked) and its join clean-up
+(`81eb6fd2`: re-lit his neck and body, a dark line along his jaw).
+NOT DONE: the clip. The still waits for Fendi's word first.
