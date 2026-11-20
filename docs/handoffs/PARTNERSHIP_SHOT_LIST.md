@@ -1196,3 +1196,18 @@ about the products."**
   he wears his own tan leather jacket from the raw footage and invented white sneakers: neither is a product. OPEN (his):
   whether the intro shot is left as filmed (as the car takes are) or dressed in a product look (A Polo Bears, B Prada
   puffer, C Prada suede shearling bomber). No product picture of cream Prada sneakers is filed.
+
+PRODUCT 12, the shoes (Fendi sent two screenshots of the brand's page, 20 Nov 2026): Prada America's Cup soft rubber and
+bike fabric sneakers in CREAM (grey mesh panels, white laces, red tab). T7 `wardrobe/12_prada_americas_cup_cream/`
+(`side_on_grey.jpg`, `top_pair_on_grey.jpg`; his screenshots untouched in `wardrobe/_screenshots_from_fendi/`); assets
+`ac8d150a` (side) and `e6e50cc8` (pair from above), cropped to the shoe, nothing redrawn. His rule for them: "Make sure
+that they don't generate huge shoes. Pradas are slim and sleek."
+
+INTRO I2 bottom, version 2 (cream Pradas):
+- Still `8cab1341` (job `e36ea8bb`): the first still edited, shoes only. OBSERVED: slim cream shoes, grey mesh, white
+  laces, both feet; the red tab does not read at this size; the rest is the same picture (the edit re-rendered it with a
+  mean difference of 11 of 255 and gave the model's face an open mouth, which the put-back replaces).
+- His real face put back (default mode, the version he called "about right"): face 65 x 76 px, turn -1.1 degrees,
+  residual 2.6 %, 0 pixels differ from his source inside the mask (3,734 px). T7 `work/intro/lexus_out_B3_realface.png`.
+- Posted BEFORE the video: the still, the shoe close-up beside the product picture, the face sheet.
+- Video: Runway task `751d7f4e`, Wan 3.0 1080p.
