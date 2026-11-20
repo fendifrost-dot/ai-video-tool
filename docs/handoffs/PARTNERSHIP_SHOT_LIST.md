@@ -1030,3 +1030,39 @@ G1, $0, his image untouched outside the frame's opening (printed: max change out
   stays sharp. The room is a still: nothing in it moves but the camera and the portrait.
 - RECOMMENDATION if he likes the direction: one sharper copy of his scene (Gemini, his image as the reference, 2k,
   $0.27) so the push-in holds up, and life in the room (window light drifting across the wall) built in layers.
+
+## The gallery shot (living portrait): G2 sharp, and HIM at the far right (20 Nov 2026, $0.36)
+
+Fendi on G1: **"First one is much better"** (the push-in). **"Is there a way to add me with clothing swap on the far
+right of this shot as a b role shot"**. **"You can do the sharper image one you reference too first if you need to."**
+**"Make sure it's at a point where I reference Allen."**
+
+G2 (sharper plate, $0.27): Gemini 2k from his image `e122d96c` as the `place` reference, "reproduce exactly", a green
+card in the gilt frame: plate `348d1c96` (2752x1536). OBSERVED: same wall, pieces, places and light; the gilt carving
+is crisp at the end of the push-in. `clip_in_wall_frame.py` fix: the card's edge sits in the lip's shadow, so dark green
+counts as card (a bright-only test left a green line). Push-in: T7 `portrait_wall/allen_portrait_gallery_G2_push_sharp.mp4`.
+
+WHERE IN THE SONG (his rule: a line that references Allen). First-half lines that do, from the table above:
+0:15-0:18 "My partner Allen" (taken by the approved car shot), **0:44-0:51 "Every time I put the polo on / Wishin you
+was here ... livin through these songs"**, 1:16-1:23 "Speaking to your spirit ... see you in my dreams", 1:30-1:47
+"Clean with my partner nem'". RECOMMENDATION: 0:44-0:51, because the portrait shows Allen in the Polo Bear sweater on
+the line about putting the polo on. His to confirm.
+
+HIM in the shot (method: his REAL footage, placed; `docs/recipes/HIS_FACE_IN_ANY_SCENE.md`):
+- Footage: he is not rapping between room takes B and C. `mouth_scan.py` on file 238-258 s: lip gap 0.00-0.02 from
+  240.6 to 244.5 s. Clip `98c51f4d` (240.6-244.7 s, 4.1 s for Genjutsu's 4 s minimum); usable at rest 241.6-244.4 s
+  (2.8 s): front-on, hands clasped, tan leather jacket, black cap, glasses, jeans, thighs up, no fan.
+  The side-profile take D has no rest stretch (he raps throughout; the scanner finds his face on 35 of 673 samples).
+- Matte (`matte-video-proxy`, veed, job `fd222489`): as delivered it KEEPS HIS GREEN QUILT on and off
+  (`matte_stability.py`: 55 of 84 frames see-through in the bottom region, a quilt-shaped blob by his shoulder).
+  New, $0: `scripts/edit/matte_minus_green_backdrop.py` (per frame: delivered matte minus backdrop-green in the
+  picture; green inside him restored from the delivered matte; thin streaks beside him dropped; removes only, adds 0,
+  nothing carried between frames). After: see-through frames top 1, middle 1, bottom 34 (6,496 px in all; was 434,034).
+  NOT a row of PROBLEM_INDEX yet: a test, shown to Fendi. Not for a take where he wears green.
+- Placed with `composite_over_plate.py --scale 0.8 --cx 1722 --push 0.015` over the wide gallery plate with the
+  portrait playing. Scale chosen so his eyes sit at the height of the art's centre (the camera's eye level); at that
+  size he covers the right edge of the red rose and his arm touches the frame edge.
+  T7 `work/gallery_him/gallery_him_T1_own_clothes.mp4`. OWN CLOTHES: a position test only.
+- NEXT, needs his word: the OUTFIT (a picture of the exact garment for the swap). Then `dress-clip` (Genjutsu,
+  about $0.68 per source second, 4.1 s = about $2.80) on `98c51f4d`, `body_only_swap.py` put-back (his face 0),
+  matte of the put-back + the quilt step, the same placement. Swap takes need still air: this stretch has none moving.

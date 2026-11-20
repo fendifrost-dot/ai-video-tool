@@ -27,7 +27,8 @@ if RECT:
     card = np.zeros((OH, OW), np.uint8); cv2.fillConvexPoly(card, quad.round().astype(np.int32), 1)
 else:
     hsv = cv2.cvtColor(wall, cv2.COLOR_BGR2HSV)
-    green = ((hsv[..., 0] > 40) & (hsv[..., 0] < 85) & (hsv[..., 1] > 110) & (hsv[..., 2] > 60)).astype(np.uint8)
+    # the card's edge sits in the frame lip's shadow: dark green counts too (a bright-only test left a green line, G2)
+    green = ((hsv[..., 0] > 35) & (hsv[..., 0] < 90) & (hsv[..., 1] > 70) & (hsv[..., 2] > 25)).astype(np.uint8)
     n, lab, st, _ = cv2.connectedComponentsWithStats(green); big = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA])); card = (lab == big).astype(np.uint8)
     card = cv2.morphologyEx(card, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
     cnt = max(cv2.findContours(card, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0], key=cv2.contourArea)
@@ -40,10 +41,10 @@ print("card corners (TL TR BR BL):", quad.round().astype(int).tolist(), "| %.0f 
 L = cv2.cvtColor(wall, cv2.COLOR_BGR2LAB)[..., 0].astype(np.float32); med = float(np.median(L[card > 0]))
 Lf = L.copy(); Lf[card == 0] = med
 light = np.clip(cv2.GaussianBlur(Lf, (0, 0), 12 if not RECT else 6 * SUPER) / med, 0.55 if RECT else 0.7, 1.25)[..., None]
-grow = card if RECT else cv2.dilate(card, np.ones((5, 5), np.uint8))  # cover the green fringe on the frame's inner lip
+grow = card if RECT else cv2.dilate(card, np.ones((4 * SUPER + 1, 4 * SUPER + 1), np.uint8))  # cover the green fringe on the frame's inner lip
 alpha = cv2.GaussianBlur(grow.astype(np.float32), (0, 0), 0.8)[..., None]
 shade = 1 - (0.0 if RECT else 0.35) * np.clip(1 - cv2.distanceTransform(grow, cv2.DIST_L2, 5) / 14.0, 0, 1)[..., None] ** 2      # the lip's soft shadow on the picture
-qg = quad if RECT else quad + (quad - c) / np.linalg.norm(quad - c, axis=1, keepdims=True) * 4
+qg = quad if RECT else quad + (quad - c) / np.linalg.norm(quad - c, axis=1, keepdims=True) * 4 * SUPER
 fs = sorted(glob.glob(os.path.join(fdir, "f_*.png"))); f0 = cv2.imread(fs[0]); fh, fw = f0.shape[:2]
 cwid = int(round(fh * cw / ch)); assert cx0 + cwid <= fw, "crop runs off the clip"
 src = np.float32([[0, 0], [cwid, 0], [cwid, fh], [0, fh]]); M = cv2.getPerspectiveTransform(src, qg)
@@ -61,4 +62,6 @@ for i, f in enumerate(fs):
         A = np.float32([[z, 0, FW / 2 - z * ctr[0]], [0, z, FH / 2 - z * ctr[1]]])
         out = cv2.warpAffine(out, A, (FW, FH), flags=cv2.INTER_AREA if z < 0.75 else cv2.INTER_LANCZOS4)
     cv2.imwrite(os.path.join(out_dir, os.path.basename(f)), out)
-print("frames %d; max change outside the opening: %d" % (len(fs), worst))
+last = cv2.cvtColor(cv2.imread(os.path.join(out_dir, os.path.basename(fs[-1]))), cv2.COLOR_BGR2HSV)
+print("frames %d; max change outside the opening: %d; chroma-green pixels left in the last frame: %d" % (len(fs), worst,
+      int(((last[..., 0] > 50) & (last[..., 0] < 75) & (last[..., 1] > 170) & (last[..., 2] > 60)).sum())))
