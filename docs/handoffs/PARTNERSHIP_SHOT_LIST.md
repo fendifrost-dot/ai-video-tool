@@ -1227,3 +1227,18 @@ INTRO I2 bottom, version 2 (cream Pradas):
   T7 `work/intro/intro_I2_split_screen_v2.mp4`. SHOT_RULES: 1 pass (mouth at rest), 2 his pixels brows to chin, 3 the
   scene moves (leaves, light), 4 no other people, 5 OBSERVED match of light, 6 pass; 7 (waist up, never his shoes) is
   SET ASIDE on this shot by his own words of 20 Nov ("change them to ... cream Pradas").
+
+INTRO I2, version 3: the bottom half in SLOW MOTION (20 Nov 2026, $0). Fendi on v2: **"Make the bottom half slow
+motion and we're good"**.
+- Half speed (the agent's pick of rate; he named none). Order of work, so the slow motion does not smear his face:
+  in-between frames made on the RAW render first (`ffmpeg minterpolate` fps 60, mci / aobmc / bidir, 150 -> 297 frames),
+  THEN his real face held on every one (`wan_face_putback_track.py`, `SMOOTH=3`), then played at 30 fps.
+- Printed: face found 297/297; head travels 55 px; turned median 5.0, max 12.2 degrees; fit max 0.041.
+- Check after (his rule), sheet T7 `work/intro/I2_bottom_slowmo_check.jpg`, eight moments, body and face: OBSERVED no
+  ghosting or doubled limbs on the sampled in-between frames (door closing, hands at the jacket); face steady, mouth
+  closed; shoes cream and slim. NOT checked: every frame, or the clip in motion.
+- T7 `work/intro/intro_I2_bottom_lexus_v2_slowmo_1080.mp4` (1926x1074, 9.9 s) and
+  `work/intro/intro_I2_split_screen_v3_slowmo.mp4` (1920x1080, 5 s: the hills at normal speed above, the first 5 s of
+  the slow motion below = he straightens up, steps clear and begins to shut the door).
+- "we're good" = his acceptance of the intro's split screen in this form. Still to set: its place and length on the
+  board, and the cut out of it at "Back to back Lexus".
