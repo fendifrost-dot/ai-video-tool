@@ -785,3 +785,18 @@ OBSERVED on the older-Allen stills (ledger rows 55-56):
 - DEVIATION, stated to Fendi before the clip: this shot does not carry his photo's own pixels (PROBLEM_INDEX "Allen's
   likeness" row). Cause: the only whole, sharp, later head (photo 09) is filtered and looks pasted when put back.
   Whether a drawn likeness of this standard stands in for him is Fendi's call; nothing here is approved.
+
+## LOCKED: the car shot. The older Allen is for ONE shot only (Fendi, 20 Nov 2026)
+
+His words: "I don't want you to change Alan in the car shot. That shot was perfect. Please don't touch that shot. I was
+talking about only the new shot with him in the navy sweater outside of the Lexus. That shot should be a slightly older
+version of him."
+
+- **The car shot is approved and locked:** Allen in the passenger seat, still `44788e06`, clips `bfb93450` (as Wan
+  delivered) and `212f2c5e` (his photo face held). All three are `approved` with these words. NEVER edit, regenerate,
+  re-age or replace them. Which of the two clips goes in the cut has not been said.
+- **CORRECTION to the section above** ("an older Allen ... for the solo shots"): that was the agent's over-reading. The
+  slightly older Allen applies ONLY to the shot of him in the navy sweater outside the Lexus. The older-Allen test T2
+  (still `33152dfa`, clip `402f7c28`) is that shot; it is pending his word on the face.
+- NOT SAID, so not touched: the other solo clips (door `e473e93e`, gas station `bb4c15a4`, headlights `1642f563`,
+  Mercedes `b054afcb`). His drift note on them stands; nothing is redone or re-aged on them without his word.
