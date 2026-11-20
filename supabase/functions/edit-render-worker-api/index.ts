@@ -267,11 +267,12 @@ serve(async (req) => {
       }
       // what the two inputs are, read again from their rows: how the swap is tied to the window, and whether the
       // "original" is itself a whole-frame Dress output (then the face kept is the generator's, and the note says so)
-      const { data: inputRows } = await db.from("project_assets").select("id, metadata_json").in("id", [planned.value.originalAssetId, planned.value.swapAssetId]);
-      const metaOf = (id: string) => (inputRows ?? []).find((r: { id: string }) => r.id === id)?.metadata_json;
+      const { data: inputRows } = await db.from("project_assets").select("id, file_url, metadata_json").in("id", [planned.value.originalAssetId, planned.value.swapAssetId]);
+      const rowOf = (id: string) => (inputRows ?? []).find((r: { id: string }) => r.id === id) as { file_url?: string | null; metadata_json?: unknown } | undefined;
+      const metaOf = (id: string) => rowOf(id)?.metadata_json;
       putback = {
         ...record.value,
-        binding: swapBinding(metaOf(planned.value.swapAssetId), planned.value.originalAssetId),
+        binding: swapBinding(metaOf(planned.value.swapAssetId), planned.value.originalAssetId, { path: rowOf(planned.value.originalAssetId)?.file_url ?? null, metadata: metaOf(planned.value.originalAssetId) }),
         original_is_whole_frame_dress: isWholeFrameDress(metaOf(planned.value.originalAssetId)),
       };
     }
