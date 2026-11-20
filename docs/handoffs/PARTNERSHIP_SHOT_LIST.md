@@ -992,3 +992,23 @@ The flow-based hold (`wan_face_putback.py`) TORE his face from frame 40 (163 px 
 
 For the next roll (each $0.50): keep the movement, ask again for the head to face the camera throughout (no looking
 down), feet planted or one step only; keep every usable stretch as a montage cut.
+
+## The living portrait (Fendi's idea, 20 Nov 2026): first test P1 ($0.27)
+
+Fendi on the T10 held clip (`838dce7e`): **"The clip looks like he's coming out a picture which may work if we use it
+as a split screen as a large portrait hanging on a wall."** DECISION (his): the held-photo look is used on purpose, as
+a portrait of Allen on a wall that moves. Not yet said by him: which wall, which part of the song, what is on the
+other half of the split.
+
+P1:
+- Wall plate `8d4b9e7a` (Gemini, job `77f470e1`, no references): dark walnut panelling, a large gilt frame in portrait
+  format with a flat green card inside, a brass picture light, window light from the left. The agent's pick of room.
+- `scripts/edit/clip_in_wall_frame.py`: finds the card's four corners, warps each clip frame (cropped x 50-607 of
+  1284, his whole travel inside it) onto the card, lays the card's own light over it (lamp above, the lip's shadow),
+  GAIN 0.82 so a daylight picture does not read as a TV in a dim room. Printed: max change outside the card 0.
+- Clip: T7 `work/allen/portrait_wall/allen_portrait_wall_P1.mp4` (1920x1080, 5 s; filed under `allen_solo/`).
+- Split-screen EXAMPLE only: `allen_portrait_wall_P1_split_example.mp4`, left = the wall's centre 960 px, right = 3 s
+  of his car take (not synced to the song, not a slot).
+- OBSERVED: the middle second (he looks down, the photo's face does not) reads less wrong inside a portrait, but it
+  is still there; a cut can use 0.0-1.7 s or 3.1-5.0 s only.
+- Open for him: the room (this panelled wall, or the cathedral of his performance idea), and the other half.
