@@ -1474,3 +1474,6 @@ for the hat as well because key details are missing in the back that make it uni
   on his right, the red-jacket bear pin on his left, python top button), and the pin set `70bd48ad` (pin cut-out for
   pasting: `17_modest_bear_pins/pin_red_jacket_cutout.png`). Side views of the gold cap (`417cd64d` left, `59b74706`
   right) await his check. Plan: pin and buckle pasted from his mockup pixels, tracked, never left to the model.
+- **Later the same day, Fendi: "You know what scratch that jacket I don't like it anymore".** The Prada suede shearling
+  bomber is out of the wall scene; swaps `c9299284` (gold cap), the failed natural one and the jacket-only pass (job
+  `57ce8d4e`, ledger row 110, sent before his message) are dropped. Which jacket the wall scene wears is his call.
