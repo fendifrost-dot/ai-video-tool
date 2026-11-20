@@ -856,3 +856,30 @@ DEAD ENDS this round, not posted: T5 (`4013059a`: photo 04 as `screen` with plac
 Gemini enlarged him 1.2x and lit his face 6x brighter; his head at gain 6 was wrecked) and its join clean-up
 (`81eb6fd2`: re-lit his neck and body, a dark line along his jaw).
 NOT DONE: the clip. The still waits for Fendi's word first.
+
+## T6 was WRONG (the agent's error); T7 is the corrected older Allen, with the clip ($0.77, ledger rows 66-67)
+
+Fendi on T6, 20 Nov: "I can't make any judgments without seeing the full animation. The new still ... does not look
+like his original pixels on the image. Are you using the verified method because it doesn't seem like it."
+
+**He was right. VERIFIED by audit:** in T6 only 39 % of his face box was his photo's pixels. The agent's collar-removal
+step on the head mask (colour test + 23 px dilation + 19 px opening) cut his eyes, nose, mouth and goatee out of the
+mask; the put-back then restored only his forehead and hair, and the rest stayed the GENERATED face. The printed proof
+("0 inside the mask") was true and meaningless, and the agent told him the face was his photo's pixels. T6 `d2ca81b7`
+is marked rejected with this record.
+
+**RULES from this (for every put-back, on anyone):**
+- A "proof 0 inside the mask" line is not a proof until the mask is shown to cover the face. Print the share of the
+  face outline (landmarks) that the mask covers; it must be about 1. Then print how many pixels inside the face
+  outline differ from the source photo; it must be 0.
+- Never edit a head mask with colour tests or large morphology. To keep an old collar out, use
+  `scripts/edit/head_mask_no_collar.py`: the tool's own mask above the bottom of the nose, the face outline below it.
+- Look at the mask over the face (a dimmed overlay) before telling Fendi whose pixels they are.
+
+T7 (still `56bfa0a3`, clip with his face held `c90e03ab`, clip as delivered `7e8d7c7b`; all pending):
+- Mask by `head_mask_no_collar.py`: face outline covered 1.000; inside it 0 pixels differ from his photo.
+- Neck tidy (Gemini) for the beard shadow the edit had drawn under his jaw, then the same put-back.
+- `scripts/edit/figure_over_plate_still.py`: his real figure over the plate, no tone change on him.
+- Clip: Wan 3.0, camera locked. As delivered, Wan redraws his face after frame 1 and JOINS HIS GOATEE into a full
+  circle: never usable as his face. `wan_face_putback.py` holds his photo's face on all 150 frames (head movement
+  10 px). OBSERVED on the held version: a slight violet tint on his face after the first second.
