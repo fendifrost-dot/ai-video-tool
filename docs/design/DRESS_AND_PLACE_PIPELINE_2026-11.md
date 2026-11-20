@@ -175,11 +175,11 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 
 | Step | State (19 Nov 2026) |
 |---|---|
-| 1. Sign-offs: architecture and security from independent reviewers (recorded on PR #512); product is Fendi's own request of 19 Nov and his delegation of the technical decisions | on PR #512 |
+| 1. Sign-offs: architecture and security from independent reviewers (recorded on PR #512); product is Fendi's own request of 19 Nov and his delegation of the technical decisions | **DONE**: architecture APPROVE (two passes), security APPROVE for merge and redeploy at `10e654db` (three passes), both on PR #512 |
 | 2. SQL, in Lovable only: `20261120100000_putback_job_kind.sql`. Self-contained: it does not need the pending STORE-5 migrations and applies before or after them. Four columns on `edit_renders`, one on `edit_render_workers`, the two claim functions, the owner's two functions. **No policy changes** | **APPLIED** 19 Nov ≈23:48 UTC through Lovable `query_database`, on Fendi's "Yes, apply it" in chat |
 | 2b. The live worker `box` is given its owner, by hand, in the same editor (never derived from rows a visitor can write) | **DONE** with step 2. VERIFIED by a rolled-back test in the same editor: a queued edit row of another account was claimed 0 times by the old claim, 0 by the owner-scoped claim and 0 with no owner; the owner's own row was claimed once |
-| 3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`** | see §12 |
-| 4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`). The secret is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); never in chat, the repo or SQL | see §12 |
+| 3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`** | **DONE** 19 Nov ≈23:59 UTC: merged as `cc350791`; Lovable deployed both from that commit (source hashes `1478994b…` and `2d314774…`; the file hashes it reported match the commit's `index.ts`, `jobContract.ts`, `jobHandlers.ts`). An unsigned call to each is refused. Frontend not published: nothing in the app changed |
+| 4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`). The secret is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); never in chat, the repo or SQL | **NOT DONE**: a new machine credential is Fendi's yes, asked for on 19 Nov |
 | 5. The c033 fixture through the worker, proof 0, reported with the printed numbers | **NOT RUN**: the Mac's memory (pressure level 2 of 1/2/4 on 19 Nov) |
 
 ## 10. Order of slices (from the handoff §4.6, with what this note changes)
@@ -200,7 +200,8 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 
 ## 12. What is CODED on the draft branch (19 Nov 2026), and what is not
 
-CODED, with unit tests. The SQL is applied (§9); the functions are live only once §9 step 3 is done and named here:
+CODED, with unit tests, MERGED (`cc350791`) and, for the two edge functions, DEPLOYED (§9 step 3). **Not CHECKED
+LIVE: no put-back has run through it.** The files:
 
 | File | What |
 |---|---|
@@ -220,6 +221,11 @@ VERIFIED on Fendi's Mac, 19 Nov: the capability check passes with the real inter
 
 NOT DONE:
 - ~~The SQL is not applied~~ **APPLIED and verified** 19 Nov ≈23:48 UTC (§9 steps 2 and 2b), on Fendi's "Yes, apply it".
+- **No worker that runs put-backs is registered** (§9 step 4). A put-back queued now waits, at no cost, and nothing
+  picks it up: `box` asks only for edit jobs.
+- **No put-back has been submitted through the deployed functions.** The session that deployed them could not call
+  `avt_job_submit` (its tool list was older than the tool). First check, $0: `avt_job_submit` with `dry_run: true`,
+  `job_kind: "putback"`, a preset and two asset ids → the plan comes back with `costUsd: 0`.
 - **The c033 fixture through the runner.** The Mac's swap was 9–12 GB of 10–13 GB in use all of 19 Nov with other
   sessions working; one heavy job at a time there.
 - Stage 1 of the handoff's table (cutting the window in the worker) and the checks of slice b.
