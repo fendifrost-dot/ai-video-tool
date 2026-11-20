@@ -883,3 +883,21 @@ T7 (still `56bfa0a3`, clip with his face held `c90e03ab`, clip as delivered `7e8
 - Clip: Wan 3.0, camera locked. As delivered, Wan redraws his face after frame 1 and JOINS HIS GOATEE into a full
   circle: never usable as his face. `wan_face_putback.py` holds his photo's face on all 150 frames (head movement
   10 px). OBSERVED on the held version: a slight violet tint on his face after the first second.
+
+## Older Allen: the face is HIM (Fendi, 20 Nov 2026); the neck fixed in T8 ($0, local)
+
+Fendi on the T7 clip with his face held (`c90e03ab`), asked "Is clip 1 him?": **"Yes aside from the coloration of his
+neck"**. Recorded on the asset. The likeness method is therefore the one in the section above: ONE photo (04), his
+whole real figure, only the garment changed, his photo's face held on every frame of the clip.
+
+OBSERVED on T7 (what he meant): the drawn neck was lighter and pinker than his face, with a pale strip under his left
+ear, and from about 1 s a dark line under his chin where Wan's redrawn beard showed below the held face.
+
+T8, $0:
+- `scripts/edit/neck_to_face_tone.py` on the still: the neck (skin joined to his head, below the head mask, above the
+  collar) takes his cheeks' Lab colour at 0.92 of their lightness, its own light and dark patches halved. His head is
+  untouched (printed: max change inside the head mask 0). A percentile fit was tried first and FAILED (it stretched the
+  pale strip greenish-white): do not use it.
+- `scripts/edit/wan_face_putback.py` on the same Wan clip (no new render) with the mask of head AND neck, and
+  `LIGHT=luma` (Wan's brightness change only, not its colour drift, which had tinted his face violet).
+- Clip: T7 `older_v1/allen_older_T8_wan3_his_face_and_neck.mp4`, filed under `allen_solo/`, pending his word on the neck.
