@@ -1319,3 +1319,45 @@ VERIFIED in AVT from this branch: both assignments are primary, both assets appr
   falls at 0:11.44. The board-timed version was shown to him (T7
   `work/walk_to_lexus_6496/PREVIEW_v3_board_slots_c004_c005_with_song.mp4`); no word on it yet.
 - **Nothing else goes on `c004` or `c005` without his word.**
+
+## The leather line in the car, and the material wall for the standing performance, 20 Nov 2026 ($0 so far)
+
+Given by Fendi to the session "AVT proven methods"; recorded here from its report. VERIFIED from this branch: the `c006`
+assignment exists and is primary. Everything else below is OBSERVED from the report; no picture was looked at here.
+
+Fendi, 20 Nov 2026: **"I think now we cut to me in the car rapping for pull up you can still smell the leather and
+directly after that line we cut to the standing performance shot. we need to build the wall of fabrics and material and
+figure out what zoom keeps me close to the wall with my body shown the same way the performance seen was shot. DO NOT
+put me in the front of an AI generated image we most likely will need to build the wall in blender and during the shot
+the entire will wall not be in the frame if we are only showing my upper body of course. The wall will be used for B
+role as well so it's important that we do build the entire wall out now. we want colorful but fall colorful with
+burgandy, forest greens, marigold yellow, mustard, olive etc. carbon fiber, gold and so on"**
+
+**`c006` (song 0:13.64-0:15.84, "Pull up you can still smell the leather"): primary `e09f76e2`, PENDING his word.**
+- His real car take IMG_6467, file 10.24-12.45 s (song = file + 3.40), as filmed, 53 frames at 24 fps; he brings his
+  hand to his nose at the end of the line. Assignment `e85b4655`.
+- The take is the other session's pick (DECISION); he has not judged it.
+- Displaced planned twist: the sommelier at the Lexus door (not made).
+
+**The material wall, v1: posted to him, NOT judged.** Binding from his words: never him in front of an AI generated
+image; the wall is built, and built whole, because it serves the b-roll too.
+- A built Blender 5.3 set (Cycles), 7.2 x 3.0 m, 87 panels, 38 computed materials: leather, quilted leather, suede,
+  velvet, corduroy, tweed, satin, carbon twill, walnut / oak / mahogany, brushed / hammered / leaf gold, brass nails.
+  Fall palette. No generated image in it.
+- T7 `work/material_wall/`: `material_wall_build.py`, `material_wall.json`, `out/material_wall.blend`,
+  `out/wall_wide_v1.jpg`, `out/wall_perf_v1.jpg`.
+
+**The zoom, measured on his room takes** (empty-room frame, first half 9:48):
+- MEASURED: the two-gang switch plate (114 mm) is 70 px tall, so the wall he leans on reads 610 px per metre and he
+  reads about 600. He stands AT the wall.
+- MEASURED: phone tilted up 7 degrees, lens about 1.30 m up. ESTIMATE: 62 degrees across, 2.5 m from the wall.
+- So the built wall takes the real wall's plane and he keeps his own size and place in frame; the frame holds
+  3.15 x 1.77 m of wall.
+- Placement preview with take E at song 16.2 (a quick local matte, preview only, not a deliverable):
+  `out/placement_compare.jpg`.
+
+**Open, his:**
+- The wall's look.
+- Which look he wears there (his rule of 18 Nov: any room shot gets a clothing swap).
+- Which slots the standing performance takes after `c006`: `c007`-`c008` were planned for the Allen passenger-seat
+  shots.
