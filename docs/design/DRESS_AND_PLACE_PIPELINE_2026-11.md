@@ -179,7 +179,7 @@ the canonical put-back already takes precedence over the keyframe lane (`CLAUDE.
 | 2. SQL, in Lovable only: `20261120100000_putback_job_kind.sql`. Self-contained: it does not need the pending STORE-5 migrations and applies before or after them. Four columns on `edit_renders`, one on `edit_render_workers`, the two claim functions, the owner's two functions. **No policy changes** | **APPLIED** 19 Nov ≈23:48 UTC through Lovable `query_database`, on Fendi's "Yes, apply it" in chat |
 | 2b. The live worker `box` is given its owner, by hand, in the same editor (never derived from rows a visitor can write) | **DONE** with step 2. VERIFIED by a rolled-back test in the same editor: a queued edit row of another account was claimed 0 times by the old claim, 0 by the owner-scoped claim and 0 with no owner; the owner's own row was claimed once |
 | 3. Merge; Lovable **Edge Functions → redeploy `edit-render-worker-api` and `avt-mcp`** | **DONE** 19 Nov ≈23:59 UTC: merged as `cc350791`; Lovable deployed both from that commit (source hashes `1478994b…` and `2d314774…`; the file hashes it reported match the commit's `index.ts`, `jobContract.ts`, `jobHandlers.ts`). An unsigned call to each is refused. Frontend not published: nothing in the app changed |
-| 4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`). The secret is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); never in chat, the repo or SQL | **NOT DONE**: a new machine credential is Fendi's yes, asked for on 19 Nov |
+| 4. A worker row for the Mac, owned by Fendi's user (SQL in Lovable: label, the secret's sha256, `owner_user_id`). The secret is generated on the Mac and kept in `~/.secrets/avt_render_worker_mac.env` (mode 600); never in chat, the repo or SQL | **DONE** 20 Nov ≈00:35 UTC on Fendi's "Yes, register it": worker row `mac-putback` (`338c72fd`), owner his account. VERIFIED: a claim as that worker for `putback` through the deployed function answers HTTP 200 with no job (none is queued); a wrong secret answers 401 |
 | 5. The c033 fixture through the worker, proof 0, reported with the printed numbers | **NOT RUN**: the Mac's memory (pressure level 2 of 1/2/4 on 19 Nov) |
 
 ## 10. Order of slices (from the handoff §4.6, with what this note changes)
@@ -221,8 +221,12 @@ VERIFIED on Fendi's Mac, 19 Nov: the capability check passes with the real inter
 
 NOT DONE:
 - ~~The SQL is not applied~~ **APPLIED and verified** 19 Nov ≈23:48 UTC (§9 steps 2 and 2b), on Fendi's "Yes, apply it".
-- **No worker that runs put-backs is registered** (§9 step 4). A put-back queued now waits, at no cost, and nothing
-  picks it up: `box` asks only for edit jobs.
+- The Mac is registered (§9 step 4) but runs only when started by hand (`workers/edit-render/run-once-putback.sh`),
+  and that script refuses to start while the Mac's memory pressure is above normal. A put-back queued meanwhile
+  waits, at no cost: `box` asks only for edit jobs.
+- **The input check merged in #512 would have refused the real c033 pair** (dress-clip records the take, not the
+  window, as the swap's source). Found on the live rows before any run; corrected in PR #516, which must be merged
+  and `edit-render-worker-api` redeployed before the fixture is queued.
 - **No put-back has been submitted through the deployed functions.** The session that deployed them could not call
   `avt_job_submit` (its tool list was older than the tool). First check, $0: `avt_job_submit` with `dry_run: true`,
   `job_kind: "putback"`, a preset and two asset ids → the plan comes back with `costUsd: 0`.
