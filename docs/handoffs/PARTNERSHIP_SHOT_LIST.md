@@ -1100,3 +1100,7 @@ background music Gemini created maybe we can fix that later. Where do you think 
 - SOUND, for later (his): keep the car sound effects, lose Gemini's music. Not started. HYPOTHESIS: a stem separation
   (music / effects) on the clip's audio; to be tested and heard by him before it goes near the song.
 - OPEN: 720p and 24 fps against a 1080p cut; whether the unused beats go on other car lines.
+
+Fendi, 20 Nov 2026, after the placement: **"Still place the gallery shot for now it may be better without me in it."**
+The gallery shot stays on `c025` (`c627f5cf`) WITHOUT him. Him in the gallery is no longer assumed: it is only done
+if he asks again after seeing the cut.
