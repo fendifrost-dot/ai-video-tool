@@ -679,3 +679,45 @@ Fendi, 19 Nov: "Just use the API instead of the connector."
 - RECOMMENDATION: Allen appears in cutaways made this way (a Gemini still with his head put back, then Wan 3.0
   image-to-video, about $0.77 a shot), cut against Fendi's real takes; the wide two-shot (test 3) only inside a camera
   move. One test is not a benchmark: `docs/capability/GAPS.md` G2 keeps Wan 3.0 as a candidate until more shots pass.
+
+## Allen's solo shots, 19-20 Nov 2026 ($4.39: seven stills $1.89, five clips $2.50; ledger rows 43-54)
+
+**DECISION (Fendi, 19 Nov, late):** "We can do solo shots of him in those different shots, interchanging the different
+polo sweaters. We can go back to the navy one that you put him in. That was nice. We can do, we can actually create the
+Lexus scene, putting him in front of the green Lexus, putting him standing next to it, getting in the car. We can just
+do different shots of that, different shots of him, Mercedes. Just be creative with it, so we can actually execute that."
+
+What this changes in the notes above:
+- The navy Polo Bear sweater is back in use beside the red one (`400b40c3` approved again; his navy picture with his
+  real head filed approved as `a552f358`).
+- An exterior Lexus scene exists again, for ALLEN ALONE. Still scrapped (his words of 19 Nov stand): the two Lexuses
+  back to back, and him and Allen standing by the cars together.
+- Allen's Lexus is green (new, his word). Its model and year are NOT in any note: the agent chose an early-2000s GS,
+  dark green (plate `2523fc5d`), and a black mid-2000s Mercedes S-Class. HYPOTHESIS until he confirms the cars.
+
+**Method (each step a verified one, except Wan, which he judged "solid" on test 1):**
+1. One picture of the car alone, so it is the same car in every shot (`world-still-proxy`, Gemini, no references).
+2. Per shot: his dressed photo as `screen` + the car as `prop`, prompt "change ONLY the place around and behind him".
+3. His whole head from his photo: `still_face_from_photo.py` with `AVT_FACE_EXACT=<matte of the photo>` then
+   `still_face_putback.py` with `AVT_STILL_HEAD_MASK`: proof 0 on all five (scale 0.84-1.00, residual 0.5-2.0 %).
+4. Wan 3.0 image-to-video, 5 s, 720p, through the Runway API route.
+
+**FAILED, do not repeat (VERIFIED, $0 lost beyond the stills):** `still_face_putback.py <photo> <edit>` on its own. It
+assumes the edit left him where the photo has him. Gemini moved and resized him in every one of these (ECC 0.24-0.48 or
+no convergence), so his head was pasted at the photo's place, floating, and the bad alignment warped two pictures to
+garbage. When the scene around him changes, step 3 is the tool. The first headlights still also drew a different man
+(cap forward, looking away): the prompt has to hold his size and place ("close to the camera, his head near the top").
+
+| Shot | Lyric (song time) | Sweater | Still (his head) | Clip | Seen in the clip |
+|---|---|---|---|---|---|
+| L1 in front of the Lexus | My partner Allen (0:15.7) | navy | `c1b77be4` | `8211213f` | push-in, one nod, mouth closed |
+| L2 at the door, gets in | Had it automatic (0:16.9) | navy | `beb5a848` | `e473e93e` | four beats: look (closed-lip smile) 0-1.3 s, turn 1.3-2.3, gets in 2.3-4.2, door shut 4.2-5; an invented "A" on his cap when he turns |
+| M1 by the Mercedes | All my business partners got Benz's (0:30.8) | red | `d3a500d2` | `b054afcb` | nod, looks at the car and back |
+| L3 gas station | Speaking to your spirit we agree (1:16.0) | red | `38b3a9b6` | `bb4c15a4` | two slow nods, eyes drop on each |
+| L4 headlights | As your guidance shining on to me (1:21.8) | navy | `5509d699` | `1642f563` | headlights flare, mist, he lifts his chin |
+| (earlier) passenger seat | See you frequently up in my dreams (1:18.1) | red | `44788e06` | `bfb93450` / `212f2c5e` | test 1, both "solid" |
+
+OBSERVED, open: the stills are 5:4 (his photo's shape), so the clips are 1068x860; in a 16:9 cut they are cropped or
+shown as snapshots in their own frame. Wan redraws his face in every clip; `wan_face_putback.py` can hold his photo
+face on the ones where his head barely turns (L1, L3, L4, M1), not on L2. All ten assets are `pending`. T7
+`work/allen/solo_shots/` (stills, head checks) and `solo_shots/wan/` (clips as delivered and muted).
