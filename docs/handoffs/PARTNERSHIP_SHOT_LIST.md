@@ -1264,3 +1264,12 @@ His third Gemini clip, the giant Pradas: **"Add this clip when I say, 'I'm [Prad
 
 - To do in post (Grokbot): blur the dealer plate on the Benz. 720p, 24 fps against a 1080p cut. Its sound is not used.
 - Preview with the song under it (T7 only, never committed): `work/fendi_gemini_shots/prada_line_slot_c022_c023_preview.mp4`.
+
+The Prada line, double speed (20 Nov 2026, $0). Fendi: **"Feel free to speed the pace up to the tempo too if that looks
+better"**, and on the double-speed preview: **"That's better"**.
+- Asset `d1faa6a7` (T7 `work/fendi_gemini_shots/prada_line_c022_c023_2x.mp4`, 1920x1080, 2.67 s): his clip `f889c598`,
+  source 2.36-7.64 s at 2x. In the slot the Prada lifts, steps over the Benz and the camera sweeps to the side and rear;
+  the step crosses the hood at the slot's midpoint (song 0:42.67).
+- PRIMARY on `c022` (0-1.32 s of it) and `c023` (1.32-2.64 s). The normal-speed windows (assignments `744fc9ea`,
+  `7b9bd643`) are kept, not primary.
+- Beats used now: 2 and most of 3. Unused: 1 (the pair beside the car), 4-6 (the second pass).
