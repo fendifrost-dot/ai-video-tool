@@ -35,12 +35,9 @@ plates already in those slots.
 
 ## 2. Coming from us (do not build these)
 
-- **Allen gallery cut-in, inside S04** (song 2:33.3-2:37.3, "Just talked to your mama ... it's been a decade"): him full
-  body in profile in the gallery, turned to Allen's living portrait, Polo Bears sweater over his yellow button-up,
-  white python cap, his real face (put back, proof 0). Usable stretches 153.32-155.07 and 155.86-157.32 (the frames in
-  between show the old cap's under-brim and are not used, Fendi 21 Nov). Rebuilt in Blender from measured cameras
-  so his feet sit on the floor with his own shadow. We deliver it as a finished clip on the song clock; cut it into S04
-  where you like. The accepted S04 storm plate stays the slot's main picture.
+- ~~Allen gallery cut-in inside S04~~ WITHDRAWN (Fendi, 21 Nov: "The Allen Gallery was not supposed to be for the second
+  half of the song. It was supposed to be for a line in the first half where I referenced Allen"). Nothing from the
+  gallery goes in the second half.
 - First half, for your information only: the giant bear-wall shot (song 1:51) and the outfit luxury montage.
 
 ## 3. Still open from 18 Nov
