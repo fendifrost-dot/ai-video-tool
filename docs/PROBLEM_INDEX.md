@@ -58,6 +58,7 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 | Allen's likeness | his photo: clothes-only Gemini edit + `still_face_putback.py`; in a scene: whole head, `AVT_FACE_EXACT` | `34bd95ac`, `077a3515` | the default face mode |
 | Generated clip: wrong trousers/shoes | animate a full-figure still; crop after | storm s04 `ca645fd0` | a knees-up still as source |
 | Grok is the right tool | Fendi makes it in Grok Imagine, or his words go in `grok_approval` on `avt_call` | 12 Nov | a Grok generation without his words |
+| A real photograph of people must come to life (memory photos, him included) | on his word for that job: Grok Imagine by hand in Chrome on his subscription, image-to-video, 1:1, 6 s, 720p. Prompt = "this photograph comes to life as real home video", ONE line of what they naturally do (laugh, nod, lean in, raise a cup), then the feeling ("a celebration of life ... remembered with a smile"), "natural movement, photorealistic real footage, the same people". A face sheet per clip (T7 Partnership `work/tools/allen_clip_qa.py`); tell him which clips show a part the photo hides | Partnership, the 20 Allen photos, 21 Nov: "They work" (prompts and notes: `Grok Ops/AVT/video-directives/partnership/allen_imagine/PROMPTS_USED.md`) | asking for subtle or held poses to protect the faces ("so subtle that it's hard to even notice"); a list of don'ts in the prompt; an action that uncovers a hidden or cropped face without flagging it; a scripted click on the download button; Grok through the AVT proxy |
 
 ## The build
 
