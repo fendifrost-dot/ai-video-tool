@@ -85,7 +85,9 @@ while True:
             # in the 6 px margin only (outside the shaved body), a greenish pixel (Lab a* < 126) is the backdrop in his
             # shadow, not him: his edges are skin (a* > 135), cream knit (~128) or denim (b* low, a* ~128)
             band = keep & ~body.astype(bool)
-            out_a = np.where(keep & ~(band & (fl8[..., 1] < 126)), out_a, 0).astype(np.float32)
+            # ... and a very dark pixel there (Lab L* under 45 of 255) is the backdrop's shadowed fold: his edges are lit
+            # skin, knit and denim (L* well above 60 in this take)
+            out_a = np.where(keep & ~(band & ((fl8[..., 1] < 126) | (fl8[..., 0] < 45))), out_a, 0).astype(np.float32)
     g = f.astype(np.float32); edge = (key < 0.999) & (out_a > 0.002)
     cap = np.maximum(g[..., 0], g[..., 2]); g[..., 1] = np.where(edge, np.minimum(g[..., 1], cap), g[..., 1])
     wf.stdin.write(np.clip(g, 0, 255).astype(np.uint8).tobytes()); wa.stdin.write((out_a * 255).round().astype(np.uint8).tobytes())
