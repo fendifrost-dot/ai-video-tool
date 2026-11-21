@@ -7,11 +7,15 @@ original scaled to 1080x1920, the dressed 1080 is body_only_swap.py's output for
 dressed real-him v3 `21b9b341`, changed area 4.3 % of the frame). Lane B of docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md."""
 import sys, subprocess, numpy as np, cv2
 orig4k, orig1080, dressed1080, out = sys.argv[1:5]
-W4,H4,W1,H1=2160,3840,1080,1920
+def probe(p):
+    import json as _j
+    o=_j.loads(subprocess.run(["ffprobe","-v","error","-select_streams","v:0","-show_entries","stream=width,height,r_frame_rate","-of","json",p],capture_output=True,text=True).stdout)["streams"][0]
+    return int(o["width"]),int(o["height"]),o["r_frame_rate"]
+W4,H4,RATE=probe(orig4k); W1,H1,_=probe(orig1080)   # any orientation and rate (21 Nov 2026: the landscape 24 fps wall take); was 2160x3840 @ 59.94 only
 def reader(p,w,h):
     return subprocess.Popen(["ffmpeg","-loglevel","error","-i",p,"-f","rawvideo","-pix_fmt","rgb24","-"],stdout=subprocess.PIPE), w*h*3
 r4,n4=reader(orig4k,W4,H4); r1,n1=reader(orig1080,W1,H1); rd,nd=reader(dressed1080,W1,H1)
-vw=subprocess.Popen(["ffmpeg","-loglevel","error","-y","-f","rawvideo","-pix_fmt","rgb24","-s",f"{W4}x{H4}","-r","60000/1001","-i","-","-c:v","libx264","-crf","14","-pix_fmt","yuv420p","-color_primaries","bt709","-color_trc","bt709","-colorspace","bt709","-movflags","+faststart",out],stdin=subprocess.PIPE)
+vw=subprocess.Popen(["ffmpeg","-loglevel","error","-y","-f","rawvideo","-pix_fmt","rgb24","-s",f"{W4}x{H4}","-r",RATE,"-i","-","-c:v","libx264","-crf","14","-pix_fmt","yuv420p","-color_primaries","bt709","-color_trc","bt709","-colorspace","bt709","-movflags","+faststart",out],stdin=subprocess.PIPE)
 i=0; changed=[]
 while True:
     a=r4.stdout.read(n4); b=r1.stdout.read(n1); c=rd.stdout.read(nd)
