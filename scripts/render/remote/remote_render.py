@@ -304,6 +304,30 @@ def _run_lock_v2(args, env, call, confirm):
         f"{checked['tree']} tree files",
         flush=True,
     )
+    raw_rows = []
+    manifest, _note = lock_v2.peek_manifest(args.lock_dir)
+    manifest_files = (manifest or {}).get("files") or []
+    full_tree = (
+        len(manifest_files) >= 50
+        or os.path.abspath(args.lock_dir) == os.path.abspath(lock_v2.LOCK_DIR)
+    )
+    if full_tree:
+        try:
+            raw_rows = lock_v2.ensure_lock_raws(args.lock_dir)
+        except SystemExit as exc:
+            print(exc, file=sys.stderr)
+            return 2
+    base_rows = list(report.get("transfer_rows") or [])
+    report["transfer_argv"] = lock_v2.transfer_argvs(
+        report["instance_name"], report.get("project"), report["zone"], report["lock_dir"],
+        base_rows, report["env_file"],
+        os.path.dirname(os.path.abspath(plan.__file__)),
+        extra_files=raw_rows,
+    )
+    report["tree_rows"] = list(getattr(lock_v2.transfer_argvs, "tree_rows", []) or [])
+    report["side_files"] = {
+        lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list,
+    }
     env_file = report["env_file"]
     try:
         write_env_file(env_file, env, stage_from="local")

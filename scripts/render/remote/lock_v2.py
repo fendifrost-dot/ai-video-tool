@@ -44,6 +44,7 @@ GB_PER_V1E = 15.0
 DOC_INPUT_GB = 28.81
 DOC_INPUT_FILES = 374
 PULL_GB = 8.0
+LOCK_RAW_GB = 8.0
 FINAL_MEASURED_FRAMES = 232
 FINAL_MEASURED_SECONDS = 352.0
 # Planning allowances around the lock doc's measured stages. Not a second rate card.
@@ -230,6 +231,21 @@ def final_workers_for_cpu(vcpu, n_spans):
     return max(1, min(started, n_spans))
 
 
+def v1e_chunk_complete(chunk, directory=None):
+    """True when the mkv exists and the md5 log has one line per frame."""
+    directory = directory or V1E_DIR
+    mkv = os.path.join(directory, f"chunk_{chunk['sf0']}.mkv")
+    md5_path = os.path.join(directory, f"chunk_{chunk['sf0']}.md5")
+    if not os.path.isfile(mkv) or os.path.getsize(mkv) <= 0 or not os.path.isfile(md5_path):
+        return False
+    try:
+        with open(md5_path) as handle:
+            parsed = parse_md5_file(handle.read())
+    except (OSError, SystemExit):
+        return False
+    return len(parsed) == int(chunk["nf"])
+
+
 def v1e_chunk_table():
     rows = []
     for index in range(len(V1E_BOUNDARIES) - 1):
@@ -312,12 +328,14 @@ def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE, lock_repro=F
     final_started = final_workers_for_cpu(vcpu, len(spans))
     mbps = _transfer_mbps()
     transfer = plan.transfer_hours(input_gb, mbps)
+    raws = plan.transfer_hours(LOCK_RAW_GB, mbps)
     pull = plan.transfer_hours(PULL_GB, mbps)
     final_lo, final_hi, per_frame = final_hour_band(final_started)
     v1e_lo = plan.VERSE_NF * plan.SEC_LO / 3600.0 / started
     v1e_hi = plan.VERSE_NF * plan.SEC_HI / 3600.0 / started
     parts = {
         "transfer": (transfer, transfer),
+        "lock_raws": (raws, raws),
         "install": _hours_pair(INSTALL_MIN),
         "verify": _hours_pair(VERIFY_MIN),
         "lock_repro": _hours_pair(REPRO_MIN) if lock_repro else (0.0, 0.0),
@@ -363,6 +381,8 @@ def projection_text(proj):
         f"LOCK_v2 projection ({proj['machine']} on demand, not a live quote):",
         f"  transfer {proj['input_gb']:.2f} GB at {proj['transfer_mb_s']:.0f} MB/s "
         f"(margin under the measured ~53 MB/s): {parts['transfer'][0]:.2f} h",
+        f"  lock raws {LOCK_RAW_GB:.0f} GB to /tmp/claudia_lockrepro (pre-encode frames): "
+        f"{parts['lock_raws'][0]:.2f} h",
         "  install ffmpeg (ffv1, libx264, prores_ks) + numpy 2.5.5, scipy 1.18.1, opencv 5.1.x: "
         f"{_band(parts['install'])} h",
         f"  verify SHA256SUMS + manifest: {_band(parts['verify'])} h",
@@ -1145,6 +1165,15 @@ if [ -e "$INPUT_DEV" ]; then
   if ! mountpoint -q /workspace/partnership; then
     mount "$INPUT_DEV" /workspace/partnership
   fi
+  # v1e chunks and their state files survive a torn-down VM. final_render scratch stays on the boot disk.
+  mkdir -p /workspace/partnership/.avt-scratch/v1e /workspace/partnership/.avt-scratch/states
+  mkdir -p /var/avt/scratch/v1e /var/avt/scratch/states
+  if ! mountpoint -q /var/avt/scratch/v1e; then
+    mount --bind /workspace/partnership/.avt-scratch/v1e /var/avt/scratch/v1e
+  fi
+  if ! mountpoint -q /var/avt/scratch/states; then
+    mount --bind /workspace/partnership/.avt-scratch/states /var/avt/scratch/states
+  fi
 fi
 # After the mount. The launcher waits for this before it mkdir's /workspace.
 touch /tmp/avt-inputs-ready
@@ -1242,7 +1271,7 @@ def tree_transfer_rows(lock_dir):
 
 
 def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir,
-                   tree_files=(), copy_tree=True):
+                   tree_files=(), copy_tree=True, extra_files=()):
     """Copy the lock tree and the manifest. Unsafe names are staged, then moved.
 
     The lock tree is one scp per SHA256SUMS file, not ``scp --recurse``. A reused
@@ -1267,6 +1296,10 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     tree_rows = tree_transfer_rows(lock_dir) if copy_tree else []
     manifest_paths = {row.get("path") for row in manifest_files}
     tree_rows = [row for row in tree_rows if row["path"] not in manifest_paths]
+    for row in list(extra_files or []):
+        if row.get("path") and row.get("sha256"):
+            tree_rows.append(row)
+            parents.add(os.path.dirname(row["path"]))
     for row in tree_rows:
         parents.add(os.path.dirname(row["path"]))
     transfer_argvs.tree_rows = tree_rows
@@ -1582,7 +1615,7 @@ def _repro_argv(python, name):
     return [python, "-c", launch, REPRO_SCRIPT, name]
 
 
-def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=False):
+def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=False, skip_done=False):
     """Guest argv. Lock repros stay off unless requested.
 
     The frozen scripts are not rewritten. Assemble reads the sha-verified
@@ -1591,10 +1624,16 @@ def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=Fals
     lock_dir = lock_dir.rstrip("/")
     v1e_script = os.path.join(lock_dir, "scripts", "v1e_chunk_rgb.py")
     final_script = os.path.join(lock_dir, "scripts", "final_render.py")
-    chunks = v1e_chunk_table()
+    all_chunks = v1e_chunk_table()
+    chunks = []
+    for chunk in all_chunks:
+        if skip_done and v1e_chunk_complete(chunk):
+            print(f"skip-existing v1e chunk {chunk['sf0']}", flush=True)
+            continue
+        chunks.append(chunk)
     state_argv = [
         python, v1e_script, "--state_only", "--sf0", str(V1E_SF0), "--nf", str(plan.VERSE_NF),
-        "--state_at", state_at_arg(chunks), "--state_dir", STATE_DIR,
+        "--state_at", state_at_arg(all_chunks), "--state_dir", STATE_DIR,
         "--out", os.path.join(SCRATCH, "x.mkv"),
     ]
     chunk_argvs = []
@@ -1993,6 +2032,133 @@ def _on_stage_printer(timer, timing_file):
     return on_stage
 
 
+def _raw_is_ready(name, expected_sha):
+    repro_path = os.path.join(LOCKREPRO, name, "repro.json")
+    raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+    if not os.path.isfile(repro_path) or not os.path.isfile(raw_path) or os.path.getsize(raw_path) <= 0:
+        return False
+    try:
+        data = _load_json(repro_path)
+    except (OSError, json.JSONDecodeError):
+        return False
+    if data.get("identical") is not True or not data.get("pix_fmt"):
+        return False
+    digest = str(data.get("lock_sha256") or "").strip().lower()
+    if expected_sha and digest != expected_sha:
+        return False
+    return True
+
+
+def _normalize_repro_json(name):
+    """Point repro.json at the absolute raw the guest will read."""
+    repro_path = os.path.join(LOCKREPRO, name, "repro.json")
+    raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+    data = _load_json(repro_path)
+    data["raw"] = raw_path
+    _write_json(repro_path, data)
+    return data
+
+
+def _file_row(path):
+    return {
+        "path": path,
+        "sha256": plan.sha256_file(path),
+        "bytes": os.path.getsize(path),
+    }
+
+
+def _write_raw_sums(rows):
+    lines = []
+    for row in rows:
+        rel = os.path.relpath(row["path"], LOCKREPRO)
+        lines.append(f"{row['sha256']}  {rel}")
+    path = os.path.join(LOCKREPRO, "RAW_SHA256SUMS")
+    os.makedirs(LOCKREPRO, exist_ok=True)
+    with open(path, "w") as handle:
+        handle.write("\n".join(lines) + "\n")
+    return _file_row(path)
+
+
+def _default_repro(name):
+    env = os.environ.copy()
+    env["REPRO_ROOT"] = LOCKREPRO
+    return subprocess.run(
+        [sys.executable, REPRO_SCRIPT, name],
+        cwd=PARTNERSHIP,
+        env=env,
+        check=False,
+    )
+
+
+def _run_repros(names, parallel, run_one):
+    if not names:
+        return
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    workers = max(1, min(int(parallel), len(names)))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(run_one, name): name for name in names}
+        for future in as_completed(futures):
+            name = futures[future]
+            result = future.result()
+            code = getattr(result, "returncode", 1)
+            if code != 0:
+                raise SystemExit(f"lock raw {name} repro exited {code}")
+
+
+def ensure_lock_raws(lock_dir, names=None, parallel=3, run_one=None):
+    """Prepare /tmp/claudia_lockrepro/<name>/{frames_rgb24.raw,repro.json} on the launcher.
+
+    An existing repro.json with identical true and the parity lock_sha256 is reused.
+    Otherwise the box runs the repro, at most three at a time. The VM never rebuilds these.
+    """
+    names = list(names or LOCK_NAMES)
+    shas = load_lock_shas(lock_dir)
+    pending = []
+    ready = []
+    for name in names:
+        if _raw_is_ready(name, shas.get(name)):
+            print(f"lock raw {name}: reuse", flush=True)
+            ready.append(name)
+        else:
+            pending.append(name)
+    if pending:
+        print(f"lock raws: running {len(pending)} repros, {parallel} at a time", flush=True)
+        _run_repros(pending, parallel, run_one or _default_repro)
+    rows = []
+    for name in names:
+        if not _raw_is_ready(name, shas.get(name)):
+            raise SystemExit(f"lock raw {name} is not identical")
+        _normalize_repro_json(name)
+        rows.append(_file_row(os.path.join(LOCKREPRO, name, "frames_rgb24.raw")))
+        rows.append(_file_row(os.path.join(LOCKREPRO, name, "repro.json")))
+    rows.append(_write_raw_sums([row for row in rows if row["path"].endswith("frames_rgb24.raw")]))
+    print(f"lock raws: {len(names)} ready, {sum(row['bytes'] for row in rows)} bytes", flush=True)
+    return rows
+
+
+def verify_lock_raws(run):
+    """Guest check: the pushed raws match the launcher sha, and repro.json points at them."""
+    sums = os.path.join(LOCKREPRO, "RAW_SHA256SUMS")
+    if not os.path.isfile(sums):
+        return
+    result = run(["sha256sum", "-c", "RAW_SHA256SUMS"], cwd=LOCKREPRO)
+    if getattr(result, "returncode", 1) != 0:
+        detail = ((getattr(result, "stdout", "") or "") + (getattr(result, "stderr", "") or ""))[-2000:]
+        raise SystemExit("lock raw sha256sum -c failed\n" + detail)
+    for name in LOCK_NAMES:
+        path = os.path.join(LOCKREPRO, name, "repro.json")
+        if not os.path.isfile(path):
+            continue
+        data = _load_json(path)
+        raw = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+        if data.get("identical") is not True:
+            raise SystemExit(f"lock raw {name} identical is not true")
+        if data.get("raw") != raw:
+            raise SystemExit(f"lock raw {name} raw path is {data.get('raw')}, not {raw}")
+        if not data.get("pix_fmt"):
+            raise SystemExit(f"lock raw {name} repro.json has no pix_fmt")
+
+
 def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decoder=None, sleep=time.sleep):
     """Step 0 through step 5 on the machine that already has the files."""
     assert_stack_fn = assert_stack if assert_stack_fn is None else assert_stack_fn
@@ -2026,9 +2192,11 @@ def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decod
         print("frozen renders linked:", flush=True)
         for name, row in linked.items():
             print(f"  {name}: {row['source']}", flush=True)
+        verify_lock_raws(run)
         steps, envs = build_recipe(
             python, lock_dir, v1e_slots, final_slots, vcpu,
             lock_repro=bool(getattr(args, "lock_repro", False)),
+            skip_done=True,
         )
 
         def call_cmd(argv, env, cwd):
@@ -2431,13 +2599,18 @@ export GRADE_PARAMS="$LOCK/params/final_params_LOCK_v2.json"
 export TRANS_PARAMS="$GRADE_PARAMS"
 cd "$LOCK/scripts"
 /opt/avt-comp/bin/python -c 'import numpy, scipy, cv2; print("deps", numpy.__version__, scipy.__version__, cv2.__version__)'
-if [ -f /tmp/avt-rehearsal-chunks ]; then
-  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --grain 1 \
-    --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \
-    --lockrepro /tmp/claudia_lockrepro --tree /workspace/partnership --stills 0
-else
-  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final --help
+if [ ! -f /tmp/claudia_lockrepro/spins_T1/repro.json ]; then
+  echo AVT_RENDER_FAIL missing-spins-raw
+  exit 1
 fi
+if [ -f /tmp/claudia_lockrepro/RAW_SHA256SUMS ]; then
+  sha256sum -c /tmp/claudia_lockrepro/RAW_SHA256SUMS
+fi
+LOCK_BEGAN=$(date +%s)
+/opt/avt-comp/bin/python final_render.py chunks --range 124-127 --chunk 4 --grain 1 \
+  --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \
+  --lockrepro /tmp/claudia_lockrepro --tree /workspace/partnership --stills 0
+echo "AVT_STAGE lock_range $(( $(date +%s) - LOCK_BEGAN ))"
 SMOKE=/var/avt/scratch/final/rehearsal_chunk.mkv
 SMOKE_BEGAN=$(date +%s)
 ffmpeg -y -f lavfi -i testsrc=size=320x180:rate=24:duration=0.5 -c:v ffv1 "$SMOKE"
@@ -2600,6 +2773,15 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         print("refusing rehearsal: projected cost exceeds $1", file=sys.stderr)
         return 2
     lock_dir = (getattr(args, "lock_dir", "") or LOCK_DIR).rstrip("/")
+    manifest, _note = peek_manifest(lock_dir)
+    manifest_files = (manifest or {}).get("files") or []
+    raw_rows = []
+    if len(manifest_files) >= 50 or lock_dir == LOCK_DIR:
+        try:
+            raw_rows = ensure_lock_raws(lock_dir, names=["spins_T1"])
+        except SystemExit as exc:
+            print(exc, file=sys.stderr)
+            return 2
     rows, render_chunks = rehearsal_rows(lock_dir)
     if not rows:
         print(f"refusing rehearsal: {lock_dir} has no scripts, params, or small inputs", file=sys.stderr)
@@ -2665,7 +2847,7 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             handle.write("AVT_REMOTE_RENDER_CONFIRM=1\n")
         argvs = transfer_argvs(
             name, project, zone, lock_dir, rows, env_file,
-            os.path.dirname(plan.__file__), copy_tree=False,
+            os.path.dirname(plan.__file__), copy_tree=False, extra_files=raw_rows,
         )
         mode = os.path.join(out, "rehearsal-chunks")
         if render_chunks:
@@ -2680,6 +2862,7 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         mini = {
             "transfer_argv": argvs,
             "transfer_rows": rows,
+            "tree_rows": raw_rows,
             "instance_name": name,
             "project": project,
             "zone": zone,

@@ -458,6 +458,64 @@ def test_reused_disk_skips_matching_tree_sha_and_chmods_writable(tmp_path):
     assert copied == []
 
 
+def test_lock_raws_reuse_identical_and_v1e_skips_a_finished_chunk(tmp_path):
+    root = tmp_path / "claudia"
+    os.makedirs(root)
+    name = "vhs"
+    raw_dir = os.path.join(lock_v2.LOCKREPRO, name)
+    os.makedirs(raw_dir, exist_ok=True)
+    raw = os.path.join(raw_dir, "frames_rgb24.raw")
+    with open(raw, "wb") as handle:
+        handle.write(b"raw-frames")
+    digest = "d269656e" + "ab" * 28
+    digest = digest[:64]
+    repro = {
+        "name": name, "identical": True, "pix_fmt": "rgb24",
+        "lock_sha256": digest, "raw": "relative.raw",
+    }
+    with open(os.path.join(raw_dir, "repro.json"), "w") as handle:
+        json.dump(repro, handle)
+    calls = []
+
+    def run_one(lock_name):
+        calls.append(lock_name)
+        return lock_v2._RunResult(0)
+
+    rows = lock_v2.ensure_lock_raws(str(tmp_path), names=[name], run_one=run_one)
+    assert calls == []
+    saved = json.load(open(os.path.join(raw_dir, "repro.json")))
+    assert saved["raw"] == raw
+    assert any(row["path"] == raw for row in rows)
+    os.remove(os.path.join(raw_dir, "repro.json"))
+
+    def run_fresh(lock_name):
+        calls.append(lock_name)
+        with open(os.path.join(raw_dir, "repro.json"), "w") as handle:
+            json.dump({
+                "name": lock_name, "identical": True, "pix_fmt": "rgb24",
+                "lock_sha256": digest, "raw": raw,
+            }, handle)
+        return lock_v2._RunResult(0)
+
+    calls.clear()
+    lock_v2.ensure_lock_raws(str(tmp_path), names=[name], run_one=run_fresh)
+    assert calls == [name]
+    chunk_dir = tmp_path / "v1e"
+    chunk_dir.mkdir()
+    chunk = {"sf0": 3070, "nf": 2, "state_load": None}
+    mkv = chunk_dir / "chunk_3070.mkv"
+    md5 = chunk_dir / "chunk_3070.md5"
+    mkv.write_bytes(b"mkv")
+    one = "a" * 32
+    md5.write_text(one + "\n" + ("b" * 32) + "\n")
+    assert lock_v2.v1e_chunk_complete(chunk, str(chunk_dir))
+    md5.write_text(one + "\n")
+    assert not lock_v2.v1e_chunk_complete(chunk, str(chunk_dir))
+    script = lock_v2.startup_script(lock_v2.LOCK_DIR, 30)
+    assert "mount --bind /workspace/partnership/.avt-scratch/v1e /var/avt/scratch/v1e" in script
+    assert "mount --bind /workspace/partnership/.avt-scratch/states /var/avt/scratch/states" in script
+
+
 def test_runner_source_does_not_hardcode_a_content_hash():
     text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
     assert re.search(r"\b[0-9a-f]{64}\b", text) is None
@@ -996,7 +1054,8 @@ def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
     assert lock_v2.guest_setup_shell().strip() in lock_v2.startup_script(lock_v2.LOCK_DIR, 10)
     assert script.index("/tmp/avt-go") < script.index("sha256sum -c")
     assert "import final_render" not in script
-    assert "final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final" in script
+    assert "final_render.py chunks --range 124-127 --chunk 4" in script
+    assert "/tmp/claudia_lockrepro/spins_T1/repro.json" in script
     assert "/tmp/avt-startup-failed" in script
     assert "AVT_RENDER_FAIL startup-$code" in script
     assert "publish" not in script
