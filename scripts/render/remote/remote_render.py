@@ -325,6 +325,8 @@ def _run_lock_v2(args, env, call, confirm):
         extra_files=raw_rows,
     )
     report["tree_rows"] = list(getattr(lock_v2.transfer_argvs, "tree_rows", []) or [])
+    lock_v2.require_raws_queued(report["transfer_argv"], raw_rows)
+    lock_v2.log_lock_raw_shipments(raw_rows, "transfer")
     report["side_files"] = {
         lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list,
     }

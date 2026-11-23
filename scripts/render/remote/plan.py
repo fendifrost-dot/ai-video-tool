@@ -2372,6 +2372,21 @@ def prepare_prefix_length(argvs):
     return end
 
 
+def _note_lock_raw(plan, path, action):
+    """Name, size, and sha of a pre-encode raw as the transfer sends or skips it."""
+    if not path or not str(path).endswith("/frames_rgb24.raw"):
+        return
+    name = os.path.basename(os.path.dirname(path))
+    row = next(
+        (item for item in (plan.get("tree_rows") or []) if item.get("path") == path),
+        {},
+    )
+    print(
+        f"lock raw ship {action} {name} bytes={row.get('bytes')} sha256={row.get('sha256')}",
+        flush=True,
+    )
+
+
 def _push_local(plan, call, sleep):
     """Copy the lock tree. A same-size file already on the guest is not sent again.
 
@@ -2430,6 +2445,7 @@ def _push_local(plan, call, sleep):
             if [argv] != without_existing([argv], present):
                 if final:
                     skipped_finals.add(final)
+                    _note_lock_raw(plan, final, "skip")
                 continue
             kept.append((index, argv))
         body = kept
@@ -2443,6 +2459,9 @@ def _push_local(plan, call, sleep):
             continue
         result = call(argv)
         if getattr(result, "returncode", 1) == 0:
+            sent = final_of(argv)
+            if sent:
+                _note_lock_raw(plan, sent, "sent")
             continue
         if preflight_refused(result):
             _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
@@ -2466,6 +2485,8 @@ def _push_local(plan, call, sleep):
         result = call(argv)
         if getattr(result, "returncode", 1) != 0:
             _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
+        if path:
+            _note_lock_raw(plan, path, "sent")
     moves = []
     for _index, argv in deferred_mv:
         moves.extend(mv_pairs_from_script(remote_script(argv[-1])))

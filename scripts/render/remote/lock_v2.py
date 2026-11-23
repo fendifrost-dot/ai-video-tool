@@ -2102,15 +2102,42 @@ def _file_row(path):
 
 
 def _write_raw_sums(rows):
+    """Absolute paths. sha256sum -c resolves a relative name from the cwd, and the guest cwd is the lock scripts directory."""
     lines = []
     for row in rows:
-        rel = os.path.relpath(row["path"], LOCKREPRO)
-        lines.append(f"{row['sha256']}  {rel}")
+        path = row["path"]
+        if not os.path.isabs(path):
+            raise SystemExit(f"lock raw checksum path is not absolute: {path}")
+        lines.append(f"{row['sha256']}  {path}")
     path = os.path.join(LOCKREPRO, "RAW_SHA256SUMS")
     os.makedirs(LOCKREPRO, exist_ok=True)
     with open(path, "w") as handle:
         handle.write("\n".join(lines) + "\n")
     return _file_row(path)
+
+
+def log_lock_raw_shipments(rows, action="plan"):
+    """One line per pre-encode raw: name, size, sha. Rehearsal and the full run both call this."""
+    for row in rows:
+        path = row.get("path") or ""
+        if not path.endswith("/frames_rgb24.raw"):
+            continue
+        name = os.path.basename(os.path.dirname(path))
+        print(
+            f"lock raw ship {action} {name} bytes={row.get('bytes')} sha256={row.get('sha256')}",
+            flush=True,
+        )
+
+
+def require_raws_queued(argvs, rows):
+    """The scp list must name every raw. A mkdir of the parent is not a copy."""
+    blob = "\n".join(" ".join(str(part) for part in argv) for argv in argvs)
+    missing = [
+        row["path"] for row in rows
+        if str(row.get("path") or "").endswith("/frames_rgb24.raw") and row["path"] not in blob
+    ]
+    if missing:
+        raise SystemExit("lock raw missing from the transfer: " + ", ".join(missing))
 
 
 def _default_repro(name):
@@ -2178,6 +2205,7 @@ def ensure_lock_raws(lock_dir, names=None, parallel=3, run_one=None):
     for row in rows:
         if not str(row["path"]).startswith(LOCKREPRO + os.sep):
             raise SystemExit(f"lock raw escaped /tmp: {row['path']}")
+    log_lock_raw_shipments(rows, "plan")
     print(f"lock raws: {len(names)} ready, {sum(row['bytes'] for row in rows)} bytes", flush=True)
     return rows
 
@@ -2187,7 +2215,7 @@ def verify_lock_raws(run):
     sums = os.path.join(LOCKREPRO, "RAW_SHA256SUMS")
     if not os.path.isfile(sums):
         return
-    result = run(["sha256sum", "-c", "RAW_SHA256SUMS"], cwd=LOCKREPRO)
+    result = run(["sha256sum", "-c", sums])
     if getattr(result, "returncode", 1) != 0:
         detail = ((getattr(result, "stdout", "") or "") + (getattr(result, "stderr", "") or ""))[-2000:]
         raise SystemExit("lock raw sha256sum -c failed\n" + detail)
@@ -2645,6 +2673,10 @@ export GRADE_PARAMS="$LOCK/params/final_params_LOCK_v2.json"
 export TRANS_PARAMS="$GRADE_PARAMS"
 cd "$LOCK/scripts"
 /opt/avt-comp/bin/python -c 'import numpy, scipy, cv2; print("deps", numpy.__version__, scipy.__version__, cv2.__version__)'
+if [ ! -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw ]; then
+  echo AVT_RENDER_FAIL missing-spins-raw
+  exit 1
+fi
 if [ ! -f /tmp/claudia_lockrepro/spins_T1/repro.json ]; then
   echo AVT_RENDER_FAIL missing-spins-raw
   exit 1
@@ -2895,6 +2927,8 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             name, project, zone, lock_dir, rows, env_file,
             os.path.dirname(plan.__file__), copy_tree=False, extra_files=raw_rows,
         )
+        require_raws_queued(argvs, raw_rows)
+        log_lock_raw_shipments(raw_rows, "transfer")
         mode = os.path.join(out, "rehearsal-chunks")
         if render_chunks:
             with open(mode, "w") as handle:

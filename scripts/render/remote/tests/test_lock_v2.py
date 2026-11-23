@@ -548,6 +548,77 @@ def test_lock_raws_reuse_identical_and_v1e_skips_a_finished_chunk(tmp_path):
     assert "mount --bind /workspace/partnership/.avt-scratch/states /var/avt/scratch/states" in script
 
 
+def test_rehearsal_transfer_ships_the_raw_and_verify_uses_absolute_paths(tmp_path, capsys):
+    pix = {
+        "vhs": "rgb24", "salad": "rgb24", "spins_T1": "rgb24",
+        "spins_T2T3": "rgb24", "spins_T4": "rgb24",
+        "warcry": "bgr24", "montage": "yuv420p",
+    }
+    digest = "ab" * 32
+
+    def plant(name):
+        folder = os.path.join(lock_v2.LOCKREPRO, name)
+        os.makedirs(folder, exist_ok=True)
+        raw = os.path.join(folder, "frames_rgb24.raw")
+        with open(raw, "wb") as handle:
+            handle.write(b"raw-" + name.encode())
+        with open(os.path.join(folder, "repro.json"), "w") as handle:
+            json.dump({
+                "name": name, "identical": True, "pix_fmt": pix[name],
+                "lock_sha256": digest, "raw": raw,
+            }, handle)
+        return raw
+
+    raws = {name: plant(name) for name in lock_v2.LOCK_NAMES}
+
+    def refuse(name):
+        raise AssertionError(f"rebuilt {name}")
+
+    full_rows = lock_v2.ensure_lock_raws(str(tmp_path), run_one=refuse)
+    full_argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(tmp_path), [], str(tmp_path / "env"),
+        os.path.dirname(lock_v2.__file__), extra_files=full_rows,
+    )
+    lock_v2.require_raws_queued(full_argvs, full_rows)
+    full_blob = "\n".join(" ".join(argv) for argv in full_argvs)
+    for name, raw in raws.items():
+        assert raw in full_blob
+
+    rehearsal_rows = lock_v2.ensure_lock_raws(
+        str(tmp_path), names=["spins_T1"], run_one=refuse,
+    )
+    rehearsal_argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(tmp_path), [], str(tmp_path / "env"),
+        os.path.dirname(lock_v2.__file__), copy_tree=False, extra_files=rehearsal_rows,
+    )
+    lock_v2.require_raws_queued(rehearsal_argvs, rehearsal_rows)
+    rehearsal_blob = "\n".join(" ".join(argv) for argv in rehearsal_argvs)
+    assert raws["spins_T1"] in rehearsal_blob
+    sums = os.path.join(lock_v2.LOCKREPRO, "RAW_SHA256SUMS")
+    listed = []
+    for line in open(sums):
+        hashed, path = line.split(None, 1)
+        path = path.strip()
+        assert os.path.isabs(path)
+        assert path.startswith("/tmp/claudia_lockrepro/")
+        listed.append(path)
+    assert raws["spins_T1"] in listed
+    out = capsys.readouterr().out
+    assert "lock raw ship plan spins_T1" in out
+    assert f"bytes={os.path.getsize(raws['spins_T1'])}" in out
+    previous = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        lock_v2.verify_lock_raws(
+            lambda argv, cwd=None: subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+        )
+    finally:
+        os.chdir(previous)
+    script = lock_v2.rehearsal_startup(False)
+    assert "test -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw" in script or \
+        "[ ! -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw ]" in script
+
+
 def test_runner_source_does_not_hardcode_a_content_hash():
     text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
     assert re.search(r"\b[0-9a-f]{64}\b", text) is None
