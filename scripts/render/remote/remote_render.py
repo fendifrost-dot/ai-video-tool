@@ -4,13 +4,15 @@
 Default is a dry-run: it prints the plan, the cost ceiling, and the commands.
 It does not call gcloud, AWS, or Homebrew. ``--execute`` spends money on GCP
 only when ``AVT_REMOTE_RENDER_CONFIRM=1`` is set, and the VM is deleted on the
-way out. See docs/REMOTE_RENDER.md.
+way out. ``--stage-from local`` copies the lock tree with ``gcloud compute scp``
+and does not read AVT credentials. See docs/REMOTE_RENDER.md.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -37,7 +39,20 @@ def parse_args(argv):
     parser.add_argument("--nf", type=int, default=plan.VERSE_NF)
     parser.add_argument("--max-hours", type=float, default=8)
     parser.add_argument("--instance-name", default="avt-render-partnership")
-    parser.add_argument("--lock", default="", help="LOCK_v1e.json. Required before a GCP execute.")
+    parser.add_argument(
+        "--lock", default="",
+        help="Path to the lock JSON. Any file name. Required for --stage-from local and before a GCP execute.",
+    )
+    parser.add_argument(
+        "--stage-from", choices=("avt", "local"), default="avt",
+        help="avt reads project-clips. local copies the lock tree from this machine with gcloud compute scp and needs no AVT credentials.",
+    )
+    parser.add_argument(
+        "--cost-ceiling", type=float, default=plan.DEFAULT_COST_CEILING_USD,
+        help="Abort before create, or delete the VM, if projected or elapsed on-demand cost would exceed this many dollars. Default 5.",
+    )
+    parser.add_argument("--output", default="final.mp4", help="Where local stage pulls final.mp4.")
+    parser.add_argument("--timing-file", default="", help="Guest stage record. The summary is also written beside --output.")
     parser.add_argument("--work-root", default=plan.WORK_ROOT)
     parser.add_argument("--parity-dir", default="", help="Directory of Linux full_sfNNNN.png stills.")
     parser.add_argument("--run-dir", default="", help="Where chunks are written. Default: <work-root>/remote_run")
@@ -59,12 +74,16 @@ def _subprocess_call(argv):
     return completed
 
 
-def write_env_file(path, env):
-    """Mode 0600. Callers delete the file. The contents are not logged."""
+def write_env_file(path, env, stage_from="avt"):
+    """Mode 0600. Callers delete the file. The contents are not logged.
+
+    Local stage sends the confirm flag only. AVT tokens stay on the launcher.
+    """
     lines = ["AVT_REMOTE_RENDER_CONFIRM=1"]
-    for key in ("AVT_ACCESS_TOKEN", "AVT_ANON_KEY", "AVT_BATCH_SECRET"):
-        if env.get(key):
-            lines.append(f"{key}={env[key]}")
+    if stage_from != "local":
+        for key in ("AVT_ACCESS_TOKEN", "AVT_ANON_KEY", "AVT_BATCH_SECRET"):
+            if env.get(key):
+                lines.append(f"{key}={env[key]}")
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as handle:
         handle.write("\n".join(lines) + "\n")
@@ -107,14 +126,18 @@ def run_guest(args, env):
         )
     if not args.parity_dir:
         raise SystemExit("guest render needs --parity-dir of Linux full_sfNNNN.png stills")
-    token = env.get("AVT_ACCESS_TOKEN")
+    stage_local = args.stage_from == "local"
+    # A token in the guest environment must not fetch or upload on a local stage.
+    token = None if stage_local else env.get("AVT_ACCESS_TOKEN")
 
     def fetch_to(bucket, object_path, dest):
         plan.fetch_storage_object(token, env.get("AVT_ANON_KEY", ""), bucket, object_path, dest)
 
     if not args.lock:
+        if stage_local:
+            raise SystemExit("guest local stage needs --lock")
         if not token:
-            raise SystemExit("guest render needs --lock LOCK_v1e.json, or AVT_ACCESS_TOKEN to fetch the lock bundle")
+            raise SystemExit("guest render needs --lock, or AVT_ACCESS_TOKEN to fetch the lock bundle")
         bundle = os.path.join(args.work_root, ".avt-archives", "LOCK_v1e_bundle.tgz")
         os.makedirs(os.path.dirname(bundle), exist_ok=True)
         if not os.path.isfile(bundle):
@@ -126,6 +149,8 @@ def run_guest(args, env):
     checked = plan.verify_tree(summary["files"], args.work_root)
     if not checked["ok"]:
         raise SystemExit("sha256 check failed:\n" + "\n".join(checked["errors"][:20]))
+    where = "guest" if stage_local else "work tree"
+    print(f"sha256 ok on the {where}: {checked['checked']} files", flush=True)
     run_dir = args.run_dir or os.path.join(args.work_root, "remote_run")
     os.makedirs(os.path.join(run_dir, "parity", "stills"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "states"), exist_ok=True)
@@ -151,8 +176,19 @@ def run_guest(args, env):
         )
         return plan.parity_verdict(count, "mac" if args.backend == "mac" else "linux")
 
+    timer = plan.StageTimer()
+
+    def on_stage(name, phase):
+        if phase == "begin":
+            timer.begin(name)
+        elif phase == "end":
+            seconds = timer.end(name)
+            print(f"AVT_STAGE {name} {seconds:.3f}", flush=True)
+
     run_dir_final = os.path.join(run_dir, "final.mp4")
-    plan.run_steps(built["steps"], call, compare)
+    plan.run_steps(built["steps"], call, compare, on_stage=on_stage)
+    if args.timing_file:
+        plan.write_guest_timing(args.timing_file, timer.seconds)
     if token and os.path.isfile(run_dir_final):
         from urllib.request import urlopen
         with open(run_dir_final, "rb") as handle:
@@ -181,6 +217,9 @@ def main(argv=None, env=None, call=None):
     argv = sys.argv[1:] if argv is None else argv
     env = os.environ if env is None else env
     args = parse_args(argv)
+    if not math.isfinite(args.cost_ceiling) or args.cost_ceiling < 0:
+        print("refusing: --cost-ceiling must be a non-negative number of dollars", file=sys.stderr)
+        return 2
     confirm = bool(args.execute or args.guest) and env.get("AVT_REMOTE_RENDER_CONFIRM") == "1"
     if (args.execute or args.guest) and not confirm:
         print("refusing: set AVT_REMOTE_RENDER_CONFIRM=1 to run. A dry-run is the default and spends nothing.", file=sys.stderr)
@@ -191,6 +230,9 @@ def main(argv=None, env=None, call=None):
         if sys.platform != "darwin" or os.uname().machine != "arm64":
             print("the mac backend runs only on macOS arm64 (Apple Silicon Mac Studio).", file=sys.stderr)
             return 2
+    if args.lock and not os.path.isfile(args.lock):
+        print(f"refusing: --lock is not a file: {args.lock}", file=sys.stderr)
+        return 2
     lock_summary = load_lock(args.lock) if args.lock else None
     env_file = args.env_file or "/tmp/avt-env"
     ram = args.ram_gb
@@ -201,12 +243,14 @@ def main(argv=None, env=None, call=None):
         spot=args.spot, zone=args.zone, max_hours=args.max_hours,
         instance_name=args.instance_name, lock_summary=lock_summary,
         confirm=confirm, parity_dir=args.parity_dir, env_file=env_file,
+        stage_from=args.stage_from, cost_ceiling=args.cost_ceiling, output=args.output,
+        lock_path=args.lock, source_root=args.work_root, timing_path=args.timing_file,
     )
     if args.machine_type != "c4-standard-16" and args.backend == "gcp":
         report["machine"] = args.machine_type
         report["create_argv"] = plan.gcp_create_argv(
             args.instance_name, report["project"], args.zone, machine=args.machine_type,
-            spot=args.spot, max_hours=args.max_hours,
+            spot=args.spot, max_hours=report["capped_hours"],
         )
     if not confirm or args.dry_run:
         sys.stdout.write(plan.format_report(report))
@@ -222,7 +266,7 @@ def main(argv=None, env=None, call=None):
             return 2
     if args.backend == "gcp":
         try:
-            write_env_file(env_file, env)
+            write_env_file(env_file, env, stage_from=args.stage_from)
             if call is None:
                 call = _subprocess_call
             plan.execute_gcp(report, call)
