@@ -13,7 +13,9 @@ import hashlib
 import json
 import math
 import os
+import re
 import shlex
+import signal
 import sys
 import tarfile
 import tempfile
@@ -800,6 +802,9 @@ STAGE_LOCK = "/tmp/avt-stage/lock.json"
 STAGE_PARITY = "/tmp/avt-stage/parity"
 PROBE_PATH = "/workspace/partnership/.avt-write-probe"
 PROBE_BODY = "avt-write-probe"
+# Touched by the guest only after the input disk is mounted, or immediately when
+# this boot has no input disk. The launcher must not mkdir /workspace before it.
+INPUTS_READY = "/tmp/avt-inputs-ready"
 
 
 def _under(path, root):
@@ -829,6 +834,33 @@ def _fail_line(message):
     return f" || fail {shlex.quote(message)}"
 
 
+def _chown_login_user(roots):
+    """chown the login-user trees only. Never a home directory, /etc, or a symlink.
+
+    ``chown -RP`` does not follow a symlink out of the tree into ``~/.ssh`` or sshd's files.
+    """
+    lines = []
+    for root in roots:
+        if root not in LOGIN_USER_ROOTS:
+            raise ValueError(f"refusing to chown {root}")
+        quoted = shlex.quote(root)
+        lines.append(
+            f"case {quoted} in\n"
+            "  /workspace|/tmp/avt-remote|/tmp/claudia_lockrepro|/tmp/avt-stage) ;;\n"
+            f"  *) fail {shlex.quote('refusing to chown ' + root)} ;;\n"
+            "esac"
+        )
+        lines.append(
+            f"[ ! -L {quoted} ]" + _fail_line(f"refusing to chown symlink {root}")
+        )
+    quoted = " ".join(shlex.quote(path) for path in roots)
+    lines.append(
+        f'sudo chown -RP "$(id -un)":"$(id -gn)" -- {quoted}'
+        + _fail_line("sudo chown failed")
+    )
+    return "\n".join(lines)
+
+
 def prepare_tree_script(dirs, probe="workspace"):
     """Create parent dirs as root, then hand the login-user trees to that user.
 
@@ -849,16 +881,25 @@ def prepare_tree_script(dirs, probe="workspace"):
         'fail() { echo "AVT_PREFLIGHT_FAIL: $*" >&2; exit 1; }',
         'sudo -n true || fail "sudo -n was refused; the login user cannot create /workspace"',
     ]
+    if probe == "workspace":
+        # The root startup mounts the input disk, then touches this file.
+        # mkdir before that lands on the boot disk and the mount hides it.
+        lines.extend([
+            f"ready={shlex.quote(INPUTS_READY)}",
+            "deadline=$(( $(date +%s) + 600 ))",
+            'while [ ! -f "$ready" ]; do',
+            '  if [ "$(date +%s)" -ge "$deadline" ]; then',
+            '    fail "input disk was not ready; refusing to mkdir /workspace before the mount"',
+            "  fi",
+            "  sleep 2",
+            "done",
+        ])
     if user:
         quoted = " ".join(shlex.quote(path) for path in user)
         lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir failed"))
         roots = login_user_roots(user)
         if roots:
-            quoted_roots = " ".join(shlex.quote(path) for path in roots)
-            lines.append(
-                f'sudo chown -R "$(id -un)":"$(id -gn)" -- {quoted_roots}'
-                + _fail_line("sudo chown failed")
-            )
+            lines.append(_chown_login_user(roots))
     if var:
         quoted = " ".join(shlex.quote(path) for path in var)
         lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir of /var/avt failed"))
@@ -870,12 +911,17 @@ def prepare_tree_script(dirs, probe="workspace"):
             "sudo chmod 700 -- /var/avt"
             + _fail_line("could not keep /var/avt mode 700")
         )
+    for path in user + var:
+        # sudo, because /var/avt is mode 700 and the login user cannot search it.
+        lines.append(
+            "sudo -n test -d " + shlex.quote(path)
+            + _fail_line(f"missing after mkdir: {path}")
+        )
     if probe == "workspace":
         lines.extend([
             "sudo mkdir -p -- /workspace/partnership"
             + _fail_line("sudo mkdir of /workspace/partnership failed"),
-            'sudo chown -R "$(id -un)":"$(id -gn)" -- /workspace'
-            + _fail_line("sudo chown of /workspace failed"),
+            _chown_login_user(["/workspace"]),
             f"probe={shlex.quote(PROBE_PATH)}",
             f"printf '%s\\n' {shlex.quote(PROBE_BODY)} > \"$probe\""
             + _fail_line("login user cannot write /workspace/partnership"),
@@ -961,12 +1007,14 @@ def staged_pull_path(remote_path):
     return PULL_STAGE + "/" + os.path.basename(remote_path.rstrip("/"))
 
 
-def publish_pull_script(paths):
+def publish_pull_script(paths, required=True):
     """Copy root-only outputs to ``/tmp/avt-pull`` for the login user.
 
-    The guest render runs as root. ``/var/avt`` is mode 700, so scp as the
-    login user cannot read it. A workspace file the guest created as root may
-    also be mode 600. This copy is what the pull scp reads.
+    The guest render runs as root. ``/var/avt`` is mode 700, so a login-user
+    ``[ -e ]`` is false for a file that is there, and the copy was skipped.
+    Existence is ``sudo test``. A required path that is missing fails the
+    script after every path has been attempted, so the scp is not pointed at
+    a directory that was never created.
     """
     lines = [
         "set -euo pipefail",
@@ -974,13 +1022,14 @@ def publish_pull_script(paths):
         'sudo -n true || fail "sudo -n was refused while publishing outputs for pull-back"',
         "sudo rm -rf -- /tmp/avt-pull" + _fail_line("could not clear /tmp/avt-pull"),
         "sudo mkdir -p -- /tmp/avt-pull" + _fail_line("could not create /tmp/avt-pull"),
+        "missing=0",
     ]
     for path in paths:
         dest = staged_pull_path(path)
         parent = os.path.dirname(dest) or "/"
         src_q = shlex.quote(path)
         dest_q = shlex.quote(dest)
-        lines.append(f"if [ -e {src_q} ]; then")
+        lines.append(f"if sudo test -e {src_q}; then")
         lines.append(
             f"  sudo mkdir -p -- {shlex.quote(parent)}"
             + _fail_line(f"could not create {parent}")
@@ -991,20 +1040,30 @@ def publish_pull_script(paths):
         )
         lines.append("else")
         lines.append(f"  echo {shlex.quote('AVT_PULL_MISSING ' + path)} >&2")
+        lines.append("  missing=1")
         lines.append("fi")
     lines.extend([
         'sudo chown -R "$(id -un)":"$(id -gn)" -- /tmp/avt-pull'
         + _fail_line("could not chown /tmp/avt-pull to the login user"),
         "sudo chmod -R a+rX -- /tmp/avt-pull"
         + _fail_line("could not make /tmp/avt-pull readable"),
-        "echo AVT_PULL_PUBLISHED",
     ])
+    if required:
+        lines.extend([
+            'if [ "$missing" -ne 0 ]; then',
+            '  fail "required output was not published"',
+            "fi",
+        ])
+    lines.append("echo AVT_PULL_PUBLISHED")
     return "\n".join(lines) + "\n"
 
 
 def gcp_ssh_argv(name, project, zone, command):
+    # One connection attempt. A refused port must return, not sit in gcloud's own retries.
     return [
         "gcloud", "compute", "ssh", "--quiet",
+        "--ssh-flag=-oConnectTimeout=15",
+        "--ssh-flag=-oConnectionAttempts=1",
         "--project", project or "GCP_PROJECT",
         "--zone", zone,
         name,
@@ -1012,29 +1071,132 @@ def gcp_ssh_argv(name, project, zone, command):
     ]
 
 
-def scp_spec(name, path):
-    """``instance:word`` for gcloud scp. ``word`` is one remote-shell word.
+# OpenSSH 10 scp speaks SFTP and does not shell-parse the remote path.
+# A quote character in the target becomes a literal character in the filename.
+INCOMING_ROOT = "/workspace/.avt-incoming"
+_UNSAFE_SFTP = set("\"'`& \t\n*?[]{}|\\;<>():")
+_SCP_FINAL = {}
 
-    gcloud forwards the text after the colon into the remote ``scp -t`` or
-    ``scp -f`` command. A space or ``&`` in that text is parsed by the remote
-    shell. ``shlex.quote`` leaves a safe path unchanged and quotes the rest,
-    so the absolute path that lands on the guest is the one we asked for.
+
+def path_needs_staging(path):
+    """True when the path must not be an SFTP target.
+
+    Spaces, a second space, ``&``, quotes, apostrophes, and colons are staged
+    under an ASCII name and moved with a shell ``mv`` after the copy.
     """
-    return f"{name}:{shlex.quote(path)}"
+    if not isinstance(path, str) or not path.startswith("/") or path.startswith("//"):
+        return True
+    if any(char in _UNSAFE_SFTP for char in path):
+        return True
+    return False
+
+
+def tag_final(argv, final):
+    """Remember the real guest path of an scp whose target may be a temp name."""
+    _SCP_FINAL[tuple(argv)] = final
+    return argv
+
+
+def final_of(argv):
+    """Real guest path for an scp argv, or None when it was not tagged."""
+    if not argv:
+        return None
+    return _SCP_FINAL.get(tuple(argv))
+
+
+def scp_spec(name, path):
+    """``instance:path`` for SFTP. The path is literal. No shell quotes.
+
+    Callers stage an unsafe path under ``INCOMING_ROOT`` first. A quote in
+    this string would be created on the guest as part of the filename.
+    """
+    if path_needs_staging(path) or "'" in path or '"' in path:
+        raise ValueError(f"refusing an SFTP target that is not a plain path: {path}")
+    return f"{name}:{path}"
 
 
 def scp_remote_path(spec):
-    """Absolute path encoded in an ``instance:word`` scp argument, or None."""
+    """Literal absolute path after the colon, or None.
+
+    Quote characters are rejected. SFTP would treat them as part of the name,
+    and ``shlex`` would hide that.
+    """
     host, sep, word = (spec or "").partition(":")
     if not sep or not host or "/" in host:
         return None
-    try:
-        parts = shlex.split(word)
-    except ValueError:
+    if not word.startswith("/") or "'" in word or '"' in word:
         return None
-    if len(parts) != 1 or not parts[0].startswith("/"):
-        return None
-    return parts[0]
+    return word
+
+
+def incoming_path(index):
+    return f"{INCOMING_ROOT}/{int(index):05d}"
+
+
+def stage_scp_argv(name, project, zone, local, final, index):
+    """One scp argv and, when the final path is unsafe, the ``(temp, final)`` move."""
+    if path_needs_staging(final):
+        temp = incoming_path(index)
+        argv = tag_final(
+            gcp_scp_argv(name, project, zone, local, scp_spec(name, temp)),
+            final,
+        )
+        return argv, (temp, final)
+    argv = tag_final(
+        gcp_scp_argv(name, project, zone, local, scp_spec(name, final)),
+        final,
+    )
+    return argv, None
+
+
+def incoming_mv_script(pairs):
+    """Shell moves. ``shlex.quote`` is correct here: ssh runs a shell, SFTP does not."""
+    lines = ["# AVT_INCOMING_MV", "set -euo pipefail"]
+    for src, dest in pairs:
+        lines.append(f"mv -- {shlex.quote(src)} {shlex.quote(dest)}")
+    lines.append("echo AVT_INCOMING_MOVED")
+    return "\n".join(lines) + "\n"
+
+
+def is_incoming_mv(argv):
+    if len(argv) < 4 or argv[2:4] != ["ssh", "--quiet"]:
+        return False
+    return remote_script(argv[-1]).startswith("# AVT_INCOMING_MV")
+
+
+def mv_pairs_from_script(script):
+    pairs = []
+    for line in (script or "").splitlines():
+        if not line.startswith("mv "):
+            continue
+        parts = shlex.split(line)
+        if len(parts) >= 3 and parts[0] == "mv":
+            pairs.append((parts[-2], parts[-1]))
+    return pairs
+
+
+def mv_batch_argvs(name, project, zone, moves):
+    """ssh ``mv`` batches that stay under ``ARGV_LIMIT``."""
+    if not moves:
+        return []
+    batches = []
+    current = []
+    for move in moves:
+        trial = current + [move]
+        argv = gcp_ssh_argv(
+            name, project, zone, wrap_remote_command(incoming_mv_script(trial)),
+        )
+        if current and not argv_within_limit(argv):
+            batches.append(current)
+            current = [move]
+        else:
+            current = trial
+    if current:
+        batches.append(current)
+    return [
+        gcp_ssh_argv(name, project, zone, wrap_remote_command(incoming_mv_script(batch)))
+        for batch in batches
+    ]
 
 
 def gcp_scp_argv(name, project, zone, source, dest, recurse=False):
@@ -1066,16 +1228,22 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
     """
     remote_root = WORK_ROOT
     rels = [row["rel"] for row in rows]
-    dirs = {remote_root, "/tmp/avt-remote", STAGE_DIR, "/workspace/partnership", VAR_AVT}
-    for rel in rels:
-        parent = os.path.dirname(rel)
-        if parent and parent != ".":
-            dirs.add(os.path.join(remote_root, parent))
-    argvs = pack_dir_batches(sorted(dirs), name, project, zone, probe="workspace")
-    for row in rows:
+    dirs = {remote_root, "/tmp/avt-remote", STAGE_DIR, "/workspace/partnership", VAR_AVT, INCOMING_ROOT}
+    moves = []
+    staged = []
+    for index, row in enumerate(rows):
         local = os.path.join(source_root, row["rel"])
         remote = os.path.join(remote_root, row["rel"])
-        argvs.append(gcp_scp_argv(name, project, zone, local, scp_spec(name, remote)))
+        parent = os.path.dirname(remote)
+        if parent and parent != ".":
+            dirs.add(parent)
+        scp_argv, move = stage_scp_argv(name, project, zone, local, remote, index)
+        staged.append(scp_argv)
+        if move:
+            moves.append(move)
+    argvs = pack_dir_batches(sorted(dirs), name, project, zone, probe="workspace")
+    argvs.extend(staged)
+    argvs.extend(mv_batch_argvs(name, project, zone, moves))
     if parity_dir:
         argvs.append(gcp_scp_argv(
             name, project, zone, parity_dir, scp_spec(name, STAGE_PARITY), recurse=True,
@@ -1229,6 +1397,11 @@ def format_timing(summary):
     if ceiling is not None:
         lines.append(f"ceiling: ${ceiling:.2f}")
     lines.append(f"result: {summary.get('result', 'done')}")
+    if summary.get("kept_disk"):
+        lines.append(
+            f"kept disk: {summary['kept_disk']} ${summary.get('kept_disk_usd_per_day', 0):.2f}/day "
+            "(the VM was deleted; this disk was not)"
+        )
     if summary.get("output"):
         lines.append(f"output: {summary['output']}")
     verified = summary.get("verified_files")
@@ -1285,7 +1458,7 @@ def _with_startup(argv, path):
 
 def gcp_create_argv(name, project, zone, machine="c4-standard-16", spot=False,
                     max_hours=8, disk_gb=200, startup_file="startup.sh",
-                    image_family="debian-13"):
+                    image_family="debian-13", data_disk=""):
     argv = [
         "gcloud", "compute", "instances", "create", name,
         "--project", project or "GCP_PROJECT",
@@ -1300,9 +1473,46 @@ def gcp_create_argv(name, project, zone, machine="c4-standard-16", spot=False,
         "--max-run-duration", duration_flag(max_hours),
         "--instance-termination-action", "DELETE",
     ]
+    if data_disk:
+        # auto-delete=no: a failed run keeps the inputs. The VM itself still deletes.
+        argv.extend([
+            "--disk",
+            f"name={data_disk},device-name={data_disk},mode=rw,auto-delete=no",
+        ])
     if spot:
         argv.extend(["--provisioning-model", "SPOT", "--maintenance-policy", "TERMINATE"])
     return argv
+
+
+def gcp_disk_describe_argv(name, project, zone):
+    return [
+        "gcloud", "compute", "disks", "describe", name,
+        "--project", project or "GCP_PROJECT",
+        "--zone", zone,
+        "--format=value(name)",
+    ]
+
+
+def gcp_disk_create_argv(name, project, zone, gb, disk_type="hyperdisk-balanced"):
+    return [
+        "gcloud", "compute", "disks", "create", name,
+        "--project", project or "GCP_PROJECT",
+        "--zone", zone,
+        "--size", f"{int(gb)}GB",
+        "--type", disk_type,
+        # Baseline performance is free. Anything above it is billed.
+        "--provisioned-iops", "3000",
+        "--provisioned-throughput", "140",
+    ]
+
+
+def gcp_disk_delete_argv(name, project, zone):
+    return [
+        "gcloud", "compute", "disks", "delete", name,
+        "--project", project or "GCP_PROJECT",
+        "--zone", zone,
+        "--quiet",
+    ]
 
 
 def gcp_delete_argv(name, project, zone):
@@ -1436,6 +1646,8 @@ MAX_MINUTES={int(max_minutes)}
 mkdir -p /var/avt
 chmod 700 /var/avt
 chown root:root /var/avt
+touch /tmp/avt-inputs-ready
+chmod 644 /tmp/avt-inputs-ready
 cleanup() {{
   rm -f /tmp/avt-env /var/avt/env
   if [ -f /var/avt/done ]; then
@@ -1503,14 +1715,15 @@ def manifest_index(argv, rows, root=WORK_ROOT):
     """0-based lock-row index of an scp argv, or None when the argv is not a lock file."""
     if not rows or len(argv) < 3 or argv[2] != "scp":
         return None
-    path = None
-    for part in argv:
-        if ":" not in part:
-            continue
-        found = scp_remote_path(part)
-        if found:
-            path = found
-            break
+    path = final_of(argv)
+    if not path:
+        for part in argv:
+            if ":" not in part:
+                continue
+            found = scp_remote_path(part)
+            if found:
+                path = found
+                break
     if not path:
         return None
     prefix = root.rstrip("/") + "/"
@@ -1586,17 +1799,91 @@ def write_prepare_failure(output, text, output_is_dir=False):
     return path
 
 
-def format_create_failure(argv, result):
-    """argv plus the gcloud stderr/stdout of a failed instance create."""
+def format_gcloud_failure(label, argv, result):
+    """argv plus the stderr/stdout of one failed gcloud call."""
     code = getattr(result, "returncode", 1)
     lines = [
-        f"gcloud create failed ({code})",
+        f"gcloud {label} failed ({code})",
         "argv:",
         _argv_text(argv),
         "--- last output lines ---",
         _tail_text(_result_text(result), 50) or "(no stdout or stderr)",
     ]
     return "\n".join(lines) + "\n"
+
+
+def format_create_failure(argv, result):
+    """argv plus the gcloud stderr/stdout of a failed instance create."""
+    return format_gcloud_failure("create", argv, result)
+
+
+def logged_gcloud(call, argv, log_path, label):
+    """Run one gcloud argv. A failure is written to stdout and ``log_path``."""
+    try:
+        result = call(argv)
+    except OSError as exc:
+        result = type("CallResult", (), {})()
+        result.returncode = 1
+        result.stdout = ""
+        result.stderr = f"{exc.__class__.__name__}: {exc}"
+    if getattr(result, "returncode", 1) != 0:
+        text = format_gcloud_failure(label, argv, result)
+        sys.stdout.write(text)
+        sys.stderr.write(text)
+        if log_path:
+            try:
+                parent = os.path.dirname(log_path)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                with open(log_path, "a") as handle:
+                    handle.write(text)
+            except OSError as exc:
+                sys.stderr.write(f"could not write {log_path} ({exc})\n")
+    return result
+
+
+def _wheel_names(payload):
+    urls = payload.get("urls") or []
+    return [item.get("filename") or "" for item in urls]
+
+
+def wheel_supports_cpython313_manylinux_x86_64(filename):
+    """True for a cp313 wheel or an abi3 wheel pip can install on CPython 3.13."""
+    name = filename or ""
+    if "manylinux" not in name or "x86_64" not in name or not name.endswith(".whl"):
+        return False
+    return "cp313" in name or "abi3" in name
+
+
+def cpython313_wheel_gaps(fetch):
+    """Packages with no Debian 13 / CPython 3.13 x86_64 wheel.
+
+    ``fetch(name, version)`` returns the PyPI JSON. ``version`` None means the
+    latest release. opencv 5.1 publishes abi3 wheels, which install on 3.13.
+    """
+    gaps = []
+    notes = []
+    for package, version in (("numpy", "2.5.5"), ("scipy", "1.18.1")):
+        payload = fetch(package, version)
+        names = _wheel_names(payload)
+        if any(wheel_supports_cpython313_manylinux_x86_64(name) and "cp313" in name for name in names):
+            notes.append(f"{package}=={version} cp313 manylinux x86_64")
+        else:
+            gaps.append(f"{package}=={version}")
+    payload = fetch("opencv-python-headless", None)
+    releases = payload.get("releases") or {}
+    found = None
+    for version in releases:
+        if not str(version).startswith("5.1."):
+            continue
+        names = [item.get("filename") or "" for item in releases[version]]
+        if any(wheel_supports_cpython313_manylinux_x86_64(name) for name in names):
+            found = version
+    if found:
+        notes.append(f"opencv-python-headless=={found} manylinux x86_64 (cp313 or abi3)")
+    else:
+        gaps.append("opencv-python-headless 5.1.x")
+    return gaps, notes
 
 
 def write_execute_log(output, text, output_is_dir=False):
@@ -1633,27 +1920,107 @@ def _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=Fals
     raise SystemExit(message)
 
 
+SSH_REFUSED_LIMIT = 4
+# sshd on a fresh Debian boot can refuse or time out for well over a minute.
+BOOT_SSH_SECONDS = 90
+
+
+def connection_refused(result):
+    return "Connection refused" in _result_text(result)
+
+
+def ssh_not_up(result):
+    """Boot-time ssh failures. These are not a sticky error for later stages."""
+    text = _result_text(result)
+    return "Connection refused" in text or "Connection timed out" in text
+
+
+def guest_startup_failed(text):
+    """True when the guest startup script has already exited in failure.
+
+    A finished guest (``AVT_REHEARSAL_DONE`` or ``AVT_RENDER_DONE``) wins.
+    ``--help`` text can contain ``arguments are required`` and must not count.
+    ``AVT_STARTUP_WAIT`` is not a failure.
+    """
+    text = text or ""
+    if "AVT_REHEARSAL_DONE" in text or "AVT_RENDER_DONE" in text:
+        return False
+    if "startup-script failed" in text:
+        return True
+    for line in text.splitlines():
+        if "AVT_RENDER_FAIL" in line:
+            return True
+        if re.search(r"(?<![A-Z_])AVT_STARTUP_FAIL(?![A-Z_])", line):
+            return True
+    return False
+
+
+def install_delete_on_signal(delete):
+    """On SIGINT or SIGTERM, delete the VM before the process leaves.
+
+    A signal handler runs; ``finally`` does not run for SIGTERM. ``delete`` no-ops
+    until the caller has a VM.
+    """
+    def handler(signum, _frame):
+        sys.stderr.write(f"signal {signum}; deleting the VM\n")
+        try:
+            delete()
+        except Exception as exc:
+            sys.stderr.write(f"delete after signal {signum} failed: {exc}\n")
+        raise SystemExit(128 + int(signum))
+
+    signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGINT, handler)
+    return handler
+
+
 def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=False,
-               rows=None, output=None, index_offset=0, output_is_dir=False):
-    """Run each argv. The first command is the one retried, so a multi-gigabyte scp is not repeated."""
+               rows=None, output=None, index_offset=0, output_is_dir=False, deadline=None,
+               clock=None):
+    """Run each argv. The first ssh waits out sshd's boot. Later refusals stop at four.
+
+    The boot counter belongs to that first command. A success clears it. It is
+    not a flag later stages read. A permission failure is not retried.
+    """
+    clock = clock or time.monotonic
     for index, argv in enumerate(argvs):
         absolute = index + index_offset
         tries = attempts if index == 0 or not retry_first_only else 1
         result = None
-        for attempt in range(tries):
+        attempt = 0
+        refused = 0
+        backoff = 2
+        started = clock()
+        while True:
+            if deadline is not None and clock() > deadline:
+                raise SystemExit("stage wall clock exceeded; deleting the instance")
             result = call(argv)
             if getattr(result, "returncode", 1) == 0:
                 break
-            # A permission failure will not change on the next try. A refused
-            # connection has no AVT_PREFLIGHT_FAIL marker, so that one still retries.
             if preflight_refused(result):
                 _raise_prepare_failure(
                     absolute, argv, result, rows, output, output_is_dir=output_is_dir,
                 )
-            if attempt + 1 < tries:
-                sleep(retry_seconds)
-        else:
-            _raise_prepare_failure(absolute, argv, result, rows, output, output_is_dir=output_is_dir)
+            attempt += 1
+            # The first command is the boot ssh. sshd may refuse for 60–90s.
+            if index == 0 and ssh_not_up(result) and (clock() - started) < BOOT_SSH_SECONDS:
+                sleep(min(5, backoff))
+                backoff = min(backoff * 2, 16)
+                continue
+            if connection_refused(result):
+                refused += 1
+                if refused >= SSH_REFUSED_LIMIT:
+                    _raise_prepare_failure(
+                        absolute, argv, result, rows, output, output_is_dir=output_is_dir,
+                    )
+                sleep(backoff)
+                backoff = min(backoff * 2, 16)
+                continue
+            if attempt >= tries:
+                _raise_prepare_failure(
+                    absolute, argv, result, rows, output, output_is_dir=output_is_dir,
+                )
+            sleep(retry_seconds)
 
 
 def _row_size(row):
@@ -1820,8 +2187,8 @@ def without_existing(argvs, present):
         return list(argvs)
     kept = []
     for argv in argvs:
-        path = None
-        if len(argv) > 2 and argv[2] == "scp":
+        path = final_of(argv) if len(argv) > 2 and argv[2] == "scp" else None
+        if path is None and len(argv) > 2 and argv[2] == "scp":
             for part in argv:
                 found = scp_remote_path(part) if ":" in part else None
                 if found:
@@ -1890,6 +2257,36 @@ def _probe_present(plan_obj, call, pairs):
             pass
 
 
+def prepare_prefix_length(argvs):
+    """How many leading commands create parents and then prove they exist.
+
+    That prefix is mkdir batches, the parent-list copy, and the parent check.
+    File copies stay after it. A check that ran first would report directories
+    the following mkdir had not created yet.
+    """
+    end = 0
+    for index, argv in enumerate(argvs or []):
+        kind = argv[2] if len(argv) > 2 else ""
+        if kind == "ssh":
+            script = remote_script(argv[-1])
+            if "sudo mkdir -p --" in script or "AVT_PARENT_CHECK" in script:
+                end = index + 1
+                continue
+        if kind == "scp" and end:
+            remote = ""
+            for part in argv:
+                found = scp_remote_path(part) if isinstance(part, str) and ":" in part else None
+                if found:
+                    remote = found
+                    break
+            if remote == "/tmp/avt-parent-list":
+                end = index + 1
+                continue
+        if end:
+            break
+    return end
+
+
 def _push_local(plan, call, sleep):
     """Copy the lock tree. A same-size file already on the guest is not sent again.
 
@@ -1900,6 +2297,13 @@ def _push_local(plan, call, sleep):
     argvs = list(plan.get("transfer_argv") or [])
     if not argvs:
         return
+    prefix_n = prepare_prefix_length(argvs)
+    for path, text in (plan.get("side_files") or {}).items():
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w") as handle:
+            handle.write(text)
     rows = plan.get("transfer_rows")
     if rows is None:
         rows = plan.get("lock_rows") or []
@@ -1908,39 +2312,52 @@ def _push_local(plan, call, sleep):
     attempts = int(plan.get("transfer_attempts") or 1)
     retry_seconds = plan.get("ssh_retry_seconds", 5)
     _call_each(
-        argvs[:1], call, attempts=attempts, sleep=sleep, retry_seconds=retry_seconds,
+        argvs[:prefix_n], call, attempts=attempts, sleep=sleep, retry_seconds=retry_seconds,
         rows=rows, output=output, output_is_dir=output_is_dir,
+        deadline=plan.get("stage_deadline"),
     )
-    body = list(enumerate(argvs[1:], start=1))
+    body = list(enumerate(argvs[prefix_n:], start=prefix_n))
     tail = []
     if body and body[-1][1][2:4] == ["ssh", "--quiet"] and body[-1][1][-1] == "touch /tmp/avt-go":
         tail = [body[-1][1]]
         body = body[:-1]
     pairs = _lock_pairs(rows)
     present = _probe_present(plan, call, pairs)
+    skipped_finals = set()
     if present:
         before = len(body)
         kept = []
         for index, argv in body:
+            if is_incoming_mv(argv):
+                kept.append((index, argv))
+                continue
+            final = final_of(argv)
             if [argv] != without_existing([argv], present):
+                if final:
+                    skipped_finals.add(final)
                 continue
             kept.append((index, argv))
         body = kept
         skipped = before - len(body)
         if skipped:
             print(f"skip-existing: {skipped} files already on the guest", flush=True)
+    deferred_mv = []
     for index, argv in body:
+        if is_incoming_mv(argv):
+            deferred_mv.append((index, argv))
+            continue
         result = call(argv)
         if getattr(result, "returncode", 1) == 0:
             continue
         if preflight_refused(result):
             _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
-        path = None
-        for part in argv:
-            found = scp_remote_path(part) if ":" in part else None
-            if found:
-                path = found
-                break
+        path = final_of(argv)
+        if path is None:
+            for part in argv:
+                found = scp_remote_path(part) if ":" in part else None
+                if found:
+                    path = found
+                    break
         size = None
         for pair in pairs:
             if pair[0] == path:
@@ -1954,6 +2371,17 @@ def _push_local(plan, call, sleep):
         result = call(argv)
         if getattr(result, "returncode", 1) != 0:
             _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
+    moves = []
+    for _index, argv in deferred_mv:
+        moves.extend(mv_pairs_from_script(remote_script(argv[-1])))
+    moves = [pair for pair in moves if pair[1] not in skipped_finals]
+    if moves:
+        _call_each(
+            mv_batch_argvs(plan["instance_name"], plan.get("project"), plan.get("zone"), moves),
+            call, attempts=1, sleep=sleep, retry_seconds=retry_seconds,
+            rows=rows, output=output, index_offset=len(argvs) - 1,
+            output_is_dir=output_is_dir,
+        )
     if tail:
         _call_each(
             tail, call, attempts=1, sleep=sleep, retry_seconds=retry_seconds,
@@ -1962,13 +2390,22 @@ def _push_local(plan, call, sleep):
         )
 
 
+def _hourly_burn(plan):
+    """VM rate plus the input disk, when this plan keeps one."""
+    rate = plan.get("usd_per_hour")
+    disk = (plan.get("input_disk") or {}).get("usd_per_hour") or 0.0
+    if rate is None and not disk:
+        return None
+    return float(rate or 0.0) + float(disk)
+
+
 def _elapsed_cost(plan, billing_start, clock):
     if billing_start is None:
         return None
-    rate = plan.get("usd_per_hour")
-    if rate is None:
+    burn = _hourly_burn(plan)
+    if burn is None:
         return None
-    return ((clock() - billing_start) / 3600.0) * rate
+    return ((clock() - billing_start) / 3600.0) * burn
 
 
 def _guard_elapsed_cost(plan, billing_start, clock):
@@ -2032,13 +2469,44 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
         print(f"sha256 ok on the launcher: {checked['checked']} files", flush=True)
 
     created = False
+    disk_ready = False
     billing_start = None
+    deleter = {"fn": None}
+
+    def _delete_vm():
+        fn = deleter["fn"]
+        if fn is not None:
+            fn()
+
+    previous_signals = {
+        signal.SIGINT: signal.getsignal(signal.SIGINT),
+        signal.SIGTERM: signal.getsignal(signal.SIGTERM),
+    }
+    install_delete_on_signal(_delete_vm)
     outcome = None
     pull_failed = False
     serial_text = ""
     startup_path = None
     timer = StageTimer(clock)
+    disk = plan.get("input_disk") or None
     try:
+        if disk:
+            described = call(disk["describe_argv"])
+            if getattr(described, "returncode", 1) != 0:
+                made = call(disk["create_argv"])
+                if getattr(made, "returncode", 1) != 0:
+                    text = format_create_failure(disk["create_argv"], made)
+                    sys.stderr.write(text)
+                    try:
+                        write_execute_log(
+                            plan.get("output"), text, output_is_dir=bool(plan.get("output_is_dir")),
+                        )
+                    except OSError:
+                        pass
+                    raise SystemExit(
+                        f"gcloud disk create failed ({getattr(made, 'returncode', 1)}); no instance to delete"
+                    )
+            disk_ready = True
         timer.begin("create")
         try:
             script = plan.get("startup_script")
@@ -2073,6 +2541,9 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             raise SystemExit(message)
         created = True
         billing_start = clock()
+        deleter["fn"] = lambda: call(plan["delete_argv"])
+        if clock == time.monotonic:
+            plan["stage_deadline"] = clock() + min(float(plan.get("max_seconds") or 3600), 45 * 60)
         timer.begin("transfer")
         try:
             if plan.get("stage_from") == "local":
@@ -2098,7 +2569,7 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             if "AVT_RENDER_DONE" in serial_text:
                 outcome = "done"
                 break
-            if "AVT_RENDER_FAIL" in serial_text:
+            if "AVT_RENDER_FAIL" in serial_text or guest_startup_failed(serial_text):
                 if plan.get("failure_pull_argv"):
                     outcome = "failed"
                 raise SystemExit("guest reported AVT_RENDER_FAIL; deleting the instance")
@@ -2108,6 +2579,9 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
                 outcome = "timeout"
             raise SystemExit("timed out waiting for the guest; deleting the instance")
     finally:
+        signal.signal(signal.SIGINT, previous_signals[signal.SIGINT])
+        signal.signal(signal.SIGTERM, previous_signals[signal.SIGTERM])
+        deleter["fn"] = None
         if startup_path and os.path.isfile(startup_path):
             os.remove(startup_path)
         if created and outcome != "done" and plan.get("failure_pull_argv"):
@@ -2161,6 +2635,14 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
                 deleted = call(plan["delete_argv"])
                 if deleted.returncode != 0:
                     call(plan["delete_argv"])
+            # The VM is gone. The input disk survives a failure on purpose.
+            # A finished pull-back is the only path that deletes it.
+            if disk_ready and disk and outcome == "done" and not pull_failed:
+                removed = call(disk["delete_argv"])
+                if getattr(removed, "returncode", 1) != 0:
+                    call(disk["delete_argv"])
+                else:
+                    disk_ready = False
         finally:
             timer.end("teardown")
         elapsed = None if billing_start is None else clock() - billing_start
@@ -2184,6 +2666,9 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             summary["projection_text"] = plan["projection_text"]
         if plan.get("comparison_text"):
             summary["comparison_text"] = plan["comparison_text"]
+        if disk_ready and disk:
+            summary["kept_disk"] = disk["name"]
+            summary["kept_disk_usd_per_day"] = disk["usd_per_day"]
         plan["timing"] = summary
         if plan.get("stage_from") == "local" and plan.get("timing_path"):
             try:

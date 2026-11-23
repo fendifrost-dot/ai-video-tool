@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import sys
@@ -371,11 +372,12 @@ def test_execute_pushes_absolute_paths_pulls_both_deliverables_and_deletes(tmp_p
         call=call,
     )
     assert code == 0, capsys.readouterr()
-    assert calls[0][3] == "create"
-    assert "c4-standard-16" in calls[0]
-    assert "120GB" in calls[0]
-    assert "SPOT" not in calls[0]
-    assert "DELETE" in calls[0]
+    create = next(argv for argv in calls if len(argv) > 3 and argv[3] == "create")
+    assert "c4-standard-16" in create
+    assert "120GB" in create
+    assert "SPOT" not in create
+    assert "DELETE" in create
+    assert "auto-delete=no" in " ".join(create)
     assert calls[-1][3] == "delete"
     blob = "\n".join(" ".join(argv) for argv in calls)
     assert f"avt-test:{clip}" in blob
@@ -451,16 +453,15 @@ def test_cease_and_desist_path_survives_the_remote_shell(tmp_path):
     )
     copied = [
         argv for argv in argvs
-        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == str(wav)
+        if argv[2] == "scp" and plan.final_of(argv) == str(wav)
     ]
     assert len(copied) == 1
     assert copied[0][-2] == str(wav)
-    word = copied[0][-1].split(":", 1)[1]
-    echoed = subprocess.run(
-        ["bash", "-c", f"set -- {word}; printf %s \"$1\""],
-        capture_output=True, text=True, check=True,
-    )
-    assert echoed.stdout == str(wav)
+    target = copied[0][-1]
+    assert "'" not in target and '"' not in target
+    assert "/.avt-incoming/" in target
+    script = "\n".join(plan.remote_script(argv[-1]) for argv in argvs if plan.is_incoming_mv(argv))
+    assert str(wav) in shlex.split(script)
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
     parent = os.path.dirname(str(wav))
     assert parent in shlex.split(script)
@@ -474,9 +475,10 @@ def test_cease_and_desist_path_survives_the_remote_shell(tmp_path):
         capture_output=True, text=True, check=True,
     )
     assert parent in printed.stdout.splitlines()
-    assert 'sudo chown -R "$(id -un)":"$(id -gn)"' in script
+    assert 'sudo chown -RP "$(id -un)":"$(id -gn)"' in script
+    assert "refusing to chown" in script
     for line in script.splitlines():
-        if 'chown -R "$(id -un)"' in line:
+        if 'chown -RP "$(id -un)"' in line:
             assert "/var/avt" not in shlex.split(line)
     assert "chmod 700 -- /var/avt" in script
     checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
@@ -506,6 +508,9 @@ def test_lock_v2_pull_copies_var_avt_out_before_scp():
     assert "sudo cp -a -- /var/avt/checks /tmp/avt-pull/checks" in script
     assert "sudo cp -a -- /var/avt/guest.log /tmp/avt-pull/guest.log" in script
     assert "sudo cp -a -- /var/avt/timing.json /tmp/avt-pull/timing.json" in script
+    assert "sudo test -e /var/avt/out/" in script
+    assert "[ -e /var/avt" not in script
+    assert 'fail "required output was not published"' in script
     assert "chmod 700" not in script
     sources = [
         found for argv in argvs if argv[2] == "scp"
@@ -578,7 +583,8 @@ def test_c4_standard_32_scales_workers_and_stays_under_fifteen_dollars(tmp_path,
         call=call,
     )
     assert code == 0, capsys.readouterr()
-    assert "c4-standard-32" in calls[0]
+    create = next(argv for argv in calls if "c4-standard-32" in argv)
+    assert "c4-standard-32" in create
     assert "SPOT" not in calls[0]
     assert calls[-1][3] == "delete"
     assert "ceiling: $15.00" in capsys.readouterr().out
@@ -649,3 +655,256 @@ def test_a_long_manifest_never_builds_an_oversize_argv():
         for part in argv:
             assert len(part.encode()) <= plan.ARGV_LIMIT
     assert plan.argv_nbytes(commands[1]) < 16 * 1024
+
+
+def test_path_preflight_accepts_the_cease_path_and_odd_names(tmp_path, capsys):
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    names = [
+        "/workspace/partnership/second_half/inputs/audio/PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav",
+        "/workspace/partnership/second_half/inputs/it's a (take).wav",
+        "/workspace/partnership/second_half/inputs/ratio:16x9.wav",
+        "/tmp/plain.wav",
+    ]
+    rows = [{"path": path, "bytes": 4} for path in names]
+    for index in range(46):
+        (lock / f"tree{index}.bin").write_bytes(b"x")
+    result = lock_v2.path_preflight(str(lock), manifest_files=rows, tree_files=[], require_section6=False)
+    assert result["ok"], result["errors"]
+    assert result["line"] == "path preflight: 4/4 pass"
+    assert "path preflight: 4/4 pass" in capsys.readouterr().out
+    argvs = lock_v2.transfer_argvs("vm", "p", "z", str(lock), rows, "/tmp/env", os.path.dirname(lock_v2.__file__))
+    cease = next(argv for argv in argvs if plan.final_of(argv) == names[0])
+    assert "'" not in cease[-1] and '"' not in cease[-1]
+
+
+def _wheel_fetch(package, version):
+    if package == "opencv-python-headless":
+        return {"releases": {
+            "5.1.0.95": [{
+                "filename": "opencv_python_headless-5.1.0.95-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            }],
+        }}
+    return {"urls": [{
+        "filename": f"{package}-{version}-cp313-cp313-manylinux_2_28_x86_64.whl",
+    }]}
+
+
+def test_parent_check_uses_sudo_and_runs_after_mkdir():
+    script = lock_v2._parent_reader()
+    assert "sudo -n test -d" in script
+    assert "[ ! -d" not in script
+    rows = [{
+        "path": "/workspace/partnership/final_lock_v2/scripts/final_render.py",
+        "bytes": 10,
+    }]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", lock_v2.LOCK_DIR, rows, "/tmp/env",
+        os.path.dirname(lock_v2.__file__), copy_tree=False,
+    )
+    prefix = plan.prepare_prefix_length(argvs)
+    assert prefix >= 3
+    check = plan.remote_script(argvs[prefix - 1][-1])
+    assert "AVT_PARENT_CHECK" in check
+    assert "sudo -n test -d" in check
+    mkdir = "\n".join(
+        plan.remote_script(argv[-1]) for argv in argvs[:prefix]
+        if len(argv) > 2 and argv[2] == "ssh"
+    )
+    assert "sudo test -d" in mkdir or "sudo -n test -d" in mkdir
+    assert "/var/avt/checks" in mkdir
+    assert "/tmp/avt-inputs-ready" in mkdir
+    startup = lock_v2.startup_script(lock_v2.LOCK_DIR, 30)
+    mount = startup.index('mount "$INPUT_DEV"')
+    ready = startup.index("touch /tmp/avt-inputs-ready")
+    assert mount < ready < startup.index("apt-get update")
+    rehearsal = lock_v2.rehearsal_startup(False)
+    assert rehearsal.index("touch /tmp/avt-inputs-ready") < rehearsal.index("apt-get update")
+    assert "/var/avt/scratch/final" in rehearsal.split("apt-get", 1)[0]
+    assert "/tmp/claudia_lockrepro" not in rehearsal.split("apt-get", 1)[0]
+    called = []
+
+    def call(argv):
+        called.append(argv)
+        result = Result(0, stdout="AVT_PARENTS_OK\n")
+        return result
+
+    plan._push_local({
+        "transfer_argv": argvs,
+        "transfer_rows": rows,
+        "instance_name": "vm",
+        "project": "p",
+        "zone": "z",
+        "output": "/tmp",
+        "output_is_dir": True,
+        "transfer_attempts": 1,
+        "side_files": {lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list},
+        "lock_rows": None,
+    }, call, lambda _seconds: None)
+    kinds = []
+    for argv in called:
+        if len(argv) > 2 and argv[2] == "ssh" and "AVT_PARENT_CHECK" in plan.remote_script(argv[-1]):
+            kinds.append("check")
+        elif len(argv) > 2 and argv[2] == "scp" and plan.final_of(argv) == rows[0]["path"]:
+            kinds.append("file")
+    assert "check" in kinds and "file" in kinds
+    assert kinds.index("check") < kinds.index("file")
+
+
+def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
+    gaps, notes = plan.cpython313_wheel_gaps(_wheel_fetch)
+    assert gaps == []
+    assert any("numpy==2.5.5" in note for note in notes)
+    assert any("abi3" in note or "opencv" in note for note in notes)
+    broken = dict(_wheel_fetch("opencv-python-headless", None))
+    broken["releases"] = {"5.1.0.95": [{"filename": "opencv_python_headless-5.1.0.95.tar.gz"}]}
+
+    def missing(package, version):
+        if package == "opencv-python-headless":
+            return broken
+        return _wheel_fetch(package, version)
+
+    class Args:
+        zone = "us-central1-a"
+        lock_dir = str(tmp_path)
+        output = str(tmp_path / "out")
+        dry_run = False
+
+    assert lock_v2.run_rehearsal(Args(), {}, None, False, wheel_fetch=missing) == 2
+    assert "no CPython 3.13" in capsys.readouterr().err
+    script = lock_v2.rehearsal_startup(False)
+    assert "c4-standard-4" not in script
+    assert lock_v2.guest_setup_shell().strip() in script
+    assert lock_v2.guest_setup_shell().strip() in lock_v2.startup_script(lock_v2.LOCK_DIR, 10)
+    assert script.index("/tmp/avt-go") < script.index("sha256sum -c")
+    assert "import final_render" not in script
+    assert "final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final" in script
+    assert "/tmp/avt-startup-failed" in script
+    assert "AVT_RENDER_FAIL startup-$code" in script
+    assert "publish" not in script
+    lock = tmp_path / "final_lock_v2"
+    (lock / "scripts").mkdir(parents=True)
+    (lock / "scripts" / "final_render.py").write_text("print('help')\n")
+    (lock / "params").mkdir()
+    (lock / "params" / "final_params_LOCK_v2.json").write_text("{}\n")
+    args = Args()
+    args.lock_dir = str(lock)
+    args.output = str(tmp_path / "out")
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if len(argv) > 3 and argv[3] == "create":
+            result = Result(1, stdout="")
+            result.stderr = "ERROR: E2 does not support Hyperdisk\n"
+            return result
+        return Result(0)
+
+    code = lock_v2.run_rehearsal(
+        args, {"GCP_PROJECT": "demo"}, call, True, wheel_fetch=_wheel_fetch,
+    )
+    assert code == 2
+    create = next(argv for argv in calls if len(argv) > 3 and argv[3] == "create")
+    assert "c4-standard-4" in create
+    assert "hyperdisk-balanced" in create
+    assert "debian-13" in create
+    assert "e2-standard-4" not in create
+    captured = capsys.readouterr()
+    logged = (tmp_path / "out" / "execute.log").read_text()
+    assert "Hyperdisk" in captured.err or "Hyperdisk" in captured.out or "Hyperdisk" in logged
+    assert "gcloud create failed" in logged
+
+
+def test_refused_ssh_stops_at_four_and_signal_deletes():
+    now = [0.0]
+
+    def clock():
+        return now[0]
+
+    def sleep(seconds):
+        now[0] += seconds
+
+    boots = {"n": 0}
+
+    def boot_call(_argv):
+        boots["n"] += 1
+        if boots["n"] < 6:
+            return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection refused\n")
+        if boots["n"] == 6:
+            return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection timed out\n")
+        return Result(0, stdout="AVT_PREFLIGHT_OK\n")
+
+    plan._call_each(
+        [plan.gcp_ssh_argv("vm", "p", "z", "true")],
+        boot_call, attempts=2, sleep=sleep, retry_seconds=0, clock=clock,
+    )
+    assert boots["n"] == 7
+    assert now[0] < plan.BOOT_SSH_SECONDS
+    later = {"n": 0}
+
+    def later_call(_argv):
+        later["n"] += 1
+        if later["n"] == 1:
+            return Result(0, stdout="AVT_PREFLIGHT_OK\n")
+        return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection refused\n")
+
+    try:
+        plan._call_each(
+            [
+                plan.gcp_ssh_argv("vm", "p", "z", "true"),
+                plan.gcp_ssh_argv("vm", "p", "z", "echo later"),
+            ],
+            later_call, attempts=24, sleep=sleep, retry_seconds=0, clock=clock,
+        )
+    except SystemExit as exc:
+        assert "prepare failed" in str(exc)
+    else:
+        raise AssertionError("a later refused ssh should fail that command only")
+    assert later["n"] == 1 + plan.SSH_REFUSED_LIMIT
+    deleted = []
+    previous = signal.getsignal(signal.SIGTERM)
+    plan.install_delete_on_signal(lambda: deleted.append("deleted"))
+    try:
+        handler = signal.getsignal(signal.SIGTERM)
+        try:
+            handler(signal.SIGTERM, None)
+        except SystemExit as exc:
+            assert exc.code == 128 + signal.SIGTERM
+        assert deleted == ["deleted"]
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
+def test_rehearsal5_guest_log_passes_each_stage():
+    # The lines from rehearsal5's serial tail, plus the earlier stage lines
+    # that same startup script prints. A timestamp prefix and --help text
+    # must not zero the stages.
+    log = "\n".join([
+        "usage: final_render.py chunks [-h] --scratch SCRATCH",
+        "the following arguments are required: mode, --scratch",
+        "startup-script: AVT_STAGE setup 48",
+        "AVT_STAGE verify 1",
+        "smoke /var/avt/scratch/final/rehearsal_chunk.mkv 0.500000",
+        "AVT_STAGE smoke 2",
+        "assemble /var/avt/out/rehearsal_h264.mp4 h264",
+        "assemble /var/avt/out/rehearsal_prores.mov prores",
+        "AVT_STAGE assemble 0",
+        "AVT_REHEARSAL_DONE",
+    ])
+    assert not plan.guest_startup_failed(log)
+    assert not plan.guest_startup_failed("AVT_STARTUP_WAIT\n")
+    scored = lock_v2.assess_guest_log(log)
+    assert scored["setup"] == (True, 48.0)
+    assert scored["verify"] == (True, 1.0)
+    assert scored["smoke"] == (True, 2.0)
+    assert scored["assemble"] == (True, 0.0)
+    assert len({seconds for _ok, seconds in scored.values()}) == 4
+    pulls = lock_v2._pull_commands(
+        "vm", "p", "z",
+        ["/var/avt/out/rehearsal_h264.mp4", "/var/avt/out/rehearsal_prores.mov"],
+        [("/var/avt/out/rehearsal_h264.mp4", "/out/rehearsal_h264.mp4", False)],
+    )
+    published = plan.remote_script(pulls[0][-1])
+    assert "sudo test -e /var/avt/out/rehearsal_h264.mp4" in published
+    assert "sudo cp -a -- /var/avt/out/rehearsal_h264.mp4 /tmp/avt-pull/out/rehearsal_h264.mp4" in published
+    assert plan.scp_remote_path(pulls[1][-2]) == "/tmp/avt-pull/out/rehearsal_h264.mp4"
