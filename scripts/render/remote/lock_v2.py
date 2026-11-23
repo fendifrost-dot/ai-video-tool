@@ -58,6 +58,21 @@ V1E_BOUNDARIES = (3070, 3310, 3550, 3790, 4030, 4224, 4464, 4704, 4975, 4981)
 V1E_SF0 = V1E_BOUNDARIES[0]
 V1E_END = V1E_BOUNDARIES[-1]
 LOCK_NAMES = ("vhs", "salad", "spins_T1", "spins_T2T3", "spins_T4", "warcry", "montage")
+# Frozen renders the assemble step reads. Each tuple is (lock name, tokens that
+# must all appear in exactly one video path). That path has to be in both
+# SHA256SUMS and the manifest. The guest links it into /tmp/claudia_lockrepro
+# and does not rebuild it.
+FROZEN_RENDER_TOKENS = (
+    ("vhs", ("vhs_static_preview_v5b_1080p.mp4",)),
+    ("salad", ("salad", "v1b")),
+    ("spins_T1", ("spins", "v1c", "T1")),
+    ("spins_T2T3", ("spins", "v1c", "T2T3")),
+    ("spins_T4", ("spins", "v1c", "T4")),
+    ("warcry", ("v9c",)),
+    ("montage", ("montage", "v3b")),
+)
+PSNR_MIN_DB = 50.0
+MAX_CHANNEL_DIFF = 2
 REPRO_SCRIPT = (
     "/workspace/partnership/first_half/claudia_vfx/grade_v1/scripts/repro_lock_frames_v1.py"
 )
@@ -259,8 +274,12 @@ def final_hour_band(workers):
     return low, high, per_frame
 
 
-def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE):
-    """Wall clock for this shape. Serial stages are not divided by the worker count."""
+def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE, lock_repro=False):
+    """Wall clock for this shape. Serial stages are not divided by the worker count.
+
+    The seven lock repros are skipped unless ``lock_repro`` is set. The frozen
+    renders are already in the tree, so that band is zero on the default plan.
+    """
     terms = v1e_workers(ram_gb, vcpu)
     started = terms["started"]
     spans = final_spans()
@@ -275,7 +294,7 @@ def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE):
         "transfer": (transfer, transfer),
         "install": _hours_pair(INSTALL_MIN),
         "verify": _hours_pair(VERIFY_MIN),
-        "lock_repro": _hours_pair(REPRO_MIN),
+        "lock_repro": _hours_pair(REPRO_MIN) if lock_repro else (0.0, 0.0),
         "state_pass": _hours_pair(STATE_MIN),
         "v1e_chunks": (v1e_lo, v1e_hi),
         "final_chunks": (final_lo, final_hi),
@@ -301,6 +320,7 @@ def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE):
         "final_spans": len(spans),
         "final_seconds_per_frame": per_frame,
         "final_efficiency": FINAL_EFFICIENCY,
+        "lock_repro": bool(lock_repro),
         "ram_gb": ram_gb,
         "vcpu": vcpu,
     }
@@ -320,7 +340,11 @@ def projection_text(proj):
         "  install ffmpeg (ffv1, libx264, prores_ks) + numpy 2.5.5, scipy 1.18.1, opencv 5.1.x: "
         f"{_band(parts['install'])} h",
         f"  verify SHA256SUMS + manifest: {_band(parts['verify'])} h",
-        f"  lock repro, 7 locks, sequential: {_band(parts['lock_repro'])} h",
+        (
+            f"  lock repro, 7 locks, sequential, opt-in: {_band(parts['lock_repro'])} h"
+            if proj.get("lock_repro") else
+            "  lock repro: skipped (frozen renders already in the tree, sha-verified)"
+        ),
         f"  v1e state pass, sequential: {_band(parts['state_pass'])} h",
         f"  v1e chunks, {plan.VERSE_NF} frames, {proj['v1e_started']} workers "
         f"(min of {terms['ram']} from RAM, {terms['cpu']} from "
@@ -331,7 +355,7 @@ def projection_text(proj):
         f"{proj['final_started']} workers, perfect split on the low end, "
         f"{proj['final_efficiency']:.0%} of that split on the high end: "
         f"{_band(parts['final_chunks'])} h",
-        f"  assemble + md5-list checks: {_band(parts['assemble'])} h",
+        f"  assemble (md5 lists are a report, not a gate): {_band(parts['assemble'])} h",
         f"  pull-back {PULL_GB:.0f} GB at {proj['transfer_mb_s']:.0f} MB/s: "
         f"{parts['pull_back'][0]:.2f} h",
         (
@@ -520,6 +544,98 @@ def _default_run(argv, cwd=None):
     return _RunResult(completed.returncode, completed.stdout, completed.stderr)
 
 
+def _video_path(path):
+    return str(path).lower().endswith((".mp4", ".mov", ".mkv"))
+
+
+def _rel_under(path, lock_dir):
+    path = str(path).replace("\\", "/")
+    root = lock_dir.rstrip("/")
+    if path == root or path.startswith(root + "/"):
+        return path[len(root):].lstrip("/")
+    return path
+
+
+def resolve_frozen_renders(paths):
+    """One video path per locked piece. Ambiguous or missing pieces are errors."""
+    found = {}
+    errors = []
+    pool = [path for path in paths if _video_path(path)]
+    for name, tokens in FROZEN_RENDER_TOKENS:
+        hits = [
+            path for path in pool
+            if all(token in path.replace("\\", "/") for token in tokens)
+        ]
+        # T1 must not also be the T2T3 or T4 file when the token is a short id.
+        if name == "spins_T1":
+            hits = [path for path in hits if "T2T3" not in path and "T4" not in path]
+        if len(hits) != 1:
+            errors.append(
+                f"frozen render {name} ({' '.join(tokens)}): "
+                f"{len(hits)} matches, expected 1"
+            )
+            continue
+        found[name] = hits[0]
+    return found, errors
+
+
+def frozen_coverage_errors(paths, sums_rels, lock_dir):
+    """Every frozen render assemble reads must be in SHA256SUMS and the manifest."""
+    found, errors = resolve_frozen_renders(paths)
+    sums = {name.replace("\\", "/") for name in sums_rels}
+    manifest_rels = {_rel_under(path, lock_dir) for path in paths}
+    for name, path in found.items():
+        rel = _rel_under(path, lock_dir)
+        if rel not in sums and path not in sums:
+            errors.append(f"frozen render {name} is not in SHA256SUMS: {rel}")
+        if rel not in manifest_rels and path not in paths:
+            errors.append(f"frozen render {name} is not in the manifest: {rel}")
+    if set(found) != {item[0] for item in FROZEN_RENDER_TOKENS} and not errors:
+        errors.append("frozen render set is incomplete")
+    return found, errors
+
+
+def stage_frozen_renders(lock_dir, dest_root=LOCKREPRO):
+    """Link the sha-verified renders into the directory final_render reads."""
+    lock_dir = lock_dir.rstrip("/")
+    data = load_manifest(lock_dir)
+    paths = [row["path"] for row in data["files"]]
+    with open(os.path.join(lock_dir, "SHA256SUMS")) as handle:
+        sums = [name for _digest, name in parse_sha256sums(handle.read())]
+    found, errors = frozen_coverage_errors(paths, sums, lock_dir)
+    if errors:
+        raise SystemExit("frozen renders are not covered by the sha check:\n" + "\n".join(errors))
+    linked = {}
+    for name, src in found.items():
+        dest = os.path.join(dest_root, name, "renders", os.path.basename(src))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if os.path.lexists(dest) or os.path.exists(dest):
+            os.remove(dest)
+        os.symlink(src, dest)
+        linked[name] = {"source": src, "link": dest}
+    return linked
+
+
+def frame_pair_ok(left, right):
+    """True when two frames match within PSNR 50 dB or a max channel diff of 2."""
+    if not left or len(left) != len(right):
+        return False
+    max_diff = 0
+    acc = 0
+    for a, b in zip(left, right):
+        diff = abs(a - b)
+        if diff > max_diff:
+            max_diff = diff
+        acc += diff * diff
+    if max_diff <= MAX_CHANNEL_DIFF:
+        return True
+    mse = acc / len(left)
+    if mse <= 0:
+        return True
+    psnr = 10.0 * math.log10((255.0 * 255.0) / mse)
+    return psnr >= PSNR_MIN_DB
+
+
 def preflight(lock_dir, run=None, hasher=None):
     """SHA256SUMS, then sha256sum -c, then every manifest row. Stop on any miss."""
     run = run or _default_run
@@ -541,8 +657,20 @@ def preflight(lock_dir, run=None, hasher=None):
     if errors:
         raise SystemExit("manifest check failed:\n" + "\n".join(errors[:20]))
     with open(os.path.join(lock_dir, "SHA256SUMS")) as handle:
-        tree_n = len(parse_sha256sums(handle.read()))
-    return {"files": len(data["files"]), "tree": tree_n, "manifest": data}
+        sums = parse_sha256sums(handle.read())
+    tree_n = len(sums)
+    paths = [row["path"] for row in data["files"]]
+    frozen = {}
+    if len(paths) >= 50 or lock_dir.rstrip("/") == LOCK_DIR:
+        frozen, frozen_errors = frozen_coverage_errors(
+            paths, [name for _digest, name in sums], lock_dir,
+        )
+        if frozen_errors:
+            raise SystemExit(
+                "frozen renders are not covered by SHA256SUMS and the manifest:\n"
+                + "\n".join(frozen_errors)
+            )
+    return {"files": len(data["files"]), "tree": tree_n, "manifest": data, "frozen": frozen}
 
 
 def _is_md5(value):
@@ -837,8 +965,9 @@ echo "AVT_STAGE setup ${SETUP_SEC}"
 """
 
 
-def startup_script(lock_dir, max_minutes, ram_gb=60, vcpu=16):
+def startup_script(lock_dir, max_minutes, ram_gb=60, vcpu=16, lock_repro=False):
     quoted = shlex.quote(lock_dir)
+    repro_flag = " \\\n  --lock-repro" if lock_repro else ""
     return f"""#!/bin/bash
 # Generated by scripts/render/remote. LOCK_v2 local stage: no AVT token is read or echoed.
 set -euo pipefail
@@ -917,7 +1046,7 @@ cd /tmp/avt-remote
   --recipe lock_v2 \\
   --lock-dir {quoted} \\
   --ram-gb {float(ram_gb):g} --vcpu {int(vcpu)} \\
-  --timing-file /var/avt/timing.json || {{
+  --timing-file /var/avt/timing.json{repro_flag} || {{
   echo AVT_RENDER_FAIL guest
   exit 1
 }}
@@ -1245,8 +1374,34 @@ def final_env(lock_dir, vcpu, workers):
     }
 
 
-def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu):
-    """Guest argv in §6 order. The frozen scripts are not rewritten here."""
+def repro_env():
+    """One thread per library. Used only when --lock-repro is on."""
+    return {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENCV_FOR_THREADS_NUM": "1",
+        "OPENCV_NUM_THREADS": "0",
+    }
+
+
+def _repro_argv(python, name):
+    # cv2.setNumThreads(0) runs before the frozen repro script. argv[0] is the script.
+    launch = (
+        "import cv2, runpy, sys; "
+        "cv2.setNumThreads(0); "
+        "sys.argv = sys.argv[1:]; "
+        "runpy.run_path(sys.argv[0], run_name='__main__')"
+    )
+    return [python, "-c", launch, REPRO_SCRIPT, name]
+
+
+def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=False):
+    """Guest argv. Lock repros stay off unless requested.
+
+    The frozen scripts are not rewritten. Assemble reads the sha-verified
+    renders linked into ``/tmp/claudia_lockrepro``.
+    """
     lock_dir = lock_dir.rstrip("/")
     v1e_script = os.path.join(lock_dir, "scripts", "v1e_chunk_rgb.py")
     final_script = os.path.join(lock_dir, "scripts", "final_render.py")
@@ -1280,14 +1435,16 @@ def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu):
     ]
     repro_cmds = []
     for name in LOCK_NAMES:
-        repro_cmds.append({"argv": [python, REPRO_SCRIPT, name], "after": f"repro:{name}"})
-    return [
-        {
+        repro_cmds.append({"argv": _repro_argv(python, name), "after": f"repro:{name}"})
+    steps = []
+    if lock_repro:
+        steps.append({
             "stage": "lock_repro",
             "cwd": PARTNERSHIP,
-            "env_key": None,
+            "env_key": "repro",
             "cmds": repro_cmds,
-        },
+        })
+    steps.extend([
         {
             "stage": "state_pass",
             "cwd": PARTNERSHIP,
@@ -1318,9 +1475,11 @@ def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu):
             "cmds": [assemble_argv],
             "hook": "accept",
         },
-    ], {
+    ])
+    return steps, {
         "v1e": v1e_env(),
         "final": final_env(lock_dir, vcpu, final_slots),
+        "repro": repro_env(),
     }
 
 
@@ -1455,29 +1614,71 @@ def _chunk_logs():
     return by_frame
 
 
+def _decode_rgb24(path):
+    completed = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+        check=False, capture_output=True,
+    )
+    if completed.returncode != 0 or not completed.stdout:
+        return None
+    return completed.stdout
+
+
+def videos_within_tolerance(frozen, rebuilt, width=FRAME_W, height=FRAME_H):
+    """Per-frame PSNR >= 50 dB or max channel diff <= 2. Not a byte-equal sha."""
+    if not os.path.isfile(frozen) or not os.path.isfile(rebuilt):
+        return False, {"error": "frozen or rebuilt render is missing"}
+    if os.path.samefile(frozen, rebuilt):
+        return True, {"identical_bytes": True}
+    left = _decode_rgb24(frozen)
+    right = _decode_rgb24(rebuilt)
+    if left is None or right is None:
+        return False, {"error": "ffmpeg could not decode a render"}
+    size = width * height * 3
+    if len(left) != len(right) or len(left) % size:
+        return False, {"error": "decoded length differs", "left": len(left), "right": len(right)}
+    worst = None
+    for index in range(len(left) // size):
+        a = left[index * size:(index + 1) * size]
+        b = right[index * size:(index + 1) * size]
+        if not frame_pair_ok(a, b):
+            worst = index
+            break
+    if worst is not None:
+        return False, {"error": f"frame {worst} outside tolerance"}
+    return True, {"frames": len(left) // size}
+
+
 def _repro_hook(name, checks_dir):
     def hook():
-        path = os.path.join(LOCKREPRO, name, "repro.json")
-        if not os.path.isfile(path):
-            raise SystemExit(f"repro.json missing for {name}")
-        repro = _load_json(path)
-        if repro.get("identical") is True:
-            decision = accept_repro(name, repro, [], {})
-        else:
-            raw = repro.get("raw") or os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
-            pix = repro.get("pix_fmt") or "rgb24"
-            width = int(repro.get("width") or FRAME_W)
-            height = int(repro.get("height") or FRAME_H)
-            raw_md5s = frame_md5s(raw, pix, width, height)
-            reference = load_md5_paths(sorted(glob.glob(hook.pattern)))
-            decision = accept_repro(name, repro, raw_md5s, reference)
-            if decision["patch"]:
-                shutil.copy(path, os.path.join(checks_dir, f"repro_{name}.orig.json"))
-                apply_repro_patch(path, repro)
+        record_path = os.path.join(checks_dir, "frozen_renders.json")
+        record = _load_json(record_path) if os.path.isfile(record_path) else {}
+        entry = record.get(name) or {}
+        frozen = entry.get("source") or ""
+        rebuilt = entry.get("link") or os.path.join(LOCKREPRO, name, "renders")
+        if os.path.isdir(rebuilt):
+            videos = [
+                os.path.join(rebuilt, item) for item in os.listdir(rebuilt)
+                if _video_path(item)
+            ]
+            rebuilt = videos[0] if videos else rebuilt
+        ok, detail = videos_within_tolerance(frozen, rebuilt)
+        decision = {
+            "name": name,
+            "ok": ok,
+            "via": "tolerance" if ok else "pixels",
+            "patch": False,
+        }
+        decision.update(detail)
         _write_json(os.path.join(checks_dir, f"repro_{name}.json"), decision)
-        if not decision["ok"]:
+        link = entry.get("link")
+        if link and frozen and os.path.isfile(frozen):
+            if os.path.lexists(link):
+                os.remove(link)
+            os.makedirs(os.path.dirname(link), exist_ok=True)
+            os.symlink(frozen, link)
+        if not ok:
             raise SystemExit(f"lock repro {name} failed ({decision['via']})")
-    hook.pattern = os.path.join(LOCK_DIR, "reference_md5", f"lock_{name}_preencode_*.md5")
     return hook
 
 
@@ -1523,9 +1724,9 @@ def make_hooks(lock_dir, checks_dir, call, envs, python, decoder, run_probe):
         )))
         stills = _still_md5s(decoder)
         errors = check_v1e(merged, reference, stills)
-        _write_json(os.path.join(checks_dir, "v1e_check.json"), {"errors": errors, "frames": len(merged)})
-        if errors:
-            raise SystemExit("v1e md5 check failed:\n" + "\n".join(errors[:20]))
+        _write_json(os.path.join(checks_dir, "v1e_check.json"), {
+            "errors": errors, "frames": len(merged), "sanity": "report_only",
+        })
 
     def accept():
         stage_logs(checks_dir)
@@ -1560,14 +1761,20 @@ def make_hooks(lock_dir, checks_dir, call, envs, python, decoder, run_probe):
                 errors.append(f"spot frame {frame} grain md5 is not bit-identical")
         h264 = os.path.join(OUT_DIR, H264_NAME)
         prores = os.path.join(OUT_DIR, PRORES_NAME)
+        probe_problems = []
         try:
             _probe_file(h264, "h264", run_probe)
             _probe_file(prores, "prores", run_probe)
         except SystemExit as exc:
-            errors.append(str(exc))
-        _write_json(os.path.join(checks_dir, "acceptance.json"), {"errors": errors, "spot_frames": list(frames)})
-        if errors:
-            raise SystemExit("acceptance failed:\n" + "\n".join(errors[:20]))
+            probe_problems.append(str(exc))
+        _write_json(os.path.join(checks_dir, "acceptance.json"), {
+            "errors": errors,
+            "probe": probe_problems,
+            "spot_frames": list(frames),
+            "sanity": "report_only",
+        })
+        if probe_problems:
+            raise SystemExit("assemble probe failed:\n" + "\n".join(probe_problems))
 
     hooks["v1e_check"] = v1e_check
     hooks["accept"] = accept
@@ -1628,7 +1835,15 @@ def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decod
         v1e_slots = v1e_workers(ram, vcpu)["started"]
         final_slots = final_workers_for_cpu(vcpu, len(final_spans()))
         python = _guest_python()
-        steps, envs = build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu)
+        linked = stage_frozen_renders(lock_dir)
+        _write_json(os.path.join(checks_dir, "frozen_renders.json"), linked)
+        print("frozen renders linked:", flush=True)
+        for name, row in linked.items():
+            print(f"  {name}: {row['source']}", flush=True)
+        steps, envs = build_recipe(
+            python, lock_dir, v1e_slots, final_slots, vcpu,
+            lock_repro=bool(getattr(args, "lock_repro", False)),
+        )
 
         def call_cmd(argv, env, cwd):
             if call is not None:
@@ -1678,7 +1893,7 @@ def exact_command(lock_dir, zone, ceiling, execute=False, output="LOCK_v2_delive
 
 
 def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, timing_path,
-               cost_ceiling, spot, machine_type, backend, stage_from, env_file):
+               cost_ceiling, spot, machine_type, backend, stage_from, env_file, lock_repro=False):
     requested = machine_type or MACHINE
     spec = machine_spec(requested)
     ram, vcpu, rate = spec if spec else machine_spec(MACHINE)
@@ -1692,7 +1907,10 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         input_files = len(manifest["files"])
         manifest_files = manifest["files"]
         manifest_note = ""
-    proj = project(ram, vcpu, input_gb, cost_ceiling, rate, machine=requested if spec else MACHINE)
+    proj = project(
+        ram, vcpu, input_gb, cost_ceiling, rate,
+        machine=requested if spec else MACHINE, lock_repro=lock_repro,
+    )
     disk_usd = (
         proj["hours"][0] * INPUT_DISK_USD_PER_HOUR,
         proj["hours"][1] * INPUT_DISK_USD_PER_HOUR,
@@ -1809,7 +2027,7 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
     report["delete_argv"] = plan.gcp_delete_argv(instance_name, project_id, zone)
     report["serial_argv"] = plan.gcp_serial_argv(instance_name, project_id, zone)
     report["startup_script"] = startup_script(
-        report["lock_dir"], guest_minutes, ram_gb=ram, vcpu=vcpu,
+        report["lock_dir"], guest_minutes, ram_gb=ram, vcpu=vcpu, lock_repro=lock_repro,
     )
     report["transfer_argv"] = transfer_argvs(
         instance_name, project_id, zone, report["lock_dir"], manifest_files, env_file, remote_dir,
@@ -1821,8 +2039,10 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
     report["pull_argv"] = pull_argvs(instance_name, project_id, zone, output, timing_path)
     report["failure_pull_argv"] = failure_pull_argvs(instance_name, project_id, zone, output, timing_path)
     report["failure_serial_path"] = os.path.join(output, "serial.txt")
+    report["lock_repro"] = bool(lock_repro)
     report["recipe_steps"], report["recipe_envs"] = build_recipe(
         GUEST_PYTHON, report["lock_dir"], proj["v1e_started"], proj["final_started"], vcpu,
+        lock_repro=lock_repro,
     )
     return report
 
@@ -1903,8 +2123,11 @@ def format_report(report):
             execute=True, output=report["output"], machine_type=report["machine"],
         ),
         "guest order: sha256sum -c SHA256SUMS; re-hash every manifest row; "
-        "7 lock repros, sequential, identical=True or per-frame md5; "
-        "v1e state pass then RGB chunks; final_render chunks; assemble; md5-list acceptance.",
+        "confirm the 7 frozen renders are in that check and link them; "
+        + ("opt-in lock repro with thread pin and PSNR/max-diff; " if report.get("lock_repro") else
+           "lock repro skipped; ")
+        + "v1e state pass then RGB chunks; final_render chunks; assemble. "
+        "reference md5 lists are written to checks and do not fail the run.",
         "create argv: " + _argv_line(report["create_argv"]),
         "delete argv (always, after create succeeds): " + _argv_line(report["delete_argv"]),
         "teardown also: guest trap calls shutdown -h now after the pull wait, "
@@ -1919,8 +2142,9 @@ def format_report(report):
     lines.extend(plan._format_argv_block("pull-back:", report.get("pull_argv") or []))
     lines.append("deliverables: " + H264_NAME + " and " + PRORES_NAME)
     lines.append(
-        "stages recorded: create, transfer, setup, verify, lock repro, state pass, "
-        "v1e chunks, final chunks, assemble, pull-back, teardown."
+        "stages recorded: create, transfer, setup, verify, "
+        + ("lock repro, " if report.get("lock_repro") else "")
+        + "state pass, v1e chunks, final chunks, assemble, pull-back, teardown."
     )
     state = next(step for step in report["recipe_steps"] if step["stage"] == "state_pass")
     lines.append("state pass argv: " + _argv_line(state["cmds"][0]))

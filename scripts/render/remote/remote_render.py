@@ -41,6 +41,8 @@ def parse_args(argv):
                         help="Check every LOCK_v2 remote path offline. No gcloud.")
     parser.add_argument("--delete-input-disk", action="store_true",
                         help="Delete the persistent input disk avt-lock-v2-inputs and do nothing else.")
+    parser.add_argument("--lock-repro", action="store_true",
+                        help="Opt in to the 7 lock repros. Off by default; frozen renders are used.")
     parser.add_argument("--rehearsal", action="store_true",
                         help="Run the pipeline on a small VM, capped at $1, then delete it.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and exit. This is the default.")
@@ -278,6 +280,7 @@ def _run_lock_v2(args, env, call, confirm):
         timing_path=timing, cost_ceiling=args.cost_ceiling, spot=args.spot,
         machine_type=args.machine_type, backend=args.backend, stage_from=args.stage_from,
         env_file=args.env_file or "/tmp/avt-env",
+        lock_repro=bool(getattr(args, "lock_repro", False)),
     )
     if not confirm or args.dry_run:
         sys.stdout.write(lock_v2.format_report(report))

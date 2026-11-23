@@ -116,26 +116,33 @@ def test_projection_includes_transfer_and_install_and_stays_under_five_dollars()
 def test_recipe_argv_runs_state_then_chunks_and_keeps_scripts_unmodified():
     steps, envs = lock_v2.build_recipe("/opt/avt-comp/bin/python", lock_v2.LOCK_DIR, 4, 4, 16)
     names = [step["stage"] for step in steps]
-    assert names == ["lock_repro", "state_pass", "v1e_chunks", "final_chunks", "assemble"]
-    repro = steps[0]["cmds"]
+    assert names == ["state_pass", "v1e_chunks", "final_chunks", "assemble"]
+    assert "lock_repro" not in names
+    opted, opted_env = lock_v2.build_recipe(
+        "/opt/avt-comp/bin/python", lock_v2.LOCK_DIR, 4, 4, 16, lock_repro=True,
+    )
+    assert [step["stage"] for step in opted][0] == "lock_repro"
+    repro = opted[0]["cmds"]
     assert [cmd["argv"][-1] for cmd in repro] == list(lock_v2.LOCK_NAMES)
-    assert all(cmd["argv"][1].endswith("repro_lock_frames_v1.py") for cmd in repro)
-    state = steps[1]["cmds"][0]
+    assert "setNumThreads(0)" in repro[0]["argv"][2]
+    assert opted_env["repro"]["OMP_NUM_THREADS"] == "1"
+    assert opted_env["repro"]["OPENCV_FOR_THREADS_NUM"] == "1"
+    state = steps[0]["cmds"][0]
     assert "--state_only" in state
     assert state[state.index("--state_at") + 1] == lock_v2.state_at_arg()
     assert state[-1].endswith("/x.mkv")
-    chunk_argvs = steps[2]["cmds"]
+    chunk_argvs = steps[1]["cmds"]
     assert "--state_load" not in chunk_argvs[0]
     assert "state_3310.npz" in chunk_argvs[1][chunk_argvs[1].index("--state_load") + 1]
     assert chunk_argvs[0][chunk_argvs[0].index("--out") + 1].endswith("chunk_3070.mkv")
     assert chunk_argvs[0][chunk_argvs[0].index("--md5log") + 1].endswith("chunk_3070.md5")
-    assert steps[2]["slots"] == 4
+    assert steps[1]["slots"] == 4
     assert envs["v1e"]["ENC_NOAUDIO"] == "1"
     assert "ENC_LOSSLESS" not in envs["v1e"]
     assert envs["final"]["GRADE_PARAMS"].endswith("final_params_LOCK_v2.json")
-    assert steps[4]["cmds"][0][1].endswith("final_render.py")
-    assert "assemble" in steps[4]["cmds"][0]
-    assert steps[3]["cmds"][0][2] == "chunks"
+    assert steps[3]["cmds"][0][1].endswith("final_render.py")
+    assert "assemble" in steps[3]["cmds"][0]
+    assert steps[2]["cmds"][0][2] == "chunks"
 
 
 def test_pool_honors_slots_and_stops_the_others_on_failure():
@@ -238,6 +245,36 @@ def test_sha256sums_and_manifest_stop_on_a_mismatch(tmp_path):
     (tmp_path / "clip.bin").write_bytes(b"nope")
     with pytest.raises(SystemExit, match="manifest"):
         lock_v2.preflight(str(lock))
+
+
+def test_frozen_renders_must_be_in_the_sha_check_and_tolerance_is_not_a_sha():
+    root = "/workspace/partnership/final_lock_v2"
+    names = {
+        "vhs": f"{root}/vhs/renders/vhs_static_preview_v5b_1080p.mp4",
+        "salad": f"{root}/salad/renders/salad_v1b.mp4",
+        "spins_T1": f"{root}/spins/renders/spins_v1c_T1.mp4",
+        "spins_T2T3": f"{root}/spins/renders/spins_v1c_T2T3.mp4",
+        "spins_T4": f"{root}/spins/renders/spins_v1c_T4.mp4",
+        "warcry": f"{root}/warcry/renders/warcry_v9c.mp4",
+        "montage": f"{root}/montage/renders/montage_v3b.mp4",
+    }
+    paths = list(names.values())
+    rels = [path[len(root) + 1:] for path in paths]
+    found, errors = lock_v2.frozen_coverage_errors(paths, rels, root)
+    assert errors == []
+    assert set(found) == set(names)
+    missing_sums, sum_errors = lock_v2.frozen_coverage_errors(paths, rels[:-1], root)
+    assert any("SHA256SUMS" in item for item in sum_errors)
+    assert "montage" not in missing_sums or any("montage" in item for item in sum_errors)
+    short, short_errors = lock_v2.resolve_frozen_renders(paths[:-1])
+    assert any("montage" in item for item in short_errors)
+    assert "montage" not in short
+    assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x30")
+    assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x32")
+    assert not lock_v2.frame_pair_ok(b"\x00" * 30, b"\xff" * 30)
+    text = lock_v2.projection_text(lock_v2.project(60, 16, 1, 15, 0.79))
+    assert "lock repro: skipped" in text
+    assert "7 locks, sequential, opt-in" not in text
 
 
 def test_runner_source_does_not_hardcode_a_content_hash():
