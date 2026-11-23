@@ -326,7 +326,7 @@ def _run_lock_v2(args, env, call, confirm):
     base_rows = list(report.get("transfer_rows") or [])
     stage_rows = []
     if full_tree:
-        stage_rows, _chunks = lock_v2.rehearsal_rows(args.lock_dir)
+        stage_rows, _chunks = lock_v2.rehearsal_rows(args.lock_dir, full=True)
         known = {row.get("path") for row in base_rows}
         known.update(row.get("path") for row in raw_rows)
         for row in stage_rows:

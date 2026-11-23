@@ -2873,11 +2873,11 @@ def augment_stage_rows(lock_dir, files):
     return list(by_path.values())
 
 
-def rehearsal_rows(lock_dir):
-    """Lock scripts and params, every final-pipeline manifest row, and the range inputs.
+def rehearsal_rows(lock_dir, full=False):
+    """Stage the files a real final_render dry-run opens, plus the lock scripts and params.
 
-    The range is frames 124-127. That needs the params JSON, ``master.song_wav``,
-    the pipeline modules on ``sys.path``, and the spins_T1 raw shipped beside this list.
+    The open trace runs on the real tree. Frames 124-127 cover the rehearsal. The full
+    run also traces one cheap pass per source family and adds those files.
     """
     lock_dir = (lock_dir or "").rstrip("/")
     rows = []
@@ -2904,6 +2904,14 @@ def rehearsal_rows(lock_dir):
         if _is_pipeline_row(row):
             rows.append(row)
     rows = augment_stage_rows(lock_dir, rows)
+    if os.path.isfile(os.path.join(lock_dir, "scripts", "final_render.py")):
+        opened, _code, _detail = trace_open_closure(lock_dir, full=full)
+        have = {row.get("path") for row in rows}
+        for row in _rows_from_paths(opened):
+            if row["path"] not in have:
+                print(f"stage closure: {row['path']}", flush=True)
+                rows.append(row)
+                have.add(row["path"])
     names = sorted({
         os.path.basename(row["path"]) for row in rows
         if os.path.basename(row.get("path") or "") in PIPELINE_MODULES
@@ -2916,32 +2924,347 @@ def rehearsal_rows(lock_dir):
     return rows, render_chunks
 
 
-def _preflight_python():
+_PROBE_IMPORTS = (
+    "import numpy, cv2, os\n"
+    "def site(mod):\n"
+    "    path = os.path.abspath(mod.__file__)\n"
+    "    while path != os.sep and os.path.basename(path) not in ('site-packages', 'dist-packages'):\n"
+    "        path = os.path.dirname(path)\n"
+    "    print(path)\n"
+    "site(numpy)\n"
+    "site(cv2)\n"
+)
+
+
+def _python_candidates():
+    ordered = []
     chosen = os.environ.get("AVT_PREFLIGHT_PYTHON") or ""
-    if chosen and os.path.isfile(chosen):
-        return chosen
-    venv = "/workspace/venv_comp/bin/python"
-    if os.path.isfile(venv):
-        return venv
-    return sys.executable
+    if chosen:
+        ordered.append(chosen)
+    ordered.append("/usr/bin/python3")
+    which = shutil.which("python3")
+    if which:
+        ordered.append(which)
+    ordered.append(sys.executable)
+    ordered.append("/workspace/venv_comp/bin/python")
+    seen = []
+    for path in ordered:
+        if path and path not in seen and os.path.isfile(path):
+            seen.append(path)
+    return seen
+
+
+def find_preflight_python(run=None, candidates=None):
+    """First interpreter that can import numpy and cv2, plus the site dirs that hold them.
+
+    The check runs outside the sandbox. ``/workspace/venv_comp`` is last: that bin has
+    no python, and the sandbox mount hides ``/workspace`` anyway. cv2 on this box lives
+    in the user site, so the site dir is passed through as ``PYTHONPATH`` and
+    ``PYTHONNOUSERSITE`` is not set.
+    """
+    run = run or subprocess.run
+    env = os.environ.copy()
+    env.pop("PYTHONNOUSERSITE", None)
+    for exe in candidates if candidates is not None else _python_candidates():
+        if not exe or not os.path.isfile(exe):
+            continue
+        try:
+            probed = run(
+                [exe, "-c", _PROBE_IMPORTS],
+                env=env, capture_output=True, text=True, timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if getattr(probed, "returncode", 1) != 0:
+            continue
+        sites = []
+        for line in (getattr(probed, "stdout", "") or "").splitlines():
+            line = line.strip()
+            if line and line not in sites:
+                sites.append(line)
+        print(f"import preflight python: {exe}", flush=True)
+        for site in sites:
+            print(f"import preflight site: {site}", flush=True)
+        return exe, sites
+    print(
+        f"import preflight python: no candidate imported numpy and cv2; using {sys.executable}",
+        flush=True,
+    )
+    return sys.executable, []
+
+
+def preflight_env(extra=None, python_info=None):
+    _exe, sites = python_info if python_info is not None else find_preflight_python()
+    env = os.environ.copy()
+    env.pop("PYTHONNOUSERSITE", None)
+    if sites:
+        prior = [env["PYTHONPATH"]] if env.get("PYTHONPATH") else []
+        env["PYTHONPATH"] = os.pathsep.join(sites + prior)
+    if extra:
+        env.update(extra)
+    return env
+
+
+_TRACE_WRAPPER = r"""
+import os, sys
+roots = tuple(part for part in os.environ.get("AVT_TRACE_ROOTS", "").split(os.pathsep) if part)
+out = os.environ["AVT_OPEN_TRACE"]
+seen = set()
+paths = []
+
+def hook(event, args):
+    if event != "open" or not args:
+        return
+    path = args[0]
+    if isinstance(path, bytes):
+        path = path.decode("utf-8", "surrogateescape")
+    if not isinstance(path, str) or path.startswith("<"):
+        return
+    path = os.path.abspath(path)
+    if not any(path == root or path.startswith(root + os.sep) for root in roots):
+        return
+    if path in seen:
+        return
+    seen.add(path)
+    paths.append(path)
+
+sys.addaudithook(hook)
+script = sys.argv[1]
+sys.argv = sys.argv[1:]
+import runpy
+try:
+    runpy.run_path(script, run_name="__main__")
+finally:
+    with open(out, "w") as handle:
+        handle.write("\n".join(paths))
+        if paths:
+            handle.write("\n")
+"""
+
+
+def _trace_roots(lock_dir):
+    roots = [os.path.dirname(lock_dir.rstrip("/")), LOCKREPRO]
+    return [root for root in roots if root]
+
+
+def _parse_strace_opens(text, roots):
+    found = []
+    for match in re.finditer(r'openat\([^,]*,\s*"((?:\\.|[^"])*)"', text or ""):
+        path = bytes(match.group(1), "utf-8").decode("unicode_escape")
+        path = os.path.abspath(path)
+        if any(path == root or path.startswith(root + os.sep) for root in roots):
+            found.append(path)
+    return found
+
+
+def _missing_paths(text):
+    found = []
+    for match in re.finditer(r"No such file or directory: '([^']+)'", text or ""):
+        found.append(match.group(1))
+    for match in re.finditer(r"FileNotFoundError: (\S+)", text or ""):
+        found.append(match.group(1).strip("'"))
+    return found
+
+
+def _dryrun_tail(script, tree, rng):
+    return [
+        script, "dryrun", "--range", rng,
+        "--chunk", "4", "--grain", "1",
+        "--scratch", "/tmp/avt-import-scratch",
+        "--v1e_dir", "/tmp/avt-import-v1e",
+        "--lockrepro", LOCKREPRO,
+        "--tree", tree,
+        "--stills", "0",
+    ]
+
+
+def _source_probes(script, tree, full):
+    """Rehearsal traces frames 124-127. The full run also samples the other source families."""
+    probes = [("board-spins_T1", _dryrun_tail(script, tree, REHEARSAL_RANGE))]
+    if not full:
+        return probes
+    probes.append(("v1e", _dryrun_tail(script, tree, "3070-3070")))
+    probes.append((
+        "assemble",
+        [script, "assemble", "--range", "0-0", "--scratch", "/tmp/avt-import-scratch", "--tree", tree],
+    ))
+    return probes
+
+
+def _walk_lock_frames(node, found):
+    if isinstance(node, dict):
+        raw_name = node.get("name") or node.get("lock") or node.get("id") or ""
+        name = _canonical_lock_name(str(raw_name))
+        start = node.get("sf0", node.get("start", node.get("f0")))
+        if name and isinstance(start, int) and name not in found:
+            found[name] = start
+        if str(raw_name).upper() == "S10" and isinstance(start, int) and "s10" not in found:
+            found["s10"] = start
+        for value in node.values():
+            _walk_lock_frames(value, found)
+    elif isinstance(node, list):
+        for value in node:
+            _walk_lock_frames(value, found)
+
+
+def _ranges_from_opened(paths):
+    found = {}
+    for path in paths:
+        if not str(path).endswith(".json"):
+            continue
+        try:
+            with open(path) as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            continue
+        _walk_lock_frames(data, found)
+    return found
+
+
+def _trace_one(python, wrapper, argv, env, roots, cwd):
+    trace_path = env["AVT_OPEN_TRACE"]
+    command = [python, wrapper, *argv]
+    strace = shutil.which("strace")
+    strace_log = trace_path + ".strace"
+    if strace:
+        command = [strace, "-f", "-e", "trace=openat,open", "-o", strace_log, "--", *command]
+    try:
+        completed = subprocess.run(
+            command, env=env, cwd=cwd, capture_output=True, text=True, timeout=300,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return set(), 1, str(exc)
+    opened = set()
+    if os.path.isfile(trace_path):
+        with open(trace_path) as handle:
+            opened.update(line.strip() for line in handle if line.strip())
+    if strace and os.path.isfile(strace_log):
+        with open(strace_log, errors="replace") as handle:
+            opened.update(_parse_strace_opens(handle.read(), roots))
+    detail = (completed.stdout or "") + (completed.stderr or "")
+    for path in _missing_paths(detail):
+        opened.add(os.path.abspath(path))
+    files = set()
+    for path in opened:
+        if path.endswith(".pyc") or f"{os.sep}__pycache__{os.sep}" in path:
+            continue
+        if os.path.isfile(path):
+            files.add(path)
+    return files, completed.returncode, detail
+
+
+def trace_open_closure(lock_dir, full=False, python_info=None):
+    """Run final_render against the real tree and return every project file it opens."""
+    lock_dir = lock_dir.rstrip("/")
+    script = os.path.join(lock_dir, "scripts", "final_render.py")
+    if not os.path.isfile(script):
+        return set(), 2, f"import preflight: {script} is missing"
+    info = python_info if python_info is not None else find_preflight_python()
+    python, _sites = info
+    roots = _trace_roots(lock_dir)
+    tree = os.path.dirname(lock_dir)
+    params = os.path.join(lock_dir, "params", "final_params_LOCK_v2.json")
+    fd, wrapper = tempfile.mkstemp(prefix="avt-trace-", suffix=".py")
+    os.close(fd)
+    with open(wrapper, "w") as handle:
+        handle.write(_TRACE_WRAPPER)
+    opened = set()
+    primary_code = 0
+    primary_detail = ""
+    try:
+        for label, argv in _source_probes(script, tree, full):
+            fd, trace_path = tempfile.mkstemp(prefix="avt-opens-", suffix=".txt")
+            os.close(fd)
+            env = preflight_env(
+                {
+                    "AVT_OPEN_TRACE": trace_path,
+                    "AVT_TRACE_ROOTS": os.pathsep.join(roots),
+                    "GRADE_PARAMS": params,
+                    "TRANS_PARAMS": params,
+                },
+                python_info=info,
+            )
+            files, code, detail = _trace_one(
+                python, wrapper, argv, env, roots, cwd=os.path.dirname(script),
+            )
+            opened.update(files)
+            print(f"open trace {label}: {len(files)} files, exit {code}", flush=True)
+            if label == "board-spins_T1":
+                primary_code = code
+                primary_detail = detail
+            for path in (trace_path, trace_path + ".strace"):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        if full:
+            for name, start in sorted(_ranges_from_opened(opened).items()):
+                if name == "spins_T1":
+                    continue
+                label = f"lock-{name}"
+                argv = _dryrun_tail(script, tree, f"{start}-{start}")
+                fd, trace_path = tempfile.mkstemp(prefix="avt-opens-", suffix=".txt")
+                os.close(fd)
+                env = preflight_env(
+                    {
+                        "AVT_OPEN_TRACE": trace_path,
+                        "AVT_TRACE_ROOTS": os.pathsep.join(roots),
+                        "GRADE_PARAMS": params,
+                        "TRANS_PARAMS": params,
+                    },
+                    python_info=info,
+                )
+                files, code, _detail = _trace_one(
+                    python, wrapper, argv, env, roots, cwd=os.path.dirname(script),
+                )
+                opened.update(files)
+                print(f"open trace {label}: {len(files)} files, exit {code}", flush=True)
+                for path in (trace_path, trace_path + ".strace"):
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+    finally:
+        try:
+            os.remove(wrapper)
+        except OSError:
+            pass
+    print(f"open trace: {len(opened)} files", flush=True)
+    return opened, primary_code, primary_detail
+
+
+def _rows_from_paths(paths):
+    rows = []
+    for path in sorted(paths):
+        if os.path.isfile(path):
+            rows.append({"path": path, "bytes": os.path.getsize(path)})
+    return rows
 
 
 def _materialize_stage(sandbox, rows):
+    """Copy the staged tree. Large /workspace files are bind-mounted after the overlay.
+
+    A symlink back to /workspace would point at the overlay and hide the real bytes.
+    /tmp files stay on the real /tmp, which the overlay does not cover.
+    """
     missing = []
+    binds = []
     for row in rows:
         src = row.get("path") or ""
         if not src or not os.path.isfile(src):
             missing.append(src or "(blank)")
             continue
+        if src == LOCKREPRO or src.startswith(LOCKREPRO + os.sep):
+            continue
         dest = os.path.join(sandbox, src.lstrip("/"))
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         if os.path.lexists(dest):
             continue
-        if src.startswith("/tmp/") or os.path.getsize(src) > 32 * 1024 * 1024:
-            os.symlink(os.path.abspath(src), dest)
-        else:
-            shutil.copy2(src, dest)
-    return missing
+        if src.startswith("/workspace/") and os.path.getsize(src) > 32 * 1024 * 1024:
+            binds.append(src)
+            continue
+        shutil.copy2(src, dest)
+    return missing, binds
 
 
 def _dryrun_argv(python, script, tree, lockrepro):
@@ -2973,18 +3296,13 @@ def import_preflight(lock_dir, rows, runner=None):
     errors = []
     if not any(row["path"] == script for row in rows):
         errors.append(f"import preflight: {script} is not in the staged set")
-    gaps = [
-        name for name in PIPELINE_MODULES
-        if not any(os.path.basename(row["path"]) == name for row in rows)
-    ]
-    if gaps and any(_is_pipeline_row(row) for row in rows):
-        errors.append("import preflight: staged set is missing " + ", ".join(gaps))
+    info = find_preflight_python()
     sandbox = tempfile.mkdtemp(prefix="avt-import-preflight-")
     try:
+        binds = []
         if not errors:
-            errors.extend(
-                f"import preflight: missing {path}" for path in _materialize_stage(sandbox, rows)
-            )
+            missing, binds = _materialize_stage(sandbox, rows)
+            errors.extend(f"import preflight: missing {path}" for path in missing)
         sandbox_script = os.path.join(sandbox, script.lstrip("/"))
         isolate = any(row["path"].startswith("/workspace/") for row in rows)
         if isolate and os.path.isdir(os.path.join(sandbox, "workspace")):
@@ -2995,20 +3313,35 @@ def import_preflight(lock_dir, rows, runner=None):
             run_script = sandbox_script
             tree = os.path.dirname(os.path.dirname(os.path.dirname(sandbox_script)))
             params = os.path.join(sandbox, lock_dir.lstrip("/"), "params", "final_params_LOCK_v2.json")
-        env = os.environ.copy()
-        env["GRADE_PARAMS"] = params
-        env["TRANS_PARAMS"] = params
-        env["PYTHONNOUSERSITE"] = "1"
-        argv = _dryrun_argv(_preflight_python(), run_script, tree, LOCKREPRO)
-        if errors:
-            detail = ""
-            code = 2
-        elif runner is not None:
-            completed = runner(argv, env)
-            code = getattr(completed, "returncode", 1)
-            detail = (getattr(completed, "stdout", "") or "") + (getattr(completed, "stderr", "") or "")
-        else:
-            code, detail = _run_import(sandbox, argv, env, isolate)
+        env = preflight_env(
+            {"GRADE_PARAMS": params, "TRANS_PARAMS": params},
+            python_info=info,
+        )
+        argv = _dryrun_argv(info[0], run_script, tree, LOCKREPRO)
+        code, detail = 2, ""
+        if not errors:
+            for _attempt in range(4):
+                if runner is not None:
+                    completed = runner(argv, env)
+                    code = getattr(completed, "returncode", 1)
+                    detail = (getattr(completed, "stdout", "") or "") + (getattr(completed, "stderr", "") or "")
+                else:
+                    code, detail = _run_import(sandbox, argv, env, isolate, binds)
+                if code == 0:
+                    break
+                added = False
+                for path in _missing_paths(detail):
+                    path = os.path.abspath(path)
+                    if not os.path.isfile(path) or any(row["path"] == path for row in rows):
+                        continue
+                    print(f"stage closure: {path}", flush=True)
+                    rows.append({"path": path, "bytes": os.path.getsize(path)})
+                    extra_missing, extra_binds = _materialize_stage(sandbox, [rows[-1]])
+                    binds.extend(extra_binds)
+                    errors.extend(f"import preflight: missing {item}" for item in extra_missing)
+                    added = True
+                if not added:
+                    break
         if not errors and code != 0:
             text = detail or ""
             imported = (
@@ -3027,6 +3360,9 @@ def import_preflight(lock_dir, rows, runner=None):
                 )
                 code = 0
             else:
+                gaps = _missing_paths(text)
+                if gaps:
+                    errors.append("import preflight gaps:\n" + "\n".join(gaps))
                 errors.append("import preflight: final_render.py dryrun --range 124-127 failed")
         if code != 0 and detail:
             errors.append(detail[-2000:])
@@ -3039,22 +3375,33 @@ def import_preflight(lock_dir, rows, runner=None):
     return {"ok": not errors, "errors": errors, "line": line}
 
 
-def _run_import(sandbox, argv, env, isolate):
+def _run_import(sandbox, argv, env, isolate, binds=()):
     if not isolate:
         try:
             completed = subprocess.run(
-                argv, env=env, capture_output=True, text=True, timeout=180,
+                argv, env=env, capture_output=True, text=True, timeout=300,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             return 1, str(exc)
         return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
     guest = os.path.join(sandbox, "workspace")
     quoted = " ".join(shlex.quote(part) for part in argv)
+    bind_lines = []
+    for src in binds:
+        if not src.startswith("/workspace/partnership/"):
+            continue
+        rel = src[len("/workspace/partnership/"):]
+        dest = src
+        real = "/tmp/avt-real-view/" + rel
+        bind_lines.append(f"mkdir -p -- {shlex.quote(os.path.dirname(dest))}")
+        bind_lines.append(f"mount --bind {shlex.quote(real)} {shlex.quote(dest)}")
     script = (
         "set -euo pipefail\n"
-        "mkdir -p /workspace /tmp/avt-import-scratch /tmp/avt-import-v1e\n"
+        "mkdir -p /workspace /tmp/avt-import-scratch /tmp/avt-import-v1e /tmp/avt-real-view\n"
+        "if [ -d /workspace/partnership ]; then mount --bind /workspace/partnership /tmp/avt-real-view; fi\n"
         f"mount --bind {shlex.quote(guest)} /workspace\n"
-        f"exec {quoted}\n"
+        + "".join(line + "\n" for line in bind_lines)
+        + f"exec {quoted}\n"
     )
     try:
         completed = subprocess.run(

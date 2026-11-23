@@ -619,6 +619,31 @@ def test_rehearsal_transfer_ships_the_raw_and_verify_uses_absolute_paths(tmp_pat
         "[ ! -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw ]" in script
 
 
+def test_preflight_python_skips_a_broken_venv_and_keeps_the_cv2_site(tmp_path):
+    venv = tmp_path / "venv" / "bin" / "python"
+    venv.parent.mkdir(parents=True)
+    venv.write_text("")
+    good = tmp_path / "python3"
+    good.write_text("")
+
+    def run(argv, **kwargs):
+        assert "PYTHONNOUSERSITE" not in kwargs["env"]
+        if argv[0] == str(venv):
+            return lock_v2._RunResult(1, stderr="ModuleNotFoundError: cv2")
+        return lock_v2._RunResult(
+            0, stdout="/home/box/.local/lib/python3.13/site-packages\n",
+        )
+
+    exe, sites = lock_v2.find_preflight_python(
+        run=run, candidates=[str(venv), str(good)],
+    )
+    assert exe == str(good)
+    assert sites == ["/home/box/.local/lib/python3.13/site-packages"]
+    env = lock_v2.preflight_env(python_info=(exe, sites))
+    assert "PYTHONNOUSERSITE" not in env
+    assert env["PYTHONPATH"] == "/home/box/.local/lib/python3.13/site-packages"
+
+
 def test_rehearsal_stages_the_pipeline_and_import_preflight_runs(tmp_path, capsys):
     partnership = tmp_path / "partnership"
     grade = partnership / "first_half" / "claudia_vfx" / "grade_v1"
@@ -634,6 +659,9 @@ def test_rehearsal_stages_the_pipeline_and_import_preflight_runs(tmp_path, capsy
     (lock / "params").mkdir()
     wav = partnership / "song.wav"
     wav.write_bytes(b"wav-bytes")
+    cutlist = partnership / "first_half" / "claudia_vfx" / "params" / "cutlist_overrides_v3.json"
+    cutlist.parent.mkdir(parents=True)
+    cutlist.write_text("{}\n")
     (lock / "params" / "final_params_LOCK_v2.json").write_text(json.dumps({
         "master": {"song_wav": str(wav)},
     }))
@@ -645,6 +673,7 @@ def test_rehearsal_stages_the_pipeline_and_import_preflight_runs(tmp_path, capsy
         "import board_v1, grade_v1, transitions_v1, helper\n"
         "P = json.load(open(os.environ['GRADE_PARAMS']))\n"
         "open(P['master']['song_wav']).close()\n"
+        "open(os.path.join(root, 'first_half/claudia_vfx/params/cutlist_overrides_v3.json')).close()\n"
         "if __name__ == '__main__':\n"
         "    if len(sys.argv) > 1 and sys.argv[1] == 'dryrun' and '124-127' in sys.argv:\n"
         "        print('dryrun 124-127')\n"
@@ -670,11 +699,13 @@ def test_rehearsal_stages_the_pipeline_and_import_preflight_runs(tmp_path, capsy
     for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py", "helper.py"):
         assert any(path.endswith("/" + name) for path in staged)
     assert str(wav) in staged
+    assert str(cutlist) in staged
     passed = lock_v2.import_preflight(str(lock), rows)
     assert passed["ok"], passed["errors"]
-    omitted = [row for row in rows if not row["path"].endswith("/board_v1.py")]
+    omitted = [row for row in rows if not row["path"].endswith("cutlist_overrides_v3.json")]
     failed = lock_v2.import_preflight(str(lock), omitted)
     assert not failed["ok"]
+    assert "cutlist_overrides_v3.json" in " ".join(failed["errors"])
     out = capsys.readouterr().out
     assert "import preflight: pass" in out
     assert "rehearsal pipeline modules:" in out
