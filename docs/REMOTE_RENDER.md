@@ -55,9 +55,9 @@ What execute does:
 
 1. Hashes every lock row on the launcher against the lock JSON. A mismatch exits before `gcloud` runs.
 2. Creates the `c4-standard-16` and arms the same three-layer teardown. `--max-run-duration` is the shorter of `--max-hours` (default 8) and the cost ceiling at $0.79/h. At the default $5 ceiling that is `22784s`.
-3. Copies each lock row with `gcloud compute scp` to `/workspace/partnership/second_half/<rel>`, then the parity stills, the lock file, and `remote_render.py` / `plan.py`. The remote path is one shell word, so a name with spaces, `&`, quotes, or parentheses stays that path. A file already on the guest at the lock's byte size is not sent again. The guest is released only after `touch /tmp/avt-go`. If a copy fails, the failing argv and the last output lines are written to `prepare_failure.log` beside `--output` before the instance is deleted.
+3. One ssh, before the copy, runs `sudo mkdir -p` and `sudo chown` of `/workspace` and `/tmp/avt-remote` to the login user, then writes and reads a test file under `/workspace/partnership`. The Debian ssh user cannot create `/workspace`. A failed probe stops the run and writes `prepare_failure.log`; it does not retry a permission error. `/var/avt` stays root mode 700. The copy then sends each lock row to `/workspace/partnership/second_half/<rel>`, the parity stills and the lock file to `/tmp/avt-stage`, and `remote_render.py` / `plan.py` to `/tmp/avt-remote`. A second ssh installs the stills and the lock into `/var/avt` with sudo. The remote path is one shell word, so a name with spaces, `&`, quotes, or parentheses stays that path. A file already on the guest at the lock's byte size is not sent again. `/tmp/avt-env`, `touch /tmp/avt-go`, and `touch /tmp/avt-pulled` stay in `/tmp`, which the login user can write. The guest is released only after `touch /tmp/avt-go`. If a copy fails, the failing argv and the last output lines are written to `prepare_failure.log` beside `--output` before the instance is deleted.
 4. The guest hashes the same rows again, then runs the 0-pixel parity gate on `full_sf3290.png`–`full_sf3301.png`, the state pass, the chunks, and the concat. Any differing pixel aborts the full run.
-5. The launcher pulls `final.mp4` to `--output` and writes `final.timing.json` beside it. The guest waits up to 30 minutes for that pull, then shuts down. The launcher deletes the instance in `finally`.
+5. The guest writes `timing.json` as root under `/var/avt` (mode 700) and the final file as root under `/workspace`. The launcher sudo-copies both to `/tmp/avt-pull`, scp's that copy, and writes `final.timing.json` beside `--output`. The guest waits up to 30 minutes for `touch /tmp/avt-pulled`, then shuts down. The launcher deletes the instance in `finally`.
 
 Wall time is recorded for create, transfer, setup, parity, state pass, chunks, concat, pull-back, and teardown. The timing file and the stdout block are that record plus the elapsed on-demand cost.
 
@@ -69,7 +69,15 @@ The guest still runs `render_verse_v9look_v1e_p.py`. Put that file, the wav, and
 
 `LOCK_v2.md` §6 is a different run from the verse. The frozen scripts in the lock tree are not edited. Content hashes are not baked into this runner: `SHA256SUMS` and `MANIFEST_LOCK_v2_inputs.json` are read at launch, so a later grain-param tweak does not require a code change. Nothing in a dry-run calls `gcloud` or creates a VM, a disk, or a bucket.
 
-The priced machine is `c4-standard-16` (16 vCPU, 60 GB, proposal rate $0.79/h, not a live quote). That is 16 of the project's 32 on-demand vCPUs. There is no preemptible quota, so `--spot` is refused and the create line has no Spot flag. 60 GB starts **4** v1e workers at 15 GB each. The locked runner still pins OpenCV to 6 threads, so the cost gate counts **2** of those as the wall-clock cap. `final_render` starts **4** disjoint chunk ranges (24 chunks of 240). It is resumable through `.done` markers. The gate does not assume that split is faster than the measured one-process rate (232 frames in 352 s, 1.517 s/frame). The boot disk is 120 GB. The lock's working set is about 80 GB; the extra room is the Debian root, apt, and pip.
+`--machine-type` chooses the shape. The project quota is `CPUS_ALL_REGIONS` 32 on demand, so 32 vCPU is the largest that fits. Known shapes, us-central1 on-demand, Linux, no disk, rounded up where the catalog is not already the table rate:
+
+| Machine | vCPU | RAM | $/h | v1e workers | final_render workers |
+|---|---:|---:|---:|---:|---:|
+| `c4-standard-16` (default) | 16 | 60 GB | 0.79 | 2 | 4 |
+| `c4-standard-32` | 32 | 120 GB | 1.59 | 5 | 8 |
+| `c4-highmem-32` | 32 | 248 GB | 2.12 | 5 | 8 |
+
+`c4-standard-16` keeps the existing proposal rate. `c4-standard-32` is the catalog $1.58136/h rounded up (2026-11-12). `c4-highmem-32` uses $2.12/h, above both the catalog $2.08542 and a second read of $2.1169. There is no preemptible quota, so `--spot` is refused. v1e workers are `min(RAM/15 GB, vCPU/6 OpenCV threads, 9 chunks)`. On the 32-vCPU machines the CPU cap is 5. `final_render` splits into `floor(vCPU/4)` disjoint ranges of 240-frame chunks, with `.done` markers. The state pass and the 7 lock repros stay one process. The final band's low end is the measured 1.517 s/frame divided by those workers. The high end keeps 70% of that split. Transfer is planned at 30 MB/s, under the measured ~53 MB/s. The boot disk stays 120 GB. The default `--cost-ceiling` is still $5. Pass `--cost-ceiling 15` when you want that headroom; execute still refuses when the selected shape's upper dollars would exceed whatever ceiling you passed. `c4-highmem-32` at $5.10 on the high end is over $5 and under $15.
 
 ```bash
 python3 scripts/render/remote/remote_render.py \
@@ -82,13 +90,15 @@ python3 scripts/render/remote/remote_render.py \
   --dry-run
 ```
 
-On a machine that does not have the lock tree, that dry-run prints:
+On a machine that does not have the lock tree, that dry-run prints both shapes, for 28.81 GB at 30 MB/s:
 
 ```text
-LOCK_v2 vs ceiling: 4.71–5.42 h, $3.72–$4.28 vs $5.00 (under)
+machine comparison (wall hours and on-demand dollars, us-central1):
+  c4-standard-16: 2.48–3.44 h, $1.96–$2.72 (2 v1e, 4 final, $0.79/h, under $5.00)
+  c4-standard-32: 1.64–2.41 h, $2.61–$3.82 (5 v1e, 8 final, $1.59/h, under $5.00)
 ```
 
-The band is transfer of 28.81 GB at 100 Mbit/s (0.64 h), install of ffmpeg (ffv1, libx264, prores_ks) plus numpy 2.5.5, scipy 1.18.1, and opencv 5.1.x (0.13–0.30 h), the hash check, the 7 lock repros (about 10–12 min, sequential), the v1e state pass (11–16 min), the v1e chunks at the 2-wide cap (0.90–1.04 h), final_render as one measured stream (2.34 h), assemble plus the md5-list checks, and an 8 GB pull-back. 100 Mbit/s is 12.5 MB/s, under the 53 MB/s the first execute measured, so this band stays the high one. Execute refuses before create when the upper dollars exceed the ceiling. With the manifest on the launcher, the same dry-run uses that file's byte total instead of 28.81 GB.
+The same two lines at `--cost-ceiling 15` are $1.96–$2.72 and $2.61–$3.82, both under $15. The selected shape then prints its stage band: transfer 0.27 h, install, the hash check, the 7 lock repros and the v1e state pass sequential, the v1e chunks divided by the worker count, final_render at the split above, assemble, and an 8 GB pull-back at the same 30 MB/s. With the manifest on the launcher, the dry-run uses that file's byte total instead of 28.81 GB. Execute refuses before create when the selected shape's upper dollars exceed the ceiling.
 
 To run it (this spends money, up to the ceiling):
 
@@ -104,15 +114,30 @@ AVT_REMOTE_RENDER_CONFIRM=1 python3 scripts/render/remote/remote_render.py \
   --output LOCK_v2_deliverables
 ```
 
+The faster shape, with the owner's $15 ceiling (the projection itself is $2.61–$3.82):
+
+```bash
+AVT_REMOTE_RENDER_CONFIRM=1 python3 scripts/render/remote/remote_render.py \
+  --backend gcp \
+  --stage-from local \
+  --recipe lock_v2 \
+  --lock-dir /workspace/partnership/final_lock_v2 \
+  --zone us-central1-a \
+  --machine-type c4-standard-32 \
+  --cost-ceiling 15 \
+  --execute \
+  --output LOCK_v2_deliverables
+```
+
 What execute does:
 
 1. On the launcher, `sha256sum -c SHA256SUMS` in the lock dir, then every manifest row's byte size and sha256. A mismatch exits before `gcloud`.
-2. Creates `c4-standard-16` with a 120 GB hyperdisk and the same three-layer teardown. `--max-run-duration` stays the shorter of `--max-hours` and the ceiling, `22784s` at $5.
-3. Copies the lock tree to the same absolute path, then each manifest path to that same absolute path, then releases the guest with `touch /tmp/avt-go`. Each remote path is one shell word, so a name with spaces, `&`, quotes, or parentheses is not split. A manifest file already on the guest at that row's byte size is not sent again. If a copy fails, the argv and the last output lines go to `--output/prepare_failure.log` before the instance is deleted.
+2. Creates the `--machine-type` (default `c4-standard-16`) with a 120 GB hyperdisk and the same three-layer teardown. `--max-run-duration` stays the shorter of `--max-hours` and the ceiling at that shape's hourly rate.
+3. One ssh creates `/workspace`, `/tmp/avt-remote`, and `/tmp/claudia_lockrepro` with `sudo mkdir -p` and `sudo chown -R "$(id -un)":"$(id -gn)"`, then writes and reads a test file under `/workspace/partnership`. That ssh does not wait for the root startup script. A permission failure stops the run before the ~29 GB copy. `/var/avt` is created mode 700 and left owned by root. The copy then sends the lock tree and each manifest path to the same absolute path. Each remote path is one shell word, so a name with spaces, `&`, quotes, or parentheses is not split. A manifest file already on the guest at that row's byte size is not sent again. `/tmp/avt-env` and `touch /tmp/avt-go` stay in `/tmp`. If a copy fails, the argv and the last output lines go to `--output/prepare_failure.log` before the instance is deleted.
 4. The guest repeats the hash check. It runs the 7 lock repros one at a time. `repro.json` must say `identical` true. If the VM's x264 cannot reproduce a lock mp4, the raw `frames_rgb24.raw` per-frame md5 must match `reference_md5/lock_<name>_preencode_*.md5`, and only then is `identical` set so `final_render.py` will read the raws.
-5. v1e state pass, then the nine RGB chunks, 4 at a time. The guest checks 1911 contiguous md5 lines, frames 3070–3077 and 4975–4980 against `reference_md5/v1e_runner_o8_*.md5`, and the 11 `v1e_work/_stills/full_sf*.png` stills against the chunk md5s.
-6. `final_render.py chunks` on four disjoint ranges, then `assemble`. Acceptance is per-frame md5 lists: chunk `md5_pre_grain` against the parity result and the P1/P2/P3 frame logs, `md5_final` against the parity grain runs, a seeded 3-frame grain spot check, and ffprobe for 5542 frames, 1920×1080, 24 fps, audio lag 0. Container hashes are not the check.
-7. Pulls both deliverables into `--output` (`PARTNERSHIP_CEASE_DESIST_LOCK_v2_h264_crf14.mp4` and `PARTNERSHIP_CEASE_DESIST_LOCK_v2_prores422hq_pcm24.mov`), plus `checks/`, `guest.log`, and `timing.json`. The timing file is the per-stage wall clock and the on-demand cost.
+5. v1e state pass (one process), then the nine RGB chunks at the worker count above (2 on `c4-standard-16`, 5 on either 32-vCPU shape). The guest checks 1911 contiguous md5 lines, frames 3070–3077 and 4975–4980 against `reference_md5/v1e_runner_o8_*.md5`, and the 11 `v1e_work/_stills/full_sf*.png` stills against the chunk md5s.
+6. `final_render.py chunks` on the disjoint 240-frame ranges (`floor(vCPU/4)` of them), then `assemble`. Acceptance is per-frame md5 lists: chunk `md5_pre_grain` against the parity result and the P1/P2/P3 frame logs, `md5_final` against the parity grain runs, a seeded 3-frame grain spot check, and ffprobe for 5542 frames, 1920×1080, 24 fps, audio lag 0. Container hashes are not the check.
+7. The guest render runs as root. Pull-back sudo-copies `/var/avt/out`, `/var/avt/checks`, `/var/avt/guest.log`, and `/var/avt/timing.json` to `/tmp/avt-pull`, chowns that copy to the login user, then scp's it into `--output` (`PARTNERSHIP_CEASE_DESIST_LOCK_v2_h264_crf14.mp4` and `PARTNERSHIP_CEASE_DESIST_LOCK_v2_prores422hq_pcm24.mov`, plus `checks/`, `guest.log`, and `timing.json`). The timing file is the per-stage wall clock and the on-demand cost.
 8. On any failure, pulls `guest.log`, `checks/`, and the serial console text, then deletes the instance.
 
 ## What Google Cloud already exists

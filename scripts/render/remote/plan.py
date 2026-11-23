@@ -101,6 +101,23 @@ MACHINES = {
         "usd_per_hour": PROPOSAL_USD_PER_HOUR,
         "family": "intel",
     },
+    # us-central1 on-demand, Linux, no disk. Catalog $1.58136/h on 2026-11-12, rounded up.
+    "c4-standard-32": {
+        "backend": "gcp",
+        "vcpu": 32,
+        "ram_gb": 120,
+        "usd_per_hour": 1.59,
+        "family": "intel",
+    },
+    # us-central1 on-demand. Catalog $2.08542/h; a second read was $2.1169/h.
+    # The higher figure, rounded up, so a ceiling check does not under-price the VM.
+    "c4-highmem-32": {
+        "backend": "gcp",
+        "vcpu": 32,
+        "ram_gb": 248,
+        "usd_per_hour": 2.12,
+        "family": "intel",
+    },
     "i7i.4xlarge": {
         "backend": "aws",
         "vcpu": 16,
@@ -758,14 +775,222 @@ def gcloud_rejoin(command):
     return " ".join((command or "").split(" "))
 
 
+# The Debian ssh user is not root. These trees are the ones that user must write
+# with scp. /var/avt is not in this list: the guest render is root and that
+# directory stays mode 700.
+LOGIN_USER_ROOTS = (
+    "/workspace",
+    "/tmp/avt-remote",
+    "/tmp/claudia_lockrepro",
+    "/tmp/avt-stage",
+)
+VAR_AVT = "/var/avt"
+PULL_STAGE = "/tmp/avt-pull"
+STAGE_DIR = "/tmp/avt-stage"
+STAGE_LOCK = "/tmp/avt-stage/lock.json"
+STAGE_PARITY = "/tmp/avt-stage/parity"
+PROBE_PATH = "/workspace/partnership/.avt-write-probe"
+PROBE_BODY = "avt-write-probe"
+
+
+def _under(path, root):
+    return path == root or path.startswith(root + "/")
+
+
+def login_user_roots(dirs):
+    """Which login-user trees ``dirs`` touch. Order is stable."""
+    found = []
+    for root in LOGIN_USER_ROOTS:
+        if any(_under(path, root) for path in dirs):
+            found.append(root)
+    return found
+
+
+def _split_login_and_var(dirs):
+    user, var = [], []
+    for path in sorted({p for p in dirs if p and p != "/"}):
+        if _under(path, VAR_AVT):
+            var.append(path)
+        else:
+            user.append(path)
+    return user, var
+
+
+def _fail_line(message):
+    return f" || fail {shlex.quote(message)}"
+
+
+def prepare_tree_script(dirs, probe="workspace"):
+    """Create parent dirs as root, then hand the login-user trees to that user.
+
+    The ssh login on the Debian 13 image cannot create ``/workspace``. The guest
+    startup script is root and may mkdir some of the same paths. This command
+    does not wait for it. ``mkdir -p`` does not change the owner of a directory
+    that already exists, and the chown is in this same ssh, before any scp.
+
+    ``/var/avt`` is created here when asked and then forced back to root mode
+    700. It is not chowned to the login user. A probe writes and reads a file
+    under ``/workspace/partnership`` so a permission failure stops the run
+    before the large copy. ``probe="tmp"`` only checks ``/tmp``, which is where
+    ``/tmp/avt-env``, ``/tmp/avt-go``, and ``/tmp/avt-pulled`` live.
+    """
+    user, var = _split_login_and_var(dirs)
+    lines = [
+        "set -euo pipefail",
+        'fail() { echo "AVT_PREFLIGHT_FAIL: $*" >&2; exit 1; }',
+        'sudo -n true || fail "sudo -n was refused; the login user cannot create /workspace"',
+    ]
+    if user:
+        quoted = " ".join(shlex.quote(path) for path in user)
+        lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir failed"))
+        roots = login_user_roots(user)
+        if roots:
+            quoted_roots = " ".join(shlex.quote(path) for path in roots)
+            lines.append(
+                f'sudo chown -R "$(id -un)":"$(id -gn)" -- {quoted_roots}'
+                + _fail_line("sudo chown failed")
+            )
+    if var:
+        quoted = " ".join(shlex.quote(path) for path in var)
+        lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir of /var/avt failed"))
+        lines.append(
+            "sudo chown root:root -- /var/avt"
+            + _fail_line("could not keep /var/avt owned by root")
+        )
+        lines.append(
+            "sudo chmod 700 -- /var/avt"
+            + _fail_line("could not keep /var/avt mode 700")
+        )
+    if probe == "workspace":
+        lines.extend([
+            "sudo mkdir -p -- /workspace/partnership"
+            + _fail_line("sudo mkdir of /workspace/partnership failed"),
+            'sudo chown -R "$(id -un)":"$(id -gn)" -- /workspace'
+            + _fail_line("sudo chown of /workspace failed"),
+            f"probe={shlex.quote(PROBE_PATH)}",
+            f"printf '%s\\n' {shlex.quote(PROBE_BODY)} > \"$probe\""
+            + _fail_line("login user cannot write /workspace/partnership"),
+            'read_back=$(cat -- "$probe")'
+            + _fail_line("login user cannot read the test file under /workspace/partnership"),
+            'rm -f -- "$probe"'
+            + _fail_line("login user cannot remove the test file under /workspace/partnership"),
+            '[ "$read_back" = avt-write-probe ]'
+            + _fail_line("the test file under /workspace/partnership did not read back"),
+        ])
+    if probe in ("workspace", "tmp"):
+        lines.extend([
+            "tmp_probe=/tmp/avt-write-probe",
+            f"printf '%s\\n' {shlex.quote(PROBE_BODY)} > \"$tmp_probe\""
+            + _fail_line(
+                "login user cannot write /tmp "
+                "(needed for /tmp/avt-env, /tmp/avt-go, and /tmp/avt-pulled)"
+            ),
+            'rm -f -- "$tmp_probe"'
+            + _fail_line("login user cannot remove a file in /tmp"),
+        ])
+    lines.append("echo AVT_PREFLIGHT_OK")
+    return "\n".join(lines) + "\n"
+
+
+def preflight_refused(result):
+    """True when the guest script reported a permission failure, not a dead ssh."""
+    return "AVT_PREFLIGHT_FAIL" in _result_text(result)
+
+
 def mkdir_command(rels, remote_root=WORK_ROOT):
-    dirs = {remote_root, "/var/avt", "/tmp/avt-remote"}
+    dirs = {remote_root, "/tmp/avt-remote", STAGE_DIR, "/workspace/partnership", VAR_AVT}
     for rel in rels:
         parent = os.path.dirname(rel)
         if parent and parent != ".":
             dirs.add(os.path.join(remote_root, parent))
-    quoted = " ".join(shlex.quote(path) for path in sorted(dirs))
-    return wrap_remote_command(f"mkdir -p -- {quoted}")
+    return wrap_remote_command(prepare_tree_script(dirs, probe="workspace"))
+
+
+def install_var_avt_script(lock=False, parity=False):
+    """Move staged files into ``/var/avt`` as root and lock the directory.
+
+    scp runs as the login user. ``/var/avt`` is mode 700, so the user cannot
+    write it. The files land in ``/tmp/avt-stage`` and this ssh installs them.
+    """
+    lines = [
+        "set -euo pipefail",
+        'fail() { echo "AVT_PREFLIGHT_FAIL: $*" >&2; exit 1; }',
+        'sudo -n true || fail "sudo -n was refused while installing /var/avt"',
+        "sudo mkdir -p -- /var/avt" + _fail_line("sudo mkdir of /var/avt failed"),
+    ]
+    if parity:
+        lines.extend([
+            "if [ -d /tmp/avt-stage/parity ]; then",
+            "  sudo rm -rf -- /var/avt/parity" + _fail_line("could not replace /var/avt/parity"),
+            "  sudo cp -a -- /tmp/avt-stage/parity /var/avt/parity"
+            + _fail_line("could not install parity stills into /var/avt/parity"),
+            "else",
+            '  fail "parity stills were not staged at /tmp/avt-stage/parity"',
+            "fi",
+        ])
+    if lock:
+        lines.extend([
+            "if [ -f /tmp/avt-stage/lock.json ]; then",
+            "  sudo install -m 600 -- /tmp/avt-stage/lock.json /var/avt/lock.json"
+            + _fail_line("could not install /var/avt/lock.json"),
+            "else",
+            '  fail "lock file was not staged at /tmp/avt-stage/lock.json"',
+            "fi",
+        ])
+    lines.extend([
+        "sudo chown root:root -- /var/avt" + _fail_line("could not keep /var/avt owned by root"),
+        "sudo chmod 700 -- /var/avt" + _fail_line("could not keep /var/avt mode 700"),
+        "echo AVT_VAR_AVT_INSTALLED",
+    ])
+    return "\n".join(lines) + "\n"
+
+
+def staged_pull_path(remote_path):
+    """Login-user path a ``/var/avt`` file is copied to before scp."""
+    if remote_path == VAR_AVT or remote_path.startswith(VAR_AVT + "/"):
+        return PULL_STAGE + remote_path[len(VAR_AVT):]
+    return PULL_STAGE + "/" + os.path.basename(remote_path.rstrip("/"))
+
+
+def publish_pull_script(paths):
+    """Copy root-only outputs to ``/tmp/avt-pull`` for the login user.
+
+    The guest render runs as root. ``/var/avt`` is mode 700, so scp as the
+    login user cannot read it. A workspace file the guest created as root may
+    also be mode 600. This copy is what the pull scp reads.
+    """
+    lines = [
+        "set -euo pipefail",
+        'fail() { echo "AVT_PULL_FAIL: $*" >&2; exit 1; }',
+        'sudo -n true || fail "sudo -n was refused while publishing outputs for pull-back"',
+        "sudo rm -rf -- /tmp/avt-pull" + _fail_line("could not clear /tmp/avt-pull"),
+        "sudo mkdir -p -- /tmp/avt-pull" + _fail_line("could not create /tmp/avt-pull"),
+    ]
+    for path in paths:
+        dest = staged_pull_path(path)
+        parent = os.path.dirname(dest) or "/"
+        src_q = shlex.quote(path)
+        dest_q = shlex.quote(dest)
+        lines.append(f"if [ -e {src_q} ]; then")
+        lines.append(
+            f"  sudo mkdir -p -- {shlex.quote(parent)}"
+            + _fail_line(f"could not create {parent}")
+        )
+        lines.append(f"  sudo rm -rf -- {dest_q}" + _fail_line(f"could not replace {dest}"))
+        lines.append(
+            f"  sudo cp -a -- {src_q} {dest_q}" + _fail_line(f"could not copy {path}")
+        )
+        lines.append("else")
+        lines.append(f"  echo {shlex.quote('AVT_PULL_MISSING ' + path)} >&2")
+        lines.append("fi")
+    lines.extend([
+        'sudo chown -R "$(id -un)":"$(id -gn)" -- /tmp/avt-pull'
+        + _fail_line("could not chown /tmp/avt-pull to the login user"),
+        "sudo chmod -R a+rX -- /tmp/avt-pull"
+        + _fail_line("could not make /tmp/avt-pull readable"),
+        "echo AVT_PULL_PUBLISHED",
+    ])
+    return "\n".join(lines) + "\n"
 
 
 def gcp_ssh_argv(name, project, zone, command):
@@ -821,10 +1046,14 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
     """Copy the lock tree with scp. No bucket and no AVT credential.
 
     One ``gcloud compute scp`` per lock row keeps each remote path equal to the
-    lock's relative path under the hardcoded work root. Parents are created first
-    because scp does not mkdir them. ``touch /tmp/avt-go`` is last, so the guest
-    does not start until the tree, the lock, the parity stills, and the runner
-    are on the VM.
+    lock's relative path under the hardcoded work root. The first ssh creates
+    those parents with sudo and checks the login user can write
+    ``/workspace/partnership``. The lock and the parity stills are staged under
+    ``/tmp`` and installed into ``/var/avt`` as root, because that directory is
+    mode 700. ``/tmp/avt-env`` and ``touch /tmp/avt-go`` stay in ``/tmp``, which
+    the login user can write. ``touch /tmp/avt-go`` is last, so the guest does
+    not start until the tree, the lock, the parity stills, and the runner are
+    on the VM.
     """
     remote_root = WORK_ROOT
     rels = [row["rel"] for row in rows]
@@ -835,10 +1064,10 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
         argvs.append(gcp_scp_argv(name, project, zone, local, scp_spec(name, remote)))
     if parity_dir:
         argvs.append(gcp_scp_argv(
-            name, project, zone, parity_dir, scp_spec(name, "/var/avt/parity"), recurse=True,
+            name, project, zone, parity_dir, scp_spec(name, STAGE_PARITY), recurse=True,
         ))
     if lock_path:
-        argvs.append(gcp_scp_argv(name, project, zone, lock_path, scp_spec(name, "/var/avt/lock.json")))
+        argvs.append(gcp_scp_argv(name, project, zone, lock_path, scp_spec(name, STAGE_LOCK)))
     argvs.append(gcp_scp_argv(name, project, zone, env_file, scp_spec(name, "/tmp/avt-env")))
     # Two files, not the whole package: scp of a directory renames into the dest.
     for filename in ("remote_render.py", "plan.py"):
@@ -847,15 +1076,26 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
             os.path.join(remote_dir, filename),
             scp_spec(name, f"/tmp/avt-remote/{filename}"),
         ))
+    if parity_dir or lock_path:
+        argvs.append(gcp_ssh_argv(
+            name, project, zone,
+            wrap_remote_command(install_var_avt_script(
+                lock=bool(lock_path), parity=bool(parity_dir),
+            )),
+        ))
     argvs.append(gcp_ssh_argv(name, project, zone, "touch /tmp/avt-go"))
     return argvs
 
 
 def local_pull_argvs(name, project, zone, output, timing_path, remote_final=None):
     remote_final = remote_final or os.path.join(WORK_ROOT, "remote_run", "final.mp4")
+    paths = ["/var/avt/timing.json", remote_final]
     return [
-        gcp_scp_argv(name, project, zone, scp_spec(name, remote_final), output),
-        gcp_scp_argv(name, project, zone, scp_spec(name, "/var/avt/timing.json"), timing_path),
+        gcp_ssh_argv(name, project, zone, wrap_remote_command(publish_pull_script(paths))),
+        gcp_scp_argv(name, project, zone, scp_spec(name, staged_pull_path(remote_final)), output),
+        gcp_scp_argv(
+            name, project, zone, scp_spec(name, staged_pull_path("/var/avt/timing.json")), timing_path,
+        ),
     ]
 
 
@@ -1068,14 +1308,30 @@ def gcp_serial_argv(name, project, zone):
     ]
 
 
-def gcp_prepare_argv(name, project, zone, env_file, remote_dir):
-    """Copy the env file and this package to the guest. The env file is not metadata."""
-    common = ["--project", project or "GCP_PROJECT", "--zone", zone]
-    return [
-        ["gcloud", "compute", "scp", *common, env_file, scp_spec(name, "/tmp/avt-env")],
-        ["gcloud", "compute", "scp", "--recurse", *common, remote_dir, scp_spec(name, "/tmp/avt-remote")],
-        ["gcloud", "compute", "ssh", *common, name, "--command", "touch /tmp/avt-go"],
+def gcp_prepare_argv(name, project, zone, env_file, remote_dir, parity_dir=""):
+    """Copy the env file and this package to the guest. The env file is not metadata.
+
+    ``/tmp/avt-remote`` is not created first. ``scp --recurse`` of a directory
+    onto an existing dest nests the package, and the guest ``cd``s to that path.
+    ``/tmp`` is world-writable, so the login user creates it. Parity stills are
+    staged under ``/tmp`` and installed into ``/var/avt`` as root.
+    """
+    # No /workspace chown. The AVT guest creates that tree as root and writes it.
+    script = prepare_tree_script([STAGE_DIR, VAR_AVT], probe="tmp")
+    argvs = [
+        gcp_ssh_argv(name, project, zone, wrap_remote_command(script)),
+        gcp_scp_argv(name, project, zone, env_file, scp_spec(name, "/tmp/avt-env")),
+        gcp_scp_argv(name, project, zone, remote_dir, scp_spec(name, "/tmp/avt-remote"), recurse=True),
     ]
+    if parity_dir:
+        argvs.append(gcp_scp_argv(
+            name, project, zone, parity_dir, scp_spec(name, STAGE_PARITY), recurse=True,
+        ))
+        argvs.append(gcp_ssh_argv(
+            name, project, zone, wrap_remote_command(install_var_avt_script(parity=True)),
+        ))
+    argvs.append(gcp_ssh_argv(name, project, zone, "touch /tmp/avt-go"))
+    return argvs
 
 
 def startup_script(max_minutes=480, stage_from="avt", vcpu=None):
@@ -1102,8 +1358,11 @@ def _startup_script_avt(max_minutes, vcpu=None):
 set -euo pipefail
 set +x
 MAX_MINUTES={int(max_minutes)}
+# The guest is root. /workspace is where this stage downloads the lock tree.
+# /var/avt stays root mode 700. /tmp/avt-env is scp'd by the login user into /tmp.
 mkdir -p /var/avt /workspace/partnership/second_half
 chmod 700 /var/avt
+chown root:root /var/avt
 cleanup() {{
   rm -f /tmp/avt-env /var/avt/env
   echo AVT_RENDER_CLEANED
@@ -1156,8 +1415,13 @@ def _startup_script_local(max_minutes, vcpu=None):
 set -euo pipefail
 set +x
 MAX_MINUTES={int(max_minutes)}
-mkdir -p /var/avt /workspace/partnership/second_half
+# Do not mkdir /workspace or /tmp/avt-remote here. This script is root, and the
+# launcher ssh has to scp into those paths as the login user. mkdir -p after
+# /tmp/avt-go does not take an existing directory back from that user.
+# /var/avt stays root mode 700. The launcher sudo-copies timing.json out before scp.
+mkdir -p /var/avt
 chmod 700 /var/avt
+chown root:root /var/avt
 cleanup() {{
   rm -f /tmp/avt-env /var/avt/env
   if [ -f /var/avt/done ]; then
@@ -1198,6 +1462,8 @@ if [ ! -f /tmp/avt-go ] || [ ! -f /tmp/avt-env ]; then
   echo AVT_RENDER_FAIL missing-env
   exit 1
 fi
+# The preflight already created these and chowned them to the login user.
+mkdir -p /workspace/partnership/second_half /tmp/avt-remote
 install -m 600 /tmp/avt-env /var/avt/env
 rm -f /tmp/avt-env
 set -a
@@ -1336,6 +1602,12 @@ def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=Fal
             result = call(argv)
             if getattr(result, "returncode", 1) == 0:
                 break
+            # A permission failure will not change on the next try. A refused
+            # connection has no AVT_PREFLIGHT_FAIL marker, so that one still retries.
+            if preflight_refused(result):
+                _raise_prepare_failure(
+                    absolute, argv, result, rows, output, output_is_dir=output_is_dir,
+                )
             if attempt + 1 < tries:
                 sleep(retry_seconds)
         else:
@@ -1493,6 +1765,8 @@ def _push_local(plan, call, sleep):
         result = call(argv)
         if getattr(result, "returncode", 1) == 0:
             continue
+        if preflight_refused(result):
+            _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
         path = None
         for part in argv:
             found = scp_remote_path(part) if ":" in part else None
@@ -1720,6 +1994,8 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             summary["projection"] = plan["projection"]
         if plan.get("projection_text"):
             summary["projection_text"] = plan["projection_text"]
+        if plan.get("comparison_text"):
+            summary["comparison_text"] = plan["comparison_text"]
         plan["timing"] = summary
         if plan.get("stage_from") == "local" and plan.get("timing_path"):
             try:
@@ -1895,13 +2171,8 @@ def build_plan(backend, env, sf0=VERSE_SF0, nf=VERSE_NF, ram_gb=None, vcpu=None,
         plan["env_file"] = env_file
         plan["prepare_argv"] = gcp_prepare_argv(
             instance_name, project, zone, env_file=env_file, remote_dir=remote_dir,
+            parity_dir=parity_dir,
         )
-        if parity_dir:
-            plan["prepare_argv"].append([
-                "gcloud", "compute", "scp", "--recurse",
-                "--project", project or "GCP_PROJECT", "--zone", zone,
-                parity_dir, f"{instance_name}:/var/avt/parity",
-            ])
         plan["poll_seconds"] = 30
         plan["ssh_retry_seconds"] = 5
         # First ssh only. About two minutes for the guest to accept a connection.
@@ -1982,6 +2253,15 @@ def _stage_lines(plan):
         lines.append(
             "Remote scp paths are one shell word (spaces, &, quotes, parentheses). "
             "After mkdir, a lock file already on the guest at the lock's byte size is not sent again."
+        )
+        lines.append(
+            "preflight: one ssh, before the copy, runs sudo mkdir -p and "
+            'sudo chown -R "$(id -un)":"$(id -gn)" of /workspace to the login user, '
+            "then writes and reads a test file under /workspace/partnership. "
+            "A failure stops there, before the large copy. /var/avt stays root mode 700. "
+            "The lock and the parity stills are installed into it with sudo. "
+            "Pull-back sudo-copies /var/avt/timing.json and the final file to /tmp/avt-pull, "
+            "then scp reads that copy. /tmp/avt-env, /tmp/avt-go, and /tmp/avt-pulled stay in /tmp."
         )
     return lines
 
