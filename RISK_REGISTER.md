@@ -37,6 +37,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [EDIT-1](#edit-1--cut-render-downloads-caller-signed-storage-urls) | Cut render downloads caller-signed storage URLs | Low | Confirmed | Open (mitigated; cost stays 0) | Products (AVT) |
 | [STORE-5](#store-5--catalog-resumable-upload-and-locked-asset-delete) | Catalog, tus upload, locked-asset delete | Medium | Confirmed (design) | Open (in review; not deployed) | Platform (AVT) |
 | [STYLE-1](#style-1--style-learn-draft-is-not-a-finished-cut) | Style Learn draft is not a finished cut | Low | Confirmed (design) | Open (in review; not deployed) | Products (AVT) |
+| [RENDER-REMOTE-1](#render-remote-1--partnership-chunk-render-on-a-rented-vm-or-a-mac-studio) | Partnership chunk render can rent a GCP VM | Low | Confirmed (design) | Open (mitigated: dry-run default, confirm env, teardown; not deployed) | Products (AVT) |
 
 ---
 
@@ -560,4 +561,13 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Mitigations:** performance speed stays 1. RGB split, glitch, and heavy shake stay off that take. The migration grants `authenticated` only, owner RLS, no `service_role`. It does not touch `style_profiles`. Vision stays off and makes no network call. Generative rows are mappings, not new integrations.
 - **Residual:** a global grade, grain, vignette, letterbox, and a mild zoom do change the pixels of a performance take. They do not redraw his face. A draft can still be mistaken for a delivered cut if someone posts it without the shot-rule check.
 - **DoD:** not deployed. No Lovable publish, no edge redeploy, no SQL. Merge waits on the three sign-offs.
+
+## RENDER-REMOTE-1 — Partnership chunk render on a rented VM or a Mac Studio
+
+- **Severity:** Low · **Confidence:** Confirmed (design) · **Status:** Open (mitigated; not deployed) · **Owner:** Products (AVT) · **Opened:** 2026-11-22
+- **Class:** C (orchestration of a paid VM, and a render host for the locked Partnership compositor). The compositor script is not modified. No Lovable publish, no edge redeploy, no SQL.
+- **Summary:** `scripts/render/remote/remote_render.py` can plan a GCP `c4-standard-16`, an AWS `i7i.4xlarge` (stub only), or a local Apple Silicon Mac. A dry-run is the default and calls no cloud API. `--execute` on GCP creates an instance only when `AVT_REMOTE_RENDER_CONFIRM=1` is set.
+- **Mitigations:** no project id is baked in (the audit found none usable for Compute). Secrets go to the guest in a mode-0600 file over scp, not instance metadata, and the guest trap deletes that file. The orchestrator deletes the instance on every exit after a successful create. The instance also has `--max-run-duration` with termination action DELETE, and the guest arms `shutdown -h`. A 12-frame parity check must show 0 differing pixels before the full render. The AWS path cannot create an instance.
+- **Residual:** a person who sets the confirm variable and has a GCP project spends the proposal rate (about $0.79/h on demand) until the instance is deleted. Spot price is not quoted. Plate memmaps and the 4K ProRes deliverables are not on AVT, so a GCP execute stays blocked until those files are in storage or the work tree.
+- **DoD:** dry-run on a machine with no gcloud prints the plan and creates nothing. Not run against a live project in this change.
 

@@ -15,3 +15,6 @@ python3 -m pytest scripts/render/tests                                          
 
 It is not wired into the app: the app's servers cannot run ffmpeg. What is missing and the smallest way to add it is
 in `docs/RENDER_CONTRACT_AND_BOUNDARY.md`.
+
+The Partnership verse compositor (`render_verse_v9look_v1e_p.py`, locked, not in this repo) has its own runner in
+`scripts/render/remote/`. That path is a dry-run by default. Read `docs/REMOTE_RENDER.md` before any execute.
