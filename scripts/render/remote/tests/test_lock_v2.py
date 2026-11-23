@@ -1191,22 +1191,23 @@ def test_a_long_manifest_never_builds_an_oversize_argv():
 def test_file_bind_keeps_the_song_wav_name(tmp_path):
     name = "PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
     assert "  " in name and "&" in name
-    real = tmp_path / "real-partnership" / "second_half" / "inputs" / "audio"
-    real.mkdir(parents=True)
-    source = real / name
-    source.write_bytes(b"song-bytes")
-    sandbox = tmp_path / "sandbox-workspace"
-    (sandbox / "partnership").mkdir(parents=True)
     guest = "/workspace/partnership/second_half/inputs/audio/" + name
-    code, stdout, stderr = lock_v2.run_in_overlay(
-        str(sandbox),
-        str(tmp_path / "real-partnership"),
-        [guest],
-        [sys.executable, "-c", "import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())", guest],
-        timeout=30,
-    )
-    assert code == 0, stderr
-    assert stdout == "song-bytes"
+    real, dest = lock_v2._bind_pairs([guest])[0]
+    assert dest == guest
+    assert real.endswith("/second_half/inputs/audio/" + name)
+    bind_list = lock_v2._write_bind_list([(real, dest)])
+    try:
+        printed = subprocess.run(
+            ["bash", "-c", "IFS= read -r -d '' real && IFS= read -r -d '' dest && printf '%s\\n%s\\n' \"$real\" \"$dest\"", "bash"],
+            stdin=open(bind_list, "rb"),
+            capture_output=True,
+            check=True,
+        )
+    finally:
+        os.remove(bind_list)
+    assert printed.stdout.decode().splitlines() == [real, dest]
+    assert "touch --" in lock_v2._OVERLAY_SCRIPT
+    assert "read -r -d ''" in lock_v2._OVERLAY_SCRIPT
     lock = tmp_path / "final_lock_v2"
     lock.mkdir()
     rows = [{"path": guest, "bytes": len(b"song-bytes"), "sha256": _sha(b"song-bytes")}]
@@ -1219,6 +1220,22 @@ def test_file_bind_keeps_the_song_wav_name(tmp_path):
     assert "/.avt-incoming/" in copied[-1]
     moved = "\n".join(plan.remote_script(argv[-1]) for argv in argvs if plan.is_incoming_mv(argv))
     assert guest in shlex.split(moved)
+    real_root = tmp_path / "real-partnership" / "second_half" / "inputs" / "audio"
+    real_root.mkdir(parents=True)
+    (real_root / name).write_bytes(b"song-bytes")
+    sandbox = tmp_path / "sandbox-workspace"
+    (sandbox / "partnership").mkdir(parents=True)
+    code, stdout, stderr = lock_v2.run_in_overlay(
+        str(sandbox),
+        str(tmp_path / "real-partnership"),
+        [guest],
+        [sys.executable, "-c", "import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())", guest],
+        timeout=30,
+    )
+    if code != 0 and "Operation not permitted" in stderr:
+        pytest.skip("user namespaces are not permitted on this runner")
+    assert code == 0, stderr
+    assert stdout == "song-bytes"
 
 
 def test_path_preflight_accepts_the_cease_path_and_odd_names(tmp_path, capsys):
