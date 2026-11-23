@@ -1188,6 +1188,39 @@ def test_a_long_manifest_never_builds_an_oversize_argv():
     assert plan.argv_nbytes(commands[1]) < 16 * 1024
 
 
+def test_file_bind_keeps_the_song_wav_name(tmp_path):
+    name = "PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+    assert "  " in name and "&" in name
+    real = tmp_path / "real-partnership" / "second_half" / "inputs" / "audio"
+    real.mkdir(parents=True)
+    source = real / name
+    source.write_bytes(b"song-bytes")
+    sandbox = tmp_path / "sandbox-workspace"
+    (sandbox / "partnership").mkdir(parents=True)
+    guest = "/workspace/partnership/second_half/inputs/audio/" + name
+    code, stdout, stderr = lock_v2.run_in_overlay(
+        str(sandbox),
+        str(tmp_path / "real-partnership"),
+        [guest],
+        [sys.executable, "-c", "import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())", guest],
+        timeout=30,
+    )
+    assert code == 0, stderr
+    assert stdout == "song-bytes"
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    rows = [{"path": guest, "bytes": len(b"song-bytes"), "sha256": _sha(b"song-bytes")}]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(lock), rows, str(tmp_path / "env"), os.path.dirname(lock_v2.__file__),
+        copy_tree=False,
+    )
+    copied = next(argv for argv in argvs if plan.final_of(argv) == guest)
+    assert "'" not in copied[-1] and '"' not in copied[-1]
+    assert "/.avt-incoming/" in copied[-1]
+    moved = "\n".join(plan.remote_script(argv[-1]) for argv in argvs if plan.is_incoming_mv(argv))
+    assert guest in shlex.split(moved)
+
+
 def test_path_preflight_accepts_the_cease_path_and_odd_names(tmp_path, capsys):
     lock = tmp_path / "final_lock_v2"
     lock.mkdir()

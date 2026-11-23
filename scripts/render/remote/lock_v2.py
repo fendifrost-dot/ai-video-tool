@@ -3375,6 +3375,79 @@ def import_preflight(lock_dir, rows, runner=None):
     return {"ok": not errors, "errors": errors, "line": line}
 
 
+_OVERLAY_SCRIPT = r"""
+set -euo pipefail
+sandbox=$1
+real_root=$2
+bind_list=$3
+shift 3
+mkdir -p /workspace /tmp/avt-import-scratch /tmp/avt-import-v1e /tmp/avt-real-view
+if [ -d "$real_root" ]; then
+  mount --bind "$real_root" /tmp/avt-real-view
+fi
+mount --bind "$sandbox" /workspace
+if [ -s "$bind_list" ]; then
+  while IFS= read -r -d '' real && IFS= read -r -d '' dest; do
+    mkdir -p -- "$(dirname -- "$dest")"
+    if [ -d "$real" ]; then
+      mkdir -p -- "$dest"
+    else
+      touch -- "$dest"
+    fi
+    mount --bind "$real" "$dest"
+  done < "$bind_list"
+fi
+exec "$@"
+"""
+
+
+def _bind_pairs(sources):
+    """Guest path -> the saved real-tree path, for files too big to copy."""
+    pairs = []
+    prefix = "/workspace/partnership/"
+    for src in sources:
+        if not src.startswith(prefix):
+            continue
+        pairs.append(("/tmp/avt-real-view/" + src[len(prefix):], src))
+    return pairs
+
+
+def _write_bind_list(pairs):
+    fd, path = tempfile.mkstemp(prefix="avt-binds-", suffix=".list")
+    with os.fdopen(fd, "wb") as handle:
+        for real, dest in pairs:
+            handle.write(os.fsencode(real) + b"\0" + os.fsencode(dest) + b"\0")
+    return path
+
+
+def run_in_overlay(sandbox_workspace, real_root, sources, command, env=None, timeout=300):
+    """Run command with sandbox_workspace mounted on /workspace and file binds applied.
+
+    Bind paths are NUL records, not shell words. A file bind is touched first so
+    mount has a file mount point. Names with spaces, ``&``, and a double space stay intact.
+    """
+    bind_list = _write_bind_list(_bind_pairs(sources))
+    try:
+        completed = subprocess.run(
+            [
+                "unshare", "--user", "--mount", "--map-root-user",
+                "bash", "-c", _OVERLAY_SCRIPT, "bash",
+                sandbox_workspace, real_root or "/nonexistent", bind_list, *command,
+            ],
+            env=env, capture_output=True, timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, "", str(exc)
+    finally:
+        try:
+            os.remove(bind_list)
+        except OSError:
+            pass
+    stdout = completed.stdout.decode("utf-8", "replace") if isinstance(completed.stdout, bytes) else (completed.stdout or "")
+    stderr = completed.stderr.decode("utf-8", "replace") if isinstance(completed.stderr, bytes) else (completed.stderr or "")
+    return completed.returncode, stdout, stderr
+
+
 def _run_import(sandbox, argv, env, isolate, binds=()):
     if not isolate:
         try:
@@ -3385,32 +3458,8 @@ def _run_import(sandbox, argv, env, isolate, binds=()):
             return 1, str(exc)
         return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
     guest = os.path.join(sandbox, "workspace")
-    quoted = " ".join(shlex.quote(part) for part in argv)
-    bind_lines = []
-    for src in binds:
-        if not src.startswith("/workspace/partnership/"):
-            continue
-        rel = src[len("/workspace/partnership/"):]
-        dest = src
-        real = "/tmp/avt-real-view/" + rel
-        bind_lines.append(f"mkdir -p -- {shlex.quote(os.path.dirname(dest))}")
-        bind_lines.append(f"mount --bind {shlex.quote(real)} {shlex.quote(dest)}")
-    script = (
-        "set -euo pipefail\n"
-        "mkdir -p /workspace /tmp/avt-import-scratch /tmp/avt-import-v1e /tmp/avt-real-view\n"
-        "if [ -d /workspace/partnership ]; then mount --bind /workspace/partnership /tmp/avt-real-view; fi\n"
-        f"mount --bind {shlex.quote(guest)} /workspace\n"
-        + "".join(line + "\n" for line in bind_lines)
-        + f"exec {quoted}\n"
-    )
-    try:
-        completed = subprocess.run(
-            ["unshare", "--user", "--mount", "--map-root-user", "bash", "-c", script],
-            env=env, capture_output=True, text=True, timeout=180,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return 1, str(exc)
-    return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
+    code, stdout, stderr = run_in_overlay(guest, "/workspace/partnership", binds, argv, env=env)
+    return code, stdout + stderr
 
 
 def import_preflight_from_lock(lock_dir, raw_rows=()):
