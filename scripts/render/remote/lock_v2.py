@@ -104,7 +104,9 @@ _HEX = set("0123456789abcdef")
 TRANSFER_MB_S = 30.0
 # High end of final_render assumes this fraction of a perfect split across workers.
 FINAL_EFFICIENCY = 0.70
-COMPARE_MACHINES = ("c4-standard-16", "c4-standard-32")
+COMPARE_MACHINES = ("c4-standard-16", "c4-standard-24", "c4-standard-32")
+# This project's C4 family quota. A 32-vCPU C4 create fails with CPUS_PER_VM_FAMILY.
+C4_VCPU_PER_VM = 24
 
 
 def machine_spec(name=None):
@@ -332,7 +334,7 @@ def projection_text(proj):
 
 
 def comparison_text(input_gb, ceiling):
-    """c4-standard-16 and c4-standard-32, wall hours and dollars, same inputs."""
+    """c4-standard-16, c4-standard-24, and c4-standard-32, same inputs."""
     lines = ["machine comparison (wall hours and on-demand dollars, us-central1):"]
     for name in COMPARE_MACHINES:
         ram, vcpu, rate = machine_spec(name)
@@ -903,7 +905,7 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     })
     for row in manifest_files:
         parents.add(os.path.dirname(row["path"]))
-    argvs = [plan.gcp_ssh_argv(name, project, zone, _mkdir_command(parents))]
+    argvs = plan.pack_dir_batches(sorted(parents), name, project, zone, probe="workspace")
     argvs.append(plan.gcp_scp_argv(
         name, project, zone, lock_dir,
         plan.scp_spec(name, os.path.dirname(lock_dir) or "/"), recurse=True,
@@ -1568,6 +1570,10 @@ def format_report(report):
         f"disk: {DISK_GB} GB hyperdisk-balanced (the lock's working set is about 80 GB)",
         f"quota: {CPU_QUOTA} on-demand vCPUs across regions, no preemptible quota. "
         f"This plan uses {report['vcpu']}. Spot is refused.",
+        f"C4 in this project is capped at {C4_VCPU_PER_VM} vCPU per VM in us-central1 "
+        "(Quota CPUS_PER_VM_FAMILY, limit 24, vm_family C4). "
+        "c4-standard-32 and c4-highmem-32 stay in the price table and will fail create. "
+        "c4-standard-24 is the largest C4 shape this quota can start.",
         f"v1e workers: {report['workers_started']} "
         f"(min of {report['projection']['v1e_terms']['ram']} from "
         f"{report['ram_gb']:.0f} GB / {GB_PER_V1E:.0f} GB, "

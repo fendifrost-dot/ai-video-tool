@@ -884,7 +884,7 @@ def test_same_size_file_is_not_sent_again(tmp_path, capsys):
         calls.append(list(argv))
         if argv[2] == "ssh":
             script = plan.remote_script(argv[-1])
-            if script.count("stat -c") > 1:
+            if "/tmp/avt-probe-list" in script:
                 return Result(stdout=remote + "\n")
         if "get-serial-port-output" in argv:
             return Result(stdout="AVT_RENDER_DONE")
@@ -1051,3 +1051,38 @@ def test_preflight_retries_a_refused_connection_then_copies(tmp_path, capsys):
     )
     assert code == 0, capsys.readouterr()
     assert tries["n"] == 3
+
+
+def test_create_failure_records_gcloud_stderr(tmp_path, capsys):
+    root, lock = _local_tree(tmp_path, ["plates/a.npy"])
+    calls = []
+    quota = "Quota 'CPUS_PER_VM_FAMILY' exceeded. Limit: 24.0 in region us-central1, vm_family: C4\n"
+
+    def call(argv):
+        calls.append(list(argv))
+        if len(argv) > 3 and argv[3] == "create":
+            result = Result(1, stdout="")
+            result.stderr = quota
+            return result
+        return Result(0)
+
+    output = tmp_path / "deliverables" / "final.mp4"
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--output", str(output),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "CPUS_PER_VM_FAMILY" in err
+    assert "gcloud create failed (1)" in err
+    assert "no instance to delete" in err
+    assert not any(len(argv) > 3 and argv[3] == "delete" for argv in calls)
+    logged = (tmp_path / "deliverables" / "execute.log").read_text()
+    assert quota.strip() in logged
+    assert quota.strip() in (tmp_path / "deliverables" / "prepare_failure.log").read_text()
+    assert "argv:" in logged

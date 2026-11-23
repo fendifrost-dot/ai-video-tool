@@ -106,6 +106,10 @@ def test_projection_includes_transfer_and_install_and_stays_under_five_dollars()
     assert wide_proj["hours"][1] < proj["hours"][1]
     highmem = lock_v2.machine_spec("c4-highmem-32")
     assert highmem[0] == 248 and highmem[1] == 32 and highmem[2] >= rate32
+    ram24, vcpu24, rate24 = lock_v2.machine_spec("c4-standard-24")
+    assert (ram24, vcpu24, rate24) == (90, 24, 1.21)
+    assert lock_v2.v1e_workers(90, 24)["started"] == 4
+    assert lock_v2.final_workers_for_cpu(24, 24) == 6
 
 
 def test_recipe_argv_runs_state_then_chunks_and_keeps_scripts_unmodified():
@@ -561,6 +565,9 @@ def test_c4_standard_32_scales_workers_and_stays_under_fifteen_dollars(tmp_path,
     assert "c4-standard-16:" in preview_out and "c4-standard-32:" in preview_out
     assert "v1e workers: 5" in preview_out
     assert "final_render workers: 8" in preview_out
+    assert "c4-standard-24:" in preview_out
+    assert "CPUS_PER_VM_FAMILY" in preview_out
+    assert "will fail create" in preview_out
 
     code = remote_render.main(
         ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
@@ -604,3 +611,41 @@ def test_c4_standard_32_scales_workers_and_stays_under_fifteen_dollars(tmp_path,
     assert "c4-highmem-32" in text
     assert "248" in text
     assert len(calls) == before
+
+
+def test_a_long_manifest_never_builds_an_oversize_argv():
+    paths = []
+    for index in range(380):
+        paths.append(
+            "/workspace/partnership/second_half/claudia_dx/v1/renders/verse_v9look_v1/"
+            f"PARTNERSHIP - CEASE & DESIST MASTER  - {index:04d} (take \"A\" & b).wav"
+        )
+    pairs = [(path, 1_000_000 + index) for index, path in enumerate(paths)]
+    decoded = plan.decode_probe_list(plan.encode_probe_list(pairs))
+    assert decoded[0] == pairs[0]
+    assert decoded[-1][0].endswith("(take \"A\" & b).wav")
+    commands = plan.probe_commands("vm", "proj", "us-central1-a", pairs, "/tmp/avt-probe-local")
+    assert [argv[2] for argv in commands] == ["scp", "ssh"]
+    reader = plan.remote_script(commands[1][-1])
+    assert "CEASE" not in reader
+    assert "/tmp/avt-probe-list" in reader
+    checked = subprocess.run(["bash", "-n"], input=reader, text=True, capture_output=True)
+    assert checked.returncode == 0, checked.stderr
+    rows = [{"path": path, "bytes": size, "sha256": "abc"} for path, size in pairs]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "proj", "us-central1-a", "/workspace/partnership/final_lock_v2",
+        rows, "/tmp/avt-env", os.path.dirname(lock_v2.__file__),
+    )
+    rels = [f"inputs/clip {index:04d} & take.wav" for index in range(380)]
+    argvs.extend(plan.local_transfer_argvs(
+        "vm", "proj", "us-central1-a",
+        [{"rel": rel, "size": 10} for rel in rels],
+        "/tmp/tree", "/tmp/lock.json", "/tmp/avt-env", os.path.dirname(plan.__file__),
+    ))
+    argvs.extend(commands)
+    assert len(paths) >= 374
+    for argv in argvs:
+        assert plan.argv_within_limit(argv)
+        for part in argv:
+            assert len(part.encode()) <= plan.ARGV_LIMIT
+    assert plan.argv_nbytes(commands[1]) < 16 * 1024
