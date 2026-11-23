@@ -22,11 +22,21 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import plan  # noqa: E402
+import lock_v2  # noqa: E402
 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Plan or run a Partnership chunked render. Dry-run is the default.")
     parser.add_argument("--backend", choices=("gcp", "aws", "mac", "linux"), default="gcp")
+    parser.add_argument(
+        "--recipe", choices=("lock_v1e", "lock_v2"), default="lock_v1e",
+        help="lock_v1e is the verse runner. lock_v2 is the whole-song LOCK_v2 master.",
+    )
+    parser.add_argument(
+        "--lock-dir", default="",
+        help="LOCK_v2 tree. The VM must see this same absolute path. "
+             "Default /workspace/partnership/final_lock_v2.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and exit. This is the default.")
     parser.add_argument("--execute", action="store_true", help="Do the work. Refuses unless AVT_REMOTE_RENDER_CONFIRM=1.")
     parser.add_argument("--guest", action="store_true", help="Run on the machine that already has the files (the VM or the Mac).")
@@ -119,6 +129,8 @@ def run_guest(args, env):
     """Verify hashes, parity-check a handful of frames, then render chunks. Stops on a diff."""
     if env.get("AVT_REMOTE_RENDER_CONFIRM") != "1":
         raise SystemExit("refusing guest render without AVT_REMOTE_RENDER_CONFIRM=1")
+    if args.recipe == "lock_v2":
+        return lock_v2.run_guest(args)
     if os.path.abspath(args.work_root) != os.path.abspath(plan.WORK_ROOT):
         raise SystemExit(
             f"the locked compositor hardcodes {plan.WORK_ROOT}. "
@@ -220,6 +232,55 @@ def run_guest(args, env):
     return 0
 
 
+def _run_lock_v2(args, env, call, confirm):
+    """Plan or launch the whole-song master. The v1e path does not enter here."""
+    if not args.lock_dir:
+        args.lock_dir = lock_v2.LOCK_DIR
+    if args.instance_name == "avt-render-partnership":
+        args.instance_name = "avt-render-lock-v2"
+    if args.output == "final.mp4":
+        args.output = "LOCK_v2_deliverables"
+    timing = args.timing_file or os.path.join(args.output, "timing.json")
+    report = lock_v2.build_plan(
+        env, lock_dir=args.lock_dir, zone=args.zone, max_hours=args.max_hours,
+        instance_name=args.instance_name, confirm=confirm, output=args.output,
+        timing_path=timing, cost_ceiling=args.cost_ceiling, spot=args.spot,
+        machine_type=args.machine_type, backend=args.backend, stage_from=args.stage_from,
+        env_file=args.env_file or "/tmp/avt-env",
+    )
+    if not confirm or args.dry_run:
+        sys.stdout.write(lock_v2.format_report(report))
+        return 0
+    if report.get("refuse_reason"):
+        print(report["refuse_reason"], file=sys.stderr)
+        return 2
+    try:
+        checked = lock_v2.preflight(args.lock_dir)
+    except SystemExit as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    report["manifest_checked"] = True
+    report["verified_files"] = checked["files"]
+    print(
+        f"sha256 ok on the launcher: {checked['files']} manifest files, "
+        f"{checked['tree']} tree files",
+        flush=True,
+    )
+    env_file = report["env_file"]
+    try:
+        write_env_file(env_file, env, stage_from="local")
+        if call is None:
+            call = _subprocess_call
+        plan.execute_gcp(report, call)
+    except SystemExit as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    finally:
+        if os.path.isfile(env_file):
+            os.remove(env_file)
+    return 0
+
+
 def main(argv=None, env=None, call=None):
     argv = sys.argv[1:] if argv is None else argv
     env = os.environ if env is None else env
@@ -237,6 +298,8 @@ def main(argv=None, env=None, call=None):
         if sys.platform != "darwin" or os.uname().machine != "arm64":
             print("the mac backend runs only on macOS arm64 (Apple Silicon Mac Studio).", file=sys.stderr)
             return 2
+    if args.recipe == "lock_v2" and not args.guest:
+        return _run_lock_v2(args, env, call, confirm)
     if args.lock and not os.path.isfile(args.lock):
         print(f"refusing: --lock is not a file: {args.lock}", file=sys.stderr)
         return 2

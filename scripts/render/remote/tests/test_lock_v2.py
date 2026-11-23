@@ -1,0 +1,408 @@
+"""LOCK_v2 remote recipe. gcloud is a fake; nothing here contacts GCP."""
+
+import hashlib
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+
+import pytest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, ".."))
+import lock_v2  # noqa: E402
+import plan  # noqa: E402
+import remote_render  # noqa: E402
+
+
+class Result:
+    def __init__(self, returncode=0, stdout="", stderr=""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _make_tree(tmp_path, clip_bytes=b"clip", manifest_bytes=None):
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    (lock / "note.txt").write_bytes(b"tree-bytes")
+    (lock / "SHA256SUMS").write_text(f"{_sha(b'tree-bytes')}  note.txt\n")
+    clip = tmp_path / "clip.bin"
+    clip.write_bytes(clip_bytes)
+    size = len(clip_bytes) if manifest_bytes is None else manifest_bytes
+    manifest = {
+        "n_files": 1,
+        "total_bytes": size,
+        "files": [{"path": str(clip), "bytes": size, "sha256": _sha(clip_bytes)}],
+    }
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps(manifest))
+    return lock, clip
+
+
+def test_workers_follow_the_15gb_rule_and_the_cpu_cap():
+    assert lock_v2.v1e_workers_for_ram(60) == 4
+    assert lock_v2.v1e_workers_for_ram(59.2) == 4
+    assert lock_v2.v1e_workers_for_ram(32) == 2
+    assert lock_v2.v1e_workers_for_ram(16) == 1
+    assert lock_v2.v1e_workers_for_ram(15) == 1
+    assert lock_v2.v1e_workers_for_ram(14) == 1
+    assert lock_v2.v1e_effective_workers(4, 16) == 2
+    assert lock_v2.final_workers_for_cpu(16, 24) == 4
+
+
+def test_v1e_chunks_match_the_lock_order_and_final_ranges_cover_the_song():
+    chunks = lock_v2.v1e_chunk_table()
+    assert sum(chunk["nf"] for chunk in chunks) == plan.VERSE_NF
+    assert chunks[0]["sf0"] == 3070 and chunks[0]["state_load"] is None
+    assert lock_v2.state_at_arg(chunks) == "3310,3550,3790,4030,4224,4464,4704,4975"
+    assert chunks[1]["state_load"] == "state_3310.npz"
+    assert chunks[-1]["sf0"] == 4975 and chunks[-1]["nf"] == 6
+    ranges = lock_v2.final_ranges(4)
+    assert ranges[0][0] == 0
+    assert ranges[-1][1] == plan.FULL_SONG_FRAMES - 1
+    cursor = 0
+    for start, end in ranges:
+        assert start == cursor
+        assert start % lock_v2.FINAL_CHUNK == 0
+        cursor = end + 1
+    assert cursor == plan.FULL_SONG_FRAMES
+
+
+def test_projection_includes_transfer_and_install_and_stays_under_five_dollars():
+    ram, vcpu, rate = lock_v2.machine_spec()
+    proj = lock_v2.project(ram, vcpu, lock_v2.DOC_INPUT_GB, 5, rate)
+    assert proj["v1e_started"] == 4
+    assert proj["v1e_effective"] == 2
+    assert proj["final_started"] == 4
+    assert proj["parts_hours"]["transfer"][0] > 0.5
+    assert proj["parts_hours"]["install"][1] >= 0.25
+    assert proj["usd"][0] < proj["usd"][1] < 5
+    assert proj["under"] is True
+    text = lock_v2.projection_text(proj)
+    assert "LOCK_v2 vs ceiling:" in text
+    assert "(under)" in text
+    assert "ffv1, libx264, prores_ks" in text
+    low = lock_v2.project(ram, vcpu, lock_v2.DOC_INPUT_GB, 1, rate)
+    assert low["under"] is False
+    assert low["usd"][1] > 1
+
+
+def test_recipe_argv_runs_state_then_chunks_and_keeps_scripts_unmodified():
+    steps, envs = lock_v2.build_recipe("/opt/avt-comp/bin/python", lock_v2.LOCK_DIR, 4, 4, 16)
+    names = [step["stage"] for step in steps]
+    assert names == ["lock_repro", "state_pass", "v1e_chunks", "final_chunks", "assemble"]
+    repro = steps[0]["cmds"]
+    assert [cmd["argv"][-1] for cmd in repro] == list(lock_v2.LOCK_NAMES)
+    assert all(cmd["argv"][1].endswith("repro_lock_frames_v1.py") for cmd in repro)
+    state = steps[1]["cmds"][0]
+    assert "--state_only" in state
+    assert state[state.index("--state_at") + 1] == lock_v2.state_at_arg()
+    assert state[-1].endswith("/x.mkv")
+    chunk_argvs = steps[2]["cmds"]
+    assert "--state_load" not in chunk_argvs[0]
+    assert "state_3310.npz" in chunk_argvs[1][chunk_argvs[1].index("--state_load") + 1]
+    assert chunk_argvs[0][chunk_argvs[0].index("--out") + 1].endswith("chunk_3070.mkv")
+    assert chunk_argvs[0][chunk_argvs[0].index("--md5log") + 1].endswith("chunk_3070.md5")
+    assert steps[2]["slots"] == 4
+    assert envs["v1e"]["ENC_NOAUDIO"] == "1"
+    assert "ENC_LOSSLESS" not in envs["v1e"]
+    assert envs["final"]["GRADE_PARAMS"].endswith("final_params_LOCK_v2.json")
+    assert steps[4]["cmds"][0][1].endswith("final_render.py")
+    assert "assemble" in steps[4]["cmds"][0]
+    assert steps[3]["cmds"][0][2] == "chunks"
+
+
+def test_pool_honors_slots_and_stops_the_others_on_failure():
+    live = {"n": 0, "max": 0}
+
+    class Proc:
+        def __init__(self, code):
+            self.code = code
+            self.finished = False
+            live["n"] += 1
+            live["max"] = max(live["max"], live["n"])
+
+        def poll(self):
+            if not self.finished:
+                self.finished = True
+                live["n"] -= 1
+            return self.code
+
+        def kill(self):
+            self.code = -9
+
+    codes = iter([0, 0, 1, 0])
+
+    def spawn(argv):
+        return Proc(next(codes))
+
+    with pytest.raises(SystemExit, match="worker exited"):
+        lock_v2.run_pool([["a"], ["b"], ["c"], ["d"]], spawn, slots=2, sleep=lambda _s: None)
+    assert live["max"] == 2
+    assert live["n"] == 0
+
+
+def test_repro_fallback_md5_and_v1e_and_final_lists():
+    one = hashlib.md5(b"frame-a").hexdigest()
+    two = hashlib.md5(b"frame-b").hexdigest()
+    assert lock_v2.accept_repro("vhs", {"identical": True}, [], {})["via"] == "identical"
+    matched = lock_v2.accept_repro("vhs", {"identical": False}, [one, two], {0: one, 1: two})
+    assert matched["ok"] and matched["patch"] and matched["via"] == "frame_md5"
+    assert not lock_v2.accept_repro("vhs", {"identical": False}, [one], {0: two})["ok"]
+    assert lock_v2.ffmpeg_missing("") == ["ffv1", "libx264", "prores_ks"]
+    assert lock_v2.ffmpeg_missing("ffv1 libx264 prores_ks") == []
+    assert lock_v2.stack_versions_ok("2.5.5", "1.18.1", "5.1.0")
+    assert not lock_v2.stack_versions_ok("2.5.5", "1.18.1", "4.10.0")
+
+    frames = {frame: f"{frame:032x}" for frame in range(lock_v2.V1E_SF0, lock_v2.V1E_END)}
+    reference = {frame: frames[frame] for frame in lock_v2.V1E_REF_FRAMES}
+    still_frames = (3172, 3268, 3276, 3446, 3453, 3522, 3645, 3653, 3657, 3661, 3764)
+    stills = {frame: frames[frame] for frame in still_frames}
+    assert lock_v2.check_v1e(frames, reference, stills) == []
+    broken = dict(stills)
+    broken[3172] = "0" * 32
+    assert any("3172" in item for item in lock_v2.check_v1e(frames, reference, broken))
+    short = dict(frames)
+    del short[4000]
+    assert any("not 1911" in item for item in lock_v2.check_v1e(short, reference, stills))
+
+    pre = "a" * 32
+    final = "b" * 32
+    chunk = {
+        frame: {"md5_pre_grain": pre, "md5_final": final}
+        for frame in range(plan.FULL_SONG_FRAMES)
+    }
+    parity = {"frames": [{"F": 120, "md5_pre_grain": pre, "md5_final": final}]}
+    preview = {"120": pre, "200": pre}
+    assert lock_v2.check_final_lists(chunk, parity, [preview]) == []
+    bad = dict(chunk)
+    bad[120] = {"md5_pre_grain": "c" * 32, "md5_final": final}
+    assert any("md5_pre_grain" in item for item in lock_v2.check_final_lists(bad, parity, [preview]))
+    spots = lock_v2.spot_frames([120, 200, 327, 444])
+    assert spots == (120, 200, 327) or len(spots) == 3
+
+
+def test_probe_accepts_the_delivery_shape_and_rejects_a_drift():
+    def probe(codec="h264", fps="24/1", frames="5542", start="0.000000"):
+        return {
+            "streams": [
+                {
+                    "codec_type": "video", "codec_name": codec, "width": 1920, "height": 1080,
+                    "avg_frame_rate": fps, "nb_frames": frames,
+                },
+                {"codec_type": "audio", "start_time": start},
+            ],
+        }
+    assert lock_v2.probe_errors(probe(), codec="h264") == []
+    assert lock_v2.probe_errors(probe(codec="prores"), codec="prores") == []
+    assert any("fps" in item for item in lock_v2.probe_errors(probe(fps="30/1")))
+    assert any("lag" in item for item in lock_v2.probe_errors(probe(start="0.500000")))
+    assert any("nb_frames" in item for item in lock_v2.probe_errors(probe(frames="10")))
+
+
+def test_sha256sums_and_manifest_stop_on_a_mismatch(tmp_path):
+    lock, _clip = _make_tree(tmp_path)
+    checked = lock_v2.preflight(str(lock))
+    assert checked["files"] == 1
+    assert checked["tree"] == 1
+    (lock / "note.txt").write_bytes(b"edited")
+    with pytest.raises(SystemExit, match="SHA256SUMS"):
+        lock_v2.preflight(str(lock))
+    (lock / "note.txt").write_bytes(b"tree-bytes")
+    (tmp_path / "clip.bin").write_bytes(b"nope")
+    with pytest.raises(SystemExit, match="manifest"):
+        lock_v2.preflight(str(lock))
+
+
+def test_runner_source_does_not_hardcode_a_content_hash():
+    text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
+    assert re.search(r"\b[0-9a-f]{64}\b", text) is None
+
+
+def test_startup_installs_the_stack_and_passes_bash_n():
+    script = lock_v2.startup_script(lock_v2.LOCK_DIR, 300)
+    assert "--recipe lock_v2" in script
+    assert "--lock-dir /workspace/partnership/final_lock_v2" in script
+    assert "numpy==2.5.5" in script
+    assert "scipy==1.18.1" in script
+    assert "opencv-python-headless>=5.1,<5.2" in script
+    assert "ffv1" in script and "libx264" in script and "prores_ks" in script
+    assert "trap cleanup EXIT" in script
+    assert "AVT_RENDER_FAIL" in script
+    assert "AVT_ACCESS_TOKEN" not in script
+    assert "BEGIN PRIVATE KEY" not in script
+    completed = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_dry_run_prints_the_plan_and_calls_nothing(capsys):
+    secret = "super-secret-token-value"
+    called = []
+    code = remote_render.main(
+        ["--backend", "gcp", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", "/workspace/partnership/final_lock_v2", "--cost-ceiling", "5",
+         "--zone", "us-central1-a"],
+        env={"AVT_ACCESS_TOKEN": secret, "GCP_PROJECT": "avt-render"},
+        call=lambda argv: called.append(argv) or Result(),
+    )
+    assert code == 0
+    assert called == []
+    out = capsys.readouterr().out
+    assert "recipe: lock_v2" in out
+    assert "c4-standard-16" in out
+    assert "v1e workers started: 4" in out
+    assert "v1e wall-clock cap: 2" in out
+    assert "final_render workers: 4" in out
+    assert "120 GB" in out
+    assert "LOCK_v2 vs ceiling:" in out
+    assert "(under)" in out
+    assert "28.81 GB" in out
+    assert "refuses the VM" in out
+    assert "--recipe lock_v2" in out
+    assert "--lock-dir /workspace/partnership/final_lock_v2" in out
+    assert "--dry-run" in out
+    assert "per-frame md5" in out
+    assert "no preemptible quota" in out
+    assert "did not create a VM" in out
+    assert "full_sf3290" not in out
+    assert secret not in out
+    assert re.search(r"\b[0-9a-f]{64}\b", out) is None
+
+
+def test_execute_refuses_when_the_projection_or_spot_or_a_hash_is_wrong(tmp_path, capsys):
+    called = []
+
+    def call(argv):
+        called.append(argv)
+        return Result()
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--cost-ceiling", "1", "--env-file", str(tmp_path / "env")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    assert called == []
+    assert "would exceed the ceiling" in capsys.readouterr().err
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--spot", "--env-file", str(tmp_path / "env2")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    assert called == []
+    assert "preemptible" in capsys.readouterr().err
+
+    lock, _clip = _make_tree(tmp_path, clip_bytes=b"clip", manifest_bytes=9)
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--env-file", str(tmp_path / "env3")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    assert called == []
+    assert "manifest" in capsys.readouterr().err
+
+
+def test_execute_pushes_absolute_paths_pulls_both_deliverables_and_deletes(tmp_path, capsys):
+    lock, clip = _make_tree(tmp_path)
+    output = tmp_path / "out"
+    env_file = tmp_path / "env"
+    calls = []
+    seen_env = {}
+
+    def call(argv):
+        calls.append(list(argv))
+        if any(str(env_file) == part for part in argv):
+            seen_env["text"] = env_file.read_text()
+            seen_env["mode"] = stat.S_IMODE(env_file.stat().st_mode)
+        if "get-serial-port-output" in argv:
+            return Result(stdout="\n".join([
+                "AVT_STAGE setup 3",
+                "AVT_STAGE verify 1",
+                "AVT_STAGE lock_repro 2",
+                "AVT_STAGE state_pass 4",
+                "AVT_STAGE v1e_chunks 5",
+                "AVT_STAGE final_chunks 6",
+                "AVT_STAGE assemble 7",
+                "AVT_RENDER_DONE",
+            ]))
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--output", str(output), "--env-file", str(env_file),
+         "--instance-name", "avt-test", "--cost-ceiling", "5"],
+        env={
+            "AVT_REMOTE_RENDER_CONFIRM": "1",
+            "GCP_PROJECT": "avt-render",
+            "AVT_ACCESS_TOKEN": "secret-token",
+        },
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    assert calls[0][3] == "create"
+    assert "c4-standard-16" in calls[0]
+    assert "120GB" in calls[0]
+    assert "SPOT" not in calls[0]
+    assert "DELETE" in calls[0]
+    assert calls[-1][3] == "delete"
+    blob = "\n".join(" ".join(argv) for argv in calls)
+    assert f"avt-test:{clip}" in blob
+    assert "secret-token" not in blob
+    assert lock_v2.H264_NAME in blob and lock_v2.PRORES_NAME in blob
+    assert seen_env["text"].strip() == "AVT_REMOTE_RENDER_CONFIRM=1"
+    assert seen_env["mode"] == 0o600
+    assert not env_file.exists()
+    summary = json.loads((output / "timing.json").read_text())
+    assert summary["result"] == "done"
+    assert summary["stages"]["verify"] == 1
+    assert summary["stages"]["assemble"] == 7
+    assert summary["projection"]["under"] is True
+    assert "LOCK_v2 vs ceiling:" in summary["projection_text"]
+    out = capsys.readouterr().out
+    assert "sha256 ok on the launcher: 1 manifest files" in out
+    assert "result: done" in out
+
+
+def test_a_guest_failure_pulls_the_log_before_delete(tmp_path, capsys):
+    lock, _clip = _make_tree(tmp_path)
+    output = tmp_path / "out"
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if "get-serial-port-output" in argv:
+            return Result(stdout="boom\nAVT_RENDER_FAIL guest\n")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--output", str(output),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    assert "AVT_RENDER_FAIL" in capsys.readouterr().err
+    verbs = [argv[3] if len(argv) > 3 else "" for argv in calls]
+    assert "delete" in verbs
+    delete_at = max(index for index, argv in enumerate(calls) if len(argv) > 3 and argv[3] == "delete")
+    pulled = [
+        index for index, argv in enumerate(calls)
+        if any("guest.log" in part for part in argv)
+    ]
+    assert pulled and pulled[0] < delete_at
+    assert "AVT_RENDER_FAIL" in (output / "serial.txt").read_text()
+    summary = json.loads((output / "timing.json").read_text())
+    assert summary["result"] == "failed"

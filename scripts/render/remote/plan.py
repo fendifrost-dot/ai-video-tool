@@ -893,7 +893,8 @@ def assemble_timing(launcher_stages, serial_text, timing_path, elapsed_seconds,
 def format_timing(summary):
     lines = ["timing and cost:"]
     stages = summary.get("stages") or {}
-    for key, label in STAGE_LABELS:
+    labels = summary.get("stage_labels") or STAGE_LABELS
+    for key, label in labels:
         if key in stages:
             lines.append(f"  {label}: {stages[key]:.1f}s")
         else:
@@ -921,6 +922,8 @@ def format_timing(summary):
     verified = summary.get("verified_files")
     if verified is not None:
         lines.append(f"sha256 checked on the launcher: {verified} files")
+    if summary.get("projection_text"):
+        lines.append(summary["projection_text"])
     return "\n".join(lines) + "\n"
 
 
@@ -1207,12 +1210,14 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             "refusing to create a VM: the lock still has inputs that are not on AVT and not in the work tree. "
             "See docs/REMOTE_RENDER.md."
         )
+    if plan.get("refuse_reason"):
+        raise SystemExit(plan["refuse_reason"])
     if not plan.get("project"):
         raise SystemExit(
             "refusing to create a VM: GCP_PROJECT is unset. "
             "The repo audit found no Compute project. Set GCP_PROJECT and GOOGLE_APPLICATION_CREDENTIALS."
         )
-    if not plan.get("parity_dir"):
+    if plan.get("require_parity_dir", True) and not plan.get("parity_dir"):
         raise SystemExit(
             "refusing to create a VM: --parity-dir is required. "
             "The 12 reference frames are compared before the full render."
@@ -1224,7 +1229,7 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             f"refusing to create a VM: projected cost ${projected:.2f} "
             f"would exceed the ceiling ${ceiling:.2f}"
         )
-    if plan.get("stage_from") == "local":
+    if plan.get("stage_from") == "local" and not plan.get("manifest_checked"):
         if not plan.get("lock_path") or plan.get("lock_rows") is None:
             raise SystemExit("refusing to create a VM: --stage-from local needs --lock")
         checked = verify_tree(plan["lock_rows"], plan.get("source_root") or WORK_ROOT)
@@ -1281,23 +1286,53 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
                 outcome = "done"
                 break
             if "AVT_RENDER_FAIL" in serial_text:
+                if plan.get("failure_pull_argv"):
+                    outcome = "failed"
                 raise SystemExit("guest reported AVT_RENDER_FAIL; deleting the instance")
             sleep(plan["poll_seconds"])
         else:
+            if plan.get("failure_pull_argv"):
+                outcome = "timeout"
             raise SystemExit("timed out waiting for the guest; deleting the instance")
     finally:
         if startup_path and os.path.isfile(startup_path):
             os.remove(startup_path)
+        if created and outcome != "done" and plan.get("failure_pull_argv"):
+            # The guest trap waits so this pull finishes before shutdown or delete.
+            # A failed scp must not skip the delete.
+            timer.begin("pull_back")
+            try:
+                if plan.get("output_is_dir") and plan.get("output"):
+                    os.makedirs(plan["output"], exist_ok=True)
+                serial_path = plan.get("failure_serial_path")
+                if serial_path:
+                    parent = os.path.dirname(serial_path)
+                    if parent:
+                        os.makedirs(parent, exist_ok=True)
+                    with open(serial_path, "w") as handle:
+                        handle.write(serial_text)
+                for argv in plan["failure_pull_argv"]:
+                    try:
+                        call(argv)
+                    except (Exception, SystemExit):
+                        pass
+            except (Exception, SystemExit):
+                pass
+            finally:
+                timer.end("pull_back")
         if created and plan.get("stage_from") == "local" and outcome == "done":
             timer.begin("pull_back")
             try:
+                if plan.get("output_is_dir") and plan.get("output"):
+                    os.makedirs(plan["output"], exist_ok=True)
                 for dest in (plan.get("output"), plan.get("timing_path")):
                     parent = os.path.dirname(dest or "")
                     if parent:
                         os.makedirs(parent, exist_ok=True)
                 for argv in plan.get("pull_argv") or []:
                     result = call(argv)
-                    if argv and argv[-1] == plan.get("output") and result.returncode != 0:
+                    failed_pull = getattr(result, "returncode", 1) != 0
+                    if failed_pull and (plan.get("pull_strict") or (argv and argv[-1] == plan.get("output"))):
                         pull_failed = True
                 if not pull_failed:
                     # The guest trap waits for this before it shuts itself down.
@@ -1328,6 +1363,12 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             verified=plan.get("verified_files"),
             result=outcome or "aborted",
         )
+        if plan.get("stage_labels"):
+            summary["stage_labels"] = list(plan["stage_labels"])
+        if plan.get("projection"):
+            summary["projection"] = plan["projection"]
+        if plan.get("projection_text"):
+            summary["projection_text"] = plan["projection_text"]
         plan["timing"] = summary
         if plan.get("stage_from") == "local" and plan.get("timing_path"):
             try:
