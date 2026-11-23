@@ -3,7 +3,9 @@
 import io
 import json
 import os
+import shlex
 import stat
+import subprocess
 import sys
 import tarfile
 
@@ -165,7 +167,7 @@ def test_startup_traps_and_does_not_embed_secrets():
     assert "--guest" in script
 
 
-def test_execute_always_deletes_after_a_successful_create():
+def test_execute_always_deletes_after_a_successful_create(tmp_path):
     plan_gcp = plan.build_plan(
         "gcp",
         {"GCP_PROJECT": "example-project"},
@@ -174,6 +176,7 @@ def test_execute_always_deletes_after_a_successful_create():
         lock_summary={"missing": [], "files": [], "on_avt": 0},
         instance_name="avt-render-test",
         env_file="/tmp/does-not-need-to-exist",
+        output=str(tmp_path / "final.mp4"),
     )
     assert plan_gcp["blocked"] is False
     assert "--max-run-duration" in plan_gcp["create_argv"]
@@ -344,6 +347,10 @@ def test_uncapped_duration_stays_hours_and_the_default_ceiling_is_under_five_dol
     assert one_hi > 5.0
     assert full["cost_full_song"]["with_state_pass_usd"][1] > one_hi
     assert plan.transfer_hours() < plan.OVERHEAD_H
+    # 100 Mbit/s is 12.5 MB/s, under the 53 MB/s the first execute measured.
+    assert plan.ASSUMED_SCP_MBPS / 8 < plan.OBSERVED_SCP_MB_PER_SEC
+    band = plan.cost_band(plan.FULL_SONG_FRAMES, 2)
+    assert plan.projected_usd_hi(band, plan.transfer_hours()) == plan.projected_usd_hi(band, 0)
 
 
 def test_local_dry_run_needs_no_avt_credentials_and_calls_nothing(tmp_path, capsys):
@@ -626,11 +633,12 @@ def test_scp_paths_keep_spaces_and_the_lock_name(tmp_path):
     copied = [argv for argv in argvs if argv[2] == "scp" and argv[-2].endswith("clip.wav")]
     assert len(copied) == 1
     assert copied[0][-2] == os.path.join(str(tmp_path), rel)
-    assert copied[0][-1] == f"avt-test:{plan.WORK_ROOT}/{rel}"
+    remote = f"{plan.WORK_ROOT}/{rel}"
+    assert plan.scp_remote_path(copied[0][-1]) == remote
     assert argvs[-1][2] == "ssh"
     assert "touch /tmp/avt-go" in argvs[-1]
-    mkdir = argvs[0]
-    assert "'/workspace/partnership/second_half/inputs/my audio'" in mkdir[-1]
+    script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
+    assert f"{plan.WORK_ROOT}/inputs/my audio" in shlex.split(script)
     assert any(part.endswith(":/var/avt/lock.json") and "LOCK_v2.json" in argv[-2] for argv in argvs for part in argv)
 
 
@@ -716,3 +724,199 @@ def test_local_env_file_drops_avt_credentials(tmp_path):
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     remote_render.write_env_file(str(path), {"AVT_ACCESS_TOKEN": "secret-token"}, stage_from="avt")
     assert "AVT_ACCESS_TOKEN=secret-token" in path.read_text()
+
+
+CEASE_REL = "inputs/audio/PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+SHELL_RELS = (
+    CEASE_REL,
+    'inputs/my audio & "takes"/he said "no" (take 1).wav',
+    "inputs/odd/it's a (clip).wav",
+    "inputs/audio  masters/clip.wav",
+)
+
+
+def _bash_word(word):
+    completed = subprocess.run(
+        ["bash", "-c", f"set -- {word}; printf %s \"$1\""],
+        capture_output=True, text=True, check=True,
+    )
+    return completed.stdout
+
+
+def test_remote_shell_keeps_spaces_ampersand_quotes_and_parens(tmp_path):
+    rows = [{"rel": rel, "kind": "not_on_avt", "sha256": "abc", "size": 3} for rel in SHELL_RELS]
+    argvs = plan.local_transfer_argvs(
+        "avt-test", "avt-render", "us-central1-a", rows, str(tmp_path),
+        str(tmp_path / "LOCK_v2.json"), "/tmp/avt-env", os.path.dirname(plan.__file__),
+    )
+    for rel in SHELL_RELS:
+        remote = f"{plan.WORK_ROOT}/{rel}"
+        copied = [
+            argv for argv in argvs
+            if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == remote
+        ]
+        assert len(copied) == 1
+        assert copied[0][-2] == os.path.join(str(tmp_path), rel)
+        word = copied[0][-1].split(":", 1)[1]
+        assert _bash_word(word) == remote
+    assert "MASTER  -" in f"{plan.WORK_ROOT}/{CEASE_REL}"
+    script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
+    words = shlex.split(script)
+    assert words[:3] == ["mkdir", "-p", "--"]
+    listing = "printf '%s\\n' " + script[len("mkdir -p -- "):]
+    printed = subprocess.run(
+        ["bash", "-c", listing], capture_output=True, text=True, check=True,
+    ).stdout.splitlines()
+    for rel in SHELL_RELS:
+        parent = os.path.dirname(f"{plan.WORK_ROOT}/{rel}")
+        assert parent in words
+        assert parent in printed
+    startup = plan.startup_script(stage_from="local")
+    assert "CEASE" not in startup
+    concat = [step for step in plan.guest_steps("python3", plan.WORK_ROOT, "/tmp/run", nf=8, workers=1)["steps"]
+              if step["name"] == "concat"][0]["argv"]
+    wav = os.path.join(plan.WORK_ROOT, CEASE_REL)
+    assert concat.count(wav) == 1
+    assert concat[0] == "ffmpeg"
+
+
+def test_verify_tree_hashes_a_shell_metacharacter_path(tmp_path):
+    payload = b"wav-bytes"
+    path = tmp_path / CEASE_REL
+    path.parent.mkdir(parents=True)
+    path.write_bytes(payload)
+    digest = __import__("hashlib").sha256(payload).hexdigest()
+    checked = plan.verify_tree(
+        [{"rel": CEASE_REL, "kind": "not_on_avt", "sha256": digest}],
+        str(tmp_path),
+    )
+    assert checked["ok"]
+    assert checked["checked"] == 1
+
+
+def _local_tree(tmp_path, rels):
+    root = tmp_path / "tree"
+    files = []
+    for rel in rels:
+        payload = rel.encode()
+        dest = root / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(payload)
+        files.append(_row(rel, payload))
+    lock = _lock(tmp_path / "LOCK_v2.json", files)
+    return root, lock
+
+
+def test_prepare_failure_logs_the_cease_manifest_index(tmp_path, capsys):
+    root, lock = _local_tree(tmp_path, ["plates/a.npy", CEASE_REL])
+    output = tmp_path / "out" / "final.mp4"
+    calls = []
+    noise = "\n".join(f"L{i:03d}" for i in range(60))
+
+    def call(argv):
+        calls.append(list(argv))
+        if len(argv) > 3 and argv[3] == "delete":
+            assert (tmp_path / "out" / "prepare_failure.log").is_file()
+            return Result(0)
+        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == f"{plan.WORK_ROOT}/{CEASE_REL}":
+            return Result(1, stdout=noise + "\nremote shell broke on &\n")
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--output", str(output),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "manifest index 1" in err
+    assert "deleting the instance" in err
+    log = (tmp_path / "out" / "prepare_failure.log").read_text()
+    assert f"manifest index 1 (item 2): {CEASE_REL}" in log
+    assert "remote shell broke on &" in log
+    assert "L000" not in log
+    assert "L010" not in log
+    assert "L011" in log
+    assert "argv:" in log
+    assert calls[-1][3] == "delete"
+
+
+def test_same_size_file_is_not_sent_again(tmp_path, capsys):
+    root, lock = _local_tree(tmp_path, [CEASE_REL, "plates/a.npy"])
+    remote = f"{plan.WORK_ROOT}/{CEASE_REL}"
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if argv[2] == "ssh":
+            script = plan.remote_script(argv[-1])
+            if script.count("stat -c") > 1:
+                return Result(stdout=remote + "\n")
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--output", str(tmp_path / "final.mp4"),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    sent = [
+        plan.scp_remote_path(part)
+        for argv in calls if argv[2] == "scp"
+        for part in argv
+    ]
+    assert remote not in sent
+    assert f"{plan.WORK_ROOT}/plates/a.npy" in sent
+    assert "skip-existing: 1" in capsys.readouterr().out
+    assert calls[-1][3] == "delete"
+
+
+def test_a_failed_copy_is_not_retried_when_the_bytes_are_already_there(tmp_path, capsys):
+    root, lock = _local_tree(tmp_path, [CEASE_REL])
+    remote = f"{plan.WORK_ROOT}/{CEASE_REL}"
+    calls = []
+    sent = []
+    probes = {"n": 0}
+
+    def call(argv):
+        calls.append(list(argv))
+        if argv[2] == "ssh":
+            script = plan.remote_script(argv[-1])
+            if "stat -c" in script:
+                probes["n"] += 1
+                if probes["n"] > 1:
+                    return Result(stdout=remote + "\n")
+                return Result(stdout="")
+        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == remote:
+            sent.append(argv)
+            return Result(1, stdout="connection reset\n")
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--output", str(tmp_path / "final.mp4"),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    assert len(sent) == 1
+    assert f"skip-existing: {remote}" in capsys.readouterr().out
+    assert not (tmp_path / "prepare_failure.log").exists()
+    assert calls[-1][3] == "delete"

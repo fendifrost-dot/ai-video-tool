@@ -8,6 +8,7 @@ are sized by RAM at 7.5 GB each. Nothing here creates a VM, a bucket, or a bill.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import math
@@ -36,8 +37,11 @@ PROPOSAL_USD_PER_HOUR = 0.79
 # Hard stop for a paid run. Elapsed cost uses this same on-demand rate, including Spot.
 DEFAULT_COST_CEILING_USD = 5.0
 # The launcher's lock tree, and a plain scp rate used only for the dry-run line.
+# The first LOCK_v2 execute moved about 53 MB/s (424 Mbit/s) and then aborted.
+# 100 Mbit/s is 12.5 MB/s, under that measurement, so the printed hours stay high.
 # 18e9 bytes at 100 Mbit/s is 0.40 h, which sits inside the 0.75 h setup pad.
 LOCAL_TREE_GB = 18.0
+OBSERVED_SCP_MB_PER_SEC = 53.0
 ASSUMED_SCP_MBPS = 100.0
 
 # Frames already proven identical between the locked compositor and the chunk
@@ -470,6 +474,7 @@ def guest_steps(python, root, run_dir, sf0=VERSE_SF0, nf=VERSE_NF, workers=1,
             ),
         })
     wav = os.path.join(root, "inputs/audio/PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav")
+    # An argv list. The wav name has spaces and "&"; a shell string would split it.
     steps.append({
         "name": "concat",
         "argv": [
@@ -725,6 +730,34 @@ def full_song_vs_ceiling(rate, ceiling, slots=2):
     )
 
 
+def wrap_remote_command(script):
+    """A ``gcloud compute ssh --command`` string that survives ``split(' ')``.
+
+    gcloud splits ``--command`` on every space and the ssh client joins the
+    pieces with one space before the remote shell sees them. A quoted path with
+    two spaces in a row would come back as one space. The payload is base64,
+    which has no spaces, and bash on the guest runs the real script.
+    """
+    blob = base64.b64encode(script.encode("utf-8")).decode("ascii")
+    return f"printf %s {blob} | base64 -d | bash"
+
+
+def remote_script(command):
+    """The script a wrapped command will run. An ordinary command is returned as-is."""
+    if not command or " | base64 -d | bash" not in command or not command.startswith("printf %s "):
+        return command or ""
+    try:
+        blob = shlex.split(command)[2]
+        return base64.b64decode(blob).decode("utf-8")
+    except (IndexError, ValueError, UnicodeDecodeError):
+        return command
+
+
+def gcloud_rejoin(command):
+    """What the remote shell receives after gcloud splits ``--command`` on spaces."""
+    return " ".join((command or "").split(" "))
+
+
 def mkdir_command(rels, remote_root=WORK_ROOT):
     dirs = {remote_root, "/var/avt", "/tmp/avt-remote"}
     for rel in rels:
@@ -732,7 +765,7 @@ def mkdir_command(rels, remote_root=WORK_ROOT):
         if parent and parent != ".":
             dirs.add(os.path.join(remote_root, parent))
     quoted = " ".join(shlex.quote(path) for path in sorted(dirs))
-    return f"mkdir -p -- {quoted}"
+    return wrap_remote_command(f"mkdir -p -- {quoted}")
 
 
 def gcp_ssh_argv(name, project, zone, command):
@@ -743,6 +776,31 @@ def gcp_ssh_argv(name, project, zone, command):
         name,
         "--command", command,
     ]
+
+
+def scp_spec(name, path):
+    """``instance:word`` for gcloud scp. ``word`` is one remote-shell word.
+
+    gcloud forwards the text after the colon into the remote ``scp -t`` or
+    ``scp -f`` command. A space or ``&`` in that text is parsed by the remote
+    shell. ``shlex.quote`` leaves a safe path unchanged and quotes the rest,
+    so the absolute path that lands on the guest is the one we asked for.
+    """
+    return f"{name}:{shlex.quote(path)}"
+
+
+def scp_remote_path(spec):
+    """Absolute path encoded in an ``instance:word`` scp argument, or None."""
+    host, sep, word = (spec or "").partition(":")
+    if not sep or not host or "/" in host:
+        return None
+    try:
+        parts = shlex.split(word)
+    except ValueError:
+        return None
+    if len(parts) != 1 or not parts[0].startswith("/"):
+        return None
+    return parts[0]
 
 
 def gcp_scp_argv(name, project, zone, source, dest, recurse=False):
@@ -774,20 +832,20 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
     for row in rows:
         local = os.path.join(source_root, row["rel"])
         remote = os.path.join(remote_root, row["rel"])
-        argvs.append(gcp_scp_argv(name, project, zone, local, f"{name}:{remote}"))
+        argvs.append(gcp_scp_argv(name, project, zone, local, scp_spec(name, remote)))
     if parity_dir:
         argvs.append(gcp_scp_argv(
-            name, project, zone, parity_dir, f"{name}:/var/avt/parity", recurse=True,
+            name, project, zone, parity_dir, scp_spec(name, "/var/avt/parity"), recurse=True,
         ))
     if lock_path:
-        argvs.append(gcp_scp_argv(name, project, zone, lock_path, f"{name}:/var/avt/lock.json"))
-    argvs.append(gcp_scp_argv(name, project, zone, env_file, f"{name}:/tmp/avt-env"))
+        argvs.append(gcp_scp_argv(name, project, zone, lock_path, scp_spec(name, "/var/avt/lock.json")))
+    argvs.append(gcp_scp_argv(name, project, zone, env_file, scp_spec(name, "/tmp/avt-env")))
     # Two files, not the whole package: scp of a directory renames into the dest.
     for filename in ("remote_render.py", "plan.py"):
         argvs.append(gcp_scp_argv(
             name, project, zone,
             os.path.join(remote_dir, filename),
-            f"{name}:/tmp/avt-remote/{filename}",
+            scp_spec(name, f"/tmp/avt-remote/{filename}"),
         ))
     argvs.append(gcp_ssh_argv(name, project, zone, "touch /tmp/avt-go"))
     return argvs
@@ -796,8 +854,8 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
 def local_pull_argvs(name, project, zone, output, timing_path, remote_final=None):
     remote_final = remote_final or os.path.join(WORK_ROOT, "remote_run", "final.mp4")
     return [
-        gcp_scp_argv(name, project, zone, f"{name}:{remote_final}", output),
-        gcp_scp_argv(name, project, zone, f"{name}:/var/avt/timing.json", timing_path),
+        gcp_scp_argv(name, project, zone, scp_spec(name, remote_final), output),
+        gcp_scp_argv(name, project, zone, scp_spec(name, "/var/avt/timing.json"), timing_path),
     ]
 
 
@@ -928,7 +986,12 @@ def format_timing(summary):
 
 
 def _argv_text(argv):
-    return " ".join(shlex.quote(part) for part in argv)
+    rendered = " ".join(shlex.quote(part) for part in argv)
+    if len(argv) >= 2 and argv[-2] == "--command":
+        script = remote_script(argv[-1])
+        if script and script != argv[-1]:
+            rendered += "\n    # remote shell: " + script
+    return rendered
 
 
 def _format_argv_block(title, argvs, limit=24):
@@ -1009,8 +1072,8 @@ def gcp_prepare_argv(name, project, zone, env_file, remote_dir):
     """Copy the env file and this package to the guest. The env file is not metadata."""
     common = ["--project", project or "GCP_PROJECT", "--zone", zone]
     return [
-        ["gcloud", "compute", "scp", *common, env_file, f"{name}:/tmp/avt-env"],
-        ["gcloud", "compute", "scp", "--recurse", *common, remote_dir, f"{name}:/tmp/avt-remote"],
+        ["gcloud", "compute", "scp", *common, env_file, scp_spec(name, "/tmp/avt-env")],
+        ["gcloud", "compute", "scp", "--recurse", *common, remote_dir, scp_spec(name, "/tmp/avt-remote")],
         ["gcloud", "compute", "ssh", *common, name, "--command", "touch /tmp/avt-go"],
     ]
 
@@ -1156,10 +1219,119 @@ exit 0
 """
 
 
-def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=False):
+def manifest_index(argv, rows, root=WORK_ROOT):
+    """0-based lock-row index of an scp argv, or None when the argv is not a lock file."""
+    if not rows or len(argv) < 3 or argv[2] != "scp":
+        return None
+    path = None
+    for part in argv:
+        if ":" not in part:
+            continue
+        found = scp_remote_path(part)
+        if found:
+            path = found
+            break
+    if not path:
+        return None
+    prefix = root.rstrip("/") + "/"
+    for index, row in enumerate(rows):
+        remote = _row_remote(row, root)
+        if remote == path:
+            return index
+        rel = row.get("rel") if isinstance(row, dict) else None
+        if rel and path == prefix + rel:
+            return index
+    return None
+
+
+def _result_text(result):
+    stdout = getattr(result, "stdout", "") or ""
+    stderr = getattr(result, "stderr", "") or ""
+    if stderr and stdout.endswith(stderr):
+        return stdout
+    if stdout and stderr:
+        return stdout + "\n" + stderr
+    return stdout or stderr
+
+
+def _tail_text(text, limit=50):
+    lines = (text or "").splitlines()
+    if len(lines) <= limit:
+        return "\n".join(lines)
+    return "\n".join(lines[-limit:])
+
+
+def format_prepare_failure(index, argv, result, rows=None):
+    """The argv and the last output lines of one failed prepare step."""
+    where = f"step {index}"
+    manifest = manifest_index(argv, rows or [])
+    if manifest is None:
+        where += "; no lock row on this command"
+    else:
+        row = rows[manifest] if rows else {}
+        rel = (row.get("rel") or row.get("path") or "") if isinstance(row, dict) else ""
+        where += f"; manifest index {manifest} (item {manifest + 1})"
+        if rel:
+            where += f": {rel}"
+    lines = [
+        f"prepare failed at {where}",
+        "argv:",
+        _argv_text(argv),
+        "--- last output lines ---",
+        _tail_text(_result_text(result), 50) or "(no stdout or stderr)",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def prepare_failure_path(output, output_is_dir=False):
+    """``<output>/prepare_failure.log``. A file output puts the log beside that file."""
+    if not output:
+        return None
+    if output_is_dir or output.endswith(os.sep) or os.path.isdir(output):
+        directory = output
+    else:
+        directory = os.path.dirname(os.path.abspath(output)) or "."
+    return os.path.join(directory, "prepare_failure.log")
+
+
+def write_prepare_failure(output, text, output_is_dir=False):
+    path = prepare_failure_path(output, output_is_dir=output_is_dir)
+    if not path:
+        return None
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(path, "w") as handle:
+        handle.write(text)
+    return path
+
+
+def _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=False):
+    text = format_prepare_failure(index, argv, result, rows=rows)
+    sys.stderr.write(text)
+    log_path = None
+    try:
+        log_path = write_prepare_failure(output, text, output_is_dir=output_is_dir)
+    except OSError as exc:
+        sys.stderr.write(f"could not write prepare_failure.log ({exc})\n")
+    manifest = manifest_index(argv, rows or [])
+    if manifest is None:
+        where = f"step {index}"
+    else:
+        where = f"manifest index {manifest}"
+    message = f"prepare failed at {where}; deleting the instance"
+    if log_path:
+        message += f". see {log_path}"
+    raise SystemExit(message)
+
+
+def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=False,
+               rows=None, output=None, index_offset=0, output_is_dir=False):
     """Run each argv. The first command is the one retried, so a multi-gigabyte scp is not repeated."""
     for index, argv in enumerate(argvs):
+        absolute = index + index_offset
         tries = attempts if index == 0 or not retry_first_only else 1
+        result = None
         for attempt in range(tries):
             result = call(argv)
             if getattr(result, "returncode", 1) == 0:
@@ -1167,7 +1339,185 @@ def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=Fal
             if attempt + 1 < tries:
                 sleep(retry_seconds)
         else:
-            raise SystemExit("prepare failed; deleting the instance")
+            _raise_prepare_failure(absolute, argv, result, rows, output, output_is_dir=output_is_dir)
+
+
+def _row_size(row):
+    if not isinstance(row, dict):
+        return None
+    raw = row.get("size")
+    if raw is None:
+        raw = row.get("bytes")
+    if isinstance(raw, bool):
+        return None
+    try:
+        size = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if size < 0:
+        return None
+    return size
+
+
+def _row_remote(row, root=WORK_ROOT):
+    if not isinstance(row, dict):
+        return None
+    path = row.get("path")
+    if isinstance(path, str) and path.startswith("/"):
+        return path
+    rel = row.get("rel")
+    if rel:
+        return os.path.join(root, rel)
+    return None
+
+
+def size_probe_script(pairs):
+    """Print absolute paths that already exist at the lock's byte size.
+
+    A missing size is not a match. The guest is Debian, so ``stat -c`` is GNU.
+    """
+    lines = []
+    for path, size in pairs:
+        try:
+            size_i = int(size)
+        except (TypeError, ValueError):
+            continue
+        if size_i < 0 or not path:
+            continue
+        quoted = shlex.quote(path)
+        lines.append(
+            f"if [ -f {quoted} ] && [ \"$(stat -c %s -- {quoted})\" -eq {size_i} ]; then "
+            f"printf '%s\\n' {quoted}; fi"
+        )
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n"
+
+
+def without_existing(argvs, present):
+    """Drop scp argvs whose remote path is already the right file. Other commands stay."""
+    present = set(present or ())
+    if not present:
+        return list(argvs)
+    kept = []
+    for argv in argvs:
+        path = None
+        if len(argv) > 2 and argv[2] == "scp":
+            for part in argv:
+                found = scp_remote_path(part) if ":" in part else None
+                if found:
+                    path = found
+                    break
+        if path and path in present:
+            continue
+        kept.append(argv)
+    return kept
+
+
+def _lock_pairs(rows, root=WORK_ROOT):
+    pairs = []
+    for row in rows or []:
+        size = _row_size(row)
+        remote = _row_remote(row, root)
+        if size is None or not remote:
+            continue
+        pairs.append((remote, size))
+    return pairs
+
+
+def _present_from_probe(text, wanted):
+    found = set()
+    for line in (text or "").splitlines():
+        path = line.strip()
+        if path in wanted:
+            found.add(path)
+    return found
+
+
+def _probe_present(plan, call, pairs):
+    """One ssh. None means the check failed and the caller must copy."""
+    script = size_probe_script(pairs)
+    if not script:
+        return set()
+    argv = gcp_ssh_argv(
+        plan["instance_name"], plan.get("project"), plan.get("zone"),
+        wrap_remote_command(script),
+    )
+    result = call(argv)
+    if getattr(result, "returncode", 1) != 0:
+        return None
+    wanted = {path for path, _size in pairs}
+    return _present_from_probe(getattr(result, "stdout", "") or "", wanted)
+
+
+def _push_local(plan, call, sleep):
+    """Copy the lock tree. A same-size file already on the guest is not sent again.
+
+    mkdir is retried until ssh accepts a connection. Each file is sent once, and
+    a failed send is retried only when the guest does not already have that
+    byte size, so a retry does not start the tree over.
+    """
+    argvs = list(plan.get("transfer_argv") or [])
+    if not argvs:
+        return
+    rows = plan.get("transfer_rows")
+    if rows is None:
+        rows = plan.get("lock_rows") or []
+    output = plan.get("output")
+    output_is_dir = bool(plan.get("output_is_dir"))
+    attempts = int(plan.get("transfer_attempts") or 1)
+    retry_seconds = plan.get("ssh_retry_seconds", 5)
+    _call_each(
+        argvs[:1], call, attempts=attempts, sleep=sleep, retry_seconds=retry_seconds,
+        rows=rows, output=output, output_is_dir=output_is_dir,
+    )
+    body = list(enumerate(argvs[1:], start=1))
+    tail = []
+    if body and body[-1][1][2:4] == ["ssh", "--quiet"] and body[-1][1][-1] == "touch /tmp/avt-go":
+        tail = [body[-1][1]]
+        body = body[:-1]
+    pairs = _lock_pairs(rows)
+    present = _probe_present(plan, call, pairs)
+    if present:
+        before = len(body)
+        kept = []
+        for index, argv in body:
+            if [argv] != without_existing([argv], present):
+                continue
+            kept.append((index, argv))
+        body = kept
+        skipped = before - len(body)
+        if skipped:
+            print(f"skip-existing: {skipped} files already on the guest", flush=True)
+    for index, argv in body:
+        result = call(argv)
+        if getattr(result, "returncode", 1) == 0:
+            continue
+        path = None
+        for part in argv:
+            found = scp_remote_path(part) if ":" in part else None
+            if found:
+                path = found
+                break
+        size = None
+        for pair in pairs:
+            if pair[0] == path:
+                size = pair[1]
+                break
+        if path is not None and size is not None:
+            again = _probe_present(plan, call, [(path, size)])
+            if again and path in again:
+                print(f"skip-existing: {path}", flush=True)
+                continue
+        result = call(argv)
+        if getattr(result, "returncode", 1) != 0:
+            _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
+    if tail:
+        _call_each(
+            tail, call, attempts=1, sleep=sleep, retry_seconds=retry_seconds,
+            rows=rows, output=output, index_offset=len(argvs) - 1,
+            output_is_dir=output_is_dir,
+        )
 
 
 def _elapsed_cost(plan, billing_start, clock):
@@ -1264,16 +1614,17 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
         timer.begin("transfer")
         try:
             if plan.get("stage_from") == "local":
-                argvs = plan.get("transfer_argv") or []
+                _push_local(plan, call, sleep)
             else:
-                argvs = plan.get("prepare_argv") or []
-            _call_each(
-                argvs, call,
-                attempts=int(plan.get("transfer_attempts") or 1),
-                sleep=sleep,
-                retry_seconds=plan.get("ssh_retry_seconds", 5),
-                retry_first_only=plan.get("stage_from") == "local",
-            )
+                _call_each(
+                    plan.get("prepare_argv") or [], call,
+                    attempts=int(plan.get("transfer_attempts") or 1),
+                    sleep=sleep,
+                    retry_seconds=plan.get("ssh_retry_seconds", 5),
+                    rows=plan.get("lock_rows"),
+                    output=plan.get("output"),
+                    output_is_dir=bool(plan.get("output_is_dir")),
+                )
         finally:
             timer.end("transfer")
         _guard_elapsed_cost(plan, billing_start, clock)
@@ -1625,7 +1976,12 @@ def _stage_lines(plan):
             lines.append(f"lock rows: {len(rows)}")
         lines.append(
             "sha256: the launcher checks every lock row against the lock JSON before create, "
-            "and the guest checks the same rows again before the parity gate."
+            "and the guest checks the same rows again before the parity gate. "
+            "Both checks open the path in Python. They do not pass it through a shell."
+        )
+        lines.append(
+            "Remote scp paths are one shell word (spaces, &, quotes, parentheses). "
+            "After mkdir, a lock file already on the guest at the lock's byte size is not sent again."
         )
     return lines
 
@@ -1657,7 +2013,10 @@ def _ceiling_lines(plan):
                 f"scp {plan.get('tree_gb', LOCAL_TREE_GB):.0f} GB at "
                 f"{plan.get('scp_mbps', ASSUMED_SCP_MBPS):.0f} Mbit/s is "
                 f"{plan.get('transfer_hours', 0):.2f} h, inside the {OVERHEAD_H} h setup "
-                "when the copy is not slower than that pad."
+                "when the copy is not slower than that pad. "
+                f"{plan.get('scp_mbps', ASSUMED_SCP_MBPS):.0f} Mbit/s is "
+                f"{plan.get('scp_mbps', ASSUMED_SCP_MBPS) / 8:.1f} MB/s, under the "
+                f"{OBSERVED_SCP_MB_PER_SEC:.0f} MB/s measured on the first execute."
             )
     if plan.get("backend") == "gcp" and plan.get("capped_hours") is not None:
         lines.append(

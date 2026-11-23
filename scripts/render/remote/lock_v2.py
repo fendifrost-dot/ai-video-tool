@@ -795,8 +795,9 @@ exit 0
 
 
 def _mkdir_command(paths):
-    quoted = " ".join(shlex.quote(path) for path in sorted(set(paths)))
-    return f"mkdir -p -- {quoted}"
+    quoted = " ".join(shlex.quote(path) for path in sorted(p for p in set(paths) if p))
+    # gcloud splits --command on every space. The wrapper keeps a double space in a directory.
+    return plan.wrap_remote_command(f"mkdir -p -- {quoted}")
 
 
 def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir):
@@ -809,42 +810,62 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
         parents.add(os.path.dirname(row["path"]))
     argvs = [plan.gcp_ssh_argv(name, project, zone, _mkdir_command(parents))]
     argvs.append(plan.gcp_scp_argv(
-        name, project, zone, lock_dir, f"{name}:{os.path.dirname(lock_dir)}", recurse=True,
+        name, project, zone, lock_dir,
+        plan.scp_spec(name, os.path.dirname(lock_dir) or "/"), recurse=True,
     ))
     for row in manifest_files:
-        argvs.append(plan.gcp_scp_argv(name, project, zone, row["path"], f"{name}:{row['path']}"))
-    argvs.append(plan.gcp_scp_argv(name, project, zone, env_file, f"{name}:/tmp/avt-env"))
+        # The remote word is quoted. An unquoted space or & is parsed by the remote shell.
+        argvs.append(plan.gcp_scp_argv(
+            name, project, zone, row["path"], plan.scp_spec(name, row["path"]),
+        ))
+    argvs.append(plan.gcp_scp_argv(name, project, zone, env_file, plan.scp_spec(name, "/tmp/avt-env")))
     for filename in ("remote_render.py", "plan.py", "lock_v2.py"):
         argvs.append(plan.gcp_scp_argv(
             name, project, zone,
             os.path.join(remote_dir, filename),
-            f"{name}:/tmp/avt-remote/{filename}",
+            plan.scp_spec(name, f"/tmp/avt-remote/{filename}"),
         ))
     argvs.append(plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-go"))
     return argvs
 
 
 def pull_argvs(name, project, zone, output_dir, timing_path):
-    h264 = f"{name}:{OUT_DIR}/{H264_NAME}"
-    prores = f"{name}:{OUT_DIR}/{PRORES_NAME}"
     return [
-        plan.gcp_scp_argv(name, project, zone, h264, os.path.join(output_dir, H264_NAME)),
-        plan.gcp_scp_argv(name, project, zone, prores, os.path.join(output_dir, PRORES_NAME)),
         plan.gcp_scp_argv(
-            name, project, zone, f"{name}:{CHECKS_DIR}", os.path.join(output_dir, "checks"), recurse=True,
+            name, project, zone, plan.scp_spec(name, f"{OUT_DIR}/{H264_NAME}"),
+            os.path.join(output_dir, H264_NAME),
         ),
-        plan.gcp_scp_argv(name, project, zone, f"{name}:/var/avt/guest.log", os.path.join(output_dir, "guest.log")),
-        plan.gcp_scp_argv(name, project, zone, f"{name}:/var/avt/timing.json", timing_path),
+        plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, f"{OUT_DIR}/{PRORES_NAME}"),
+            os.path.join(output_dir, PRORES_NAME),
+        ),
+        plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, CHECKS_DIR),
+            os.path.join(output_dir, "checks"), recurse=True,
+        ),
+        plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, "/var/avt/guest.log"),
+            os.path.join(output_dir, "guest.log"),
+        ),
+        plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, "/var/avt/timing.json"), timing_path,
+        ),
     ]
 
 
 def failure_pull_argvs(name, project, zone, output_dir, timing_path):
     argvs = [
-        plan.gcp_scp_argv(name, project, zone, f"{name}:/var/avt/guest.log", os.path.join(output_dir, "guest.log")),
         plan.gcp_scp_argv(
-            name, project, zone, f"{name}:{CHECKS_DIR}", os.path.join(output_dir, "checks"), recurse=True,
+            name, project, zone, plan.scp_spec(name, "/var/avt/guest.log"),
+            os.path.join(output_dir, "guest.log"),
         ),
-        plan.gcp_scp_argv(name, project, zone, f"{name}:/var/avt/timing.json", timing_path),
+        plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, CHECKS_DIR),
+            os.path.join(output_dir, "checks"), recurse=True,
+        ),
+        plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, "/var/avt/timing.json"), timing_path,
+        ),
         plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-pulled"),
     ]
     return argvs
@@ -1392,6 +1413,7 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         "ssh_retry_seconds": 5,
         "transfer_attempts": 24,
         "manifest_checked": False,
+        "transfer_rows": manifest_files,
         "verified_files": None,
         "lock_path": "",
         "lock_rows": None,
