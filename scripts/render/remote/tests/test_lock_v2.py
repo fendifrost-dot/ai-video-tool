@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import stat
 import subprocess
 import sys
@@ -406,3 +407,48 @@ def test_a_guest_failure_pulls_the_log_before_delete(tmp_path, capsys):
     assert "AVT_RENDER_FAIL" in (output / "serial.txt").read_text()
     summary = json.loads((output / "timing.json").read_text())
     assert summary["result"] == "failed"
+
+
+def test_cease_and_desist_path_survives_the_remote_shell(tmp_path):
+    name = "PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+    audio = tmp_path / 'my audio & "takes"'
+    audio.mkdir(parents=True)
+    wav = audio / name
+    payload = b"wav-bytes"
+    wav.write_bytes(payload)
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    (lock / "note.txt").write_bytes(b"tree-bytes")
+    (lock / "SHA256SUMS").write_text(f"{_sha(b'tree-bytes')}  note.txt\n")
+    manifest = {
+        "n_files": 1,
+        "total_bytes": len(payload),
+        "files": [{"path": str(wav), "bytes": len(payload), "sha256": _sha(payload)}],
+    }
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps(manifest))
+    argvs = lock_v2.transfer_argvs(
+        "avt-test", "p", "us-central1-a", str(lock), manifest["files"],
+        "/tmp/avt-env", os.path.dirname(lock_v2.__file__),
+    )
+    copied = [
+        argv for argv in argvs
+        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == str(wav)
+    ]
+    assert len(copied) == 1
+    assert copied[0][-2] == str(wav)
+    word = copied[0][-1].split(":", 1)[1]
+    echoed = subprocess.run(
+        ["bash", "-c", f"set -- {word}; printf %s \"$1\""],
+        capture_output=True, text=True, check=True,
+    )
+    assert echoed.stdout == str(wav)
+    script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
+    parent = os.path.dirname(str(wav))
+    assert parent in shlex.split(script)
+    printed = subprocess.run(
+        ["bash", "-c", "printf '%s\\n' " + script[len("mkdir -p -- "):]],
+        capture_output=True, text=True, check=True,
+    )
+    assert parent in printed.stdout.splitlines()
+    # Hashing opens the path. It does not hand the name to a shell.
+    assert lock_v2.verify_manifest_files(manifest["files"], plan.sha256_file) == []
