@@ -571,26 +571,52 @@ def _canonical_lock_name(name):
     return _LOCK_NAME_ALIASES.get(str(name or "").strip().lower())
 
 
+_LOCK_NAME_RE = re.compile(r"'name':\s*'([^']+)'")
+_LOCK_SHA_RE = re.compile(r"'lock_sha256':\s*'([0-9a-fA-F]{64})'")
+_LOCK_LEAD_RE = re.compile(r"^([A-Za-z0-9_]+)\s+rc=")
+
+
+def _lock_from_regex(line):
+    """Name and sha from a line the log truncated before the closing brace."""
+    name_match = _LOCK_NAME_RE.search(line)
+    sha_match = _LOCK_SHA_RE.search(line)
+    name = name_match.group(1) if name_match else ""
+    if not name:
+        lead = _LOCK_LEAD_RE.match(line)
+        name = lead.group(1) if lead else ""
+    digest = sha_match.group(1) if sha_match else ""
+    return name, digest
+
+
 def parse_lock_shas(text):
-    """``name`` -> ``lock_sha256`` from the parity repro log."""
+    """``name`` -> ``lock_sha256`` from the parity repro log.
+
+    A complete dict is parsed first. The real log cuts each line at about 315
+    characters, so there is no closing ``}`` and ``json`` / ``ast`` cannot
+    load it. The sha is still on that line, so a regex reads it.
+    """
     found = {}
     for raw in (text or "").splitlines():
         line = raw.strip()
-        if "lock_sha256" not in line or "{" not in line:
+        if "lock_sha256" not in line:
             continue
-        blob = line[line.find("{"):line.rfind("}") + 1]
         obj = None
-        try:
-            obj = json.loads(blob)
-        except json.JSONDecodeError:
+        if "{" in line and "}" in line:
+            blob = line[line.find("{"):line.rfind("}") + 1]
             try:
-                obj = ast.literal_eval(blob)
-            except (SyntaxError, ValueError):
-                obj = None
-        if not isinstance(obj, dict):
-            continue
-        canonical = _canonical_lock_name(obj.get("name"))
-        digest = str(obj.get("lock_sha256") or "").strip().lower()
+                obj = json.loads(blob)
+            except json.JSONDecodeError:
+                try:
+                    obj = ast.literal_eval(blob)
+                except (SyntaxError, ValueError):
+                    obj = None
+        if isinstance(obj, dict):
+            name = obj.get("name")
+            digest = obj.get("lock_sha256")
+        else:
+            name, digest = _lock_from_regex(line)
+        canonical = _canonical_lock_name(name)
+        digest = str(digest or "").strip().lower()
         if canonical and len(digest) == 64 and all(char in _HEX for char in digest):
             found[canonical] = digest
     return found

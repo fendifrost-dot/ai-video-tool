@@ -318,6 +318,55 @@ def test_frozen_renders_match_the_manifest_sha_not_sha256sums():
     assert "lock repro: skipped" in text
 
 
+def test_truncated_lock_repro_log_resolves_all_seven():
+    # The box log cuts each line near 315 characters, before the closing brace.
+    # Prefixes are the real lock_sha256 values; only vhs was printed in full.
+    shas = {
+        "vhs": "d269656e1686165d368d5053eda654fd467daa3e1994fd25fa881b1b9b9ebb1a",
+        "salad": _pad_sha("ba9cdf2f"),
+        "spins_T1": _pad_sha("d701e77e"),
+        "spins_T2T3": _pad_sha("f73755ad"),
+        "spins_T4": _pad_sha("893d65b6"),
+        "warcry": _pad_sha("fa9b185e"),
+        "montage": _pad_sha("a910e172"),
+    }
+    rows = [
+        {"path": "/workspace/partnership/first_half/claudia_vfx/vhs/v5b/lock/vhs_static_preview_v5b_1080p.mp4", "sha256": shas["vhs"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/pixel_sort_salad/v1b/lock/pixel_sort_salad_preview_v1b_1080p.mp4", "sha256": shas["salad"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/spin_transitions/v1c/lock/spin_T1_v1c_preview_1080p.mp4", "sha256": shas["spins_T1"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/spin_transitions/v1c/lock/spin_T2T3_v1c_preview_1080p.mp4", "sha256": shas["spins_T2T3"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/spin_transitions/v1c/lock/spin_T4_v1c_preview_1080p.mp4", "sha256": shas["spins_T4"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/war_cry/claudia_build/v9c/lock/warcry_v9c_clip_1080p.mp4", "sha256": shas["warcry"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/reverse_montage/v3b/lock/reverse_montage_preview_v3b_1080p.mp4", "sha256": shas["montage"]},
+    ]
+    lines = []
+    for name, digest in shas.items():
+        line = (
+            f"{name} rc=0 29s {{'name': '{name}', 'script': "
+            f"'/tmp/claudia_lockrepro/{name}/scripts/build.py', "
+            f"'rebuilt_sha256': '{digest}', 'lock_sha256': '{digest}', "
+            f"'identical': True, 'frames': 180, 'pix_fmt': '"
+        )
+        assert "}" not in line
+        assert len(line) > 200
+        lines.append(line)
+    lines.append("ALL_REPRO_DONE")
+    parsed = lock_v2.parse_lock_shas("\n".join(lines))
+    assert set(parsed) == set(lock_v2.LOCK_NAMES)
+    assert parsed["vhs"] == shas["vhs"]
+    assert parsed["spins_T1"].startswith("d701e77e")
+    assert parsed["montage"].startswith("a910e172")
+    found, errors = lock_v2.frozen_coverage_errors(rows, parsed)
+    assert errors == []
+    assert found["spins_T1"].endswith("spin_T1_v1c_preview_1080p.mp4")
+    assert found["spins_T2T3"].endswith("spin_T2T3_v1c_preview_1080p.mp4")
+    assert found["spins_T4"].endswith("spin_T4_v1c_preview_1080p.mp4")
+    assert found["salad"].endswith("pixel_sort_salad_preview_v1b_1080p.mp4")
+    assert found["warcry"].endswith("warcry_v9c_clip_1080p.mp4")
+    assert found["montage"].endswith("reverse_montage_preview_v3b_1080p.mp4")
+    assert found["vhs"].endswith("vhs_static_preview_v5b_1080p.mp4")
+
+
 def test_runner_source_does_not_hardcode_a_content_hash():
     text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
     assert re.search(r"\b[0-9a-f]{64}\b", text) is None
