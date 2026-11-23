@@ -10,6 +10,59 @@ This runner plans that job. A dry-run is the default. It does not create a VM, a
 python3 scripts/render/remote/remote_render.py --backend gcp --dry-run
 ```
 
+## Local stage (no AVT credentials)
+
+Use this when the launcher already has the lock tree and it cannot mint `AVT_ACCESS_TOKEN`, `AVT_ANON_KEY`, or `AVT_BATCH_SECRET`. Nothing in this mode reads or writes `project-clips`. The default `--stage-from avt` path below is unchanged.
+
+The transport is `gcloud compute scp` and `gcloud compute ssh`. That matches a service account with only `roles/compute.instanceAdmin.v1` and `roles/iam.serviceAccountUser`. A GCS bucket is not created. A bucket would need `roles/storage.admin` (to create it), `roles/storage.objectAdmin` (to read and write objects), and the `storage.googleapis.com` API. Enabling that API needs `roles/serviceusage.serviceUsageAdmin`. This runner does not call those.
+
+```bash
+export GCP_PROJECT=avt-render
+# GOOGLE_APPLICATION_CREDENTIALS is the compute-only service account.
+# Do not export AVT_ACCESS_TOKEN, AVT_ANON_KEY, or AVT_BATCH_SECRET.
+
+python3 scripts/render/remote/remote_render.py \
+  --backend gcp \
+  --stage-from local \
+  --dry-run \
+  --lock /workspace/partnership/second_half/claudia_dx/v1/renders/verse_v9look_v1/LOCK_v2.json \
+  --work-root /workspace/partnership/second_half \
+  --parity-dir /path/to/linux_stills \
+  --zone us-central1-a \
+  --cost-ceiling 5
+```
+
+`--lock` is any lock JSON. `LOCK_v1e.json` in that same folder is valid today. A later `LOCK_v2.json` is the same flag with a different path. The file name is not assumed. The dry-run prints the plan and does not call `gcloud`, does not read the tree, and does not need an AVT credential. With `GCP_PROJECT` unset the create line shows the literal project placeholder `GCP_PROJECT`.
+
+To run it (this spends money, up to the ceiling):
+
+```bash
+AVT_REMOTE_RENDER_CONFIRM=1 python3 scripts/render/remote/remote_render.py \
+  --backend gcp \
+  --stage-from local \
+  --execute \
+  --lock /workspace/partnership/second_half/claudia_dx/v1/renders/verse_v9look_v1/LOCK_v2.json \
+  --work-root /workspace/partnership/second_half \
+  --parity-dir /path/to/linux_stills \
+  --zone us-central1-a \
+  --output ./final.mp4 \
+  --cost-ceiling 5
+```
+
+What execute does:
+
+1. Hashes every lock row on the launcher against the lock JSON. A mismatch exits before `gcloud` runs.
+2. Creates the `c4-standard-16` and arms the same three-layer teardown. `--max-run-duration` is the shorter of `--max-hours` (default 8) and the cost ceiling at $0.79/h. At the default $5 ceiling that is `22784s`.
+3. Copies each lock row with `gcloud compute scp` to `/workspace/partnership/second_half/<rel>`, then the parity stills, the lock file, and `remote_render.py` / `plan.py`. The guest is released only after `touch /tmp/avt-go`.
+4. The guest hashes the same rows again, then runs the 0-pixel parity gate on `full_sf3290.png`–`full_sf3301.png`, the state pass, the chunks, and the concat. Any differing pixel aborts the full run.
+5. The launcher pulls `final.mp4` to `--output` and writes `final.timing.json` beside it. The guest waits up to 30 minutes for that pull, then shuts down. The launcher deletes the instance in `finally`.
+
+Wall time is recorded for create, transfer, setup, parity, state pass, chunks, concat, pull-back, and teardown. The timing file and the stdout block are that record plus the elapsed on-demand cost.
+
+`--cost-ceiling` defaults to `5` dollars at the proposal rate, including when `--spot` is set (Spot is not priced, so the ceiling stays the on-demand number). The dry-run prints one line, `full song vs ceiling:`, with the 2-wide wall and dollars against that cap. 18 GB at 100 Mbit/s is 0.40 h, inside the 0.75 h setup, so the copy does not add a second hour. Execute refuses to create the VM when the 2-wide upper bound for the span you asked for (`--nf`, default the verse) would exceed the cap. The full song on that band is about **$2.66–$2.96**, under $5. While the VM exists, elapsed cost is checked on the same rate; crossing the ceiling deletes the instance.
+
+The guest still runs `render_verse_v9look_v1e_p.py`. Put that file, the wav, and every other input in the lock. Rows that are not on AVT are expected. They have to be on disk at the lock's relative path under `--work-root`.
+
 ## What Google Cloud already exists
 
 Audit date 2026-11-22. Searched this repo and the other `fendifrost-dot` repos this session could read: `fendi-control-center`, `fan-growth-pilot`, `boltz-insight-engine`, `continuumcapitalchicago-os`, `pdf-unfurl-magic`, `modest-chic-builder`, `llbgroupinc`, `taxgenerator`, `pixel-perfect-replica`, `artistgrowthhub`, `fendi-fight-plan`, `grok-claude-runner` (tree only; the clone token could not fetch it), plus code search on `laaan-logistics-architects`, `fairway-fixer-18`, `fendi-frost-coming`, `PDF-Relief`, `BuzzGenius`, and `paystub-pal`. There is no repository named `frost-sampler` on the account. GitHub Actions secret *values* were not read. The Actions secrets API returned 403, so the names below are the ones referenced in code, not a live inventory of what is set in GitHub.
@@ -45,7 +98,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/avt/gcp-render-sa.json"
 chmod 600 "$HOME/.config/avt/gcp-render-sa.json"
 ```
 
-3. AVT, so the guest can read `project-clips` and write the result back. Use a batch credential (`scripts/_lib/auth.py`) or a short-lived access token. The runner reads `AVT_ACCESS_TOKEN` and `AVT_ANON_KEY`. It does not print them.
+3. AVT, only for the default `--stage-from avt`, so the guest can read `project-clips` and write the result back. Use a batch credential (`scripts/_lib/auth.py`) or a short-lived access token. The runner reads `AVT_ACCESS_TOKEN` and `AVT_ANON_KEY`. It does not print them. `--stage-from local` does not read these and does not copy them to the VM.
 4. The 12 reference stills from the Linux render, named `full_sf3290.png` through `full_sf3301.png` (the span in `IDENTITY.json`). Pass that directory as `--parity-dir`.
 
 `gcloud` must be installed on the machine that launches the VM. The guest installs its own Python and ffmpeg.
@@ -53,6 +106,8 @@ chmod 600 "$HOME/.config/avt/gcp-render-sa.json"
 C4 needs Hyperdisk. The create command asks for `debian-13` (the lock recorded ffmpeg `7.1.5-0+deb13u1`) and `hyperdisk-balanced`. If the zone rejects either, create fails and nothing is left running.
 
 ## One command (safe)
+
+This is the AVT storage mode (`--stage-from avt`, the default). The command that needs no AVT credential is [Local stage](#local-stage-no-avt-credentials).
 
 ```bash
 python3 scripts/render/remote/remote_render.py --backend gcp --dry-run
@@ -70,29 +125,30 @@ AVT_REMOTE_RENDER_CONFIRM=1 python3 scripts/render/remote/remote_render.py \
   --lock /path/to/LOCK_v1e.json
 ```
 
-Add `--spot` for a Spot VM. The printed dollars stay the on-demand ceiling of **$0.79/h** (the proposal rate, not a live quote). Spot is not priced here.
+Add `--spot` for a Spot VM. The printed rate stays the on-demand **$0.79/h** (the proposal rate, not a live quote). Spot is not priced here. `--cost-ceiling` (default $5) is a separate dollar stop on that rate.
 
 Optional flags: `--machine-type` (default `c4-standard-16`), `--max-hours` (default 8), `--instance-name`, `--sf0` (default 3070), `--nf` (default 1911, the locked verse). The full-song figure of 5542 frames is only in the cost printout. The locked script's default span is the verse.
 
 ## What the guest does
 
-1. Arms `shutdown -h +MAX` and a trap that deletes the env file and shuts the guest down.
+1. Arms `shutdown -h +MAX` and a trap that deletes the env file and shuts the guest down. On a local stage the trap waits up to 30 minutes for the launcher to finish the pull, then shuts down.
 2. Installs Python (numpy 2.5.5, scipy 1.18.1, opencv headless) and ffmpeg.
-3. Pulls `LOCK_v1e_bundle.tgz` and the other lock rows from `project-clips` `…/claudia_dx/lock_v1e/`, then checks every file's sha256 against `LOCK_v1e.json`.
+3. `--stage-from avt` (the default): pulls `LOCK_v1e_bundle.tgz` when `--lock` was not passed, and the other lock rows from `project-clips` `…/claudia_dx/lock_v1e/`, then checks every file's sha256 against the lock JSON. `--stage-from local`: the files are already on disk; the guest checks them against the `--lock` you passed and does not contact AVT.
 4. Re-renders frames 3290–3301 and compares them to the Linux stills. **Any differing pixel aborts the full run.**
-5. Runs a state-only pass, then N chunk processes, concatenates, uploads to `project-clips/…/claudia_dx/remote_render/<instance-name>/final.mp4`.
+5. Runs a state-only pass, then N chunk processes, and concatenates. The AVT stage uploads to `project-clips/…/claudia_dx/remote_render/<instance-name>/final.mp4`. The local stage leaves `final.mp4` for the launcher to pull.
 
 Workers: `(RAM − 4 GB) / 7.5 GB`. A c4-standard-16 (60 GB) starts 7. The locked script asks OpenCV for 6 threads, so 16 vCPUs keep about 2 of those busy at once. The cost line uses that CPU cap so it does not pretend a 7× speedup.
 
-For 5542 frames at 3.4–3.9 s/frame, 2-wide, plus 0.75 h of setup, the on-demand ceiling printed by the dry-run is **$2.66–$2.96** if snapshots already exist, and **$6.79–$7.71** if the state-only pass is a second full decode. The verse itself (1911 frames) is about 1.65–1.79 h without that second pass. These are ceilings at $0.79/h, not an invoice.
+For 5542 frames at 3.4–3.9 s/frame, 2-wide, plus 0.75 h of setup, the on-demand band is **$2.66–$2.96**. That is the figure the dry-run compares with the ceiling. The older **$6.79–$7.71** number adds a second full decode, run strictly before the chunks. The guest does not do that. It starts chunk 0 beside `--state_only`, and starts each later chunk when its snapshot file appears. The compositor argv is the same, so the pixels are the same. If `--state_only` is as heavy as a full decode it occupies one of the two CPU slots and the wall is one pass, **$4.73–$5.34**, which is over the $5 ceiling by $0.34 at 3.9 s/frame. The locked compositor is not in this repo, and `unused.mp4` is the only sign that the state walk is not a delivered encode, so the gate uses the 2-wide band. The verse itself (1911 frames) is about 1.65–1.79 h on that band. These are ceilings at $0.79/h, not an invoice.
 
 ## Teardown
 
 Three layers, all in the dry-run text:
 
 - The orchestrator calls `gcloud compute instances delete` in a `finally` after create has succeeded, including when the guest fails or the wait times out.
-- The instance is created with `--max-run-duration` and `--instance-termination-action=DELETE`.
-- The guest trap runs `shutdown -h now`, and boot also runs `shutdown -h +MAX`.
+- The instance is created with `--max-run-duration` and `--instance-termination-action=DELETE`. The duration is the shorter of `--max-hours` and `--cost-ceiling` at $0.79/h. The default ceiling of $5 arms `22784s`.
+- The guest trap runs `shutdown -h now`, and boot also runs `shutdown -h +MAX`. On a local stage the trap first waits up to 30 minutes so the launcher can pull `final.mp4`.
+- `--cost-ceiling` (default $5) refuses the create when the projected upper bound would exceed it, and the orchestrator deletes the VM when elapsed on-demand cost would exceed it.
 
 A failed create does not delete, because there is no instance.
 
@@ -103,7 +159,7 @@ A failed create does not delete, because there is no instance.
 - Plate memmaps `_plates/S0*_rt.npy` and `*_trench_alpha.npy`, about 6.48 GB. Rebuildable with `plate_prep.py`, and a rebuild may not be bit-identical. Needs a T7 copy.
 - The two 4K ProRes deliverables `matte_real/deliver/*song176.000-208.458*prores4444*`, about 11.12 GB. T7 copy recommended.
 
-A GCP `--execute` refuses to create a VM while any lock row is neither on AVT nor already in the work tree with a matching sha256. Copy those files onto the work tree (or upload them under the lock's paths) before spending money. The chunk runner itself was marked "box only" in the JSON and is inside `LOCK_v1e_bundle.tgz`, which is on AVT.
+An AVT-stage GCP `--execute` refuses to create a VM while any lock row is neither on AVT nor already in the work tree with a matching sha256. Copy those files onto the work tree (or upload them under the lock's paths) before spending money. `--stage-from local` does not require an AVT object. It requires each row on the launcher under `--work-root`, with the lock's sha256, and it copies that tree to the guest. The chunk runner itself was marked "box only" in the JSON and is inside `LOCK_v1e_bundle.tgz`, which is on AVT; a local stage copies it only when the lock lists it.
 
 ## Mac Studio (Apple Silicon, 32 GB)
 

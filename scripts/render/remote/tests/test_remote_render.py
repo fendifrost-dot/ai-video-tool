@@ -1,6 +1,7 @@
 """The remote render planner spends nothing: no gcloud, no network, no VM."""
 
 import io
+import json
 import os
 import stat
 import sys
@@ -305,3 +306,413 @@ def test_setup_script_refuses_this_linux_box():
     completed = subprocess.run(["bash", script], capture_output=True, text=True)
     assert completed.returncode != 0
     assert "Apple Silicon" in completed.stderr
+
+
+def _lock(path, files):
+    path.write_text(json.dumps({"files": files}))
+    return path
+
+
+def _row(rel, payload, backup="box only"):
+    return {
+        "path": f"/workspace/partnership/second_half/{rel}",
+        "sha256": __import__("hashlib").sha256(payload).hexdigest(),
+        "size": len(payload),
+        "backup": backup,
+    }
+
+
+def test_uncapped_duration_stays_hours_and_the_default_ceiling_is_under_five_dollars():
+    assert "8h" in plan.gcp_create_argv("n", "p", "z", max_hours=8)
+    report = plan.build_plan("gcp", {"GCP_PROJECT": "avt-render"})
+    value = report["create_argv"][report["create_argv"].index("--max-run-duration") + 1]
+    assert value == plan.duration_flag(report["capped_hours"])
+    assert value != "8h"
+    seconds = int(value[:-1])
+    assert value.endswith("s")
+    assert seconds / 3600.0 * plan.PROPOSAL_USD_PER_HOUR <= 5.0
+    assert report["projected_usd_hi"] < 5.0
+    full = plan.build_plan(
+        "gcp", {"GCP_PROJECT": "avt-render"}, nf=plan.FULL_SONG_FRAMES,
+        stage_from="local", lock_summary={"missing": [], "files": [], "on_avt": 0},
+        lock_path="/tmp/LOCK_v2.json",
+    )
+    # The gated figure is the 2-wide band, about $2.66–$2.96, not a second decode.
+    assert full["projected_usd_hi"] < 5.0
+    assert full["cost_full_song"]["proposal_usd"][1] < 5.0
+    one_hi = plan.one_pass_hours(plan.FULL_SONG_FRAMES, plan.SEC_HI) * plan.PROPOSAL_USD_PER_HOUR
+    assert one_hi > 5.0
+    assert full["cost_full_song"]["with_state_pass_usd"][1] > one_hi
+    assert plan.transfer_hours() < plan.OVERHEAD_H
+
+
+def test_local_dry_run_needs_no_avt_credentials_and_calls_nothing(tmp_path, capsys):
+    secret = "super-secret-token-value"
+    lock = _lock(tmp_path / "LOCK_v2.json", [_row("plates/missing.npy", b"not-on-this-disk")])
+    called = []
+    code = remote_render.main(
+        ["--backend", "gcp", "--stage-from", "local", "--lock", str(lock),
+         "--work-root", str(tmp_path), "--cost-ceiling", "5"],
+        env={"AVT_ACCESS_TOKEN": secret, "AVT_ANON_KEY": secret, "AVT_BATCH_SECRET": secret},
+        call=lambda argv: called.append(argv) or Result(),
+    )
+    assert code == 0
+    assert called == []
+    out = capsys.readouterr().out
+    assert "stage-from: local" in out
+    assert "AVT credentials required: none" in out
+    assert "are not required" in out
+    assert "gcloud compute scp" in out
+    assert "gcloud compute ssh" in out
+    assert "cost ceiling: $5.00" in out
+    assert "roles/storage.objectAdmin" in out
+    assert "roles/compute.instanceAdmin.v1" in out
+    assert "full_sf3290.png" in out and "full_sf3301.png" in out
+    assert "state pass" in out and "pull-back" in out
+    assert "not uploaded to AVT" in out
+    assert "full song vs ceiling:" in out
+    assert "2.66" in out or "$2.66" in out
+    assert "(under)" in out
+    assert str(lock) in out
+    assert "lock rows: 1" in out
+    assert "no AVT object: 1" in out
+    assert "LOCK_v1e" not in out
+    assert "blocked until" not in out
+    assert "did not create a VM" in out
+    assert secret not in out
+    assert "is ignored for this local stage" in out
+
+
+def test_avt_stage_is_still_the_default(capsys):
+    code = remote_render.main(["--backend", "gcp", "--dry-run"], env={})
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "stage-from: avt" in out
+    assert "upload prefix (project-clips):" in out
+    assert "AVT credentials required: none" not in out
+    assert "Inputs the lock does not have on AVT:" in out
+
+
+def test_local_execute_pushes_the_tree_pulls_the_file_and_deletes(tmp_path, capsys):
+    payload = b"plate-bytes"
+    rel = "claudia_dx/v1/note.txt"
+    root = tmp_path / "tree"
+    (root / rel).parent.mkdir(parents=True)
+    (root / rel).write_bytes(payload)
+    lock = _lock(tmp_path / "LOCK_v2.json", [_row(rel, payload)])
+    env_file = tmp_path / "env"
+    output = tmp_path / "out" / "final.mp4"
+    parity = tmp_path / "stills"
+    parity.mkdir()
+    calls = []
+    seen_env = {}
+
+    def call(argv):
+        calls.append(list(argv))
+        joined = " ".join(argv)
+        if joined.endswith(":/tmp/avt-env") or any(part.endswith(":/tmp/avt-env") for part in argv):
+            seen_env["text"] = env_file.read_text()
+            seen_env["mode"] = stat.S_IMODE(env_file.stat().st_mode)
+        if "get-serial-port-output" in argv:
+            return Result(stdout="\n".join([
+                "AVT_STAGE setup 11",
+                "AVT_STAGE parity 2",
+                "AVT_STAGE state_pass 3",
+                "AVT_STAGE chunks 4",
+                "AVT_STAGE concat 1",
+                "sha256 ok on the guest: 1 files",
+                "AVT_RENDER_DONE",
+            ]))
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(parity), "--output", str(output),
+         "--env-file", str(env_file), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={
+            "AVT_REMOTE_RENDER_CONFIRM": "1",
+            "GCP_PROJECT": "avt-render",
+            "AVT_ACCESS_TOKEN": "secret-token",
+            "AVT_ANON_KEY": "secret-anon",
+            "AVT_BATCH_SECRET": "secret-batch",
+        },
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    verbs = [argv[2] for argv in calls]
+    assert verbs[0] == "instances"
+    assert calls[0][3] == "create"
+    assert "--max-run-duration" in calls[0]
+    assert "DELETE" in calls[0]
+    assert calls[-1][3] == "delete"
+    pushed = [argv for argv in calls if argv[2] == "scp" and any(rel in part for part in argv)]
+    assert pushed
+    assert any(part.endswith(f":/workspace/partnership/second_half/{rel}") for argv in pushed for part in argv)
+    assert any(str(lock) in argv for argv in calls)
+    assert any(part.endswith(":/var/avt/lock.json") for argv in calls for part in argv)
+    assert any(part.endswith(":/" + "workspace/partnership/second_half/remote_run/final.mp4") or
+               part.endswith(":/workspace/partnership/second_half/remote_run/final.mp4")
+               for argv in calls for part in argv)
+    assert any(argv[-1] == str(output) for argv in calls)
+    assert seen_env["text"].strip().splitlines() == ["AVT_REMOTE_RENDER_CONFIRM=1"]
+    assert seen_env["mode"] == 0o600
+    blob = "\n".join(" ".join(argv) for argv in calls)
+    assert "secret-token" not in blob
+    assert "secret-anon" not in blob
+    assert "LOCK_v1e" not in blob
+    out = capsys.readouterr().out
+    assert "sha256 ok on the launcher: 1 files" in out
+    assert "state pass: 3.0s" in out
+    assert "setup: 11.0s" in out
+    assert "pull-back:" in out
+    assert "ceiling: $5.00" in out
+    assert "result: done" in out
+    summary = json.loads(output.with_suffix(".timing.json").read_text())
+    assert summary["stages"]["state_pass"] == 3
+    assert summary["stages"]["chunks"] == 4
+    assert summary["result"] == "done"
+    assert "create" in summary["stages"]
+    assert "teardown" in summary["stages"]
+    assert not env_file.exists()
+    assert any("touch /tmp/avt-pulled" in argv for argv in calls)
+
+
+def test_local_hash_mismatch_does_not_create(tmp_path, capsys):
+    root = tmp_path / "tree"
+    rel = "plates/S0.npy"
+    (root / rel).parent.mkdir(parents=True)
+    (root / rel).write_bytes(b"nope")
+    bad = _row(rel, b"expected")
+    lock = _lock(tmp_path / "LOCK_v2.json", [bad])
+    calls = []
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--env-file", str(tmp_path / "env")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=lambda argv: calls.append(argv) or Result(),
+    )
+    assert code == 2
+    assert calls == []
+    assert "sha256" in capsys.readouterr().err
+
+
+def test_projected_cost_over_the_ceiling_does_not_create(tmp_path, capsys):
+    lock = _lock(tmp_path / "LOCK_v2.json", [])
+    calls = []
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(tmp_path),
+         "--parity-dir", str(tmp_path), "--nf", str(plan.FULL_SONG_FRAMES),
+         "--env-file", str(tmp_path / "env"), "--cost-ceiling", "2"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=lambda argv: calls.append(argv) or Result(),
+    )
+    assert code == 2
+    assert calls == []
+    assert "would exceed the ceiling" in capsys.readouterr().err
+
+
+def test_full_song_at_the_default_ceiling_is_not_refused(tmp_path, capsys):
+    lock = _lock(tmp_path / "LOCK_v2.json", [])
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(tmp_path),
+         "--parity-dir", str(tmp_path), "--nf", str(plan.FULL_SONG_FRAMES),
+         "--env-file", str(tmp_path / "env"), "--cost-ceiling", "5",
+         "--output", str(tmp_path / "final.mp4")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    assert calls[0][3] == "create"
+    assert "would exceed the ceiling" not in capsys.readouterr().err
+
+
+def test_pipeline_starts_chunk_zero_beside_the_state_walk(tmp_path):
+    built = plan.guest_steps("python3", plan.WORK_ROOT, str(tmp_path), nf=8, workers=2)
+    later = [step for step in built["steps"] if step.get("parallel") and "--state_load" in step["argv"]][0]
+    snap = later["argv"][later["argv"].index("--state_load") + 1]
+    order = []
+
+    class Proc:
+        def __init__(self, argv):
+            self.argv = list(argv)
+            self.returncode = None
+            if "--state_only" in self.argv:
+                order.append("start-state")
+            elif "--state_load" in self.argv:
+                order.append("start-later")
+            else:
+                order.append("start-chunk0")
+
+        def poll(self):
+            if "--state_only" in self.argv:
+                if "start-chunk0" in order and self.returncode is None:
+                    os.makedirs(os.path.dirname(snap), exist_ok=True)
+                    open(snap, "wb").close()
+                    self.returncode = 0
+                    order.append("end-state")
+                    return 0
+                return self.returncode
+            self.returncode = 0
+            return 0
+
+        def wait(self):
+            self.returncode = 0
+            return 0
+
+        def kill(self):
+            self.returncode = -9
+
+    plan.run_steps(
+        built["steps"], lambda argv: None, lambda: plan.parity_verdict(0, "linux"),
+        spawn=lambda argv: Proc(argv), slots=2, pipe_sleep=lambda _s: None,
+    )
+    assert order.index("start-chunk0") < order.index("end-state")
+    assert order.index("end-state") < order.index("start-later")
+    assert os.path.isfile(snap)
+    assert "--state_load" in later["argv"]
+    assert later["argv"][later["argv"].index("--state_load") + 1] == snap
+
+
+def test_elapsed_cost_deletes_the_instance():
+    report = plan.build_plan(
+        "gcp", {"GCP_PROJECT": "avt-render"},
+        confirm=True, parity_dir="/stills",
+        lock_summary={"missing": [], "files": [], "on_avt": 0},
+        instance_name="avt-render-test",
+        cost_ceiling=5,
+    )
+    assert report["max_seconds"] == 8 * 3600
+    clock = {"t": 0.0}
+
+    def now():
+        return clock["t"]
+
+    calls = []
+
+    def call(argv):
+        calls.append(argv)
+        if "get-serial-port-output" in argv:
+            clock["t"] = 7 * 3600
+            return Result(stdout="still working")
+        return Result(0)
+
+    with pytest.raises(SystemExit, match="would exceed the ceiling"):
+        plan.execute_gcp(report, call, sleep=lambda _s: None, clock=now)
+    assert any(argv[3] == "create" for argv in calls)
+    assert calls[-1][3] == "delete"
+
+
+def test_scp_paths_keep_spaces_and_the_lock_name(tmp_path):
+    rel = "inputs/my audio/clip.wav"
+    rows = [{"rel": rel, "kind": "not_on_avt", "sha256": "abc"}]
+    argvs = plan.local_transfer_argvs(
+        "avt-test", "avt-render", "us-central1-a", rows, str(tmp_path),
+        str(tmp_path / "LOCK_v2.json"), "/tmp/avt-env", os.path.dirname(plan.__file__),
+        parity_dir=str(tmp_path / "stills"),
+    )
+    copied = [argv for argv in argvs if argv[2] == "scp" and argv[-2].endswith("clip.wav")]
+    assert len(copied) == 1
+    assert copied[0][-2] == os.path.join(str(tmp_path), rel)
+    assert copied[0][-1] == f"avt-test:{plan.WORK_ROOT}/{rel}"
+    assert argvs[-1][2] == "ssh"
+    assert "touch /tmp/avt-go" in argvs[-1]
+    mkdir = argvs[0]
+    assert "'/workspace/partnership/second_half/inputs/my audio'" in mkdir[-1]
+    assert any(part.endswith(":/var/avt/lock.json") and "LOCK_v2.json" in argv[-2] for argv in argvs for part in argv)
+
+
+def test_local_startup_mentions_no_token_and_passes_bash_n():
+    import subprocess
+    script = plan.startup_script(max_minutes=379, stage_from="local")
+    assert "--stage-from local" in script
+    assert "--lock /var/avt/lock.json" in script
+    assert "--guest" in script
+    assert "--parity-dir" in script
+    assert "trap cleanup EXIT" in script
+    assert "shutdown -h now" in script
+    assert 'shutdown -h +"$MAX_MINUTES"' in script
+    assert "AVT_RENDER_DONE" in script
+    assert "AVT_RENDER_FAIL" in script
+    assert "rm -f /tmp/avt-env" in script
+    assert "AVT_ACCESS_TOKEN" not in script
+    assert "BEGIN PRIVATE KEY" not in script
+    assert "numpy==2.5.5" in script
+    completed = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_guest_local_verifies_the_lock_and_does_not_fetch(tmp_path, monkeypatch):
+    monkeypatch.setattr(plan, "WORK_ROOT", str(tmp_path))
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("AVT storage was called")
+
+    monkeypatch.setattr(plan, "materialize", boom)
+    monkeypatch.setattr(plan, "fetch_storage_object", boom)
+    rel = "claudia_dx/note.txt"
+    (tmp_path / rel).parent.mkdir(parents=True)
+    (tmp_path / rel).write_bytes(b"present")
+    lock = _lock(tmp_path / "LOCK_v2.json", [_row(rel, b"other-bytes")])
+    args = remote_render.parse_args([
+        "--guest", "--backend", "linux", "--stage-from", "local",
+        "--lock", str(lock), "--work-root", str(tmp_path), "--parity-dir", str(tmp_path),
+    ])
+    with pytest.raises(SystemExit, match="sha256"):
+        remote_render.run_guest(args, {
+            "AVT_REMOTE_RENDER_CONFIRM": "1",
+            "AVT_ACCESS_TOKEN": "secret-token",
+        })
+
+
+def test_on_stage_closes_parity_before_any_chunk():
+    steps = plan.guest_steps("python3", plan.WORK_ROOT, "/tmp/run", nf=8, workers=2)["steps"]
+    seen = []
+
+    def on_stage(name, phase):
+        seen.append((name, phase))
+
+    with pytest.raises(SystemExit):
+        plan.run_steps(steps, lambda argv: None, lambda: plan.parity_verdict(2, "linux"), on_stage=on_stage)
+    assert seen[0] == ("parity", "begin")
+    assert ("parity", "end") in seen
+    assert ("chunks", "begin") not in seen
+    assert ("state_pass", "begin") not in seen
+
+
+def test_missing_lock_file_refuses_without_a_traceback(capsys):
+    code = remote_render.main(
+        ["--backend", "gcp", "--stage-from", "local", "--dry-run",
+         "--lock", "/tmp/does-not-exist-LOCK_v2.json"],
+        env={},
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "not a file" in err
+    assert "Traceback" not in err
+
+
+def test_local_env_file_drops_avt_credentials(tmp_path):
+    path = tmp_path / "env"
+    remote_render.write_env_file(str(path), {
+        "AVT_ACCESS_TOKEN": "secret-token",
+        "AVT_ANON_KEY": "secret-anon",
+        "AVT_BATCH_SECRET": "secret-batch",
+    }, stage_from="local")
+    text = path.read_text()
+    assert text == "AVT_REMOTE_RENDER_CONFIRM=1\n"
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    remote_render.write_env_file(str(path), {"AVT_ACCESS_TOKEN": "secret-token"}, stage_from="avt")
+    assert "AVT_ACCESS_TOKEN=secret-token" in path.read_text()
