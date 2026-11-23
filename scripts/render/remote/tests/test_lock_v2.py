@@ -116,26 +116,33 @@ def test_projection_includes_transfer_and_install_and_stays_under_five_dollars()
 def test_recipe_argv_runs_state_then_chunks_and_keeps_scripts_unmodified():
     steps, envs = lock_v2.build_recipe("/opt/avt-comp/bin/python", lock_v2.LOCK_DIR, 4, 4, 16)
     names = [step["stage"] for step in steps]
-    assert names == ["lock_repro", "state_pass", "v1e_chunks", "final_chunks", "assemble"]
-    repro = steps[0]["cmds"]
+    assert names == ["state_pass", "v1e_chunks", "final_chunks", "assemble"]
+    assert "lock_repro" not in names
+    opted, opted_env = lock_v2.build_recipe(
+        "/opt/avt-comp/bin/python", lock_v2.LOCK_DIR, 4, 4, 16, lock_repro=True,
+    )
+    assert [step["stage"] for step in opted][0] == "lock_repro"
+    repro = opted[0]["cmds"]
     assert [cmd["argv"][-1] for cmd in repro] == list(lock_v2.LOCK_NAMES)
-    assert all(cmd["argv"][1].endswith("repro_lock_frames_v1.py") for cmd in repro)
-    state = steps[1]["cmds"][0]
+    assert "setNumThreads(0)" in repro[0]["argv"][2]
+    assert opted_env["repro"]["OMP_NUM_THREADS"] == "1"
+    assert opted_env["repro"]["OPENCV_FOR_THREADS_NUM"] == "1"
+    state = steps[0]["cmds"][0]
     assert "--state_only" in state
     assert state[state.index("--state_at") + 1] == lock_v2.state_at_arg()
     assert state[-1].endswith("/x.mkv")
-    chunk_argvs = steps[2]["cmds"]
+    chunk_argvs = steps[1]["cmds"]
     assert "--state_load" not in chunk_argvs[0]
     assert "state_3310.npz" in chunk_argvs[1][chunk_argvs[1].index("--state_load") + 1]
     assert chunk_argvs[0][chunk_argvs[0].index("--out") + 1].endswith("chunk_3070.mkv")
     assert chunk_argvs[0][chunk_argvs[0].index("--md5log") + 1].endswith("chunk_3070.md5")
-    assert steps[2]["slots"] == 4
+    assert steps[1]["slots"] == 4
     assert envs["v1e"]["ENC_NOAUDIO"] == "1"
     assert "ENC_LOSSLESS" not in envs["v1e"]
     assert envs["final"]["GRADE_PARAMS"].endswith("final_params_LOCK_v2.json")
-    assert steps[4]["cmds"][0][1].endswith("final_render.py")
-    assert "assemble" in steps[4]["cmds"][0]
-    assert steps[3]["cmds"][0][2] == "chunks"
+    assert steps[3]["cmds"][0][1].endswith("final_render.py")
+    assert "assemble" in steps[3]["cmds"][0]
+    assert steps[2]["cmds"][0][2] == "chunks"
 
 
 def test_pool_honors_slots_and_stops_the_others_on_failure():
@@ -238,6 +245,217 @@ def test_sha256sums_and_manifest_stop_on_a_mismatch(tmp_path):
     (tmp_path / "clip.bin").write_bytes(b"nope")
     with pytest.raises(SystemExit, match="manifest"):
         lock_v2.preflight(str(lock))
+
+
+def _pad_sha(prefix):
+    return (prefix + ("ab" * 32))[:64]
+
+
+def test_frozen_renders_match_the_manifest_sha_not_sha256sums():
+    base = "/workspace/partnership/first_half/claudia_vfx"
+    rows = [
+        {
+            "path": f"{base}/vhs/v5b/lock/vhs_static_preview_v5b_1080p.mp4",
+            "sha256": _pad_sha("d269656e"),
+        },
+        {
+            "path": f"{base}/pixel_sort_salad/v1b/lock/pixel_sort_salad_preview_v1b_1080p.mp4",
+            "sha256": _pad_sha("c0ffee01"),
+        },
+        {
+            "path": f"{base}/spin_transitions/v1c/lock/spin_T1_v1c_preview_1080p.mp4",
+            "sha256": _pad_sha("d701e77e"),
+        },
+        {
+            "path": f"{base}/spin_transitions/v1c/lock/spin_T2T3_v1c_preview_1080p.mp4",
+            "sha256": _pad_sha("f73755ad"),
+        },
+        {
+            "path": f"{base}/spin_transitions/v1c/lock/spin_T4_v1c_preview_1080p.mp4",
+            "sha256": _pad_sha("893d65b6"),
+        },
+        {
+            "path": f"{base}/war_cry/claudia_build/v9c/lock/warcry_v9c_clip_1080p.mp4",
+            "sha256": _pad_sha("0a0a0a0a"),
+        },
+        {
+            "path": f"{base}/reverse_montage/v3b/lock/reverse_montage_preview_v3b_1080p.mp4",
+            "sha256": _pad_sha("b1b1b1b1"),
+        },
+    ]
+    log = "\n".join(
+        "{'name': '%s', 'lock_sha256': '%s', 'identical': False}" % (name, row["sha256"])
+        for name, row in (
+            ("vhs", rows[0]),
+            ("salad", rows[1]),
+            ("spins_T1", rows[2]),
+            ("spins_T2T3", rows[3]),
+            ("spins_T4", rows[4]),
+            ("war_cry", rows[5]),
+            ("reverse_montage", rows[6]),
+        )
+    )
+    shas = lock_v2.parse_lock_shas(log)
+    assert shas["spins_T1"] == rows[2]["sha256"]
+    assert shas["warcry"] == rows[5]["sha256"]
+    found, errors, extras = lock_v2.frozen_coverage_errors(rows, shas)
+    assert extras == []
+    assert errors == []
+    assert found["spins_T1"].endswith("spin_T1_v1c_preview_1080p.mp4")
+    assert found["vhs"].endswith("vhs_static_preview_v5b_1080p.mp4")
+    assert found["salad"].endswith("pixel_sort_salad_preview_v1b_1080p.mp4")
+    assert "SHA256SUMS" not in " ".join(errors)
+    bad = [dict(row) for row in rows]
+    bad[2] = dict(bad[2], sha256=_pad_sha("ffffffff"))
+    _found, bad_errors, _extra = lock_v2.frozen_coverage_errors(bad, shas)
+    assert any("spins_T1" in item and "matched 0" in item for item in bad_errors)
+    by_name, name_errors, _extra = lock_v2.frozen_coverage_errors(rows, None)
+    assert name_errors == []
+    assert by_name["spins_T2T3"].endswith("spin_T2T3_v1c_preview_1080p.mp4")
+    assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x30")
+    assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x32")
+    assert not lock_v2.frame_pair_ok(b"\x00" * 30, b"\xff" * 30)
+    text = lock_v2.projection_text(lock_v2.project(60, 16, 1, 15, 0.79))
+    assert "lock repro: skipped" in text
+
+
+def test_truncated_lock_repro_log_resolves_all_seven():
+    # The box log cuts each line near 315 characters, before the closing brace.
+    # Prefixes are the real lock_sha256 values; only vhs was printed in full.
+    shas = {
+        "vhs": "d269656e1686165d368d5053eda654fd467daa3e1994fd25fa881b1b9b9ebb1a",
+        "salad": _pad_sha("ba9cdf2f"),
+        "spins_T1": _pad_sha("d701e77e"),
+        "spins_T2T3": _pad_sha("f73755ad"),
+        "spins_T4": _pad_sha("893d65b6"),
+        "warcry": _pad_sha("fa9b185e"),
+        "montage": _pad_sha("a910e172"),
+    }
+    rows = [
+        {"path": "/workspace/partnership/first_half/claudia_vfx/vhs/v5b/lock/vhs_static_preview_v5b_1080p.mp4", "sha256": shas["vhs"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/pixel_sort_salad/v1b/lock/pixel_sort_salad_preview_v1b_1080p.mp4", "sha256": shas["salad"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/spin_transitions/v1c/lock/spin_T1_v1c_preview_1080p.mp4", "sha256": shas["spins_T1"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/spin_transitions/v1c/lock/spin_T2T3_v1c_preview_1080p.mp4", "sha256": shas["spins_T2T3"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/spin_transitions/v1c/lock/spin_T4_v1c_preview_1080p.mp4", "sha256": shas["spins_T4"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/war_cry/claudia_build/v9c/lock/warcry_v9c_clip_1080p.mp4", "sha256": shas["warcry"]},
+        {"path": "/workspace/partnership/first_half/claudia_vfx/reverse_montage/v3b/lock/reverse_montage_preview_v3b_1080p.mp4", "sha256": shas["montage"]},
+    ]
+    lines = []
+    for name, digest in shas.items():
+        line = (
+            f"{name} rc=0 29s {{'name': '{name}', 'script': "
+            f"'/tmp/claudia_lockrepro/{name}/scripts/build.py', "
+            f"'rebuilt_sha256': '{digest}', 'lock_sha256': '{digest}', "
+            f"'identical': True, 'frames': 180, 'pix_fmt': '"
+        )
+        assert "}" not in line
+        assert len(line) > 200
+        lines.append(line)
+    lines.append("ALL_REPRO_DONE")
+    parsed = lock_v2.parse_lock_shas("\n".join(lines))
+    assert set(parsed) == set(lock_v2.LOCK_NAMES)
+    assert parsed["vhs"] == shas["vhs"]
+    assert parsed["spins_T1"].startswith("d701e77e")
+    assert parsed["montage"].startswith("a910e172")
+    found, errors, _extra = lock_v2.frozen_coverage_errors(rows, parsed)
+    assert errors == []
+    assert found["spins_T1"].endswith("spin_T1_v1c_preview_1080p.mp4")
+    assert found["spins_T2T3"].endswith("spin_T2T3_v1c_preview_1080p.mp4")
+    assert found["spins_T4"].endswith("spin_T4_v1c_preview_1080p.mp4")
+    assert found["salad"].endswith("pixel_sort_salad_preview_v1b_1080p.mp4")
+    assert found["warcry"].endswith("warcry_v9c_clip_1080p.mp4")
+    assert found["montage"].endswith("reverse_montage_preview_v3b_1080p.mp4")
+    assert found["vhs"].endswith("vhs_static_preview_v5b_1080p.mp4")
+
+
+def test_vhs_missing_from_the_manifest_uses_the_known_path(tmp_path):
+    root = tmp_path / "partnership"
+    vhs = root / "first_half/claudia_vfx/vhs_static/v5b/renders/vhs_static_preview_v5b_1080p.mp4"
+    vhs.parent.mkdir(parents=True)
+    payload = b"vhs-v5b-frozen"
+    vhs.write_bytes(payload)
+    digest = hashlib.sha256(payload).hexdigest()
+    base = "/workspace/partnership/first_half/claudia_vfx"
+    rows = [
+        {"path": f"{base}/pixel_sort_salad/v1b/lock/pixel_sort_salad_preview_v1b_1080p.mp4", "sha256": _pad_sha("ba9cdf2f")},
+        {"path": f"{base}/spin_transitions/v1c/lock/spin_T1_v1c_preview_1080p.mp4", "sha256": _pad_sha("d701e77e")},
+        {"path": f"{base}/spin_transitions/v1c/lock/spin_T2T3_v1c_preview_1080p.mp4", "sha256": _pad_sha("f73755ad")},
+        {"path": f"{base}/spin_transitions/v1c/lock/spin_T4_v1c_preview_1080p.mp4", "sha256": _pad_sha("893d65b6")},
+        {"path": f"{base}/war_cry/claudia_build/v9c/lock/warcry_v9c_clip_1080p.mp4", "sha256": _pad_sha("fa9b185e")},
+        {"path": f"{base}/reverse_montage/v3b/lock/reverse_montage_preview_v3b_1080p.mp4", "sha256": _pad_sha("a910e172")},
+    ]
+    shas = {
+        "vhs": digest,
+        "salad": rows[0]["sha256"],
+        "spins_T1": rows[1]["sha256"],
+        "spins_T2T3": rows[2]["sha256"],
+        "spins_T4": rows[3]["sha256"],
+        "warcry": rows[4]["sha256"],
+        "montage": rows[5]["sha256"],
+    }
+
+    def hasher(path):
+        with open(path, "rb") as handle:
+            return hashlib.sha256(handle.read()).hexdigest()
+
+    found, errors, extras = lock_v2.resolve_frozen_renders(rows, shas, root=str(root), hasher=hasher)
+    assert errors == []
+    assert found["vhs"] == str(vhs)
+    assert extras == [{"path": str(vhs), "sha256": digest, "bytes": len(payload)}]
+    vhs.write_bytes(b"not-the-lock")
+    _found, bad, _extra = lock_v2.resolve_frozen_renders(rows, shas, root=str(root), hasher=hasher)
+    assert any("vhs" in item and "!=" in item for item in bad)
+    vhs.unlink()
+    _found, missing, _extra = lock_v2.resolve_frozen_renders(rows, shas, root=str(root), hasher=hasher)
+    assert any("vhs" in item and "missing" in item for item in missing)
+
+
+def test_reused_disk_skips_matching_tree_sha_and_chmods_writable(tmp_path):
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    note = lock / "note.txt"
+    note.write_bytes(b"tree-bytes")
+    os.chmod(note, 0o444)
+    stale = lock / "dryrun" / "SUPERSEDED.txt"
+    stale.parent.mkdir()
+    stale.write_bytes(b"old")
+    os.chmod(stale, 0o444)
+    (lock / "SHA256SUMS").write_text(f"{hashlib.sha256(b'tree-bytes').hexdigest()}  note.txt\n")
+    rows = lock_v2.tree_transfer_rows(str(lock))
+    assert [row["path"] for row in rows] == [str(note)]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(lock), [], "/tmp/env", os.path.dirname(plan.__file__), copy_tree=True,
+    )
+    assert not any("--recurse" in argv for argv in argvs)
+    prepared = "\n".join(
+        plan.remote_script(argv[-1]) for argv in argvs if len(argv) > 2 and argv[2] == "ssh"
+    )
+    assert "chmod -R u+w" in prepared
+    assert "/workspace" in prepared
+    copied = []
+
+    def call(argv):
+        if len(argv) > 2 and argv[2] == "ssh" and "sha256sum" in plan.remote_script(argv[-1]):
+            return Result(0, stdout=str(note) + "\n")
+        if len(argv) > 2 and argv[2] == "scp" and str(note) in argv[-1]:
+            copied.append(argv)
+        return Result(0, stdout="AVT_PARENTS_OK\n")
+
+    plan._push_local({
+        "transfer_argv": argvs,
+        "transfer_rows": [],
+        "tree_rows": rows,
+        "instance_name": "vm",
+        "project": "p",
+        "zone": "z",
+        "output": str(tmp_path),
+        "output_is_dir": True,
+        "transfer_attempts": 1,
+        "side_files": {
+            lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list,
+        },
+    }, call, lambda _seconds: None)
+    assert copied == []
 
 
 def test_runner_source_does_not_hardcode_a_content_hash():
