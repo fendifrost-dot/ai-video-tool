@@ -1,4 +1,6 @@
-# Remote render — Partnership, lock v1e
+# Remote render — Partnership
+
+Two recipes. `lock_v1e` (the default) is the verse chunk runner below. `lock_v2` is the whole-song LOCK_v2 master, in [LOCK_v2](#lock_v2-whole-song-master).
 
 The final Partnership composite is a deterministic Python compositor, not an edge function. On one 16 GB Linux worker it is about 3.4–3.9 seconds a frame (5542 frames, about 6.3 hours), and each worker peaks around 6.6–7.3 GB while it decodes 4K ProRes.
 
@@ -32,7 +34,7 @@ python3 scripts/render/remote/remote_render.py \
   --cost-ceiling 5
 ```
 
-`--lock` is any lock JSON. `LOCK_v1e.json` in that same folder is valid today. A later `LOCK_v2.json` is the same flag with a different path. The file name is not assumed. The dry-run prints the plan and does not call `gcloud`, does not read the tree, and does not need an AVT credential. With `GCP_PROJECT` unset the create line shows the literal project placeholder `GCP_PROJECT`.
+`--lock` is the verse lock JSON (`files` rows with sha256). `LOCK_v1e.json` in that folder is valid. The file name is not assumed. The whole-song master is not this flag: it is `--recipe lock_v2` and it reads `SHA256SUMS` plus `MANIFEST_LOCK_v2_inputs.json` from `--lock-dir`. The dry-run prints the plan and does not call `gcloud`, does not read the tree, and does not need an AVT credential. With `GCP_PROJECT` unset the create line shows the literal project placeholder `GCP_PROJECT`.
 
 To run it (this spends money, up to the ceiling):
 
@@ -62,6 +64,56 @@ Wall time is recorded for create, transfer, setup, parity, state pass, chunks, c
 `--cost-ceiling` defaults to `5` dollars at the proposal rate, including when `--spot` is set (Spot is not priced, so the ceiling stays the on-demand number). The dry-run prints one line, `full song vs ceiling:`, with the 2-wide wall and dollars against that cap. 18 GB at 100 Mbit/s is 0.40 h, inside the 0.75 h setup, so the copy does not add a second hour. Execute refuses to create the VM when the 2-wide upper bound for the span you asked for (`--nf`, default the verse) would exceed the cap. The full song on that band is about **$2.66–$2.96**, under $5. While the VM exists, elapsed cost is checked on the same rate; crossing the ceiling deletes the instance.
 
 The guest still runs `render_verse_v9look_v1e_p.py`. Put that file, the wav, and every other input in the lock. Rows that are not on AVT are expected. They have to be on disk at the lock's relative path under `--work-root`.
+
+## LOCK_v2 whole-song master
+
+`LOCK_v2.md` §6 is a different run from the verse. The frozen scripts in the lock tree are not edited. Content hashes are not baked into this runner: `SHA256SUMS` and `MANIFEST_LOCK_v2_inputs.json` are read at launch, so a later grain-param tweak does not require a code change. Nothing in a dry-run calls `gcloud` or creates a VM, a disk, or a bucket.
+
+The priced machine is `c4-standard-16` (16 vCPU, 60 GB, proposal rate $0.79/h, not a live quote). That is 16 of the project's 32 on-demand vCPUs. There is no preemptible quota, so `--spot` is refused and the create line has no Spot flag. 60 GB starts **4** v1e workers at 15 GB each. The locked runner still pins OpenCV to 6 threads, so the cost gate counts **2** of those as the wall-clock cap. `final_render` starts **4** disjoint chunk ranges (24 chunks of 240). It is resumable through `.done` markers. The gate does not assume that split is faster than the measured one-process rate (232 frames in 352 s, 1.517 s/frame). The boot disk is 120 GB. The lock's working set is about 80 GB; the extra room is the Debian root, apt, and pip.
+
+```bash
+python3 scripts/render/remote/remote_render.py \
+  --backend gcp \
+  --stage-from local \
+  --recipe lock_v2 \
+  --lock-dir /workspace/partnership/final_lock_v2 \
+  --zone us-central1-a \
+  --cost-ceiling 5 \
+  --dry-run
+```
+
+On a machine that does not have the lock tree, that dry-run prints:
+
+```text
+LOCK_v2 vs ceiling: 4.71–5.42 h, $3.72–$4.28 vs $5.00 (under)
+```
+
+The band is transfer of 28.81 GB at 100 Mbit/s (0.64 h), install of ffmpeg (ffv1, libx264, prores_ks) plus numpy 2.5.5, scipy 1.18.1, and opencv 5.1.x (0.13–0.30 h), the hash check, the 7 lock repros (about 10–12 min, sequential), the v1e state pass (11–16 min), the v1e chunks at the 2-wide cap (0.90–1.04 h), final_render as one measured stream (2.34 h), assemble plus the md5-list checks, and an 8 GB pull-back. Execute refuses before create when the upper dollars exceed the ceiling. With the manifest on the launcher, the same dry-run uses that file's byte total instead of 28.81 GB.
+
+To run it (this spends money, up to the ceiling):
+
+```bash
+AVT_REMOTE_RENDER_CONFIRM=1 python3 scripts/render/remote/remote_render.py \
+  --backend gcp \
+  --stage-from local \
+  --recipe lock_v2 \
+  --lock-dir /workspace/partnership/final_lock_v2 \
+  --zone us-central1-a \
+  --cost-ceiling 5 \
+  --execute \
+  --output LOCK_v2_deliverables
+```
+
+What execute does:
+
+1. On the launcher, `sha256sum -c SHA256SUMS` in the lock dir, then every manifest row's byte size and sha256. A mismatch exits before `gcloud`.
+2. Creates `c4-standard-16` with a 120 GB hyperdisk and the same three-layer teardown. `--max-run-duration` stays the shorter of `--max-hours` and the ceiling, `22784s` at $5.
+3. Copies the lock tree to the same absolute path, then each manifest path to that same absolute path, then releases the guest with `touch /tmp/avt-go`.
+4. The guest repeats the hash check. It runs the 7 lock repros one at a time. `repro.json` must say `identical` true. If the VM's x264 cannot reproduce a lock mp4, the raw `frames_rgb24.raw` per-frame md5 must match `reference_md5/lock_<name>_preencode_*.md5`, and only then is `identical` set so `final_render.py` will read the raws.
+5. v1e state pass, then the nine RGB chunks, 4 at a time. The guest checks 1911 contiguous md5 lines, frames 3070–3077 and 4975–4980 against `reference_md5/v1e_runner_o8_*.md5`, and the 11 `v1e_work/_stills/full_sf*.png` stills against the chunk md5s.
+6. `final_render.py chunks` on four disjoint ranges, then `assemble`. Acceptance is per-frame md5 lists: chunk `md5_pre_grain` against the parity result and the P1/P2/P3 frame logs, `md5_final` against the parity grain runs, a seeded 3-frame grain spot check, and ffprobe for 5542 frames, 1920×1080, 24 fps, audio lag 0. Container hashes are not the check.
+7. Pulls both deliverables into `--output` (`PARTNERSHIP_CEASE_DESIST_LOCK_v2_h264_crf14.mp4` and `PARTNERSHIP_CEASE_DESIST_LOCK_v2_prores422hq_pcm24.mov`), plus `checks/`, `guest.log`, and `timing.json`. The timing file is the per-stage wall clock and the on-demand cost.
+8. On any failure, pulls `guest.log`, `checks/`, and the serial console text, then deletes the instance.
 
 ## What Google Cloud already exists
 
@@ -197,7 +249,7 @@ A small diff is still a fail. The lock is bit-identical on one machine. A non-ze
 ## Tests
 
 ```bash
-python3 -m pytest scripts/render/remote/tests/test_remote_render.py -q
+python3 -m pytest scripts/render/remote/tests/test_remote_render.py scripts/render/remote/tests/test_lock_v2.py -q
 ```
 
 The tests do not call `gcloud`, AWS, or the network. CI runs them in the Python job.
