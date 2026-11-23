@@ -71,6 +71,13 @@ FROZEN_RENDER_NAMES = (
     ("warcry", "warcry_v9c_clip_1080p.mp4"),
     ("montage", "reverse_montage_preview_v3b_1080p.mp4"),
 )
+# VHS v5b is not a manifest row. These paths are relative to /workspace/partnership.
+FROZEN_FALLBACKS = {
+    "vhs": (
+        "first_half/claudia_vfx/vhs_static/v5b/renders/vhs_static_preview_v5b_1080p.mp4",
+        "first_half/claudia_vfx/vhs_static/v5b/lock/vhs_static_preview_v5b_1080p.mp4",
+    ),
+}
 LOCK_REPRO_LOG = "parity/lock_repro_box_2026-11-23.log"
 _LOCK_NAME_ALIASES = {
     "vhs": "vhs",
@@ -630,7 +637,31 @@ def load_lock_shas(lock_dir):
         return parse_lock_shas(handle.read())
 
 
-def resolve_frozen_renders(rows, lock_shas=None):
+def _fallback_frozen(name, digest, root, hasher):
+    """A locked render that is not a manifest row. Hash the known path."""
+    rels = FROZEN_FALLBACKS.get(name) or ()
+    if not rels:
+        return None, (
+            f"frozen render {name}: lock_sha256 {digest} matched 0 manifest rows, expected 1"
+        )
+    tried = []
+    for rel in rels:
+        path = os.path.join(root, rel)
+        tried.append(path)
+        if not os.path.isfile(path):
+            continue
+        got = str(hasher(path) or "").strip().lower()
+        if got != digest:
+            return None, (
+                f"frozen render {name}: {path} sha {got} != lock_sha256 {digest}"
+            )
+        return path, None
+    return None, (
+        f"frozen render {name}: no manifest row and fallback file is missing ({'; '.join(tried)})"
+    )
+
+
+def resolve_frozen_renders(rows, lock_shas=None, root=PARTNERSHIP, hasher=None):
     """One manifest row per locked piece.
 
     When ``lock_shas`` has a name, that exact manifest sha wins. Otherwise the
@@ -638,6 +669,7 @@ def resolve_frozen_renders(rows, lock_shas=None):
     it only lists the 46 tree files.
     """
     lock_shas = lock_shas or {}
+    extras = []
     by_sha = {}
     for row in rows or []:
         digest = str(row.get("sha256") or "").strip().lower()
@@ -653,12 +685,24 @@ def resolve_frozen_renders(rows, lock_shas=None):
                 errors.append(f"frozen render {name}: no lock_sha256 in {LOCK_REPRO_LOG}")
                 continue
             hits = by_sha.get(digest, [])
-            if len(hits) != 1:
+            if len(hits) > 1:
                 errors.append(
                     f"frozen render {name}: lock_sha256 {digest} matched {len(hits)} manifest rows, expected 1"
                 )
                 continue
-            found[name] = hits[0]
+            if len(hits) == 1:
+                found[name] = hits[0]
+                continue
+            path, reason = _fallback_frozen(name, digest, root, hasher or plan.sha256_file)
+            if reason:
+                errors.append(reason)
+                continue
+            found[name] = path
+            extras.append({
+                "path": path,
+                "sha256": digest,
+                "bytes": os.path.getsize(path),
+            })
             continue
         hits = [
             row.get("path") or ""
@@ -671,12 +715,12 @@ def resolve_frozen_renders(rows, lock_shas=None):
             )
             continue
         found[name] = hits[0]
-    return found, errors
+    return found, errors, extras
 
 
-def frozen_coverage_errors(rows, lock_shas=None):
-    """Every frozen render must be a manifest row. The row sha is the gate."""
-    return resolve_frozen_renders(rows, lock_shas)
+def frozen_coverage_errors(rows, lock_shas=None, root=PARTNERSHIP, hasher=None):
+    """Manifest sha, or a known path hashed locally and required to match lock_sha256."""
+    return resolve_frozen_renders(rows, lock_shas, root=root, hasher=hasher)
 
 
 def rehearsal_frozen_gate(lock_dir):
@@ -693,11 +737,12 @@ def rehearsal_frozen_gate(lock_dir):
     lock_shas = load_lock_shas(lock_dir)
     if not lock_shas:
         raise SystemExit(f"frozen renders: {LOCK_REPRO_LOG} has no lock_sha256 entries")
-    found, errors = frozen_coverage_errors(files, lock_shas)
+    found, errors, extras = frozen_coverage_errors(files, lock_shas)
     if errors:
         raise SystemExit("frozen renders are not covered by the manifest:\n" + "\n".join(errors))
     print(
-        f"frozen renders: {len(found)}/{len(FROZEN_RENDER_NAMES)} manifest sha match",
+        f"frozen renders: {len(found)}/{len(FROZEN_RENDER_NAMES)} "
+        f"({len(extras)} outside the manifest, sha-checked)",
         flush=True,
     )
     return found
@@ -707,9 +752,12 @@ def stage_frozen_renders(lock_dir, dest_root=LOCKREPRO):
     """Link the manifest-verified renders into the directory final_render reads."""
     lock_dir = lock_dir.rstrip("/")
     data = load_manifest(lock_dir)
-    found, errors = frozen_coverage_errors(data["files"], load_lock_shas(lock_dir))
+    found, errors, extras = frozen_coverage_errors(data["files"], load_lock_shas(lock_dir))
     if errors:
         raise SystemExit("frozen renders are not covered by the manifest:\n" + "\n".join(errors))
+    sha_by_path = {item["path"]: item["sha256"] for item in extras}
+    for row in data["files"]:
+        sha_by_path.setdefault(row.get("path") or "", str(row.get("sha256") or "").lower())
     linked = {}
     for name, src in found.items():
         dest = os.path.join(dest_root, name, "renders", os.path.basename(src))
@@ -717,8 +765,7 @@ def stage_frozen_renders(lock_dir, dest_root=LOCKREPRO):
         if os.path.lexists(dest) or os.path.exists(dest):
             os.remove(dest)
         os.symlink(src, dest)
-        row = next(item for item in data["files"] if item.get("path") == src)
-        linked[name] = {"source": src, "link": dest, "sha256": str(row.get("sha256") or "").lower()}
+        linked[name] = {"source": src, "link": dest, "sha256": sha_by_path.get(src, "")}
     return linked
 
 
@@ -771,7 +818,7 @@ def preflight(lock_dir, run=None, hasher=None):
         lock_shas = load_lock_shas(lock_dir)
         if not lock_shas:
             raise SystemExit(f"frozen renders: {LOCK_REPRO_LOG} has no lock_sha256 entries")
-        frozen, frozen_errors = frozen_coverage_errors(data["files"], lock_shas)
+        frozen, frozen_errors, _extras = frozen_coverage_errors(data["files"], lock_shas)
         if frozen_errors:
             raise SystemExit(
                 "frozen renders are not covered by the manifest:\n" + "\n".join(frozen_errors)
@@ -2008,10 +2055,18 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         input_gb = DOC_INPUT_GB
         input_files = DOC_INPUT_FILES
         manifest_files = []
+        frozen_errors = []
     else:
         input_gb = validate_manifest(manifest) / 1_000_000_000.0
-        input_files = len(manifest["files"])
-        manifest_files = manifest["files"]
+        manifest_files = list(manifest["files"])
+        frozen_errors = []
+        lock_shas = load_lock_shas(lock_dir)
+        if lock_shas:
+            _found, frozen_errors, extras = frozen_coverage_errors(manifest["files"], lock_shas)
+            if not frozen_errors:
+                manifest_files.extend(extras)
+                input_gb += sum(item["bytes"] for item in extras) / 1_000_000_000.0
+        input_files = len(manifest_files)
         manifest_note = ""
     proj = project(
         ram, vcpu, input_gb, cost_ceiling, rate,
@@ -2049,6 +2104,10 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         reasons.append(
             f"refusing to create a VM: {requested} is {vcpu} vCPU and the project quota "
             f"is CPUS_ALL_REGIONS {CPU_QUOTA} on demand."
+        )
+    if frozen_errors:
+        reasons.append(
+            "frozen renders are not covered by the manifest: " + "; ".join(frozen_errors)
         )
     if proj["usd"][1] > cost_ceiling:
         reasons.append(

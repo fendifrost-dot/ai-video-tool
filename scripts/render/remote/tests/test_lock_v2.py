@@ -298,7 +298,8 @@ def test_frozen_renders_match_the_manifest_sha_not_sha256sums():
     shas = lock_v2.parse_lock_shas(log)
     assert shas["spins_T1"] == rows[2]["sha256"]
     assert shas["warcry"] == rows[5]["sha256"]
-    found, errors = lock_v2.frozen_coverage_errors(rows, shas)
+    found, errors, extras = lock_v2.frozen_coverage_errors(rows, shas)
+    assert extras == []
     assert errors == []
     assert found["spins_T1"].endswith("spin_T1_v1c_preview_1080p.mp4")
     assert found["vhs"].endswith("vhs_static_preview_v5b_1080p.mp4")
@@ -306,9 +307,9 @@ def test_frozen_renders_match_the_manifest_sha_not_sha256sums():
     assert "SHA256SUMS" not in " ".join(errors)
     bad = [dict(row) for row in rows]
     bad[2] = dict(bad[2], sha256=_pad_sha("ffffffff"))
-    _found, bad_errors = lock_v2.frozen_coverage_errors(bad, shas)
+    _found, bad_errors, _extra = lock_v2.frozen_coverage_errors(bad, shas)
     assert any("spins_T1" in item and "matched 0" in item for item in bad_errors)
-    by_name, name_errors = lock_v2.frozen_coverage_errors(rows, None)
+    by_name, name_errors, _extra = lock_v2.frozen_coverage_errors(rows, None)
     assert name_errors == []
     assert by_name["spins_T2T3"].endswith("spin_T2T3_v1c_preview_1080p.mp4")
     assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x30")
@@ -356,7 +357,7 @@ def test_truncated_lock_repro_log_resolves_all_seven():
     assert parsed["vhs"] == shas["vhs"]
     assert parsed["spins_T1"].startswith("d701e77e")
     assert parsed["montage"].startswith("a910e172")
-    found, errors = lock_v2.frozen_coverage_errors(rows, parsed)
+    found, errors, _extra = lock_v2.frozen_coverage_errors(rows, parsed)
     assert errors == []
     assert found["spins_T1"].endswith("spin_T1_v1c_preview_1080p.mp4")
     assert found["spins_T2T3"].endswith("spin_T2T3_v1c_preview_1080p.mp4")
@@ -365,6 +366,48 @@ def test_truncated_lock_repro_log_resolves_all_seven():
     assert found["warcry"].endswith("warcry_v9c_clip_1080p.mp4")
     assert found["montage"].endswith("reverse_montage_preview_v3b_1080p.mp4")
     assert found["vhs"].endswith("vhs_static_preview_v5b_1080p.mp4")
+
+
+def test_vhs_missing_from_the_manifest_uses_the_known_path(tmp_path):
+    root = tmp_path / "partnership"
+    vhs = root / "first_half/claudia_vfx/vhs_static/v5b/renders/vhs_static_preview_v5b_1080p.mp4"
+    vhs.parent.mkdir(parents=True)
+    payload = b"vhs-v5b-frozen"
+    vhs.write_bytes(payload)
+    digest = hashlib.sha256(payload).hexdigest()
+    base = "/workspace/partnership/first_half/claudia_vfx"
+    rows = [
+        {"path": f"{base}/pixel_sort_salad/v1b/lock/pixel_sort_salad_preview_v1b_1080p.mp4", "sha256": _pad_sha("ba9cdf2f")},
+        {"path": f"{base}/spin_transitions/v1c/lock/spin_T1_v1c_preview_1080p.mp4", "sha256": _pad_sha("d701e77e")},
+        {"path": f"{base}/spin_transitions/v1c/lock/spin_T2T3_v1c_preview_1080p.mp4", "sha256": _pad_sha("f73755ad")},
+        {"path": f"{base}/spin_transitions/v1c/lock/spin_T4_v1c_preview_1080p.mp4", "sha256": _pad_sha("893d65b6")},
+        {"path": f"{base}/war_cry/claudia_build/v9c/lock/warcry_v9c_clip_1080p.mp4", "sha256": _pad_sha("fa9b185e")},
+        {"path": f"{base}/reverse_montage/v3b/lock/reverse_montage_preview_v3b_1080p.mp4", "sha256": _pad_sha("a910e172")},
+    ]
+    shas = {
+        "vhs": digest,
+        "salad": rows[0]["sha256"],
+        "spins_T1": rows[1]["sha256"],
+        "spins_T2T3": rows[2]["sha256"],
+        "spins_T4": rows[3]["sha256"],
+        "warcry": rows[4]["sha256"],
+        "montage": rows[5]["sha256"],
+    }
+
+    def hasher(path):
+        with open(path, "rb") as handle:
+            return hashlib.sha256(handle.read()).hexdigest()
+
+    found, errors, extras = lock_v2.resolve_frozen_renders(rows, shas, root=str(root), hasher=hasher)
+    assert errors == []
+    assert found["vhs"] == str(vhs)
+    assert extras == [{"path": str(vhs), "sha256": digest, "bytes": len(payload)}]
+    vhs.write_bytes(b"not-the-lock")
+    _found, bad, _extra = lock_v2.resolve_frozen_renders(rows, shas, root=str(root), hasher=hasher)
+    assert any("vhs" in item and "!=" in item for item in bad)
+    vhs.unlink()
+    _found, missing, _extra = lock_v2.resolve_frozen_renders(rows, shas, root=str(root), hasher=hasher)
+    assert any("vhs" in item and "missing" in item for item in missing)
 
 
 def test_runner_source_does_not_hardcode_a_content_hash():
