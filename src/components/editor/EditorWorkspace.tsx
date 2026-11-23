@@ -294,10 +294,10 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
   }
 
   // the preview copies post has filed of the effects it built, cut to the stretch of the song this cut covers
-  const effects = useMemo(() => {
-    const all = effectsLayer(effectsPreviewsOf((assetsQ.data ?? []).map(mediaAssetOf)));
-    return clipSpans(all, sequence.songOffset, sequence.songOffset + durationSeconds(sequence));
-  }, [assetsQ.data, sequence]);
+  const cutSeconds = durationSeconds(sequence);
+  // (the layer depends on the project's files alone: an edit to the cut re-cuts it, it does not rebuild it)
+  const allEffects = useMemo(() => effectsLayer(effectsPreviewsOf((assetsQ.data ?? []).map(mediaAssetOf))), [assetsQ.data]);
+  const effects = useMemo(() => clipSpans(allEffects, sequence.songOffset, sequence.songOffset + cutSeconds), [allEffects, sequence.songOffset, cutSeconds]);
   const effectsRefs = useMemo(() => effects.map((s) => ({ bucket: s.preview.bucket, path: s.preview.path })), [effects]);
   const effectsSigned = useSignedRefs(effectsRefs);
   const effectsUrls = useMemo(() => {
@@ -308,7 +308,6 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
     }
     return out;
   }, [effects, effectsSigned]);
-  const cutSeconds = durationSeconds(sequence);
   const effectsCovered = effectsCoverage(effects, sequence.songOffset, sequence.songOffset + cutSeconds);
 
   const mediaByAsset = { ...(mediaQ.data?.byAssetId ?? {}), ...extraUrls };

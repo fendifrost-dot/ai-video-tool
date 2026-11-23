@@ -38,6 +38,11 @@ export type EffectsPreview = EffectsPreviewRecord & {
 export type EffectsSpan = { start: number; end: number; preview: EffectsPreview };
 
 const SECTION_RE = /^[a-z0-9][a-z0-9_]*$/;
+/** Where a copy's file must be: the exports bucket, in an `effects_preview` folder. A record on any other file is not played. */
+export const EFFECTS_BUCKET = "project-exports";
+export const EFFECTS_FOLDER = "/effects_preview/";
+/** The most sections the layer is built from (the newest). Real projects have a handful; the cap bounds a hostile or runaway set of rows. */
+export const MAX_SECTIONS = 50;
 /** A copy may be off its stated length by this many frames before it is called out (a muxer rounds the last one). */
 export const FRAME_TOLERANCE = 1;
 
@@ -85,11 +90,17 @@ type AssetLike = {
   effectsPreview?: EffectsPreviewRecord | null;
 };
 
-/** The project's usable copies: a video, with a record, not rejected. */
+/** Whether a file is where a copy is filed: the exports bucket, an `effects_preview` folder, no path tricks. */
+export function isEffectsPreviewFile(bucket: string, path: string): boolean {
+  return bucket === EFFECTS_BUCKET && path.includes(EFFECTS_FOLDER) && !path.split("/").includes("..");
+}
+
+/** The project's usable copies: a video, with a record, filed where copies are filed, not rejected. */
 export function effectsPreviewsOf(assets: Iterable<AssetLike>): EffectsPreview[] {
   const out: EffectsPreview[] = [];
   for (const a of assets) {
     if (!a.effectsPreview || !a.isVideo || a.approvalStatus === "rejected") continue;
+    if (!isEffectsPreviewFile(a.bucket, a.path)) continue;
     out.push({ ...a.effectsPreview, assetId: a.id, bucket: a.bucket, path: a.path, createdAt: a.createdAt });
   }
   return out;
@@ -122,7 +133,7 @@ export function currentPreviews(previews: readonly EffectsPreview[]): EffectsPre
  * made later is on top; the other shows only where it is not covered. A sliver shorter than a frame is dropped.
  */
 export function effectsLayer(previews: readonly EffectsPreview[]): EffectsSpan[] {
-  const stack = currentPreviews(previews).sort(newerFirst);
+  const stack = currentPreviews(previews).sort(newerFirst).slice(0, MAX_SECTIONS);
   const taken: EffectsSpan[] = [];
   for (const p of stack) {
     const minLen = 1 / p.fps;

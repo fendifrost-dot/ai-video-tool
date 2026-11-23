@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   durationSeconds,
   type EditSequence,
@@ -38,6 +38,8 @@ async function syncElement(
   playing: boolean,
   playbackRate: number,
   fps: number,
+  /** A file that has played to its end holds its last frame: `play()` on an ended element restarts it at zero. */
+  holdAtEnd = false,
 ) {
   if (!el || !url) return;
   if (el.dataset.src !== url) {
@@ -80,7 +82,7 @@ async function syncElement(
   }
 
   el.playbackRate = playbackRate;
-  if (playing) void el.play().catch(() => undefined);
+  if (playing && !(holdAtEnd && el.ended)) void el.play().catch(() => undefined);
   else el.pause();
 }
 
@@ -118,7 +120,13 @@ export function SequencePreview({
   // a preview copy of built effects owns this moment of the song when there is one and the switch is on
   const fx = effectsOn && effects?.length ? effectsAt(effects, songTime) : null;
   const fxUrl = fx ? effectsUrls?.[fx.preview.assetId] ?? null : null;
-  const fxTime = fx ? effectsMediaTime(fx.preview, songTime).at : 0;
+  const fxAt = fx ? effectsMediaTime(fx.preview, songTime, fxRef.current?.duration ?? null) : null;
+  const fxTime = fxAt?.at ?? 0;
+  const fxRuns = playing && !fxAt?.hold;
+  // the copy is put over the cut only once the browser has a frame of it: until then, and for a file that will not
+  // load, the cut's own picture stays up
+  const [fxLoaded, setFxLoaded] = useState<string | null>(null);
+  const fxShown = !!fx && !!fxUrl && fxLoaded === fxUrl;
 
   useEffect(() => {
     void syncElement(videoRef.current, url, srcTime, playing, playbackRate, fps);
@@ -133,8 +141,8 @@ export function SequencePreview({
       fxRef.current?.pause();
       return;
     }
-    void syncElement(fxRef.current, fxUrl, fxTime, playing, playbackRate, fps);
-  }, [fxUrl, fxTime, playing, playbackRate, fps, playhead]);
+    void syncElement(fxRef.current, fxUrl, fxTime, fxRuns, playbackRate, fps, true);
+  }, [fxUrl, fxTime, fxRuns, playbackRate, fps, playhead]);
 
   useEffect(() => {
     if (!compareUrl) return;
@@ -173,14 +181,16 @@ export function SequencePreview({
           {/* what post has built, as rendered: over the cut's own picture for its stretch of the song */}
           <video
             ref={fxRef}
-            className={cn("pointer-events-none absolute inset-0 h-full w-full bg-black object-contain", fxUrl ? "opacity-100" : "opacity-0")}
+            className={cn("pointer-events-none absolute inset-0 h-full w-full bg-black object-contain", fxShown ? "opacity-100" : "opacity-0")}
             playsInline
             muted
-            preload="metadata"
+            preload="auto"
+            onLoadedData={(e) => setFxLoaded(e.currentTarget.dataset.src ?? null)}
+            onError={() => setFxLoaded(null)}
             data-testid="preview-effects"
-            data-effects={fx && fxUrl ? fx.preview.assetId : ""}
+            data-effects={fxShown ? fx!.preview.assetId : ""}
           />
-          {fx && fxUrl && (
+          {fxShown && fx && (
             <div className="pointer-events-none absolute right-2 top-2 rounded bg-sky-500/25 px-2 py-0.5 text-[10px] font-medium text-sky-100 backdrop-blur" data-testid="preview-effects-badge">
               effects · {effectsLabel(fx.preview)}
             </div>

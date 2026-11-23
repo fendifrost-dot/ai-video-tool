@@ -37,7 +37,10 @@ shows the plain clip. The copy is the effect as you rendered it, small; it is ne
 ## Rules
 
 - One copy per section and version. A new version replaces the old one on screen; the old row stays as the record.
-- To take a wrong copy down, set its row's `approval_status` to `rejected`. Do not delete it.
+- To take a wrong copy down, set its row's `approval_status` to `rejected`. Do not delete it. The section's earlier
+  version, if it has one, shows again; reject every version to get the plain clip back.
+- The file goes in `project-exports` under `<user>/<project>/effects_preview/`. A record on a file anywhere else is
+  not played.
 - Two sections may overlap (a grade over a whole half, a spin inside it): the one made later is on top.
 - No sound in the copy. The song is the only sound in the player.
 - A copy says what was RENDERED. Never file a mock-up, a still frame held for the length, or a file from another

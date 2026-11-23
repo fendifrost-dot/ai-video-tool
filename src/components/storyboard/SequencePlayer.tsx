@@ -117,7 +117,11 @@ export function SequencePlayer({
         onSegment?.(seg);
       }
       // a preview copy of built effects owns this moment when there is one and the switch is on
-      const fx = fxOn ? effectsAt(spans, now) : null;
+      const fxHit = fxOn ? effectsAt(spans, now) : null;
+      const fxEl = fxHit ? fxVideos.current.get(fxHit.preview.assetId) : undefined;
+      // ...but only once its file can be shown. No link yet, a refused link, a missing or broken file: the board plays
+      // as if there were no copy, and never rests under a picture that is not there.
+      const fx = fxHit && fxEl && !fxEl.error && fxEl.readyState >= 1 ? fxHit : null;
       const fxId = fx?.preview.assetId ?? null;
       setActiveFx((prev) => (prev === fxId ? prev : fxId));
       // the shot's timed effects, at this moment of the song — the arithmetic a render applies (events.ts pictureAt).
@@ -334,7 +338,9 @@ export function SequencePlayer({
                 playsInline
                 preload={p.assetId === activeFx ? "auto" : "metadata"}
                 className={cn("absolute inset-0 h-full w-full bg-black object-contain", p.assetId === activeFx ? "opacity-100" : "opacity-0")}
-                onLoadedMetadata={() => p.assetId === activeFx && sync(audio.current?.currentTime ?? t, !!audio.current && !audio.current.paused)}
+                // the copy can be shown from now on (or cannot, after an error): put the right picture up, paused or not
+                onLoadedMetadata={() => sync(audio.current?.currentTime ?? t, !!audio.current && !audio.current.paused)}
+                onError={() => sync(audio.current?.currentTime ?? t, !!audio.current && !audio.current.paused)}
                 data-effects-asset-id={p.assetId}
               />
             );

@@ -58,21 +58,29 @@ drift from the final, and the storm verse (mattes, plates, 4K sources) cannot ru
 
 `section` is a slug (`[a-z0-9_]+`); `version` is a whole number from 1; `song_start` / `song_end` are seconds on the
 SONG clock (never the file's). `label`, `built_from` and `made_at` are optional. A row whose record does not parse
-is ignored by the player and named in the strip's count of unreadable copies.
+is not played.
 
 No schema change: the record lives in `metadata_json`, the file in an existing bucket under the owner's own folder,
-read through the same row-level security and signed links as every other asset. `asset_type: "other"` keeps a copy
-off every shot: `roleForAsset` returns no role for it, so it cannot be assigned, selected as a take or counted as
-footage.
+read through the same signed links as every other asset. A record is played only when its file is in
+`project-exports` under an `effects_preview/` folder (`isEffectsPreviewFile`).
+
+A copy is kept out of the footage lists: `asset_type: "other"` gives it no role on a shot (`roleForAsset`), and a
+row that carries the `effects_preview` key, readable or not, is left out of Setup's "Already in this project" and of
+the Cut page's Versions panel (`MediaAsset.isEffectsPreview`, `groupVersions`). OBSERVED, not closed here: the
+generic "pick a video" lists of the specialist tools (wardrobe lane, Grok edit, Hero Frame) still offer it.
 
 ## Which copy plays (pure: `src/lib/storyboard/effectsPreview.ts`)
 
-1. Rejected rows (`approval_status: "rejected"`) are dropped. That is how a bad copy is taken down without deleting it.
-2. Per `section`, only the highest `version` counts (same version twice: the later `made_at`, then `created_at`).
-   An older version never shows through, even where the new one is shorter.
-3. Where two sections overlap on the song, the one made later is on top.
+1. Rejected rows (`approval_status: "rejected"`) are dropped. That takes a bad copy down without deleting it; if the
+   section has an earlier version, that one shows again (reject every version to get the plain clip back).
+2. Per `section`, only the highest remaining `version` counts (same version twice: the later `made_at`, then
+   `created_at`). An older version never shows through, even where the new one is shorter.
+3. Where two sections overlap on the song, the one made later is on top. The layer is built from the newest 50
+   sections at most.
 4. The result is a list of spans that do not overlap. At song time `t` inside a span the copy shows its own time
    `t - song_start`. Outside every span the board's clip plays as before.
+5. A copy owns its stretch only once the browser can show it. No link yet, a refused link, a missing or broken file:
+   the board plays there as if no copy were filed, and the strip still marks that one is.
 
 ## In the app
 
@@ -93,16 +101,26 @@ footage.
 
 ## Security
 
-Reads only the signed-in owner's `project_assets` rows and signs links for paths taken from those rows, in buckets
-the app already signs. No new function, table, policy or secret. The maker script runs offline with ffmpeg, takes
-file paths as arguments, and prints the path and record to file; it holds no token and uploads nothing.
+No new function, table, policy, bucket or secret. The app signs a link for a path taken from a `project_assets` row,
+as it already does for every asset on the board; this feature signs only in `project-exports` and only for a path
+under `effects_preview/`.
+
+What it does NOT do is prove who wrote the row. While SEC-4 is open (`RISK_REGISTER.md`: `project_assets` and
+`project-exports` are writable beyond the owner), anyone who can insert a row into a project can put a picture over
+a stretch of its Review and Cut players with one row and no board placement. That is the same exposure every asset
+row has today, made more visible; it closes with SEC-4, and is recorded there. A rejected row is not shown, which is
+the owner's way to take one down.
+
+The maker script runs offline with ffmpeg, calls it with argument lists (no shell), validates the section slug and
+the two ids before it builds any path, takes file paths as arguments, and prints the path and record to file; it
+holds no token and uploads nothing.
 
 ## What was verified (23 Nov 2026)
 
-- VERIFIED (tests, by category per `docs/TEST_TAXONOMY.md`): 19 unit cases on the selection logic
-  (`effectsPreview.test.ts`); 11 mocked-integration cases on the two players (`effectsPreviewUi.test.tsx`,
-  `SequencePreviewEffects.test.tsx`); 13 Python cases on the maker, 3 of which encode synthetic media with ffmpeg and
-  read frames back. Provider-live 0, real-media-benchmark 0, deployment-smoke 0.
+- VERIFIED (tests, by category per `docs/TEST_TAXONOMY.md`): 22 unit cases (`effectsPreview.test.ts` 21,
+  `versionLabels.test.ts` 1); 15 mocked-integration cases on the two players (`effectsPreviewUi.test.tsx` 9,
+  `SequencePreviewEffects.test.tsx` 6); 14 Python cases on the maker, 3 of which encode synthetic media with ffmpeg
+  and read frames back. Provider-live 0, real-media-benchmark 0, deployment-smoke 0.
 - VERIFIED (one manual run, not in the suite): this branch served locally, signed in as the owner, Review of
   Partnership (`0c5c4421`). A copy made by `make_preview.py` from the storm verse's earlier v1 final
   (`verse_v9look_v1.mp4`, sha256 `703c117d…`, 1911 frames) and filed as asset `fcc60a64` shows as one bar at

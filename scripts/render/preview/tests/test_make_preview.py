@@ -10,6 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 import make_preview as mp  # noqa: E402
 
+USER, PROJECT = "11111111-2222-3333-4444-555555555555", "66666666-7777-8888-9999-000000000000"
 needs_ffmpeg = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="needs ffmpeg")
 
 
@@ -48,10 +49,20 @@ def test_size_keeps_the_shape_and_never_enlarges():
 
 def test_names():
     mp.check_names("storm_verse", 1)
-    for section, version in (("Storm Verse", 1), ("", 1), ("_x", 1), ("ok", 0)):
+    for section, version in (("Storm Verse", 1), ("", 1), ("_x", 1), ("ok", 0), ("storm\n", 1), ("a/../b", 1)):
         with pytest.raises(mp.PreviewError):
             mp.check_names(section, version)
     assert mp.storage_path("u", "p", "storm_verse", 3) == "u/p/effects_preview/storm_verse_v3.mp4"
+
+
+def test_ids_and_paths_cannot_become_something_else():
+    mp.check_ids("3ca10935-8c3d-4479-9a0c-8bfe8050840c", "0c5c4421-1298-4919-bf62-2764ce7837fa")
+    mp.check_ids("<user id>", "<project id>")
+    for user in ("../other", "3ca10935-8c3d-4479-9a0c-8bfe8050840c/x", "", "3CA10935-8C3D-4479-9A0C-8BFE8050840C\n"):
+        with pytest.raises(mp.PreviewError):
+            mp.check_ids(user, "0c5c4421-1298-4919-bf62-2764ce7837fa")
+    assert mp.as_file_arg("-i.mov") == os.path.join(".", "-i.mov")
+    assert mp.as_file_arg("in.mov") == "in.mov" and mp.as_file_arg("/abs/-x.mov") == "/abs/-x.mov"
 
 
 def test_the_command_is_exact_length_silent_and_seekable():
@@ -103,11 +114,11 @@ def test_a_real_copy_starts_where_it_says_and_is_exactly_as_long(tmp_path):
                     "-c:v", "libx264", "-g", "15", "-pix_fmt", "yuv420p", src], check=True)
     out_dir = str(tmp_path / "out")
     code = mp.main([src, "--section", "test_ramp", "--version", "2", "--song-frames", "240-287", "--source-start", "1.0",
-                    "--label", "Ramp", "--built-from", "lock=TEST", "--user", "u", "--project", "p", "--out-dir", out_dir])
+                    "--label", "Ramp", "--built-from", "lock=TEST", "--user", USER, "--project", PROJECT, "--out-dir", out_dir])
     assert code == 0
     report = json.load(open(os.path.join(out_dir, "test_ramp_v2.json")))
     assert report["frames"] == 48 and report["size"] == "384x216" and report["seconds"] == 2.0
-    assert report["upload_to"] == {"bucket": "project-exports", "path": "u/p/effects_preview/test_ramp_v2.mp4"}
+    assert report["upload_to"] == {"bucket": "project-exports", "path": f"{USER}/{PROJECT}/effects_preview/test_ramp_v2.mp4"}
     rec = report["row"]["metadata_json"]["effects_preview"]
     assert (rec["song_start"], rec["song_end"], rec["fps"], rec["frames"], rec["version"]) == (10.0, 12.0, 24, 48, 2)
     assert rec["built_from"]["lock"] == "TEST" and len(rec["built_from"]["source_sha256"]) == 64

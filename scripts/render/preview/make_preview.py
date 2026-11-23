@@ -31,7 +31,9 @@ LONG_SIDE = 960
 FPS = 24.0
 KEYFRAME_EVERY = 12
 FRAME_TOLERANCE = 1          # the same tolerance the app reads a record with (effectsPreview.ts)
-SECTION_RE = re.compile(r"^[a-z0-9][a-z0-9_]*$")
+SECTION_RE = re.compile(r"[a-z0-9][a-z0-9_]*")
+UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+PLACEHOLDERS = ("<user id>", "<project id>")
 
 
 class PreviewError(Exception):
@@ -71,8 +73,20 @@ def storage_path(user, project, section, version):
     return f"{user}/{project}/effects_preview/{section}_v{version}.mp4"
 
 
+def check_ids(user, project):
+    """The storage folder is <user id>/<project id>: ids only, so nothing else can be written into the printed path."""
+    for name, value in (("--user", user), ("--project", project)):
+        if value not in PLACEHOLDERS and not UUID_RE.fullmatch(value or ""):
+            raise PreviewError(f"{name} is an id like 3ca10935-8c3d-4479-9a0c-8bfe8050840c: {value!r}")
+
+
+def as_file_arg(path):
+    """A path that starts with '-' would be read by ffmpeg as an option: make it plainly a path."""
+    return path if not path.startswith("-") else os.path.join(".", path)
+
+
 def check_names(section, version):
-    if not SECTION_RE.match(section or ""):
+    if not SECTION_RE.fullmatch(section or ""):
         raise PreviewError(f"--section is a slug of lower-case letters, digits and underscores: {section!r}")
     if version < 1:
         raise PreviewError(f"--version is a whole number from 1: {version}")
@@ -218,6 +232,9 @@ def main(argv=None):
 
     try:
         check_names(args.section, args.version)
+        check_ids(args.user, args.project)
+        args.source = as_file_arg(args.source)
+        args.out_dir = as_file_arg(args.out_dir)
         if args.song_frames:
             song_start, song_end = song_frames_to_seconds(args.song_frames, args.fps)
         elif args.song_start is not None and args.song_end is not None:

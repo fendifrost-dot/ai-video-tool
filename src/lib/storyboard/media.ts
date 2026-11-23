@@ -113,8 +113,11 @@ export type MediaAsset = {
   /** What the take IS, read off the footage (footage.ts) and kept per stretch analyzed (footageRecord.ts). */
   footageAnalyses?: StoredFootageAnalysis[] | null;
   /** What a person has judged of the clip by looking — whether it does what it was asked to (acceptance.ts). */
-  acceptance?: AcceptanceRecord | null;  /** Set on a preview copy of built effects: the stretch of the song it is the picture of (effectsPreview.ts). Never on a shot. */
+  acceptance?: AcceptanceRecord | null;
+  /** Set on a preview copy of built effects: the stretch of the song it is the picture of (effectsPreview.ts). Never on a shot. */
   effectsPreview?: EffectsPreviewRecord | null;
+  /** The row says it is a preview copy, readable or not: it is post's small file, never footage to tag, cut with or build on. */
+  isEffectsPreview?: boolean;
 };
 
 /** A take of the song as filmed: performance footage that was not made from another take. */

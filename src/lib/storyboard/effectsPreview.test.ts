@@ -10,6 +10,8 @@ import {
   effectsMediaTime,
   effectsPreviewIssues,
   effectsPreviewsOf,
+  isEffectsPreviewFile,
+  MAX_SECTIONS,
   parseEffectsPreview,
   type EffectsPreview,
 } from "./effectsPreview";
@@ -67,7 +69,7 @@ describe("parseEffectsPreview", () => {
 });
 
 describe("effectsPreviewsOf", () => {
-  const base = { bucket: "project-exports", path: "x.mp4", isVideo: true, createdAt: "2026-11-23T10:00:00Z" };
+  const base = { bucket: "project-exports", path: "u/p/effects_preview/x.mp4", isVideo: true, createdAt: "2026-11-23T10:00:00Z" };
   const rec = parseEffectsPreview(record())!;
 
   it("takes videos with a record and leaves out rejected ones", () => {
@@ -78,7 +80,21 @@ describe("effectsPreviewsOf", () => {
       { ...base, id: "plain", effectsPreview: null },
     ]);
     expect(got.map((p) => p.assetId)).toEqual(["ok"]);
-    expect(got[0]).toMatchObject({ bucket: "project-exports", path: "x.mp4", section: "storm_verse" });
+    expect(got[0]).toMatchObject({ bucket: "project-exports", path: "u/p/effects_preview/x.mp4", section: "storm_verse" });
+  });
+
+  it("plays a record only on a file filed where copies are filed", () => {
+    const got = effectsPreviewsOf([
+      { ...base, id: "ok", effectsPreview: rec },
+      { ...base, id: "other-bucket", bucket: "project-clips", effectsPreview: rec },
+      { ...base, id: "traversal-bucket", bucket: "../../../../auth/v1/logout", effectsPreview: rec },
+      { ...base, id: "other-folder", path: "u/p/takes/x.mp4", effectsPreview: rec },
+      { ...base, id: "dot-dot", path: "u/p/effects_preview/../../other/x.mp4", effectsPreview: rec },
+    ]);
+    expect(got.map((p) => p.assetId)).toEqual(["ok"]);
+    expect(isEffectsPreviewFile("project-exports", "u/p/effects_preview/storm_verse_v1.mp4")).toBe(true);
+    expect(isEffectsPreviewFile("project-exports", "https://elsewhere.example/effects_preview/x.mp4")).toBe(true); // signed against our own storage origin: no link comes back
+    expect(isEffectsPreviewFile("project-audio", "u/p/effects_preview/x.mp4")).toBe(false);
   });
 });
 
@@ -119,6 +135,18 @@ describe("which copy plays", () => {
     const a = copy({ assetId: "a", section: "a", songStart: 0, songEnd: 10 });
     const b = copy({ assetId: "b", section: "b", songStart: 5, songEnd: 15 });
     expect(effectsLayer([a, b])).toEqual(effectsLayer([b, a]));
+  });
+
+  it("builds the layer from the newest sections only, so a runaway set of rows cannot stall the page", () => {
+    const many = Array.from({ length: MAX_SECTIONS + 40 }, (_, i) => copy({ assetId: `a${i}`, section: `s${i}`, songStart: i, songEnd: i + 1, madeAt: new Date(Date.UTC(2026, 10, 1, 0, i)).toISOString() }));
+    const spans = effectsLayer(many);
+    expect(spans).toHaveLength(MAX_SECTIONS);
+    // the oldest forty are the ones left out
+    expect(spans[0].preview.assetId).toBe("a40");
+    const hostile = Array.from({ length: 1000 }, (_, i) => copy({ assetId: `h${i}`, section: `h${i}`, songStart: i % 2 ? 0 : i / 10, songEnd: i % 2 ? 4000 : i / 10 + 0.05, madeAt: new Date(Date.UTC(2026, 10, 1, 0, 0, i)).toISOString() }));
+    const t0 = performance.now();
+    effectsLayer(hostile);
+    expect(performance.now() - t0).toBeLessThan(500);
   });
 
   it("drops a sliver shorter than a frame", () => {

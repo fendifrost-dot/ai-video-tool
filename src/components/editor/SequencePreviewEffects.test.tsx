@@ -4,8 +4,8 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { importEdlCsv, YSL_PROJECT_ID, YSL_VARIATION_ID } from "../../../supabase/functions/edit-render/model";
 import { effectsLayer, type EffectsPreview } from "@/lib/storyboard/effectsPreview";
 import { SequencePreview } from "./SequencePreview";
@@ -21,10 +21,29 @@ describe("effects on the cut's monitor", () => {
     expect(seq.songOffset).toBeCloseTo(13.792, 3);
   });
 
-  it("lays the copy over the monitor where the song has one", () => {
+  it("lays the copy over the monitor where the song has one, once the browser has a frame of it", async () => {
     show(0, true);
-    expect(screen.getByTestId("preview-effects").dataset.effects).toBe("fx1");
+    const el = screen.getByTestId("preview-effects");
+    // still loading: the cut's own picture stays up, unmarked
+    expect(el.dataset.effects).toBe("");
+    expect(el.className).toContain("opacity-0");
+    expect(screen.queryByTestId("preview-effects-badge")).toBeNull();
+    await vi.waitFor(() => expect(el.dataset.src).toBe("https://signed/open_v1.mp4"));
+    fireEvent.loadedData(el);
+    expect(el.dataset.effects).toBe("fx1");
+    expect(el.className).toContain("opacity-100");
     expect(screen.getByTestId("preview-effects-badge").textContent).toBe("effects · open · v1");
+  });
+
+  it("takes the copy off again when its file fails", async () => {
+    show(0, true);
+    const el = screen.getByTestId("preview-effects");
+    await vi.waitFor(() => expect(el.dataset.src).toBe("https://signed/open_v1.mp4"));
+    fireEvent.loadedData(el);
+    expect(el.dataset.effects).toBe("fx1");
+    fireEvent.error(el);
+    expect(el.dataset.effects).toBe("");
+    expect(screen.queryByTestId("preview-effects-badge")).toBeNull();
   });
 
   it("leaves the cut's own picture where the song has none", () => {
