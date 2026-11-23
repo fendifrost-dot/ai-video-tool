@@ -44,6 +44,7 @@ GB_PER_V1E = 15.0
 DOC_INPUT_GB = 28.81
 DOC_INPUT_FILES = 374
 PULL_GB = 8.0
+LOCK_RAW_GB = 7.0
 FINAL_MEASURED_FRAMES = 232
 FINAL_MEASURED_SECONDS = 352.0
 # Planning allowances around the lock doc's measured stages. Not a second rate card.
@@ -121,6 +122,9 @@ PREVIEW_LOGS = (
 V1E_REF_FRAMES = tuple(list(range(3070, 3078)) + list(range(4975, 4981)))
 GUEST_PYTHON = "/opt/avt-comp/bin/python"
 LOCKREPRO = "/tmp/claudia_lockrepro"
+PIPELINE_ROLE = "final pipeline code/params"
+PIPELINE_MODULES = ("board_v1.py", "grade_v1.py", "transitions_v1.py")
+REHEARSAL_RANGE = "124-127"
 SCRATCH = "/var/avt/scratch"
 V1E_DIR = "/var/avt/scratch/v1e"
 FINAL_DIR = "/var/avt/scratch/final"
@@ -230,6 +234,21 @@ def final_workers_for_cpu(vcpu, n_spans):
     return max(1, min(started, n_spans))
 
 
+def v1e_chunk_complete(chunk, directory=None):
+    """True when the mkv exists and the md5 log has one line per frame."""
+    directory = directory or V1E_DIR
+    mkv = os.path.join(directory, f"chunk_{chunk['sf0']}.mkv")
+    md5_path = os.path.join(directory, f"chunk_{chunk['sf0']}.md5")
+    if not os.path.isfile(mkv) or os.path.getsize(mkv) <= 0 or not os.path.isfile(md5_path):
+        return False
+    try:
+        with open(md5_path) as handle:
+            parsed = parse_md5_file(handle.read())
+    except (OSError, SystemExit):
+        return False
+    return len(parsed) == int(chunk["nf"])
+
+
 def v1e_chunk_table():
     rows = []
     for index in range(len(V1E_BOUNDARIES) - 1):
@@ -312,12 +331,14 @@ def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE, lock_repro=F
     final_started = final_workers_for_cpu(vcpu, len(spans))
     mbps = _transfer_mbps()
     transfer = plan.transfer_hours(input_gb, mbps)
+    raws = plan.transfer_hours(LOCK_RAW_GB, mbps)
     pull = plan.transfer_hours(PULL_GB, mbps)
     final_lo, final_hi, per_frame = final_hour_band(final_started)
     v1e_lo = plan.VERSE_NF * plan.SEC_LO / 3600.0 / started
     v1e_hi = plan.VERSE_NF * plan.SEC_HI / 3600.0 / started
     parts = {
         "transfer": (transfer, transfer),
+        "lock_raws": (raws, raws),
         "install": _hours_pair(INSTALL_MIN),
         "verify": _hours_pair(VERIFY_MIN),
         "lock_repro": _hours_pair(REPRO_MIN) if lock_repro else (0.0, 0.0),
@@ -363,6 +384,8 @@ def projection_text(proj):
         f"LOCK_v2 projection ({proj['machine']} on demand, not a live quote):",
         f"  transfer {proj['input_gb']:.2f} GB at {proj['transfer_mb_s']:.0f} MB/s "
         f"(margin under the measured ~53 MB/s): {parts['transfer'][0]:.2f} h",
+        f"  lock raws {LOCK_RAW_GB:.0f} GB to /tmp/claudia_lockrepro (pre-encode frames): "
+        f"{parts['lock_raws'][0]:.2f} h",
         "  install ffmpeg (ffv1, libx264, prores_ks) + numpy 2.5.5, scipy 1.18.1, opencv 5.1.x: "
         f"{_band(parts['install'])} h",
         f"  verify SHA256SUMS + manifest: {_band(parts['verify'])} h",
@@ -1145,6 +1168,15 @@ if [ -e "$INPUT_DEV" ]; then
   if ! mountpoint -q /workspace/partnership; then
     mount "$INPUT_DEV" /workspace/partnership
   fi
+  # v1e chunks and their state files survive a torn-down VM. final_render scratch stays on the boot disk.
+  mkdir -p /workspace/partnership/.avt-scratch/v1e /workspace/partnership/.avt-scratch/states
+  mkdir -p /var/avt/scratch/v1e /var/avt/scratch/states
+  if ! mountpoint -q /var/avt/scratch/v1e; then
+    mount --bind /workspace/partnership/.avt-scratch/v1e /var/avt/scratch/v1e
+  fi
+  if ! mountpoint -q /var/avt/scratch/states; then
+    mount --bind /workspace/partnership/.avt-scratch/states /var/avt/scratch/states
+  fi
 fi
 # After the mount. The launcher waits for this before it mkdir's /workspace.
 touch /tmp/avt-inputs-ready
@@ -1242,7 +1274,7 @@ def tree_transfer_rows(lock_dir):
 
 
 def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir,
-                   tree_files=(), copy_tree=True):
+                   tree_files=(), copy_tree=True, extra_files=()):
     """Copy the lock tree and the manifest. Unsafe names are staged, then moved.
 
     The lock tree is one scp per SHA256SUMS file, not ``scp --recurse``. A reused
@@ -1267,6 +1299,10 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     tree_rows = tree_transfer_rows(lock_dir) if copy_tree else []
     manifest_paths = {row.get("path") for row in manifest_files}
     tree_rows = [row for row in tree_rows if row["path"] not in manifest_paths]
+    for row in list(extra_files or []):
+        if row.get("path") and row.get("sha256"):
+            tree_rows.append(row)
+            parents.add(os.path.dirname(row["path"]))
     for row in tree_rows:
         parents.add(os.path.dirname(row["path"]))
     transfer_argvs.tree_rows = tree_rows
@@ -1582,7 +1618,7 @@ def _repro_argv(python, name):
     return [python, "-c", launch, REPRO_SCRIPT, name]
 
 
-def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=False):
+def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=False, skip_done=False):
     """Guest argv. Lock repros stay off unless requested.
 
     The frozen scripts are not rewritten. Assemble reads the sha-verified
@@ -1591,10 +1627,16 @@ def build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu, lock_repro=Fals
     lock_dir = lock_dir.rstrip("/")
     v1e_script = os.path.join(lock_dir, "scripts", "v1e_chunk_rgb.py")
     final_script = os.path.join(lock_dir, "scripts", "final_render.py")
-    chunks = v1e_chunk_table()
+    all_chunks = v1e_chunk_table()
+    chunks = []
+    for chunk in all_chunks:
+        if skip_done and v1e_chunk_complete(chunk):
+            print(f"skip-existing v1e chunk {chunk['sf0']}", flush=True)
+            continue
+        chunks.append(chunk)
     state_argv = [
         python, v1e_script, "--state_only", "--sf0", str(V1E_SF0), "--nf", str(plan.VERSE_NF),
-        "--state_at", state_at_arg(chunks), "--state_dir", STATE_DIR,
+        "--state_at", state_at_arg(all_chunks), "--state_dir", STATE_DIR,
         "--out", os.path.join(SCRATCH, "x.mkv"),
     ]
     chunk_argvs = []
@@ -1993,6 +2035,207 @@ def _on_stage_printer(timer, timing_file):
     return on_stage
 
 
+def _load_repro(path):
+    """repro.json is JSON. A Python literal from the repro script is accepted too."""
+    with open(path) as handle:
+        text = handle.read()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = ast.literal_eval(text)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} is not an object")
+    return data
+
+
+def _inspect_raw(name, expected_sha):
+    """Decide whether /tmp already holds a usable pre-encode raw.
+
+    A present raw that is not identical is a hard stop. Rebuilding it runs in
+    /workspace/partnership, and that disk has no room for a second copy.
+    """
+    repro_path = os.path.join(LOCKREPRO, name, "repro.json")
+    raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+    raw_ok = os.path.isfile(raw_path) and os.path.getsize(raw_path) > 0
+    if not os.path.isfile(repro_path) or not raw_ok:
+        return {"ready": False, "blocked": False, "reason": "missing"}
+    try:
+        data = _load_repro(repro_path)
+    except (OSError, json.JSONDecodeError, ValueError, SyntaxError):
+        return {"ready": False, "blocked": True, "reason": "repro.json is not readable"}
+    if data.get("identical") is not True:
+        return {"ready": False, "blocked": True, "reason": "identical is not true"}
+    pix = data.get("pix_fmt")
+    if pix not in ("rgb24", "bgr24", "gbrp", "yuv420p"):
+        return {"ready": False, "blocked": True, "reason": f"pix_fmt {pix} is unsupported"}
+    digest = str(data.get("lock_sha256") or "").strip().lower()
+    if expected_sha and digest != expected_sha:
+        shown = digest or "(missing)"
+        return {
+            "ready": False,
+            "blocked": True,
+            "reason": f"lock_sha256 {shown} != parity {expected_sha}",
+        }
+    return {
+        "ready": True,
+        "blocked": False,
+        "rewrite": data.get("raw") != raw_path,
+        "reason": "",
+    }
+
+
+def _normalize_repro_json(name):
+    """Point repro.json at the absolute /tmp raw. Leave a correct file untouched."""
+    repro_path = os.path.join(LOCKREPRO, name, "repro.json")
+    raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+    data = _load_repro(repro_path)
+    if data.get("raw") == raw_path:
+        return data
+    data["raw"] = raw_path
+    _write_json(repro_path, data)
+    return data
+
+
+def _file_row(path):
+    return {
+        "path": path,
+        "sha256": plan.sha256_file(path),
+        "bytes": os.path.getsize(path),
+    }
+
+
+def _write_raw_sums(rows):
+    """Absolute paths. sha256sum -c resolves a relative name from the cwd, and the guest cwd is the lock scripts directory."""
+    lines = []
+    for row in rows:
+        path = row["path"]
+        if not os.path.isabs(path):
+            raise SystemExit(f"lock raw checksum path is not absolute: {path}")
+        lines.append(f"{row['sha256']}  {path}")
+    path = os.path.join(LOCKREPRO, "RAW_SHA256SUMS")
+    os.makedirs(LOCKREPRO, exist_ok=True)
+    with open(path, "w") as handle:
+        handle.write("\n".join(lines) + "\n")
+    return _file_row(path)
+
+
+def log_lock_raw_shipments(rows, action="plan"):
+    """One line per pre-encode raw: name, size, sha. Rehearsal and the full run both call this."""
+    for row in rows:
+        path = row.get("path") or ""
+        if not path.endswith("/frames_rgb24.raw"):
+            continue
+        name = os.path.basename(os.path.dirname(path))
+        print(
+            f"lock raw ship {action} {name} bytes={row.get('bytes')} sha256={row.get('sha256')}",
+            flush=True,
+        )
+
+
+def require_raws_queued(argvs, rows):
+    """The scp list must name every raw. A mkdir of the parent is not a copy."""
+    blob = "\n".join(" ".join(str(part) for part in argv) for argv in argvs)
+    missing = [
+        row["path"] for row in rows
+        if str(row.get("path") or "").endswith("/frames_rgb24.raw") and row["path"] not in blob
+    ]
+    if missing:
+        raise SystemExit("lock raw missing from the transfer: " + ", ".join(missing))
+
+
+def _default_repro(name):
+    env = os.environ.copy()
+    env["REPRO_ROOT"] = LOCKREPRO
+    return subprocess.run(
+        [sys.executable, REPRO_SCRIPT, name],
+        cwd=PARTNERSHIP,
+        env=env,
+        check=False,
+    )
+
+
+def _run_repros(names, parallel, run_one):
+    if not names:
+        return
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    workers = max(1, min(int(parallel), len(names)))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(run_one, name): name for name in names}
+        for future in as_completed(futures):
+            name = futures[future]
+            result = future.result()
+            code = getattr(result, "returncode", 1)
+            if code != 0:
+                raise SystemExit(f"lock raw {name} repro exited {code}")
+
+
+def ensure_lock_raws(lock_dir, names=None, parallel=3, run_one=None):
+    """Prepare /tmp/claudia_lockrepro/<name>/{frames_rgb24.raw,repro.json} on the launcher.
+
+    An existing repro.json with identical true and the parity lock_sha256 is reused
+    in place. The raws are not copied onto /workspace. A raw that is already on disk
+    and is not identical is left alone and the launch stops. The box runs the repro
+    only when that name has no raw yet, at most three at a time. The VM never rebuilds these.
+    """
+    if not str(LOCKREPRO).startswith("/tmp/"):
+        raise SystemExit(f"lock raws stay under /tmp, not {LOCKREPRO}")
+    names = list(names or LOCK_NAMES)
+    shas = load_lock_shas(lock_dir)
+    pending = []
+    for name in names:
+        status = _inspect_raw(name, shas.get(name))
+        if status["ready"]:
+            print(f"lock raw {name}: reuse", flush=True)
+        elif status["blocked"]:
+            raise SystemExit(f"lock raw {name} is on disk and will not be rebuilt: {status['reason']}")
+        else:
+            pending.append(name)
+    if pending:
+        print(f"lock raws: running {len(pending)} repros, {parallel} at a time", flush=True)
+        _run_repros(pending, parallel, run_one or _default_repro)
+    rows = []
+    for name in names:
+        status = _inspect_raw(name, shas.get(name))
+        if not status["ready"]:
+            raise SystemExit(f"lock raw {name} is not identical")
+        if status.get("rewrite"):
+            _normalize_repro_json(name)
+        raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+        repro_path = os.path.join(LOCKREPRO, name, "repro.json")
+        rows.append(_file_row(raw_path))
+        rows.append(_file_row(repro_path))
+    rows.append(_write_raw_sums([row for row in rows if row["path"].endswith("frames_rgb24.raw")]))
+    for row in rows:
+        if not str(row["path"]).startswith(LOCKREPRO + os.sep):
+            raise SystemExit(f"lock raw escaped /tmp: {row['path']}")
+    log_lock_raw_shipments(rows, "plan")
+    print(f"lock raws: {len(names)} ready, {sum(row['bytes'] for row in rows)} bytes", flush=True)
+    return rows
+
+
+def verify_lock_raws(run):
+    """Guest check: the pushed raws match the launcher sha, and repro.json points at them."""
+    sums = os.path.join(LOCKREPRO, "RAW_SHA256SUMS")
+    if not os.path.isfile(sums):
+        return
+    result = run(["sha256sum", "-c", sums])
+    if getattr(result, "returncode", 1) != 0:
+        detail = ((getattr(result, "stdout", "") or "") + (getattr(result, "stderr", "") or ""))[-2000:]
+        raise SystemExit("lock raw sha256sum -c failed\n" + detail)
+    for name in LOCK_NAMES:
+        path = os.path.join(LOCKREPRO, name, "repro.json")
+        if not os.path.isfile(path):
+            continue
+        data = _load_repro(path)
+        raw = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+        if data.get("identical") is not True:
+            raise SystemExit(f"lock raw {name} identical is not true")
+        if data.get("raw") != raw:
+            raise SystemExit(f"lock raw {name} raw path is {data.get('raw')}, not {raw}")
+        if data.get("pix_fmt") not in ("rgb24", "bgr24", "gbrp", "yuv420p"):
+            raise SystemExit(f"lock raw {name} pix_fmt {data.get('pix_fmt')} is unsupported")
+
+
 def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decoder=None, sleep=time.sleep):
     """Step 0 through step 5 on the machine that already has the files."""
     assert_stack_fn = assert_stack if assert_stack_fn is None else assert_stack_fn
@@ -2026,9 +2269,11 @@ def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decod
         print("frozen renders linked:", flush=True)
         for name, row in linked.items():
             print(f"  {name}: {row['source']}", flush=True)
+        verify_lock_raws(run)
         steps, envs = build_recipe(
             python, lock_dir, v1e_slots, final_slots, vcpu,
             lock_repro=bool(getattr(args, "lock_repro", False)),
+            skip_done=True,
         )
 
         def call_cmd(argv, env, cwd):
@@ -2089,16 +2334,29 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         input_files = DOC_INPUT_FILES
         manifest_files = []
         frozen_errors = []
+        pipeline_errors = []
     else:
         input_gb = validate_manifest(manifest) / 1_000_000_000.0
         manifest_files = list(manifest["files"])
         frozen_errors = []
+        pipeline_errors = []
         lock_shas = load_lock_shas(lock_dir)
         if lock_shas:
             _found, frozen_errors, extras = frozen_coverage_errors(manifest["files"], lock_shas)
             if not frozen_errors:
                 manifest_files.extend(extras)
                 input_gb += sum(item["bytes"] for item in extras) / 1_000_000_000.0
+        full_tree = len(manifest["files"]) >= 50 or lock_dir.rstrip("/") == LOCK_DIR
+        if full_tree:
+            gaps = missing_pipeline_modules(manifest["files"])
+            if gaps:
+                pipeline_errors.append(
+                    "final pipeline modules missing from the manifest: " + ", ".join(gaps)
+                )
+            before = {row.get("path") for row in manifest_files}
+            manifest_files = augment_stage_rows(lock_dir, manifest_files)
+            added = [row for row in manifest_files if row.get("path") not in before]
+            input_gb += sum(int(row.get("bytes") or 0) for row in added) / 1_000_000_000.0
         input_files = len(manifest_files)
         manifest_note = ""
     proj = project(
@@ -2142,6 +2400,8 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         reasons.append(
             "frozen renders are not covered by the manifest: " + "; ".join(frozen_errors)
         )
+    if pipeline_errors:
+        reasons.append("refusing to create a VM: " + "; ".join(pipeline_errors))
     if proj["usd"][1] > cost_ceiling:
         reasons.append(
             f"refusing to create a VM: projected cost ${proj['usd'][1]:.2f} "
@@ -2431,13 +2691,22 @@ export GRADE_PARAMS="$LOCK/params/final_params_LOCK_v2.json"
 export TRANS_PARAMS="$GRADE_PARAMS"
 cd "$LOCK/scripts"
 /opt/avt-comp/bin/python -c 'import numpy, scipy, cv2; print("deps", numpy.__version__, scipy.__version__, cv2.__version__)'
-if [ -f /tmp/avt-rehearsal-chunks ]; then
-  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --grain 1 \
-    --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \
-    --lockrepro /tmp/claudia_lockrepro --tree /workspace/partnership --stills 0
-else
-  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final --help
+if [ ! -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw ]; then
+  echo AVT_RENDER_FAIL missing-spins-raw
+  exit 1
 fi
+if [ ! -f /tmp/claudia_lockrepro/spins_T1/repro.json ]; then
+  echo AVT_RENDER_FAIL missing-spins-raw
+  exit 1
+fi
+if [ -f /tmp/claudia_lockrepro/RAW_SHA256SUMS ]; then
+  sha256sum -c /tmp/claudia_lockrepro/RAW_SHA256SUMS
+fi
+LOCK_BEGAN=$(date +%s)
+/opt/avt-comp/bin/python final_render.py chunks --range 124-127 --chunk 4 --grain 1 \
+  --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \
+  --lockrepro /tmp/claudia_lockrepro --tree /workspace/partnership --stills 0
+echo "AVT_STAGE lock_range $(( $(date +%s) - LOCK_BEGAN ))"
 SMOKE=/var/avt/scratch/final/rehearsal_chunk.mkv
 SMOKE_BEGAN=$(date +%s)
 ffmpeg -y -f lavfi -i testsrc=size=320x180:rate=24:duration=0.5 -c:v ffv1 "$SMOKE"
@@ -2525,8 +2794,91 @@ def local_video_ok(path):
     return probed.returncode == 0 and bool((probed.stdout or "").strip())
 
 
-def rehearsal_rows(lock_dir):
-    """scripts, params, and up to three manifest files of at most 5 MB."""
+def _is_pipeline_row(row):
+    role = str(row.get("role") or "").strip()
+    base = os.path.basename(row.get("path") or "")
+    return role == PIPELINE_ROLE or base in PIPELINE_MODULES
+
+
+def missing_pipeline_modules(files):
+    """Basenames from PIPELINE_MODULES that the manifest does not list."""
+    bases = {os.path.basename(row.get("path") or "") for row in files or []}
+    return [name for name in PIPELINE_MODULES if name not in bases]
+
+
+def neighbor_code_rows(paths):
+    """Every .py and .json beside a pipeline module. The import path is the directory."""
+    seen = set(paths)
+    rows = []
+    for path in paths:
+        folder = os.path.dirname(path)
+        if not os.path.isdir(folder):
+            continue
+        for name in sorted(os.listdir(folder)):
+            if not name.endswith((".py", ".json")):
+                continue
+            full = os.path.join(folder, name)
+            if full in seen or not os.path.isfile(full):
+                continue
+            seen.add(full)
+            rows.append({"path": full, "bytes": os.path.getsize(full)})
+    return rows
+
+
+def song_and_literal_rows(lock_dir):
+    """GRADE_PARAMS song_wav, and .py/.json/.wav paths named in final_render.py."""
+    rows = []
+    seen = set()
+    params = os.path.join(lock_dir, "params", "final_params_LOCK_v2.json")
+    if os.path.isfile(params):
+        try:
+            with open(params) as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        master = data.get("master") if isinstance(data, dict) else None
+        wav = master.get("song_wav") if isinstance(master, dict) else None
+        if isinstance(wav, str) and wav.startswith("/") and os.path.isfile(wav):
+            seen.add(wav)
+            rows.append({"path": wav, "bytes": os.path.getsize(wav)})
+    script = os.path.join(lock_dir, "scripts", "final_render.py")
+    if os.path.isfile(script):
+        try:
+            text = open(script).read()
+        except OSError:
+            text = ""
+        for match in re.finditer(r'["\'](/(?:workspace|tmp)/[^"\']+)["\']', text):
+            path = match.group(1)
+            if path in seen or not path.endswith((".py", ".json", ".wav")):
+                continue
+            if not os.path.isfile(path):
+                continue
+            seen.add(path)
+            rows.append({"path": path, "bytes": os.path.getsize(path)})
+    return rows
+
+
+def augment_stage_rows(lock_dir, files):
+    """Add sibling pipeline code and the range inputs. Existing rows stay."""
+    by_path = {}
+    for row in files or []:
+        path = row.get("path")
+        if path:
+            by_path[path] = row
+    module_paths = [row["path"] for row in by_path.values() if _is_pipeline_row(row)]
+    for row in neighbor_code_rows(module_paths):
+        by_path.setdefault(row["path"], row)
+    for row in song_and_literal_rows(lock_dir):
+        by_path.setdefault(row["path"], row)
+    return list(by_path.values())
+
+
+def rehearsal_rows(lock_dir, full=False):
+    """Stage the files a real final_render dry-run opens, plus the lock scripts and params.
+
+    The open trace runs on the real tree. Frames 124-127 cover the rehearsal. The full
+    run also traces one cheap pass per source family and adds those files.
+    """
     lock_dir = (lock_dir or "").rstrip("/")
     rows = []
     for sub in ("scripts", "params"):
@@ -2534,7 +2886,11 @@ def rehearsal_rows(lock_dir):
         if not os.path.isdir(base):
             continue
         for dirpath, _dirs, names in os.walk(base):
+            if "__pycache__" in dirpath.split(os.sep):
+                continue
             for name in names:
+                if name.startswith(".") or name.endswith(".pyc"):
+                    continue
                 path = os.path.join(dirpath, name)
                 try:
                     size = os.path.getsize(path)
@@ -2542,25 +2898,579 @@ def rehearsal_rows(lock_dir):
                     continue
                 rows.append({"path": path, "bytes": size})
     manifest, _note = peek_manifest(lock_dir) if lock_dir else (None, "")
-    small = []
-    total = None
-    if manifest:
-        total = 0
-        for row in manifest["files"]:
-            size = int(row.get("bytes") or 0)
-            total += size
-            path = row.get("path") or ""
-            if path.startswith(lock_dir + os.sep) or path in {item["path"] for item in rows}:
-                continue
-            if size <= 5_000_000 and os.path.isfile(path):
-                small.append((size, row))
-        small.sort(key=lambda item: item[0])
-        for _size, row in small[:3]:
-            rows.append({"path": row["path"], "bytes": int(row.get("bytes") or 0)})
+    files = (manifest or {}).get("files") or []
+    total = sum(int(row.get("bytes") or 0) for row in files) if manifest else None
+    for row in files:
+        if _is_pipeline_row(row):
+            rows.append(row)
+    rows = augment_stage_rows(lock_dir, rows)
+    if os.path.isfile(os.path.join(lock_dir, "scripts", "final_render.py")):
+        opened, _code, _detail = trace_open_closure(lock_dir, full=full)
+        have = {row.get("path") for row in rows}
+        for row in _rows_from_paths(opened):
+            if row["path"] not in have:
+                print(f"stage closure: {row['path']}", flush=True)
+                rows.append(row)
+                have.add(row["path"])
+    names = sorted({
+        os.path.basename(row["path"]) for row in rows
+        if os.path.basename(row.get("path") or "") in PIPELINE_MODULES
+    })
+    if names:
+        print("rehearsal pipeline modules: " + ", ".join(names), flush=True)
     render_chunks = total is not None and total <= 30_000_000 and any(
         path.endswith("final_render.py") for path in (item["path"] for item in rows)
     )
     return rows, render_chunks
+
+
+_PROBE_IMPORTS = (
+    "import numpy, cv2, os\n"
+    "def site(mod):\n"
+    "    path = os.path.abspath(mod.__file__)\n"
+    "    while path != os.sep and os.path.basename(path) not in ('site-packages', 'dist-packages'):\n"
+    "        path = os.path.dirname(path)\n"
+    "    print(path)\n"
+    "site(numpy)\n"
+    "site(cv2)\n"
+)
+
+
+def _python_candidates():
+    ordered = []
+    chosen = os.environ.get("AVT_PREFLIGHT_PYTHON") or ""
+    if chosen:
+        ordered.append(chosen)
+    ordered.append("/usr/bin/python3")
+    which = shutil.which("python3")
+    if which:
+        ordered.append(which)
+    ordered.append(sys.executable)
+    ordered.append("/workspace/venv_comp/bin/python")
+    seen = []
+    for path in ordered:
+        if path and path not in seen and os.path.isfile(path):
+            seen.append(path)
+    return seen
+
+
+def find_preflight_python(run=None, candidates=None):
+    """First interpreter that can import numpy and cv2, plus the site dirs that hold them.
+
+    The check runs outside the sandbox. ``/workspace/venv_comp`` is last: that bin has
+    no python, and the sandbox mount hides ``/workspace`` anyway. cv2 on this box lives
+    in the user site, so the site dir is passed through as ``PYTHONPATH`` and
+    ``PYTHONNOUSERSITE`` is not set.
+    """
+    run = run or subprocess.run
+    env = os.environ.copy()
+    env.pop("PYTHONNOUSERSITE", None)
+    for exe in candidates if candidates is not None else _python_candidates():
+        if not exe or not os.path.isfile(exe):
+            continue
+        try:
+            probed = run(
+                [exe, "-c", _PROBE_IMPORTS],
+                env=env, capture_output=True, text=True, timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if getattr(probed, "returncode", 1) != 0:
+            continue
+        sites = []
+        for line in (getattr(probed, "stdout", "") or "").splitlines():
+            line = line.strip()
+            if line and line not in sites:
+                sites.append(line)
+        print(f"import preflight python: {exe}", flush=True)
+        for site in sites:
+            print(f"import preflight site: {site}", flush=True)
+        return exe, sites
+    print(
+        f"import preflight python: no candidate imported numpy and cv2; using {sys.executable}",
+        flush=True,
+    )
+    return sys.executable, []
+
+
+def preflight_env(extra=None, python_info=None):
+    _exe, sites = python_info if python_info is not None else find_preflight_python()
+    env = os.environ.copy()
+    env.pop("PYTHONNOUSERSITE", None)
+    if sites:
+        prior = [env["PYTHONPATH"]] if env.get("PYTHONPATH") else []
+        env["PYTHONPATH"] = os.pathsep.join(sites + prior)
+    if extra:
+        env.update(extra)
+    return env
+
+
+_TRACE_WRAPPER = r"""
+import os, sys
+roots = tuple(part for part in os.environ.get("AVT_TRACE_ROOTS", "").split(os.pathsep) if part)
+out = os.environ["AVT_OPEN_TRACE"]
+seen = set()
+paths = []
+
+def hook(event, args):
+    if event != "open" or not args:
+        return
+    path = args[0]
+    if isinstance(path, bytes):
+        path = path.decode("utf-8", "surrogateescape")
+    if not isinstance(path, str) or path.startswith("<"):
+        return
+    path = os.path.abspath(path)
+    if not any(path == root or path.startswith(root + os.sep) for root in roots):
+        return
+    if path in seen:
+        return
+    seen.add(path)
+    paths.append(path)
+
+sys.addaudithook(hook)
+script = sys.argv[1]
+sys.argv = sys.argv[1:]
+import runpy
+try:
+    runpy.run_path(script, run_name="__main__")
+finally:
+    with open(out, "w") as handle:
+        handle.write("\n".join(paths))
+        if paths:
+            handle.write("\n")
+"""
+
+
+def _trace_roots(lock_dir):
+    roots = [os.path.dirname(lock_dir.rstrip("/")), LOCKREPRO]
+    return [root for root in roots if root]
+
+
+def _parse_strace_opens(text, roots):
+    found = []
+    for match in re.finditer(r'openat\([^,]*,\s*"((?:\\.|[^"])*)"', text or ""):
+        path = bytes(match.group(1), "utf-8").decode("unicode_escape")
+        path = os.path.abspath(path)
+        if any(path == root or path.startswith(root + os.sep) for root in roots):
+            found.append(path)
+    return found
+
+
+def _missing_paths(text):
+    found = []
+    for match in re.finditer(r"No such file or directory: '([^']+)'", text or ""):
+        found.append(match.group(1))
+    for match in re.finditer(r"FileNotFoundError: (\S+)", text or ""):
+        found.append(match.group(1).strip("'"))
+    return found
+
+
+def _dryrun_tail(script, tree, rng):
+    return [
+        script, "dryrun", "--range", rng,
+        "--chunk", "4", "--grain", "1",
+        "--scratch", "/tmp/avt-import-scratch",
+        "--v1e_dir", "/tmp/avt-import-v1e",
+        "--lockrepro", LOCKREPRO,
+        "--tree", tree,
+        "--stills", "0",
+    ]
+
+
+def _source_probes(script, tree, full):
+    """Rehearsal traces frames 124-127. The full run also samples the other source families."""
+    probes = [("board-spins_T1", _dryrun_tail(script, tree, REHEARSAL_RANGE))]
+    if not full:
+        return probes
+    probes.append(("v1e", _dryrun_tail(script, tree, "3070-3070")))
+    probes.append((
+        "assemble",
+        [script, "assemble", "--range", "0-0", "--scratch", "/tmp/avt-import-scratch", "--tree", tree],
+    ))
+    return probes
+
+
+def _walk_lock_frames(node, found):
+    if isinstance(node, dict):
+        raw_name = node.get("name") or node.get("lock") or node.get("id") or ""
+        name = _canonical_lock_name(str(raw_name))
+        start = node.get("sf0", node.get("start", node.get("f0")))
+        if name and isinstance(start, int) and name not in found:
+            found[name] = start
+        if str(raw_name).upper() == "S10" and isinstance(start, int) and "s10" not in found:
+            found["s10"] = start
+        for value in node.values():
+            _walk_lock_frames(value, found)
+    elif isinstance(node, list):
+        for value in node:
+            _walk_lock_frames(value, found)
+
+
+def _ranges_from_opened(paths):
+    found = {}
+    for path in paths:
+        if not str(path).endswith(".json"):
+            continue
+        try:
+            with open(path) as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            continue
+        _walk_lock_frames(data, found)
+    return found
+
+
+def _trace_one(python, wrapper, argv, env, roots, cwd):
+    trace_path = env["AVT_OPEN_TRACE"]
+    command = [python, wrapper, *argv]
+    strace = shutil.which("strace")
+    strace_log = trace_path + ".strace"
+    if strace:
+        command = [strace, "-f", "-e", "trace=openat,open", "-o", strace_log, "--", *command]
+    try:
+        completed = subprocess.run(
+            command, env=env, cwd=cwd, capture_output=True, text=True, timeout=300,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return set(), 1, str(exc)
+    opened = set()
+    if os.path.isfile(trace_path):
+        with open(trace_path) as handle:
+            opened.update(line.strip() for line in handle if line.strip())
+    if strace and os.path.isfile(strace_log):
+        with open(strace_log, errors="replace") as handle:
+            opened.update(_parse_strace_opens(handle.read(), roots))
+    detail = (completed.stdout or "") + (completed.stderr or "")
+    for path in _missing_paths(detail):
+        opened.add(os.path.abspath(path))
+    files = set()
+    for path in opened:
+        if path.endswith(".pyc") or f"{os.sep}__pycache__{os.sep}" in path:
+            continue
+        if os.path.isfile(path):
+            files.add(path)
+    return files, completed.returncode, detail
+
+
+def trace_open_closure(lock_dir, full=False, python_info=None):
+    """Run final_render against the real tree and return every project file it opens."""
+    lock_dir = lock_dir.rstrip("/")
+    script = os.path.join(lock_dir, "scripts", "final_render.py")
+    if not os.path.isfile(script):
+        return set(), 2, f"import preflight: {script} is missing"
+    info = python_info if python_info is not None else find_preflight_python()
+    python, _sites = info
+    roots = _trace_roots(lock_dir)
+    tree = os.path.dirname(lock_dir)
+    params = os.path.join(lock_dir, "params", "final_params_LOCK_v2.json")
+    fd, wrapper = tempfile.mkstemp(prefix="avt-trace-", suffix=".py")
+    os.close(fd)
+    with open(wrapper, "w") as handle:
+        handle.write(_TRACE_WRAPPER)
+    opened = set()
+    primary_code = 0
+    primary_detail = ""
+    try:
+        for label, argv in _source_probes(script, tree, full):
+            fd, trace_path = tempfile.mkstemp(prefix="avt-opens-", suffix=".txt")
+            os.close(fd)
+            env = preflight_env(
+                {
+                    "AVT_OPEN_TRACE": trace_path,
+                    "AVT_TRACE_ROOTS": os.pathsep.join(roots),
+                    "GRADE_PARAMS": params,
+                    "TRANS_PARAMS": params,
+                },
+                python_info=info,
+            )
+            files, code, detail = _trace_one(
+                python, wrapper, argv, env, roots, cwd=os.path.dirname(script),
+            )
+            opened.update(files)
+            print(f"open trace {label}: {len(files)} files, exit {code}", flush=True)
+            if label == "board-spins_T1":
+                primary_code = code
+                primary_detail = detail
+            for path in (trace_path, trace_path + ".strace"):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        if full:
+            for name, start in sorted(_ranges_from_opened(opened).items()):
+                if name == "spins_T1":
+                    continue
+                label = f"lock-{name}"
+                argv = _dryrun_tail(script, tree, f"{start}-{start}")
+                fd, trace_path = tempfile.mkstemp(prefix="avt-opens-", suffix=".txt")
+                os.close(fd)
+                env = preflight_env(
+                    {
+                        "AVT_OPEN_TRACE": trace_path,
+                        "AVT_TRACE_ROOTS": os.pathsep.join(roots),
+                        "GRADE_PARAMS": params,
+                        "TRANS_PARAMS": params,
+                    },
+                    python_info=info,
+                )
+                files, code, _detail = _trace_one(
+                    python, wrapper, argv, env, roots, cwd=os.path.dirname(script),
+                )
+                opened.update(files)
+                print(f"open trace {label}: {len(files)} files, exit {code}", flush=True)
+                for path in (trace_path, trace_path + ".strace"):
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+    finally:
+        try:
+            os.remove(wrapper)
+        except OSError:
+            pass
+    print(f"open trace: {len(opened)} files", flush=True)
+    return opened, primary_code, primary_detail
+
+
+def _rows_from_paths(paths):
+    rows = []
+    for path in sorted(paths):
+        if os.path.isfile(path):
+            rows.append({"path": path, "bytes": os.path.getsize(path)})
+    return rows
+
+
+def _materialize_stage(sandbox, rows):
+    """Copy the staged tree. Large /workspace files are bind-mounted after the overlay.
+
+    A symlink back to /workspace would point at the overlay and hide the real bytes.
+    /tmp files stay on the real /tmp, which the overlay does not cover.
+    """
+    missing = []
+    binds = []
+    for row in rows:
+        src = row.get("path") or ""
+        if not src or not os.path.isfile(src):
+            missing.append(src or "(blank)")
+            continue
+        if src == LOCKREPRO or src.startswith(LOCKREPRO + os.sep):
+            continue
+        dest = os.path.join(sandbox, src.lstrip("/"))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if os.path.lexists(dest):
+            continue
+        if src.startswith("/workspace/") and os.path.getsize(src) > 32 * 1024 * 1024:
+            binds.append(src)
+            continue
+        shutil.copy2(src, dest)
+    return missing, binds
+
+
+def _dryrun_argv(python, script, tree, lockrepro):
+    return [
+        python, script, "dryrun", "--range", REHEARSAL_RANGE,
+        "--chunk", "4", "--grain", "1",
+        "--scratch", "/tmp/avt-import-scratch",
+        "--v1e_dir", "/tmp/avt-import-v1e",
+        "--lockrepro", lockrepro,
+        "--tree", tree,
+        "--stills", "0",
+    ]
+
+
+def import_preflight(lock_dir, rows, runner=None):
+    """Lay ``rows`` out like the guest and import final_render for frames 124-127.
+
+    The copy is the only tree the process is given. A module that exists on the
+    launcher but was left out of ``rows`` is not visible. ``runner`` replaces
+    the process spawn in tests.
+    """
+    lock_dir = (lock_dir or "").rstrip("/")
+    rows = [row for row in rows if row.get("path")]
+    by_path = {}
+    for row in rows:
+        by_path.setdefault(row["path"], row)
+    rows = list(by_path.values())
+    script = os.path.join(lock_dir, "scripts", "final_render.py")
+    errors = []
+    if not any(row["path"] == script for row in rows):
+        errors.append(f"import preflight: {script} is not in the staged set")
+    info = find_preflight_python()
+    sandbox = tempfile.mkdtemp(prefix="avt-import-preflight-")
+    try:
+        binds = []
+        if not errors:
+            missing, binds = _materialize_stage(sandbox, rows)
+            errors.extend(f"import preflight: missing {path}" for path in missing)
+        sandbox_script = os.path.join(sandbox, script.lstrip("/"))
+        isolate = any(row["path"].startswith("/workspace/") for row in rows)
+        if isolate and os.path.isdir(os.path.join(sandbox, "workspace")):
+            run_script = script
+            tree = os.path.dirname(lock_dir)
+            params = os.path.join(lock_dir, "params", "final_params_LOCK_v2.json")
+        else:
+            run_script = sandbox_script
+            tree = os.path.dirname(os.path.dirname(os.path.dirname(sandbox_script)))
+            params = os.path.join(sandbox, lock_dir.lstrip("/"), "params", "final_params_LOCK_v2.json")
+        env = preflight_env(
+            {"GRADE_PARAMS": params, "TRANS_PARAMS": params},
+            python_info=info,
+        )
+        argv = _dryrun_argv(info[0], run_script, tree, LOCKREPRO)
+        code, detail = 2, ""
+        if not errors:
+            for _attempt in range(4):
+                if runner is not None:
+                    completed = runner(argv, env)
+                    code = getattr(completed, "returncode", 1)
+                    detail = (getattr(completed, "stdout", "") or "") + (getattr(completed, "stderr", "") or "")
+                else:
+                    code, detail = _run_import(sandbox, argv, env, isolate, binds)
+                if code == 0:
+                    break
+                added = False
+                for path in _missing_paths(detail):
+                    path = os.path.abspath(path)
+                    if not os.path.isfile(path) or any(row["path"] == path for row in rows):
+                        continue
+                    print(f"stage closure: {path}", flush=True)
+                    rows.append({"path": path, "bytes": os.path.getsize(path)})
+                    extra_missing, extra_binds = _materialize_stage(sandbox, [rows[-1]])
+                    binds.extend(extra_binds)
+                    errors.extend(f"import preflight: missing {item}" for item in extra_missing)
+                    added = True
+                if not added:
+                    break
+        if not errors and code != 0:
+            text = detail or ""
+            imported = (
+                "ModuleNotFoundError" not in text
+                and "FileNotFoundError" not in text
+                and (
+                    "invalid choice" in text
+                    or "unrecognized arguments" in text
+                    or "usage:" in text.lower()
+                )
+            )
+            if imported:
+                print(
+                    "import preflight: dryrun is not a subcommand; the import ran",
+                    flush=True,
+                )
+                code = 0
+            else:
+                gaps = _missing_paths(text)
+                if gaps:
+                    errors.append("import preflight gaps:\n" + "\n".join(gaps))
+                errors.append("import preflight: final_render.py dryrun --range 124-127 failed")
+        if code != 0 and detail:
+            errors.append(detail[-2000:])
+    finally:
+        shutil.rmtree(sandbox, ignore_errors=True)
+    line = "import preflight: pass" if not errors else "import preflight: fail"
+    print(line, flush=True)
+    for err in errors[:12]:
+        print(err, file=sys.stderr)
+    return {"ok": not errors, "errors": errors, "line": line}
+
+
+_OVERLAY_SCRIPT = r"""
+set -euo pipefail
+sandbox=$1
+real_root=$2
+bind_list=$3
+shift 3
+mkdir -p /workspace /tmp/avt-import-scratch /tmp/avt-import-v1e /tmp/avt-real-view
+if [ -d "$real_root" ]; then
+  mount --bind "$real_root" /tmp/avt-real-view
+fi
+mount --bind "$sandbox" /workspace
+if [ -s "$bind_list" ]; then
+  while IFS= read -r -d '' real && IFS= read -r -d '' dest; do
+    mkdir -p -- "$(dirname -- "$dest")"
+    if [ -d "$real" ]; then
+      mkdir -p -- "$dest"
+    else
+      touch -- "$dest"
+    fi
+    mount --bind "$real" "$dest"
+  done < "$bind_list"
+fi
+exec "$@"
+"""
+
+
+def _bind_pairs(sources):
+    """Guest path -> the saved real-tree path, for files too big to copy."""
+    pairs = []
+    prefix = "/workspace/partnership/"
+    for src in sources:
+        if not src.startswith(prefix):
+            continue
+        pairs.append(("/tmp/avt-real-view/" + src[len(prefix):], src))
+    return pairs
+
+
+def _write_bind_list(pairs):
+    fd, path = tempfile.mkstemp(prefix="avt-binds-", suffix=".list")
+    with os.fdopen(fd, "wb") as handle:
+        for real, dest in pairs:
+            handle.write(os.fsencode(real) + b"\0" + os.fsencode(dest) + b"\0")
+    return path
+
+
+def run_in_overlay(sandbox_workspace, real_root, sources, command, env=None, timeout=300):
+    """Run command with sandbox_workspace mounted on /workspace and file binds applied.
+
+    Bind paths are NUL records, not shell words. A file bind is touched first so
+    mount has a file mount point. Names with spaces, ``&``, and a double space stay intact.
+    """
+    bind_list = _write_bind_list(_bind_pairs(sources))
+    try:
+        completed = subprocess.run(
+            [
+                "unshare", "--user", "--mount", "--map-root-user",
+                "bash", "-c", _OVERLAY_SCRIPT, "bash",
+                sandbox_workspace, real_root or "/nonexistent", bind_list, *command,
+            ],
+            env=env, capture_output=True, timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, "", str(exc)
+    finally:
+        try:
+            os.remove(bind_list)
+        except OSError:
+            pass
+    stdout = completed.stdout.decode("utf-8", "replace") if isinstance(completed.stdout, bytes) else (completed.stdout or "")
+    stderr = completed.stderr.decode("utf-8", "replace") if isinstance(completed.stderr, bytes) else (completed.stderr or "")
+    return completed.returncode, stdout, stderr
+
+
+def _run_import(sandbox, argv, env, isolate, binds=()):
+    if not isolate:
+        try:
+            completed = subprocess.run(
+                argv, env=env, capture_output=True, text=True, timeout=300,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return 1, str(exc)
+        return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
+    guest = os.path.join(sandbox, "workspace")
+    code, stdout, stderr = run_in_overlay(guest, "/workspace/partnership", binds, argv, env=env)
+    return code, stdout + stderr
+
+
+def import_preflight_from_lock(lock_dir, raw_rows=()):
+    rows, _chunks = rehearsal_rows(lock_dir)
+    for row in raw_rows or []:
+        rows.append(row)
+    for name in ("frames_rgb24.raw", "repro.json"):
+        path = os.path.join(LOCKREPRO, "spins_T1", name)
+        if os.path.isfile(path):
+            rows.append({"path": path, "bytes": os.path.getsize(path)})
+    return import_preflight(lock_dir, rows)
 
 
 def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
@@ -2600,10 +3510,24 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         print("refusing rehearsal: projected cost exceeds $1", file=sys.stderr)
         return 2
     lock_dir = (getattr(args, "lock_dir", "") or LOCK_DIR).rstrip("/")
+    manifest, _note = peek_manifest(lock_dir)
+    manifest_files = (manifest or {}).get("files") or []
+    raw_rows = []
+    if len(manifest_files) >= 50 or lock_dir == LOCK_DIR:
+        try:
+            raw_rows = ensure_lock_raws(lock_dir, names=["spins_T1"])
+        except SystemExit as exc:
+            print(exc, file=sys.stderr)
+            return 2
     rows, render_chunks = rehearsal_rows(lock_dir)
     if not rows:
-        print(f"refusing rehearsal: {lock_dir} has no scripts, params, or small inputs", file=sys.stderr)
+        print(f"refusing rehearsal: {lock_dir} has no scripts, params, or pipeline modules", file=sys.stderr)
         return 2
+    if len(manifest_files) >= 50 or lock_dir == LOCK_DIR:
+        checked = import_preflight(lock_dir, rows + list(raw_rows))
+        if not checked["ok"]:
+            print("refusing rehearsal: import preflight failed", file=sys.stderr)
+            return 2
     if call is None:
         call = __import__("remote_render")._subprocess_call
     name = "avt-rehearsal-lock-v2"
@@ -2665,8 +3589,10 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             handle.write("AVT_REMOTE_RENDER_CONFIRM=1\n")
         argvs = transfer_argvs(
             name, project, zone, lock_dir, rows, env_file,
-            os.path.dirname(plan.__file__), copy_tree=False,
+            os.path.dirname(plan.__file__), copy_tree=False, extra_files=raw_rows,
         )
+        require_raws_queued(argvs, raw_rows)
+        log_lock_raw_shipments(raw_rows, "transfer")
         mode = os.path.join(out, "rehearsal-chunks")
         if render_chunks:
             with open(mode, "w") as handle:
@@ -2680,6 +3606,7 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         mini = {
             "transfer_argv": argvs,
             "transfer_rows": rows,
+            "tree_rows": raw_rows,
             "instance_name": name,
             "project": project,
             "zone": zone,

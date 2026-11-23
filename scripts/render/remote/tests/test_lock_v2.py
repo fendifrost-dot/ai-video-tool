@@ -458,6 +458,319 @@ def test_reused_disk_skips_matching_tree_sha_and_chmods_writable(tmp_path):
     assert copied == []
 
 
+def test_lock_raws_reuse_identical_and_v1e_skips_a_finished_chunk(tmp_path):
+    root = tmp_path / "claudia"
+    os.makedirs(root)
+    name = "vhs"
+    raw_dir = os.path.join(lock_v2.LOCKREPRO, name)
+    os.makedirs(raw_dir, exist_ok=True)
+    raw = os.path.join(raw_dir, "frames_rgb24.raw")
+    with open(raw, "wb") as handle:
+        handle.write(b"raw-frames")
+    digest = "d269656e" + "ab" * 28
+    digest = digest[:64]
+    repro = {
+        "name": name, "identical": True, "pix_fmt": "rgb24",
+        "lock_sha256": digest, "raw": "relative.raw",
+    }
+    with open(os.path.join(raw_dir, "repro.json"), "w") as handle:
+        json.dump(repro, handle)
+    calls = []
+
+    def run_one(lock_name):
+        calls.append(lock_name)
+        return lock_v2._RunResult(0)
+
+    rows = lock_v2.ensure_lock_raws(str(tmp_path), names=[name], run_one=run_one)
+    assert calls == []
+    saved = json.load(open(os.path.join(raw_dir, "repro.json")))
+    assert saved["raw"] == raw
+    assert any(row["path"] == raw for row in rows)
+    os.remove(os.path.join(raw_dir, "repro.json"))
+
+    def run_fresh(lock_name):
+        calls.append(lock_name)
+        with open(os.path.join(raw_dir, "repro.json"), "w") as handle:
+            json.dump({
+                "name": lock_name, "identical": True, "pix_fmt": "rgb24",
+                "lock_sha256": digest, "raw": raw,
+            }, handle)
+        return lock_v2._RunResult(0)
+
+    calls.clear()
+    lock_v2.ensure_lock_raws(str(tmp_path), names=[name], run_one=run_fresh)
+    assert calls == [name]
+    for lock_name, pix in (("warcry", "bgr24"), ("montage", "yuv420p")):
+        folder = os.path.join(lock_v2.LOCKREPRO, lock_name)
+        os.makedirs(folder, exist_ok=True)
+        raw_path = os.path.join(folder, "frames_rgb24.raw")
+        with open(raw_path, "wb") as handle:
+            handle.write(b"raw-frames")
+        body = (
+            "{'name': '%s', 'identical': True, 'pix_fmt': '%s', "
+            "'lock_sha256': '%s', 'raw': '%s'}\n" % (lock_name, pix, digest, raw_path)
+        )
+        repro_path = os.path.join(folder, "repro.json")
+        with open(repro_path, "w") as handle:
+            handle.write(body)
+        calls.clear()
+        got = lock_v2.ensure_lock_raws(str(tmp_path), names=[lock_name], run_one=run_one)
+        assert calls == []
+        assert open(repro_path).read() == body
+        assert all(row["path"].startswith("/tmp/") for row in got)
+    bad = os.path.join(lock_v2.LOCKREPRO, "salad")
+    os.makedirs(bad, exist_ok=True)
+    with open(os.path.join(bad, "frames_rgb24.raw"), "wb") as handle:
+        handle.write(b"raw-frames")
+    with open(os.path.join(bad, "repro.json"), "w") as handle:
+        json.dump({"name": "salad", "identical": False, "pix_fmt": "rgb24", "raw": "x"}, handle)
+    calls.clear()
+    try:
+        lock_v2.ensure_lock_raws(str(tmp_path), names=["salad"], run_one=run_one)
+    except SystemExit as exc:
+        assert "will not be rebuilt" in str(exc)
+    else:
+        raise AssertionError("a present raw was rebuilt")
+    assert calls == []
+    chunk_dir = tmp_path / "v1e"
+    chunk_dir.mkdir()
+    chunk = {"sf0": 3070, "nf": 2, "state_load": None}
+    mkv = chunk_dir / "chunk_3070.mkv"
+    md5 = chunk_dir / "chunk_3070.md5"
+    mkv.write_bytes(b"mkv")
+    one = "a" * 32
+    md5.write_text(one + "\n" + ("b" * 32) + "\n")
+    assert lock_v2.v1e_chunk_complete(chunk, str(chunk_dir))
+    md5.write_text(one + "\n")
+    assert not lock_v2.v1e_chunk_complete(chunk, str(chunk_dir))
+    script = lock_v2.startup_script(lock_v2.LOCK_DIR, 30)
+    assert "mount --bind /workspace/partnership/.avt-scratch/v1e /var/avt/scratch/v1e" in script
+    assert "mount --bind /workspace/partnership/.avt-scratch/states /var/avt/scratch/states" in script
+
+
+def test_rehearsal_transfer_ships_the_raw_and_verify_uses_absolute_paths(tmp_path, capsys):
+    pix = {
+        "vhs": "rgb24", "salad": "rgb24", "spins_T1": "rgb24",
+        "spins_T2T3": "rgb24", "spins_T4": "rgb24",
+        "warcry": "bgr24", "montage": "yuv420p",
+    }
+    digest = "ab" * 32
+
+    def plant(name):
+        folder = os.path.join(lock_v2.LOCKREPRO, name)
+        os.makedirs(folder, exist_ok=True)
+        raw = os.path.join(folder, "frames_rgb24.raw")
+        with open(raw, "wb") as handle:
+            handle.write(b"raw-" + name.encode())
+        with open(os.path.join(folder, "repro.json"), "w") as handle:
+            json.dump({
+                "name": name, "identical": True, "pix_fmt": pix[name],
+                "lock_sha256": digest, "raw": raw,
+            }, handle)
+        return raw
+
+    raws = {name: plant(name) for name in lock_v2.LOCK_NAMES}
+
+    def refuse(name):
+        raise AssertionError(f"rebuilt {name}")
+
+    full_rows = lock_v2.ensure_lock_raws(str(tmp_path), run_one=refuse)
+    full_argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(tmp_path), [], str(tmp_path / "env"),
+        os.path.dirname(lock_v2.__file__), extra_files=full_rows,
+    )
+    lock_v2.require_raws_queued(full_argvs, full_rows)
+    full_blob = "\n".join(" ".join(argv) for argv in full_argvs)
+    for name, raw in raws.items():
+        assert raw in full_blob
+
+    rehearsal_rows = lock_v2.ensure_lock_raws(
+        str(tmp_path), names=["spins_T1"], run_one=refuse,
+    )
+    rehearsal_argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(tmp_path), [], str(tmp_path / "env"),
+        os.path.dirname(lock_v2.__file__), copy_tree=False, extra_files=rehearsal_rows,
+    )
+    lock_v2.require_raws_queued(rehearsal_argvs, rehearsal_rows)
+    rehearsal_blob = "\n".join(" ".join(argv) for argv in rehearsal_argvs)
+    assert raws["spins_T1"] in rehearsal_blob
+    sums = os.path.join(lock_v2.LOCKREPRO, "RAW_SHA256SUMS")
+    listed = []
+    for line in open(sums):
+        hashed, path = line.split(None, 1)
+        path = path.strip()
+        assert os.path.isabs(path)
+        assert path.startswith("/tmp/claudia_lockrepro/")
+        listed.append(path)
+    assert raws["spins_T1"] in listed
+    out = capsys.readouterr().out
+    assert "lock raw ship plan spins_T1" in out
+    assert f"bytes={os.path.getsize(raws['spins_T1'])}" in out
+    previous = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        lock_v2.verify_lock_raws(
+            lambda argv, cwd=None: subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+        )
+    finally:
+        os.chdir(previous)
+    script = lock_v2.rehearsal_startup(False)
+    assert "test -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw" in script or \
+        "[ ! -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw ]" in script
+
+
+def test_preflight_python_skips_a_broken_venv_and_keeps_the_cv2_site(tmp_path):
+    venv = tmp_path / "venv" / "bin" / "python"
+    venv.parent.mkdir(parents=True)
+    venv.write_text("")
+    good = tmp_path / "python3"
+    good.write_text("")
+
+    def run(argv, **kwargs):
+        assert "PYTHONNOUSERSITE" not in kwargs["env"]
+        if argv[0] == str(venv):
+            return lock_v2._RunResult(1, stderr="ModuleNotFoundError: cv2")
+        return lock_v2._RunResult(
+            0, stdout="/home/box/.local/lib/python3.13/site-packages\n",
+        )
+
+    exe, sites = lock_v2.find_preflight_python(
+        run=run, candidates=[str(venv), str(good)],
+    )
+    assert exe == str(good)
+    assert sites == ["/home/box/.local/lib/python3.13/site-packages"]
+    env = lock_v2.preflight_env(python_info=(exe, sites))
+    assert "PYTHONNOUSERSITE" not in env
+    assert env["PYTHONPATH"] == "/home/box/.local/lib/python3.13/site-packages"
+
+
+def test_rehearsal_stages_the_pipeline_and_import_preflight_runs(tmp_path, capsys):
+    partnership = tmp_path / "partnership"
+    grade = partnership / "first_half" / "claudia_vfx" / "grade_v1"
+    trans = partnership / "first_half" / "claudia_vfx" / "transitions_v1"
+    grade.mkdir(parents=True)
+    trans.mkdir(parents=True)
+    (grade / "board_v1.py").write_text("BOARD = 1\n")
+    (grade / "grade_v1.py").write_text("GRADE = 1\n")
+    (grade / "helper.py").write_text("HELPER = 1\n")
+    (trans / "transitions_v1.py").write_text("TRANS = 1\n")
+    lock = partnership / "final_lock_v2"
+    (lock / "scripts").mkdir(parents=True)
+    (lock / "params").mkdir()
+    wav = partnership / "song.wav"
+    wav.write_bytes(b"wav-bytes")
+    cutlist = partnership / "first_half" / "claudia_vfx" / "params" / "cutlist_overrides_v3.json"
+    cutlist.parent.mkdir(parents=True)
+    cutlist.write_text("{}\n")
+    (lock / "params" / "final_params_LOCK_v2.json").write_text(json.dumps({
+        "master": {"song_wav": str(wav)},
+    }))
+    (lock / "scripts" / "final_render.py").write_text(
+        "import os, sys, json\n"
+        "root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))\n"
+        "sys.path.insert(0, os.path.join(root, 'first_half/claudia_vfx/grade_v1'))\n"
+        "sys.path.insert(0, os.path.join(root, 'first_half/claudia_vfx/transitions_v1'))\n"
+        "import board_v1, grade_v1, transitions_v1, helper\n"
+        "P = json.load(open(os.environ['GRADE_PARAMS']))\n"
+        "open(P['master']['song_wav']).close()\n"
+        "open(os.path.join(root, 'first_half/claudia_vfx/params/cutlist_overrides_v3.json')).close()\n"
+        "if __name__ == '__main__':\n"
+        "    if len(sys.argv) > 1 and sys.argv[1] == 'dryrun' and '124-127' in sys.argv:\n"
+        "        print('dryrun 124-127')\n"
+        "        raise SystemExit(0)\n"
+        "    raise SystemExit(2)\n"
+    )
+    files = []
+    for path in (grade / "board_v1.py", grade / "grade_v1.py", trans / "transitions_v1.py"):
+        payload = path.read_bytes()
+        files.append({
+            "path": str(path),
+            "bytes": len(payload),
+            "sha256": _sha(payload),
+            "role": "final pipeline code/params",
+        })
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps({
+        "n_files": len(files),
+        "total_bytes": sum(row["bytes"] for row in files),
+        "files": files,
+    }))
+    rows, _chunks = lock_v2.rehearsal_rows(str(lock))
+    staged = {row["path"] for row in rows}
+    for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py", "helper.py"):
+        assert any(path.endswith("/" + name) for path in staged)
+    assert str(wav) in staged
+    assert str(cutlist) in staged
+    passed = lock_v2.import_preflight(str(lock), rows)
+    assert passed["ok"], passed["errors"]
+    omitted = [row for row in rows if not row["path"].endswith("cutlist_overrides_v3.json")]
+    failed = lock_v2.import_preflight(str(lock), omitted)
+    assert not failed["ok"]
+    assert "cutlist_overrides_v3.json" in " ".join(failed["errors"])
+    out = capsys.readouterr().out
+    assert "import preflight: pass" in out
+    assert "rehearsal pipeline modules:" in out
+
+
+def test_full_run_keeps_pipeline_modules_in_the_stage_list(tmp_path):
+    lock = tmp_path / "final_lock_v2"
+    (lock / "scripts").mkdir(parents=True)
+    (lock / "params").mkdir()
+    wav = tmp_path / "song.wav"
+    wav.write_bytes(b"wav")
+    (lock / "params" / "final_params_LOCK_v2.json").write_text(json.dumps({
+        "master": {"song_wav": str(wav)},
+    }))
+    (lock / "scripts" / "final_render.py").write_text("print('render')\n")
+    grade = tmp_path / "grade_v1"
+    grade.mkdir()
+    files = []
+    for index in range(50):
+        path = tmp_path / f"pad{index}.bin"
+        path.write_bytes(b"x")
+        files.append({"path": str(path), "bytes": 1, "sha256": _sha(b"x")})
+    bare = {
+        "n_files": len(files),
+        "total_bytes": len(files),
+        "files": files,
+    }
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps(bare))
+
+    def plan_for():
+        return lock_v2.build_plan(
+            {"GCP_PROJECT": "p"}, lock_dir=str(lock), zone="us-central1-a", max_hours=8,
+            instance_name="n", confirm=False, output=str(tmp_path / "out"),
+            timing_path=str(tmp_path / "timing.json"), cost_ceiling=15, spot=False,
+            machine_type="c4-standard-16", backend="gcp", stage_from="local",
+            env_file=str(tmp_path / "env"),
+        )
+
+    refused = plan_for()
+    assert "board_v1.py" in refused["refuse_reason"]
+    for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py"):
+        path = grade / name
+        path.write_text(name + "\n")
+        payload = path.read_bytes()
+        files.append({
+            "path": str(path),
+            "bytes": len(payload),
+            "sha256": _sha(payload),
+            "role": "final pipeline code/params",
+        })
+    (grade / "helper.py").write_text("helper\n")
+    covered = {
+        "n_files": len(files),
+        "total_bytes": sum(row["bytes"] for row in files),
+        "files": files,
+    }
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps(covered))
+    report = plan_for()
+    assert "board_v1.py" not in report["refuse_reason"]
+    staged = {row["path"] for row in report["transfer_rows"]}
+    for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py", "helper.py"):
+        assert any(path.endswith("/" + name) for path in staged)
+    assert str(wav) in staged
+
+
 def test_runner_source_does_not_hardcode_a_content_hash():
     text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
     assert re.search(r"\b[0-9a-f]{64}\b", text) is None
@@ -875,6 +1188,56 @@ def test_a_long_manifest_never_builds_an_oversize_argv():
     assert plan.argv_nbytes(commands[1]) < 16 * 1024
 
 
+def test_file_bind_keeps_the_song_wav_name(tmp_path):
+    name = "PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+    assert "  " in name and "&" in name
+    guest = "/workspace/partnership/second_half/inputs/audio/" + name
+    real, dest = lock_v2._bind_pairs([guest])[0]
+    assert dest == guest
+    assert real.endswith("/second_half/inputs/audio/" + name)
+    bind_list = lock_v2._write_bind_list([(real, dest)])
+    try:
+        printed = subprocess.run(
+            ["bash", "-c", "IFS= read -r -d '' real && IFS= read -r -d '' dest && printf '%s\\n%s\\n' \"$real\" \"$dest\"", "bash"],
+            stdin=open(bind_list, "rb"),
+            capture_output=True,
+            check=True,
+        )
+    finally:
+        os.remove(bind_list)
+    assert printed.stdout.decode().splitlines() == [real, dest]
+    assert "touch --" in lock_v2._OVERLAY_SCRIPT
+    assert "read -r -d ''" in lock_v2._OVERLAY_SCRIPT
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    rows = [{"path": guest, "bytes": len(b"song-bytes"), "sha256": _sha(b"song-bytes")}]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(lock), rows, str(tmp_path / "env"), os.path.dirname(lock_v2.__file__),
+        copy_tree=False,
+    )
+    copied = next(argv for argv in argvs if plan.final_of(argv) == guest)
+    assert "'" not in copied[-1] and '"' not in copied[-1]
+    assert "/.avt-incoming/" in copied[-1]
+    moved = "\n".join(plan.remote_script(argv[-1]) for argv in argvs if plan.is_incoming_mv(argv))
+    assert guest in shlex.split(moved)
+    real_root = tmp_path / "real-partnership" / "second_half" / "inputs" / "audio"
+    real_root.mkdir(parents=True)
+    (real_root / name).write_bytes(b"song-bytes")
+    sandbox = tmp_path / "sandbox-workspace"
+    (sandbox / "partnership").mkdir(parents=True)
+    code, stdout, stderr = lock_v2.run_in_overlay(
+        str(sandbox),
+        str(tmp_path / "real-partnership"),
+        [guest],
+        [sys.executable, "-c", "import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())", guest],
+        timeout=30,
+    )
+    if code != 0 and "Operation not permitted" in stderr:
+        pytest.skip("user namespaces are not permitted on this runner")
+    assert code == 0, stderr
+    assert stdout == "song-bytes"
+
+
 def test_path_preflight_accepts_the_cease_path_and_odd_names(tmp_path, capsys):
     lock = tmp_path / "final_lock_v2"
     lock.mkdir()
@@ -996,7 +1359,8 @@ def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
     assert lock_v2.guest_setup_shell().strip() in lock_v2.startup_script(lock_v2.LOCK_DIR, 10)
     assert script.index("/tmp/avt-go") < script.index("sha256sum -c")
     assert "import final_render" not in script
-    assert "final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final" in script
+    assert "final_render.py chunks --range 124-127 --chunk 4" in script
+    assert "/tmp/claudia_lockrepro/spins_T1/repro.json" in script
     assert "/tmp/avt-startup-failed" in script
     assert "AVT_RENDER_FAIL startup-$code" in script
     assert "publish" not in script

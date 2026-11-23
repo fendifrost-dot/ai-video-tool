@@ -39,6 +39,9 @@ def parse_args(argv):
     )
     parser.add_argument("--path-preflight", action="store_true",
                         help="Check every LOCK_v2 remote path offline. No gcloud.")
+    parser.add_argument("--import-preflight", action="store_true",
+                        help="Stage the final-pipeline files in a temp guest tree and run "
+                             "final_render.py dryrun --range 124-127. No gcloud.")
     parser.add_argument("--delete-input-disk", action="store_true",
                         help="Delete the persistent input disk avt-lock-v2-inputs and do nothing else.")
     parser.add_argument("--lock-repro", action="store_true",
@@ -255,6 +258,9 @@ def _run_lock_v2(args, env, call, confirm):
     if getattr(args, "path_preflight", False):
         result = lock_v2.path_preflight(args.lock_dir or lock_v2.LOCK_DIR)
         return 0 if result["ok"] else 2
+    if getattr(args, "import_preflight", False):
+        result = lock_v2.import_preflight_from_lock(args.lock_dir or lock_v2.LOCK_DIR)
+        return 0 if result["ok"] else 2
     if getattr(args, "delete_input_disk", False):
         argv = plan.gcp_disk_delete_argv(lock_v2.INPUT_DISK_NAME, env.get("GCP_PROJECT", ""), args.zone)
         if not confirm:
@@ -304,6 +310,47 @@ def _run_lock_v2(args, env, call, confirm):
         f"{checked['tree']} tree files",
         flush=True,
     )
+    raw_rows = []
+    manifest, _note = lock_v2.peek_manifest(args.lock_dir)
+    manifest_files = (manifest or {}).get("files") or []
+    full_tree = (
+        len(manifest_files) >= 50
+        or os.path.abspath(args.lock_dir) == os.path.abspath(lock_v2.LOCK_DIR)
+    )
+    if full_tree:
+        try:
+            raw_rows = lock_v2.ensure_lock_raws(args.lock_dir)
+        except SystemExit as exc:
+            print(exc, file=sys.stderr)
+            return 2
+    base_rows = list(report.get("transfer_rows") or [])
+    stage_rows = []
+    if full_tree:
+        stage_rows, _chunks = lock_v2.rehearsal_rows(args.lock_dir, full=True)
+        known = {row.get("path") for row in base_rows}
+        known.update(row.get("path") for row in raw_rows)
+        for row in stage_rows:
+            if row.get("path") and row["path"] not in known:
+                base_rows.append(row)
+                known.add(row["path"])
+    report["transfer_rows"] = base_rows
+    report["transfer_argv"] = lock_v2.transfer_argvs(
+        report["instance_name"], report.get("project"), report["zone"], report["lock_dir"],
+        base_rows, report["env_file"],
+        os.path.dirname(os.path.abspath(plan.__file__)),
+        extra_files=raw_rows,
+    )
+    report["tree_rows"] = list(getattr(lock_v2.transfer_argvs, "tree_rows", []) or [])
+    lock_v2.require_raws_queued(report["transfer_argv"], raw_rows)
+    lock_v2.log_lock_raw_shipments(raw_rows, "transfer")
+    if full_tree:
+        checked = lock_v2.import_preflight(args.lock_dir, stage_rows + raw_rows)
+        if not checked["ok"]:
+            print("refusing to create a VM: import preflight failed", file=sys.stderr)
+            return 2
+    report["side_files"] = {
+        lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list,
+    }
     env_file = report["env_file"]
     try:
         write_env_file(env_file, env, stage_from="local")
