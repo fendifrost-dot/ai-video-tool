@@ -862,6 +862,9 @@ if [ -e "$INPUT_DEV" ]; then
     mount "$INPUT_DEV" /workspace/partnership
   fi
 fi
+# After the mount. The launcher waits for this before it mkdir's /workspace.
+touch /tmp/avt-inputs-ready
+chmod 644 /tmp/avt-inputs-ready
 touch /var/avt/guest.log
 exec > >(tee -a /var/avt/guest.log) 2>&1
 cleanup() {{
@@ -988,6 +991,8 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
 
 
 def _parent_reader():
+    # sudo test: /var/avt is mode 700, so the login user's [ -d ] is false for
+    # /var/avt/checks even after this prepare step created it.
     return """# AVT_PARENT_CHECK
 set -euo pipefail
 list=/tmp/avt-parent-list
@@ -999,7 +1004,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   [ -n "$line" ] || continue
   blob=${line#* }
   path=$(printf '%s' "$blob" | base64 -d) || continue
-  if [ ! -d "$path" ]; then
+  if ! sudo -n test -d "$path"; then
     echo "AVT_PREFLIGHT_FAIL: missing parent $path" >&2
     exit 1
   fi
@@ -1109,6 +1114,23 @@ def path_preflight(lock_dir, manifest_files=None, tree_files=None, require_secti
     operands = _mkdir_operands(argvs)
     mv_argvs = [argv for argv in argvs if plan.is_incoming_mv(argv)]
     errors = []
+    mkdir_at = []
+    check_at = None
+    for index, argv in enumerate(argvs):
+        if len(argv) < 3 or argv[2] != "ssh":
+            continue
+        script = plan.remote_script(argv[-1])
+        if "sudo mkdir -p --" in script:
+            mkdir_at.append(index)
+        if "AVT_PARENT_CHECK" in script:
+            check_at = index
+            if "sudo -n test -d" not in script or "[ ! -d" in script:
+                errors.append("parent check must use sudo test -d after mkdir")
+    if check_at is None or not mkdir_at or check_at < max(mkdir_at):
+        errors.append("parent check runs before mkdir")
+    for required_dir in (CHECKS_DIR, OUT_DIR, V1E_DIR, FINAL_DIR, STATE_DIR, LOCKREPRO):
+        if not _parent_covered(required_dir, operands):
+            errors.append(f"parent not mkdir'd: {required_dir}")
     for argv in argvs:
         if not plan.argv_within_limit(argv):
             errors.append("argv over 128 KB")
@@ -1933,7 +1955,13 @@ def rehearsal_startup(render_chunks):
 set -euo pipefail
 set +x
 MAX_MINUTES=30
-mkdir -p /var/avt/out /var/avt/checks /tmp/claudia_lockrepro
+# No input disk on a rehearsal. Touch the marker before apt so the launcher
+# does not wait out the install, and do not create /tmp or /workspace here.
+mkdir -p /var/avt/checks /var/avt/out /var/avt/scratch/v1e /var/avt/scratch/final /var/avt/scratch/states
+chmod 700 /var/avt
+chown root:root /var/avt
+touch /tmp/avt-inputs-ready
+chmod 644 /tmp/avt-inputs-ready
 @@SETUP@@
 # The launcher touches this only after scp and mv. Do not look at inputs before it.
 DEADLINE=$(( $(date +%s) + MAX_MINUTES * 60 ))

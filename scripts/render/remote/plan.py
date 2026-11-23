@@ -800,6 +800,9 @@ STAGE_LOCK = "/tmp/avt-stage/lock.json"
 STAGE_PARITY = "/tmp/avt-stage/parity"
 PROBE_PATH = "/workspace/partnership/.avt-write-probe"
 PROBE_BODY = "avt-write-probe"
+# Touched by the guest only after the input disk is mounted, or immediately when
+# this boot has no input disk. The launcher must not mkdir /workspace before it.
+INPUTS_READY = "/tmp/avt-inputs-ready"
 
 
 def _under(path, root):
@@ -849,6 +852,19 @@ def prepare_tree_script(dirs, probe="workspace"):
         'fail() { echo "AVT_PREFLIGHT_FAIL: $*" >&2; exit 1; }',
         'sudo -n true || fail "sudo -n was refused; the login user cannot create /workspace"',
     ]
+    if probe == "workspace":
+        # The root startup mounts the input disk, then touches this file.
+        # mkdir before that lands on the boot disk and the mount hides it.
+        lines.extend([
+            f"ready={shlex.quote(INPUTS_READY)}",
+            "deadline=$(( $(date +%s) + 600 ))",
+            'while [ ! -f "$ready" ]; do',
+            '  if [ "$(date +%s)" -ge "$deadline" ]; then',
+            '    fail "input disk was not ready; refusing to mkdir /workspace before the mount"',
+            "  fi",
+            "  sleep 2",
+            "done",
+        ])
     if user:
         quoted = " ".join(shlex.quote(path) for path in user)
         lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir failed"))
@@ -869,6 +885,12 @@ def prepare_tree_script(dirs, probe="workspace"):
         lines.append(
             "sudo chmod 700 -- /var/avt"
             + _fail_line("could not keep /var/avt mode 700")
+        )
+    for path in user + var:
+        # sudo, because /var/avt is mode 700 and the login user cannot search it.
+        lines.append(
+            "sudo -n test -d " + shlex.quote(path)
+            + _fail_line(f"missing after mkdir: {path}")
         )
     if probe == "workspace":
         lines.extend([
@@ -1587,6 +1609,8 @@ MAX_MINUTES={int(max_minutes)}
 mkdir -p /var/avt
 chmod 700 /var/avt
 chown root:root /var/avt
+touch /tmp/avt-inputs-ready
+chmod 644 /tmp/avt-inputs-ready
 cleanup() {{
   rm -f /tmp/avt-env /var/avt/env
   if [ -f /var/avt/done ]; then
@@ -2116,6 +2140,36 @@ def _probe_present(plan_obj, call, pairs):
             pass
 
 
+def prepare_prefix_length(argvs):
+    """How many leading commands create parents and then prove they exist.
+
+    That prefix is mkdir batches, the parent-list copy, and the parent check.
+    File copies stay after it. A check that ran first would report directories
+    the following mkdir had not created yet.
+    """
+    end = 0
+    for index, argv in enumerate(argvs or []):
+        kind = argv[2] if len(argv) > 2 else ""
+        if kind == "ssh":
+            script = remote_script(argv[-1])
+            if "sudo mkdir -p --" in script or "AVT_PARENT_CHECK" in script:
+                end = index + 1
+                continue
+        if kind == "scp" and end:
+            remote = ""
+            for part in argv:
+                found = scp_remote_path(part) if isinstance(part, str) and ":" in part else None
+                if found:
+                    remote = found
+                    break
+            if remote == "/tmp/avt-parent-list":
+                end = index + 1
+                continue
+        if end:
+            break
+    return end
+
+
 def _push_local(plan, call, sleep):
     """Copy the lock tree. A same-size file already on the guest is not sent again.
 
@@ -2126,6 +2180,7 @@ def _push_local(plan, call, sleep):
     argvs = list(plan.get("transfer_argv") or [])
     if not argvs:
         return
+    prefix_n = prepare_prefix_length(argvs)
     for path, text in (plan.get("side_files") or {}).items():
         parent = os.path.dirname(path)
         if parent:
@@ -2140,10 +2195,10 @@ def _push_local(plan, call, sleep):
     attempts = int(plan.get("transfer_attempts") or 1)
     retry_seconds = plan.get("ssh_retry_seconds", 5)
     _call_each(
-        argvs[:1], call, attempts=attempts, sleep=sleep, retry_seconds=retry_seconds,
+        argvs[:prefix_n], call, attempts=attempts, sleep=sleep, retry_seconds=retry_seconds,
         rows=rows, output=output, output_is_dir=output_is_dir,
     )
-    body = list(enumerate(argvs[1:], start=1))
+    body = list(enumerate(argvs[prefix_n:], start=prefix_n))
     tail = []
     if body and body[-1][1][2:4] == ["ssh", "--quiet"] and body[-1][1][-1] == "touch /tmp/avt-go":
         tail = [body[-1][1]]

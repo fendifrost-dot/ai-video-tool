@@ -685,6 +685,67 @@ def _wheel_fetch(package, version):
     }]}
 
 
+def test_parent_check_uses_sudo_and_runs_after_mkdir():
+    script = lock_v2._parent_reader()
+    assert "sudo -n test -d" in script
+    assert "[ ! -d" not in script
+    rows = [{
+        "path": "/workspace/partnership/final_lock_v2/scripts/final_render.py",
+        "bytes": 10,
+    }]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", lock_v2.LOCK_DIR, rows, "/tmp/env",
+        os.path.dirname(lock_v2.__file__), copy_tree=False,
+    )
+    prefix = plan.prepare_prefix_length(argvs)
+    assert prefix >= 3
+    check = plan.remote_script(argvs[prefix - 1][-1])
+    assert "AVT_PARENT_CHECK" in check
+    assert "sudo -n test -d" in check
+    mkdir = "\n".join(
+        plan.remote_script(argv[-1]) for argv in argvs[:prefix]
+        if len(argv) > 2 and argv[2] == "ssh"
+    )
+    assert "sudo test -d" in mkdir or "sudo -n test -d" in mkdir
+    assert "/var/avt/checks" in mkdir
+    assert "/tmp/avt-inputs-ready" in mkdir
+    startup = lock_v2.startup_script(lock_v2.LOCK_DIR, 30)
+    mount = startup.index('mount "$INPUT_DEV"')
+    ready = startup.index("touch /tmp/avt-inputs-ready")
+    assert mount < ready < startup.index("apt-get update")
+    rehearsal = lock_v2.rehearsal_startup(False)
+    assert rehearsal.index("touch /tmp/avt-inputs-ready") < rehearsal.index("apt-get update")
+    assert "/var/avt/scratch/final" in rehearsal.split("apt-get", 1)[0]
+    assert "/tmp/claudia_lockrepro" not in rehearsal.split("apt-get", 1)[0]
+    called = []
+
+    def call(argv):
+        called.append(argv)
+        result = Result(0, stdout="AVT_PARENTS_OK\n")
+        return result
+
+    plan._push_local({
+        "transfer_argv": argvs,
+        "transfer_rows": rows,
+        "instance_name": "vm",
+        "project": "p",
+        "zone": "z",
+        "output": "/tmp",
+        "output_is_dir": True,
+        "transfer_attempts": 1,
+        "side_files": {lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list},
+        "lock_rows": None,
+    }, call, lambda _seconds: None)
+    kinds = []
+    for argv in called:
+        if len(argv) > 2 and argv[2] == "ssh" and "AVT_PARENT_CHECK" in plan.remote_script(argv[-1]):
+            kinds.append("check")
+        elif len(argv) > 2 and argv[2] == "scp" and plan.final_of(argv) == rows[0]["path"]:
+            kinds.append("file")
+    assert "check" in kinds and "file" in kinds
+    assert kinds.index("check") < kinds.index("file")
+
+
 def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
     gaps, notes = plan.cpython313_wheel_gaps(_wheel_fetch)
     assert gaps == []
