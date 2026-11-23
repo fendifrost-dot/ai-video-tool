@@ -1012,29 +1012,132 @@ def gcp_ssh_argv(name, project, zone, command):
     ]
 
 
-def scp_spec(name, path):
-    """``instance:word`` for gcloud scp. ``word`` is one remote-shell word.
+# OpenSSH 10 scp speaks SFTP and does not shell-parse the remote path.
+# A quote character in the target becomes a literal character in the filename.
+INCOMING_ROOT = "/workspace/.avt-incoming"
+_UNSAFE_SFTP = set("\"'`& \t\n*?[]{}|\\;<>():")
+_SCP_FINAL = {}
 
-    gcloud forwards the text after the colon into the remote ``scp -t`` or
-    ``scp -f`` command. A space or ``&`` in that text is parsed by the remote
-    shell. ``shlex.quote`` leaves a safe path unchanged and quotes the rest,
-    so the absolute path that lands on the guest is the one we asked for.
+
+def path_needs_staging(path):
+    """True when the path must not be an SFTP target.
+
+    Spaces, a second space, ``&``, quotes, apostrophes, and colons are staged
+    under an ASCII name and moved with a shell ``mv`` after the copy.
     """
-    return f"{name}:{shlex.quote(path)}"
+    if not isinstance(path, str) or not path.startswith("/") or path.startswith("//"):
+        return True
+    if any(char in _UNSAFE_SFTP for char in path):
+        return True
+    return False
+
+
+def tag_final(argv, final):
+    """Remember the real guest path of an scp whose target may be a temp name."""
+    _SCP_FINAL[tuple(argv)] = final
+    return argv
+
+
+def final_of(argv):
+    """Real guest path for an scp argv, or None when it was not tagged."""
+    if not argv:
+        return None
+    return _SCP_FINAL.get(tuple(argv))
+
+
+def scp_spec(name, path):
+    """``instance:path`` for SFTP. The path is literal. No shell quotes.
+
+    Callers stage an unsafe path under ``INCOMING_ROOT`` first. A quote in
+    this string would be created on the guest as part of the filename.
+    """
+    if path_needs_staging(path) or "'" in path or '"' in path:
+        raise ValueError(f"refusing an SFTP target that is not a plain path: {path}")
+    return f"{name}:{path}"
 
 
 def scp_remote_path(spec):
-    """Absolute path encoded in an ``instance:word`` scp argument, or None."""
+    """Literal absolute path after the colon, or None.
+
+    Quote characters are rejected. SFTP would treat them as part of the name,
+    and ``shlex`` would hide that.
+    """
     host, sep, word = (spec or "").partition(":")
     if not sep or not host or "/" in host:
         return None
-    try:
-        parts = shlex.split(word)
-    except ValueError:
+    if not word.startswith("/") or "'" in word or '"' in word:
         return None
-    if len(parts) != 1 or not parts[0].startswith("/"):
-        return None
-    return parts[0]
+    return word
+
+
+def incoming_path(index):
+    return f"{INCOMING_ROOT}/{int(index):05d}"
+
+
+def stage_scp_argv(name, project, zone, local, final, index):
+    """One scp argv and, when the final path is unsafe, the ``(temp, final)`` move."""
+    if path_needs_staging(final):
+        temp = incoming_path(index)
+        argv = tag_final(
+            gcp_scp_argv(name, project, zone, local, scp_spec(name, temp)),
+            final,
+        )
+        return argv, (temp, final)
+    argv = tag_final(
+        gcp_scp_argv(name, project, zone, local, scp_spec(name, final)),
+        final,
+    )
+    return argv, None
+
+
+def incoming_mv_script(pairs):
+    """Shell moves. ``shlex.quote`` is correct here: ssh runs a shell, SFTP does not."""
+    lines = ["# AVT_INCOMING_MV", "set -euo pipefail"]
+    for src, dest in pairs:
+        lines.append(f"mv -- {shlex.quote(src)} {shlex.quote(dest)}")
+    lines.append("echo AVT_INCOMING_MOVED")
+    return "\n".join(lines) + "\n"
+
+
+def is_incoming_mv(argv):
+    if len(argv) < 4 or argv[2:4] != ["ssh", "--quiet"]:
+        return False
+    return remote_script(argv[-1]).startswith("# AVT_INCOMING_MV")
+
+
+def mv_pairs_from_script(script):
+    pairs = []
+    for line in (script or "").splitlines():
+        if not line.startswith("mv "):
+            continue
+        parts = shlex.split(line)
+        if len(parts) >= 3 and parts[0] == "mv":
+            pairs.append((parts[-2], parts[-1]))
+    return pairs
+
+
+def mv_batch_argvs(name, project, zone, moves):
+    """ssh ``mv`` batches that stay under ``ARGV_LIMIT``."""
+    if not moves:
+        return []
+    batches = []
+    current = []
+    for move in moves:
+        trial = current + [move]
+        argv = gcp_ssh_argv(
+            name, project, zone, wrap_remote_command(incoming_mv_script(trial)),
+        )
+        if current and not argv_within_limit(argv):
+            batches.append(current)
+            current = [move]
+        else:
+            current = trial
+    if current:
+        batches.append(current)
+    return [
+        gcp_ssh_argv(name, project, zone, wrap_remote_command(incoming_mv_script(batch)))
+        for batch in batches
+    ]
 
 
 def gcp_scp_argv(name, project, zone, source, dest, recurse=False):
@@ -1066,16 +1169,22 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
     """
     remote_root = WORK_ROOT
     rels = [row["rel"] for row in rows]
-    dirs = {remote_root, "/tmp/avt-remote", STAGE_DIR, "/workspace/partnership", VAR_AVT}
-    for rel in rels:
-        parent = os.path.dirname(rel)
-        if parent and parent != ".":
-            dirs.add(os.path.join(remote_root, parent))
-    argvs = pack_dir_batches(sorted(dirs), name, project, zone, probe="workspace")
-    for row in rows:
+    dirs = {remote_root, "/tmp/avt-remote", STAGE_DIR, "/workspace/partnership", VAR_AVT, INCOMING_ROOT}
+    moves = []
+    staged = []
+    for index, row in enumerate(rows):
         local = os.path.join(source_root, row["rel"])
         remote = os.path.join(remote_root, row["rel"])
-        argvs.append(gcp_scp_argv(name, project, zone, local, scp_spec(name, remote)))
+        parent = os.path.dirname(remote)
+        if parent and parent != ".":
+            dirs.add(parent)
+        scp_argv, move = stage_scp_argv(name, project, zone, local, remote, index)
+        staged.append(scp_argv)
+        if move:
+            moves.append(move)
+    argvs = pack_dir_batches(sorted(dirs), name, project, zone, probe="workspace")
+    argvs.extend(staged)
+    argvs.extend(mv_batch_argvs(name, project, zone, moves))
     if parity_dir:
         argvs.append(gcp_scp_argv(
             name, project, zone, parity_dir, scp_spec(name, STAGE_PARITY), recurse=True,
@@ -1229,6 +1338,11 @@ def format_timing(summary):
     if ceiling is not None:
         lines.append(f"ceiling: ${ceiling:.2f}")
     lines.append(f"result: {summary.get('result', 'done')}")
+    if summary.get("kept_disk"):
+        lines.append(
+            f"kept disk: {summary['kept_disk']} ${summary.get('kept_disk_usd_per_day', 0):.2f}/day "
+            "(the VM was deleted; this disk was not)"
+        )
     if summary.get("output"):
         lines.append(f"output: {summary['output']}")
     verified = summary.get("verified_files")
@@ -1285,7 +1399,7 @@ def _with_startup(argv, path):
 
 def gcp_create_argv(name, project, zone, machine="c4-standard-16", spot=False,
                     max_hours=8, disk_gb=200, startup_file="startup.sh",
-                    image_family="debian-13"):
+                    image_family="debian-13", data_disk=""):
     argv = [
         "gcloud", "compute", "instances", "create", name,
         "--project", project or "GCP_PROJECT",
@@ -1300,9 +1414,46 @@ def gcp_create_argv(name, project, zone, machine="c4-standard-16", spot=False,
         "--max-run-duration", duration_flag(max_hours),
         "--instance-termination-action", "DELETE",
     ]
+    if data_disk:
+        # auto-delete=no: a failed run keeps the inputs. The VM itself still deletes.
+        argv.extend([
+            "--disk",
+            f"name={data_disk},device-name={data_disk},mode=rw,auto-delete=no",
+        ])
     if spot:
         argv.extend(["--provisioning-model", "SPOT", "--maintenance-policy", "TERMINATE"])
     return argv
+
+
+def gcp_disk_describe_argv(name, project, zone):
+    return [
+        "gcloud", "compute", "disks", "describe", name,
+        "--project", project or "GCP_PROJECT",
+        "--zone", zone,
+        "--format=value(name)",
+    ]
+
+
+def gcp_disk_create_argv(name, project, zone, gb, disk_type="hyperdisk-balanced"):
+    return [
+        "gcloud", "compute", "disks", "create", name,
+        "--project", project or "GCP_PROJECT",
+        "--zone", zone,
+        "--size", f"{int(gb)}GB",
+        "--type", disk_type,
+        # Baseline performance is free. Anything above it is billed.
+        "--provisioned-iops", "3000",
+        "--provisioned-throughput", "140",
+    ]
+
+
+def gcp_disk_delete_argv(name, project, zone):
+    return [
+        "gcloud", "compute", "disks", "delete", name,
+        "--project", project or "GCP_PROJECT",
+        "--zone", zone,
+        "--quiet",
+    ]
 
 
 def gcp_delete_argv(name, project, zone):
@@ -1503,14 +1654,15 @@ def manifest_index(argv, rows, root=WORK_ROOT):
     """0-based lock-row index of an scp argv, or None when the argv is not a lock file."""
     if not rows or len(argv) < 3 or argv[2] != "scp":
         return None
-    path = None
-    for part in argv:
-        if ":" not in part:
-            continue
-        found = scp_remote_path(part)
-        if found:
-            path = found
-            break
+    path = final_of(argv)
+    if not path:
+        for part in argv:
+            if ":" not in part:
+                continue
+            found = scp_remote_path(part)
+            if found:
+                path = found
+                break
     if not path:
         return None
     prefix = root.rstrip("/") + "/"
@@ -1820,8 +1972,8 @@ def without_existing(argvs, present):
         return list(argvs)
     kept = []
     for argv in argvs:
-        path = None
-        if len(argv) > 2 and argv[2] == "scp":
+        path = final_of(argv) if len(argv) > 2 and argv[2] == "scp" else None
+        if path is None and len(argv) > 2 and argv[2] == "scp":
             for part in argv:
                 found = scp_remote_path(part) if ":" in part else None
                 if found:
@@ -1900,6 +2052,12 @@ def _push_local(plan, call, sleep):
     argvs = list(plan.get("transfer_argv") or [])
     if not argvs:
         return
+    for path, text in (plan.get("side_files") or {}).items():
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w") as handle:
+            handle.write(text)
     rows = plan.get("transfer_rows")
     if rows is None:
         rows = plan.get("lock_rows") or []
@@ -1918,29 +2076,41 @@ def _push_local(plan, call, sleep):
         body = body[:-1]
     pairs = _lock_pairs(rows)
     present = _probe_present(plan, call, pairs)
+    skipped_finals = set()
     if present:
         before = len(body)
         kept = []
         for index, argv in body:
+            if is_incoming_mv(argv):
+                kept.append((index, argv))
+                continue
+            final = final_of(argv)
             if [argv] != without_existing([argv], present):
+                if final:
+                    skipped_finals.add(final)
                 continue
             kept.append((index, argv))
         body = kept
         skipped = before - len(body)
         if skipped:
             print(f"skip-existing: {skipped} files already on the guest", flush=True)
+    deferred_mv = []
     for index, argv in body:
+        if is_incoming_mv(argv):
+            deferred_mv.append((index, argv))
+            continue
         result = call(argv)
         if getattr(result, "returncode", 1) == 0:
             continue
         if preflight_refused(result):
             _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
-        path = None
-        for part in argv:
-            found = scp_remote_path(part) if ":" in part else None
-            if found:
-                path = found
-                break
+        path = final_of(argv)
+        if path is None:
+            for part in argv:
+                found = scp_remote_path(part) if ":" in part else None
+                if found:
+                    path = found
+                    break
         size = None
         for pair in pairs:
             if pair[0] == path:
@@ -1954,6 +2124,17 @@ def _push_local(plan, call, sleep):
         result = call(argv)
         if getattr(result, "returncode", 1) != 0:
             _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=output_is_dir)
+    moves = []
+    for _index, argv in deferred_mv:
+        moves.extend(mv_pairs_from_script(remote_script(argv[-1])))
+    moves = [pair for pair in moves if pair[1] not in skipped_finals]
+    if moves:
+        _call_each(
+            mv_batch_argvs(plan["instance_name"], plan.get("project"), plan.get("zone"), moves),
+            call, attempts=1, sleep=sleep, retry_seconds=retry_seconds,
+            rows=rows, output=output, index_offset=len(argvs) - 1,
+            output_is_dir=output_is_dir,
+        )
     if tail:
         _call_each(
             tail, call, attempts=1, sleep=sleep, retry_seconds=retry_seconds,
@@ -1962,13 +2143,22 @@ def _push_local(plan, call, sleep):
         )
 
 
+def _hourly_burn(plan):
+    """VM rate plus the input disk, when this plan keeps one."""
+    rate = plan.get("usd_per_hour")
+    disk = (plan.get("input_disk") or {}).get("usd_per_hour") or 0.0
+    if rate is None and not disk:
+        return None
+    return float(rate or 0.0) + float(disk)
+
+
 def _elapsed_cost(plan, billing_start, clock):
     if billing_start is None:
         return None
-    rate = plan.get("usd_per_hour")
-    if rate is None:
+    burn = _hourly_burn(plan)
+    if burn is None:
         return None
-    return ((clock() - billing_start) / 3600.0) * rate
+    return ((clock() - billing_start) / 3600.0) * burn
 
 
 def _guard_elapsed_cost(plan, billing_start, clock):
@@ -2032,13 +2222,32 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
         print(f"sha256 ok on the launcher: {checked['checked']} files", flush=True)
 
     created = False
+    disk_ready = False
     billing_start = None
     outcome = None
     pull_failed = False
     serial_text = ""
     startup_path = None
     timer = StageTimer(clock)
+    disk = plan.get("input_disk") or None
     try:
+        if disk:
+            described = call(disk["describe_argv"])
+            if getattr(described, "returncode", 1) != 0:
+                made = call(disk["create_argv"])
+                if getattr(made, "returncode", 1) != 0:
+                    text = format_create_failure(disk["create_argv"], made)
+                    sys.stderr.write(text)
+                    try:
+                        write_execute_log(
+                            plan.get("output"), text, output_is_dir=bool(plan.get("output_is_dir")),
+                        )
+                    except OSError:
+                        pass
+                    raise SystemExit(
+                        f"gcloud disk create failed ({getattr(made, 'returncode', 1)}); no instance to delete"
+                    )
+            disk_ready = True
         timer.begin("create")
         try:
             script = plan.get("startup_script")
@@ -2161,6 +2370,14 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
                 deleted = call(plan["delete_argv"])
                 if deleted.returncode != 0:
                     call(plan["delete_argv"])
+            # The VM is gone. The input disk survives a failure on purpose.
+            # A finished pull-back is the only path that deletes it.
+            if disk_ready and disk and outcome == "done" and not pull_failed:
+                removed = call(disk["delete_argv"])
+                if getattr(removed, "returncode", 1) != 0:
+                    call(disk["delete_argv"])
+                else:
+                    disk_ready = False
         finally:
             timer.end("teardown")
         elapsed = None if billing_start is None else clock() - billing_start
@@ -2184,6 +2401,9 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             summary["projection_text"] = plan["projection_text"]
         if plan.get("comparison_text"):
             summary["comparison_text"] = plan["comparison_text"]
+        if disk_ready and disk:
+            summary["kept_disk"] = disk["name"]
+            summary["kept_disk_usd_per_day"] = disk["usd_per_day"]
         plan["timing"] = summary
         if plan.get("stage_from") == "local" and plan.get("timing_path"):
             try:

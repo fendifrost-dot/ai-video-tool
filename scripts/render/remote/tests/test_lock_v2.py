@@ -371,11 +371,12 @@ def test_execute_pushes_absolute_paths_pulls_both_deliverables_and_deletes(tmp_p
         call=call,
     )
     assert code == 0, capsys.readouterr()
-    assert calls[0][3] == "create"
-    assert "c4-standard-16" in calls[0]
-    assert "120GB" in calls[0]
-    assert "SPOT" not in calls[0]
-    assert "DELETE" in calls[0]
+    create = next(argv for argv in calls if len(argv) > 3 and argv[3] == "create")
+    assert "c4-standard-16" in create
+    assert "120GB" in create
+    assert "SPOT" not in create
+    assert "DELETE" in create
+    assert "auto-delete=no" in " ".join(create)
     assert calls[-1][3] == "delete"
     blob = "\n".join(" ".join(argv) for argv in calls)
     assert f"avt-test:{clip}" in blob
@@ -451,16 +452,15 @@ def test_cease_and_desist_path_survives_the_remote_shell(tmp_path):
     )
     copied = [
         argv for argv in argvs
-        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == str(wav)
+        if argv[2] == "scp" and plan.final_of(argv) == str(wav)
     ]
     assert len(copied) == 1
     assert copied[0][-2] == str(wav)
-    word = copied[0][-1].split(":", 1)[1]
-    echoed = subprocess.run(
-        ["bash", "-c", f"set -- {word}; printf %s \"$1\""],
-        capture_output=True, text=True, check=True,
-    )
-    assert echoed.stdout == str(wav)
+    target = copied[0][-1]
+    assert "'" not in target and '"' not in target
+    assert "/.avt-incoming/" in target
+    script = "\n".join(plan.remote_script(argv[-1]) for argv in argvs if plan.is_incoming_mv(argv))
+    assert str(wav) in shlex.split(script)
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
     parent = os.path.dirname(str(wav))
     assert parent in shlex.split(script)
@@ -578,7 +578,8 @@ def test_c4_standard_32_scales_workers_and_stays_under_fifteen_dollars(tmp_path,
         call=call,
     )
     assert code == 0, capsys.readouterr()
-    assert "c4-standard-32" in calls[0]
+    create = next(argv for argv in calls if "c4-standard-32" in argv)
+    assert "c4-standard-32" in create
     assert "SPOT" not in calls[0]
     assert calls[-1][3] == "delete"
     assert "ceiling: $15.00" in capsys.readouterr().out
@@ -649,3 +650,24 @@ def test_a_long_manifest_never_builds_an_oversize_argv():
         for part in argv:
             assert len(part.encode()) <= plan.ARGV_LIMIT
     assert plan.argv_nbytes(commands[1]) < 16 * 1024
+
+
+def test_path_preflight_accepts_the_cease_path_and_odd_names(tmp_path, capsys):
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    names = [
+        "/workspace/partnership/second_half/inputs/audio/PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav",
+        "/workspace/partnership/second_half/inputs/it's a (take).wav",
+        "/workspace/partnership/second_half/inputs/ratio:16x9.wav",
+        "/tmp/plain.wav",
+    ]
+    rows = [{"path": path, "bytes": 4} for path in names]
+    for index in range(46):
+        (lock / f"tree{index}.bin").write_bytes(b"x")
+    result = lock_v2.path_preflight(str(lock), manifest_files=rows, tree_files=[], require_section6=False)
+    assert result["ok"], result["errors"]
+    assert result["line"] == "path preflight: 4/4 pass"
+    assert "path preflight: 4/4 pass" in capsys.readouterr().out
+    argvs = lock_v2.transfer_argvs("vm", "p", "z", str(lock), rows, "/tmp/env", os.path.dirname(lock_v2.__file__))
+    cease = next(argv for argv in argvs if plan.final_of(argv) == names[0])
+    assert "'" not in cease[-1] and '"' not in cease[-1]

@@ -18,6 +18,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 import plan
@@ -27,6 +28,13 @@ LOCK_DIR = "/workspace/partnership/final_lock_v2"
 PARTNERSHIP = "/workspace/partnership"
 MACHINE = "c4-standard-16"
 DISK_GB = 120
+# Inputs (~29 GB) sit on a disk the VM does not delete. Boot disk keeps scratch and ProRes.
+INPUT_DISK_NAME = "avt-lock-v2-inputs"
+INPUT_DISK_GB = 60
+# Hyperdisk Balanced capacity $0.000109589/GiB-hour. Baseline 3000 IOPS and 140 MiB/s are free.
+# 60 * 0.000109589 = 0.00657534, rounded up. Per day 0.0066 * 24 = 0.1584, printed as 0.16.
+INPUT_DISK_USD_PER_HOUR = 0.0066
+INPUT_DISK_USD_PER_DAY = 0.16
 CPU_QUOTA = 32
 GB_PER_V1E = 15.0
 # The lock doc's stated input size, used only when the manifest is not on this machine.
@@ -339,6 +347,11 @@ def comparison_text(input_gb, ceiling):
     for name in COMPARE_MACHINES:
         ram, vcpu, rate = machine_spec(name)
         proj = project(ram, vcpu, input_gb, ceiling, rate, machine=name)
+        proj["usd"] = [
+            proj["usd"][0] + proj["hours"][0] * INPUT_DISK_USD_PER_HOUR,
+            proj["usd"][1] + proj["hours"][1] * INPUT_DISK_USD_PER_HOUR,
+        ]
+        proj["under"] = proj["usd"][1] <= ceiling
         lines.append(
             f"  {name}: {_band(proj['hours'])} h, "
             f"${proj['usd'][0]:.2f}–${proj['usd'][1]:.2f} "
@@ -811,6 +824,17 @@ MAX_MINUTES={int(max_minutes)}
 mkdir -p /var/avt/checks /var/avt/out /var/avt/scratch/v1e /var/avt/scratch/final /var/avt/scratch/states
 chmod 700 /var/avt
 chown root:root /var/avt
+# Inputs live on a disk that is not deleted with the VM. Mount it before apt.
+INPUT_DEV=/dev/disk/by-id/google-{INPUT_DISK_NAME}
+if [ -e "$INPUT_DEV" ]; then
+  if ! blkid "$INPUT_DEV" >/dev/null 2>&1; then
+    mkfs.ext4 -F -L avt-inputs "$INPUT_DEV"
+  fi
+  mkdir -p /workspace/partnership
+  if ! mountpoint -q /workspace/partnership; then
+    mount "$INPUT_DEV" /workspace/partnership
+  fi
+fi
 touch /var/avt/guest.log
 exec > >(tee -a /var/avt/guest.log) 2>&1
 cleanup() {{
@@ -897,24 +921,52 @@ def _mkdir_command(paths):
     return plan.wrap_remote_command(plan.prepare_tree_script(dirs, probe="workspace"))
 
 
-def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir):
+def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir,
+                   tree_files=()):
+    """Copy the lock tree and the manifest. Unsafe names are staged, then moved.
+
+    OpenSSH 10 scp is SFTP and does not strip shell quotes. Every scp target is
+    a plain path. A name with spaces, ``&``, a colon, or an apostrophe is copied
+    to ``/workspace/.avt-incoming/<index>`` and ``mv --`` places it.
+    """
     lock_dir = lock_dir.rstrip("/")
-    parents = {os.path.dirname(lock_dir), "/var/avt", "/tmp/avt-remote", LOCKREPRO}
+    parents = {os.path.dirname(lock_dir), "/var/avt", "/tmp/avt-remote", LOCKREPRO, plan.INCOMING_ROOT}
     parents.update({
         CHECKS_DIR, OUT_DIR, V1E_DIR, FINAL_DIR, STATE_DIR,
     })
+    finals = []
     for row in manifest_files:
+        finals.append(row["path"])
         parents.add(os.path.dirname(row["path"]))
-    argvs = plan.pack_dir_batches(sorted(parents), name, project, zone, probe="workspace")
+    for path in tree_files:
+        finals.append(path)
+        parents.add(os.path.dirname(path))
+    argvs = plan.pack_dir_batches(sorted(p for p in parents if p), name, project, zone, probe="workspace")
+    parent_names = sorted(p for p in parents if p)
+    parent_list = plan.encode_probe_list([(path, 0) for path in parent_names])
+    parent_local = "/tmp/avt-parent-list-local"
     argvs.append(plan.gcp_scp_argv(
-        name, project, zone, lock_dir,
-        plan.scp_spec(name, os.path.dirname(lock_dir) or "/"), recurse=True,
+        name, project, zone, parent_local, plan.scp_spec(name, "/tmp/avt-parent-list"),
     ))
-    for row in manifest_files:
-        # The remote word is quoted. An unquoted space or & is parsed by the remote shell.
+    argvs.append(plan.gcp_ssh_argv(
+        name, project, zone, plan.wrap_remote_command(_parent_reader()),
+    ))
+    transfer_argvs.parent_list = parent_list
+    transfer_argvs.parent_local = parent_local
+    dest_dir = os.path.dirname(lock_dir) or "/"
+    if not plan.path_needs_staging(dest_dir):
         argvs.append(plan.gcp_scp_argv(
-            name, project, zone, row["path"], plan.scp_spec(name, row["path"]),
+            name, project, zone, lock_dir, plan.scp_spec(name, dest_dir), recurse=True,
         ))
+    moves = []
+    for index, row in enumerate(manifest_files):
+        scp_argv, move = plan.stage_scp_argv(
+            name, project, zone, row["path"], row["path"], index,
+        )
+        argvs.append(scp_argv)
+        if move:
+            moves.append(move)
+    argvs.extend(plan.mv_batch_argvs(name, project, zone, moves))
     argvs.append(plan.gcp_scp_argv(name, project, zone, env_file, plan.scp_spec(name, "/tmp/avt-env")))
     for filename in ("remote_render.py", "plan.py", "lock_v2.py"):
         argvs.append(plan.gcp_scp_argv(
@@ -924,6 +976,177 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
         ))
     argvs.append(plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-go"))
     return argvs
+
+
+def _parent_reader():
+    return """# AVT_PARENT_CHECK
+set -euo pipefail
+list=/tmp/avt-parent-list
+if [ ! -f "$list" ]; then
+  echo "AVT_PREFLIGHT_FAIL: parent list missing" >&2
+  exit 1
+fi
+while IFS= read -r line || [ -n "$line" ]; do
+  [ -n "$line" ] || continue
+  blob=${line#* }
+  path=$(printf '%s' "$blob" | base64 -d) || continue
+  if [ ! -d "$path" ]; then
+    echo "AVT_PREFLIGHT_FAIL: missing parent $path" >&2
+    exit 1
+  fi
+done < "$list"
+echo AVT_PARENTS_OK
+"""
+
+
+def _mkdir_operands(argvs):
+    found = []
+    for argv in argvs:
+        if len(argv) < 3 or argv[2] != "ssh":
+            continue
+        script = plan.remote_script(argv[-1])
+        for line in script.splitlines():
+            if "sudo mkdir -p -- " not in line:
+                continue
+            body = line.split("sudo mkdir -p -- ", 1)[1].split(" || ", 1)[0]
+            found.extend(shlex.split(body))
+    return found
+
+
+def _parent_covered(parent, operands):
+    if not parent:
+        return False
+    for op in operands:
+        if op == parent or op.startswith(parent.rstrip("/") + "/"):
+            return True
+    return False
+
+
+def _simulate_copy(scp_argv, mv_argvs, payload, sandbox, final):
+    """SFTP writes the target literally. ``mv`` then uses shell quoting."""
+    target = None
+    raw = ""
+    for part in scp_argv:
+        if part.startswith("gcloud"):
+            continue
+        found = plan.scp_remote_path(part)
+        if found:
+            target = found
+            raw = part
+            break
+    if not target or "'" in raw or '"' in raw:
+        return False
+    dest = os.path.join(sandbox, target.lstrip("/"))
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as handle:
+        handle.write(payload)
+    for argv in mv_argvs:
+        for src, dst in plan.mv_pairs_from_script(plan.remote_script(argv[-1])):
+            src_local = os.path.join(sandbox, src.lstrip("/"))
+            if not os.path.exists(src_local):
+                continue
+            dst_local = os.path.join(sandbox, dst.lstrip("/"))
+            os.makedirs(os.path.dirname(dst_local), exist_ok=True)
+            os.replace(src_local, dst_local)
+    landed = os.path.join(sandbox, final.lstrip("/"))
+    if not os.path.isfile(landed):
+        return False
+    with open(landed, "rb") as handle:
+        return handle.read() == payload
+
+
+def required_guest_paths(lock_dir):
+    """Files §6 names. Directories the guest creates are not in this list."""
+    lock_dir = lock_dir.rstrip("/")
+    return [
+        os.path.join(lock_dir, "scripts", "v1e_chunk_rgb.py"),
+        os.path.join(lock_dir, "scripts", "final_render.py"),
+        os.path.join(lock_dir, "params", "final_params_LOCK_v2.json"),
+        REPRO_SCRIPT,
+        S07_TAL,
+        BODYPLACE,
+        *PREVIEW_LOGS,
+    ]
+
+
+def path_preflight(lock_dir, manifest_files=None, tree_files=None, require_section6=None):
+    """Offline check of every remote scp/ssh argv. No gcloud.
+
+    Prints ``path preflight: N/N pass``. ``ok`` is true only at N/N.
+    """
+    lock_dir = (lock_dir or LOCK_DIR).rstrip("/")
+    if manifest_files is None or tree_files is None:
+        manifest_files = []
+        tree_files = []
+        manifest, _note = peek_manifest(lock_dir)
+        if manifest:
+            manifest_files = list(manifest["files"])
+        if os.path.isdir(lock_dir):
+            for dirpath, _dirs, names in os.walk(lock_dir):
+                for name in names:
+                    tree_files.append(os.path.join(dirpath, name))
+    rows = []
+    for row in manifest_files:
+        if isinstance(row, dict) and row.get("path"):
+            rows.append(row)
+        elif isinstance(row, str):
+            rows.append({"path": row, "bytes": 1})
+    argvs = transfer_argvs(
+        "vm", "p", "z", lock_dir, rows, "/tmp/avt-env",
+        os.path.dirname(plan.__file__), tree_files=tree_files or (),
+    )
+    if require_section6 is None:
+        require_section6 = len(rows) >= 50 or lock_dir == LOCK_DIR
+    operands = _mkdir_operands(argvs)
+    mv_argvs = [argv for argv in argvs if plan.is_incoming_mv(argv)]
+    errors = []
+    for argv in argvs:
+        if not plan.argv_within_limit(argv):
+            errors.append("argv over 128 KB")
+        for part in argv:
+            if ":" in part and part.split(":", 1)[0] == "vm" and ("'" in part or '"' in part):
+                errors.append("quote in SFTP target")
+    sandbox = tempfile.mkdtemp(prefix="avt-path-preflight-")
+    passed = 0
+    try:
+        for row in rows:
+            final = row["path"]
+            if not _parent_covered(os.path.dirname(final), operands):
+                errors.append(f"parent not mkdir'd: {os.path.dirname(final)}")
+                continue
+            scp_argv = next((argv for argv in argvs if plan.final_of(argv) == final), None)
+            if scp_argv is None:
+                errors.append(f"no scp argv for {final}")
+                continue
+            if not _simulate_copy(scp_argv, mv_argvs, b"avt-path-preflight", sandbox, final):
+                errors.append(f"round trip failed: {final}")
+                continue
+            passed += 1
+        if require_section6:
+            present = {row["path"] for row in rows}
+            present.update(tree_files or ())
+            for required in required_guest_paths(lock_dir):
+                if required not in present:
+                    errors.append(f"section 6 file is not in the manifest or the tree: {required}")
+                    passed = min(passed, max(0, len(rows) - 1))
+    finally:
+        shutil.rmtree(sandbox, ignore_errors=True)
+    total = len(rows)
+    if errors:
+        passed = min(passed, max(0, total - len(errors)))
+    else:
+        passed = total
+    line = f"path preflight: {passed}/{total} pass"
+    print(line, flush=True)
+    for err in errors[:20]:
+        print(err, file=sys.stderr)
+    return {
+        "ok": not errors and total > 0 and passed == total,
+        "passed": passed,
+        "total": total,
+        "errors": errors,
+        "line": line,
+    }
 
 
 def _pull_commands(name, project, zone, paths, dests):
@@ -1434,6 +1657,13 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         manifest_files = manifest["files"]
         manifest_note = ""
     proj = project(ram, vcpu, input_gb, cost_ceiling, rate, machine=requested if spec else MACHINE)
+    disk_usd = (
+        proj["hours"][0] * INPUT_DISK_USD_PER_HOUR,
+        proj["hours"][1] * INPUT_DISK_USD_PER_HOUR,
+    )
+    proj["usd"] = [proj["usd"][0] + disk_usd[0], proj["usd"][1] + disk_usd[1]]
+    proj["under"] = proj["usd"][1] <= cost_ceiling
+    proj["disk_usd_per_day"] = INPUT_DISK_USD_PER_DAY
     text = projection_text(proj)
     compared = comparison_text(input_gb, cost_ceiling)
     capped = plan.cost_cap_hours(max_hours, cost_ceiling, rate)
@@ -1527,9 +1757,18 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         "lock_path": "",
         "lock_rows": None,
     }
+    report["input_disk"] = {
+        "name": INPUT_DISK_NAME,
+        "gb": INPUT_DISK_GB,
+        "usd_per_hour": INPUT_DISK_USD_PER_HOUR,
+        "usd_per_day": INPUT_DISK_USD_PER_DAY,
+        "describe_argv": plan.gcp_disk_describe_argv(INPUT_DISK_NAME, project_id, zone),
+        "create_argv": plan.gcp_disk_create_argv(INPUT_DISK_NAME, project_id, zone, INPUT_DISK_GB),
+        "delete_argv": plan.gcp_disk_delete_argv(INPUT_DISK_NAME, project_id, zone),
+    }
     report["create_argv"] = plan.gcp_create_argv(
         instance_name, project_id, zone, machine=report["machine"], spot=False,
-        max_hours=capped, disk_gb=DISK_GB,
+        max_hours=capped, disk_gb=DISK_GB, data_disk=INPUT_DISK_NAME,
     )
     report["delete_argv"] = plan.gcp_delete_argv(instance_name, project_id, zone)
     report["serial_argv"] = plan.gcp_serial_argv(instance_name, project_id, zone)
@@ -1539,6 +1778,10 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
     report["transfer_argv"] = transfer_argvs(
         instance_name, project_id, zone, report["lock_dir"], manifest_files, env_file, remote_dir,
     )
+    report["side_files"] = {
+        transfer_argvs.parent_local: transfer_argvs.parent_list,
+    }
+    report["projected_usd_hi"] = proj["usd"][1]
     report["pull_argv"] = pull_argvs(instance_name, project_id, zone, output, timing_path)
     report["failure_pull_argv"] = failure_pull_argvs(instance_name, project_id, zone, output, timing_path)
     report["failure_serial_path"] = os.path.join(output, "serial.txt")
@@ -1567,7 +1810,10 @@ def format_report(report):
         "GCS is not used. The launcher identity needs roles/compute.instanceAdmin.v1 "
         "and roles/iam.serviceAccountUser only.",
         f"lock dir: {report['lock_dir']} (same absolute path on the VM)",
-        f"disk: {DISK_GB} GB hyperdisk-balanced (the lock's working set is about 80 GB)",
+        f"disk: {DISK_GB} GB boot hyperdisk-balanced for the OS, the venv, /var/avt scratch and the ProRes. "
+        f"Inputs sit on {INPUT_DISK_NAME}, {INPUT_DISK_GB} GB hyperdisk-balanced, "
+        f"${INPUT_DISK_USD_PER_DAY:.2f}/day. The disk is not deleted with the VM. "
+        "A finished pull-back deletes it. --delete-input-disk deletes it on purpose.",
         f"quota: {CPU_QUOTA} on-demand vCPUs across regions, no preemptible quota. "
         f"This plan uses {report['vcpu']}. Spot is refused.",
         f"C4 in this project is capped at {C4_VCPU_PER_VM} vCPU per VM in us-central1 "
@@ -1662,3 +1908,153 @@ def format_report(report):
         )
     lines.append("This report did not create a VM.")
     return "\n".join(lines) + "\n"
+
+
+REHEARSAL_MACHINE = "e2-standard-4"
+REHEARSAL_RATE = 0.14
+REHEARSAL_CEILING = 1.0
+
+
+def rehearsal_startup():
+    """Install the real stack, then encode a few frames with both delivery codecs."""
+    return """#!/bin/bash
+set -euo pipefail
+echo AVT_STAGE create 0
+export DEBIAN_FRONTEND=noninteractive
+echo AVT_STAGE setup_begin
+apt-get update
+apt-get install -y python3-venv python3-pip ffmpeg
+encoders=$(ffmpeg -hide_banner -encoders)
+echo "$encoders" | grep -q ffv1
+echo "$encoders" | grep -q libx264
+echo "$encoders" | grep -q prores_ks
+python3 -m venv /opt/avt-comp
+/opt/avt-comp/bin/pip install --quiet 'numpy==2.5.5' 'scipy==1.18.1' 'opencv-python-headless>=5.1,<5.2'
+/opt/avt-comp/bin/python - <<'PY'
+import numpy, scipy, cv2
+assert numpy.__version__ == "2.5.5"
+assert scipy.__version__ == "1.18.1"
+assert str(cv2.__version__).startswith("5.1")
+print("stack", numpy.__version__, scipy.__version__, cv2.__version__)
+PY
+echo AVT_STAGE setup_ok
+WAV=/workspace/partnership/second_half/inputs/audio/PARTNERSHIP\\ -\\ CEASE\\ \\&\\ DESIST\\ MASTER\\ \\ -\\ 11.15.26.wav
+# The path is one Python string so the spaces and & are not shell syntax.
+/opt/avt-comp/bin/python - <<'PY'
+import os
+path = "/workspace/partnership/second_half/inputs/audio/PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+assert os.path.isfile(path), path
+print("wav", os.path.getsize(path))
+PY
+echo AVT_STAGE verify_ok
+ffmpeg -y -f lavfi -i testsrc=size=320x180:rate=24:duration=0.2 -c:v ffv1 /tmp/smoke.mkv
+ffmpeg -y -i /tmp/smoke.mkv -c:v libx264 -crf 14 /tmp/smoke.mp4
+ffmpeg -y -i /tmp/smoke.mkv -c:v prores_ks -profile:v 3 /tmp/smoke.mov
+echo AVT_STAGE assemble_ok
+echo AVT_REHEARSAL_DONE
+sleep 15
+"""
+
+
+def run_rehearsal(args, env, call, confirm):
+    """One cheap VM. Cap $1. Always delete it. No input disk is created."""
+    if not confirm:
+        print(
+            f"rehearsal dry-run: {REHEARSAL_MACHINE} at ${REHEARSAL_RATE}/h, "
+            f"hard cap ${REHEARSAL_CEILING:.0f}. No VM was created.",
+            flush=True,
+        )
+        return 0
+    projected = (20.0 / 60.0) * REHEARSAL_RATE
+    if projected > REHEARSAL_CEILING:
+        print("refusing rehearsal: projected cost exceeds $1", file=sys.stderr)
+        return 2
+    if call is None:
+        call = __import__("remote_render")._subprocess_call
+    name = "avt-rehearsal-lock-v2"
+    project = env.get("GCP_PROJECT", "")
+    zone = args.zone
+    stages = []
+
+    def mark(stage, ok, started):
+        seconds = time.monotonic() - started
+        label = "PASS" if ok else "FAIL"
+        stages.append((stage, label, seconds))
+        print(f"rehearsal {stage}: {label} {seconds:.1f}s", flush=True)
+        return ok
+
+    created = False
+    startup = None
+    try:
+        started = time.monotonic()
+        fd, startup = tempfile.mkstemp(prefix="avt-rehearsal-", suffix=".sh")
+        with os.fdopen(fd, "w") as handle:
+            handle.write(rehearsal_startup())
+        create = plan.gcp_create_argv(
+            name, project, zone, machine=REHEARSAL_MACHINE, max_hours=20.0 / 60.0,
+            disk_gb=30, startup_file=startup,
+        )
+        result = call(create)
+        ok = mark("create", getattr(result, "returncode", 1) == 0, started)
+        if not ok:
+            return 2
+        created = True
+        started = time.monotonic()
+        wav = (
+            "/workspace/partnership/second_half/inputs/audio/"
+            "PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+        )
+        local = getattr(args, "rehearsal_wav", "") or wav
+        scp_argv, move = plan.stage_scp_argv(name, project, zone, local, wav, 224)
+        mkdir = plan.pack_dir_batches(
+            [os.path.dirname(wav), plan.INCOMING_ROOT, "/workspace/partnership"],
+            name, project, zone, probe="workspace",
+        )
+        copied = True
+        for argv in mkdir + [scp_argv]:
+            if getattr(call(argv), "returncode", 1) != 0:
+                copied = False
+                break
+        if move and copied:
+            mv = plan.mv_batch_argvs(name, project, zone, [move])
+            copied = all(getattr(call(argv), "returncode", 1) == 0 for argv in mv)
+        if not mark("transfer", copied, started):
+            return 2
+        started = time.monotonic()
+        deadline = time.monotonic() + 15 * 60
+        serial = ""
+        while time.monotonic() < deadline:
+            polled = call(plan.gcp_serial_argv(name, project, zone))
+            serial = getattr(polled, "stdout", "") or ""
+            if "AVT_REHEARSAL_DONE" in serial:
+                break
+            if "AVT_RENDER_FAIL" in serial or "E:" in serial and "Unable to locate" in serial:
+                break
+            time.sleep(5)
+        setup_ok = "AVT_STAGE setup_ok" in serial and "AVT_STAGE verify_ok" in serial
+        assemble_ok = "AVT_STAGE assemble_ok" in serial
+        mark("setup", setup_ok, started)
+        mark("verify", "verify_ok" in serial, started)
+        mark("assemble", assemble_ok, started)
+        started = time.monotonic()
+        out = getattr(args, "output", "") or "rehearsal-out"
+        os.makedirs(out, exist_ok=True)
+        pull_ok = True
+        for remote, dest in (("/tmp/smoke.mp4", "smoke.mp4"), ("/tmp/smoke.mov", "smoke.mov")):
+            argv = plan.gcp_scp_argv(name, project, zone, plan.scp_spec(name, remote), os.path.join(out, dest))
+            if getattr(call(argv), "returncode", 1) != 0:
+                pull_ok = False
+        mark("pull-back", pull_ok, started)
+        if not (setup_ok and assemble_ok and pull_ok):
+            return 2
+        return 0
+    finally:
+        started = time.monotonic()
+        if created:
+            call(plan.gcp_delete_argv(name, project, zone))
+        if startup and os.path.isfile(startup):
+            os.remove(startup)
+        mark("teardown", True, started)
+        print("rehearsal stages:", flush=True)
+        for stage, label, seconds in stages:
+            print(f"  {stage}: {label} {seconds:.1f}s", flush=True)

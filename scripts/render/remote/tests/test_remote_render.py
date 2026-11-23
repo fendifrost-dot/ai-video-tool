@@ -642,7 +642,9 @@ def test_scp_paths_keep_spaces_and_the_lock_name(tmp_path):
     assert len(copied) == 1
     assert copied[0][-2] == os.path.join(str(tmp_path), rel)
     remote = f"{plan.WORK_ROOT}/{rel}"
-    assert plan.scp_remote_path(copied[0][-1]) == remote
+    assert plan.final_of(copied[0]) == remote
+    assert "'" not in copied[0][-1] and '"' not in copied[0][-1]
+    assert "/.avt-incoming/" in copied[0][-1]
     assert argvs[-1][2] == "ssh"
     assert argvs[-1][-1] == "touch /tmp/avt-go"
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
@@ -770,12 +772,17 @@ def test_remote_shell_keeps_spaces_ampersand_quotes_and_parens(tmp_path):
         remote = f"{plan.WORK_ROOT}/{rel}"
         copied = [
             argv for argv in argvs
-            if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == remote
+            if argv[2] == "scp" and plan.final_of(argv) == remote
         ]
         assert len(copied) == 1
         assert copied[0][-2] == os.path.join(str(tmp_path), rel)
-        word = copied[0][-1].split(":", 1)[1]
-        assert _bash_word(word) == remote
+        target = copied[0][-1].split(":", 1)[1]
+        assert "'" not in target and '"' not in target
+        assert " " not in target
+        script = "\n".join(
+            plan.remote_script(argv[-1]) for argv in argvs if plan.is_incoming_mv(argv)
+        )
+        assert remote in shlex.split(script)
     assert "MASTER  -" in f"{plan.WORK_ROOT}/{CEASE_REL}"
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
     user_line = next(
@@ -846,7 +853,7 @@ def test_prepare_failure_logs_the_cease_manifest_index(tmp_path, capsys):
         if len(argv) > 3 and argv[3] == "delete":
             assert (tmp_path / "out" / "prepare_failure.log").is_file()
             return Result(0)
-        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == f"{plan.WORK_ROOT}/{CEASE_REL}":
+        if argv[2] == "scp" and plan.final_of(argv) == f"{plan.WORK_ROOT}/{CEASE_REL}":
             return Result(1, stdout=noise + "\nremote shell broke on &\n")
         if "get-serial-port-output" in argv:
             return Result(stdout="AVT_RENDER_DONE")
@@ -927,7 +934,7 @@ def test_a_failed_copy_is_not_retried_when_the_bytes_are_already_there(tmp_path,
                 if probes["n"] > 1:
                     return Result(stdout=remote + "\n")
                 return Result(stdout="")
-        if argv[2] == "scp" and plan.scp_remote_path(argv[-1]) == remote:
+        if argv[2] == "scp" and plan.final_of(argv) == remote:
             sent.append(argv)
             return Result(1, stdout="connection reset\n")
         if "get-serial-port-output" in argv:

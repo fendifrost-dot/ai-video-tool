@@ -37,6 +37,12 @@ def parse_args(argv):
         help="LOCK_v2 tree. The VM must see this same absolute path. "
              "Default /workspace/partnership/final_lock_v2.",
     )
+    parser.add_argument("--path-preflight", action="store_true",
+                        help="Check every LOCK_v2 remote path offline. No gcloud.")
+    parser.add_argument("--delete-input-disk", action="store_true",
+                        help="Delete the persistent input disk avt-lock-v2-inputs and do nothing else.")
+    parser.add_argument("--rehearsal", action="store_true",
+                        help="Run the pipeline on a small VM, capped at $1, then delete it.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and exit. This is the default.")
     parser.add_argument("--execute", action="store_true", help="Do the work. Refuses unless AVT_REMOTE_RENDER_CONFIRM=1.")
     parser.add_argument("--guest", action="store_true", help="Run on the machine that already has the files (the VM or the Mac).")
@@ -234,6 +240,21 @@ def run_guest(args, env):
 
 def _run_lock_v2(args, env, call, confirm):
     """Plan or launch the whole-song master. The v1e path does not enter here."""
+    if getattr(args, "path_preflight", False):
+        result = lock_v2.path_preflight(args.lock_dir or lock_v2.LOCK_DIR)
+        return 0 if result["ok"] else 2
+    if getattr(args, "delete_input_disk", False):
+        argv = plan.gcp_disk_delete_argv(lock_v2.INPUT_DISK_NAME, env.get("GCP_PROJECT", ""), args.zone)
+        if not confirm:
+            print(" ".join(argv))
+            print("dry-run: the input disk was not deleted")
+            return 0
+        if call is None:
+            call = _subprocess_call
+        result = call(argv)
+        return 0 if getattr(result, "returncode", 1) == 0 else 2
+    if getattr(args, "rehearsal", False):
+        return lock_v2.run_rehearsal(args, env, call, confirm)
     if not args.lock_dir:
         args.lock_dir = lock_v2.LOCK_DIR
     if args.instance_name == "avt-render-partnership":
@@ -261,6 +282,10 @@ def _run_lock_v2(args, env, call, confirm):
         return 2
     report["manifest_checked"] = True
     report["verified_files"] = checked["files"]
+    paths = lock_v2.path_preflight(args.lock_dir)
+    if not paths["ok"]:
+        print("refusing to create a VM: path preflight is not N/N", file=sys.stderr)
+        return 2
     print(
         f"sha256 ok on the launcher: {checked['files']} manifest files, "
         f"{checked['tree']} tree files",
