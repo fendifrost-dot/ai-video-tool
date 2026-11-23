@@ -85,7 +85,17 @@ def load_lock(path):
 
 
 def _subprocess_call(argv):
-    completed = subprocess.run(argv, capture_output=True, text=True)
+    # ssh carries ConnectTimeout=15. The cap only stops a command that never returns.
+    # The disk-ready wait inside the first ssh is 600s, so this stays above that.
+    timeout = 780 if len(argv) > 2 and argv[2] == "ssh" else None
+    try:
+        completed = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        completed = subprocess.CompletedProcess(
+            argv, 124,
+            stdout=exc.stdout or "",
+            stderr=(exc.stderr or "") + "\ngcloud ssh timed out\n",
+        )
     completed.stdout = (completed.stdout or "") + (completed.stderr or "")
     return completed
 

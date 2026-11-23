@@ -14,6 +14,7 @@ import json
 import math
 import os
 import shlex
+import signal
 import sys
 import tarfile
 import tempfile
@@ -832,6 +833,33 @@ def _fail_line(message):
     return f" || fail {shlex.quote(message)}"
 
 
+def _chown_login_user(roots):
+    """chown the login-user trees only. Never a home directory, /etc, or a symlink.
+
+    ``chown -RP`` does not follow a symlink out of the tree into ``~/.ssh`` or sshd's files.
+    """
+    lines = []
+    for root in roots:
+        if root not in LOGIN_USER_ROOTS:
+            raise ValueError(f"refusing to chown {root}")
+        quoted = shlex.quote(root)
+        lines.append(
+            f"case {quoted} in\n"
+            "  /workspace|/tmp/avt-remote|/tmp/claudia_lockrepro|/tmp/avt-stage) ;;\n"
+            f"  *) fail {shlex.quote('refusing to chown ' + root)} ;;\n"
+            "esac"
+        )
+        lines.append(
+            f"[ ! -L {quoted} ]" + _fail_line(f"refusing to chown symlink {root}")
+        )
+    quoted = " ".join(shlex.quote(path) for path in roots)
+    lines.append(
+        f'sudo chown -RP "$(id -un)":"$(id -gn)" -- {quoted}'
+        + _fail_line("sudo chown failed")
+    )
+    return "\n".join(lines)
+
+
 def prepare_tree_script(dirs, probe="workspace"):
     """Create parent dirs as root, then hand the login-user trees to that user.
 
@@ -870,11 +898,7 @@ def prepare_tree_script(dirs, probe="workspace"):
         lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir failed"))
         roots = login_user_roots(user)
         if roots:
-            quoted_roots = " ".join(shlex.quote(path) for path in roots)
-            lines.append(
-                f'sudo chown -R "$(id -un)":"$(id -gn)" -- {quoted_roots}'
-                + _fail_line("sudo chown failed")
-            )
+            lines.append(_chown_login_user(roots))
     if var:
         quoted = " ".join(shlex.quote(path) for path in var)
         lines.append(f"sudo mkdir -p -- {quoted}" + _fail_line("sudo mkdir of /var/avt failed"))
@@ -896,8 +920,7 @@ def prepare_tree_script(dirs, probe="workspace"):
         lines.extend([
             "sudo mkdir -p -- /workspace/partnership"
             + _fail_line("sudo mkdir of /workspace/partnership failed"),
-            'sudo chown -R "$(id -un)":"$(id -gn)" -- /workspace'
-            + _fail_line("sudo chown of /workspace failed"),
+            _chown_login_user(["/workspace"]),
             f"probe={shlex.quote(PROBE_PATH)}",
             f"printf '%s\\n' {shlex.quote(PROBE_BODY)} > \"$probe\""
             + _fail_line("login user cannot write /workspace/partnership"),
@@ -1025,8 +1048,11 @@ def publish_pull_script(paths):
 
 
 def gcp_ssh_argv(name, project, zone, command):
+    # One connection attempt. A refused port must return, not sit in gcloud's own retries.
     return [
         "gcloud", "compute", "ssh", "--quiet",
+        "--ssh-flag=-oConnectTimeout=15",
+        "--ssh-flag=-oConnectionAttempts=1",
         "--project", project or "GCP_PROJECT",
         "--zone", zone,
         name,
@@ -1883,27 +1909,83 @@ def _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=Fals
     raise SystemExit(message)
 
 
+SSH_REFUSED_LIMIT = 4
+
+
+def connection_refused(result):
+    return "Connection refused" in _result_text(result)
+
+
+def guest_startup_failed(text):
+    """True when the guest startup script has already exited in failure."""
+    text = text or ""
+    return any(marker in text for marker in (
+        "AVT_RENDER_FAIL",
+        "AVT_STARTUP_FAIL",
+        "startup-script failed",
+        "arguments are required",
+    ))
+
+
+def install_delete_on_signal(delete):
+    """On SIGINT or SIGTERM, delete the VM before the process leaves.
+
+    A signal handler runs; ``finally`` does not run for SIGTERM. ``delete`` no-ops
+    until the caller has a VM.
+    """
+    def handler(signum, _frame):
+        sys.stderr.write(f"signal {signum}; deleting the VM\n")
+        try:
+            delete()
+        except Exception as exc:
+            sys.stderr.write(f"delete after signal {signum} failed: {exc}\n")
+        raise SystemExit(128 + int(signum))
+
+    signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGINT, handler)
+    return handler
+
+
 def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=False,
-               rows=None, output=None, index_offset=0, output_is_dir=False):
-    """Run each argv. The first command is the one retried, so a multi-gigabyte scp is not repeated."""
+               rows=None, output=None, index_offset=0, output_is_dir=False, deadline=None):
+    """Run each argv. The first command is retried. A refused ssh stops after four.
+
+    A permission failure is not retried. ``Connection refused`` uses a short
+    backoff and then fails the stage with the ssh stderr, instead of repeating
+    the same preflight for the rest of the cap.
+    """
     for index, argv in enumerate(argvs):
         absolute = index + index_offset
         tries = attempts if index == 0 or not retry_first_only else 1
         result = None
-        for attempt in range(tries):
+        attempt = 0
+        refused = 0
+        backoff = 2
+        while True:
+            if deadline is not None and time.monotonic() > deadline:
+                raise SystemExit("stage wall clock exceeded; deleting the instance")
             result = call(argv)
             if getattr(result, "returncode", 1) == 0:
                 break
-            # A permission failure will not change on the next try. A refused
-            # connection has no AVT_PREFLIGHT_FAIL marker, so that one still retries.
             if preflight_refused(result):
                 _raise_prepare_failure(
                     absolute, argv, result, rows, output, output_is_dir=output_is_dir,
                 )
-            if attempt + 1 < tries:
-                sleep(retry_seconds)
-        else:
-            _raise_prepare_failure(absolute, argv, result, rows, output, output_is_dir=output_is_dir)
+            attempt += 1
+            if connection_refused(result):
+                refused += 1
+                if refused >= SSH_REFUSED_LIMIT:
+                    _raise_prepare_failure(
+                        absolute, argv, result, rows, output, output_is_dir=output_is_dir,
+                    )
+                sleep(backoff)
+                backoff = min(backoff * 2, 16)
+                continue
+            if attempt >= tries:
+                _raise_prepare_failure(
+                    absolute, argv, result, rows, output, output_is_dir=output_is_dir,
+                )
+            sleep(retry_seconds)
 
 
 def _row_size(row):
@@ -2197,6 +2279,7 @@ def _push_local(plan, call, sleep):
     _call_each(
         argvs[:prefix_n], call, attempts=attempts, sleep=sleep, retry_seconds=retry_seconds,
         rows=rows, output=output, output_is_dir=output_is_dir,
+        deadline=plan.get("stage_deadline"),
     )
     body = list(enumerate(argvs[prefix_n:], start=prefix_n))
     tail = []
@@ -2353,6 +2436,18 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
     created = False
     disk_ready = False
     billing_start = None
+    deleter = {"fn": None}
+
+    def _delete_vm():
+        fn = deleter["fn"]
+        if fn is not None:
+            fn()
+
+    previous_signals = {
+        signal.SIGINT: signal.getsignal(signal.SIGINT),
+        signal.SIGTERM: signal.getsignal(signal.SIGTERM),
+    }
+    install_delete_on_signal(_delete_vm)
     outcome = None
     pull_failed = False
     serial_text = ""
@@ -2411,6 +2506,9 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             raise SystemExit(message)
         created = True
         billing_start = clock()
+        deleter["fn"] = lambda: call(plan["delete_argv"])
+        if clock == time.monotonic:
+            plan["stage_deadline"] = clock() + min(float(plan.get("max_seconds") or 3600), 45 * 60)
         timer.begin("transfer")
         try:
             if plan.get("stage_from") == "local":
@@ -2436,7 +2534,7 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             if "AVT_RENDER_DONE" in serial_text:
                 outcome = "done"
                 break
-            if "AVT_RENDER_FAIL" in serial_text:
+            if "AVT_RENDER_FAIL" in serial_text or guest_startup_failed(serial_text):
                 if plan.get("failure_pull_argv"):
                     outcome = "failed"
                 raise SystemExit("guest reported AVT_RENDER_FAIL; deleting the instance")
@@ -2446,6 +2544,9 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
                 outcome = "timeout"
             raise SystemExit("timed out waiting for the guest; deleting the instance")
     finally:
+        signal.signal(signal.SIGINT, previous_signals[signal.SIGINT])
+        signal.signal(signal.SIGTERM, previous_signals[signal.SIGTERM])
+        deleter["fn"] = None
         if startup_path and os.path.isfile(startup_path):
             os.remove(startup_path)
         if created and outcome != "done" and plan.get("failure_pull_argv"):

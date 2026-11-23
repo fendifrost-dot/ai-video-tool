@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import sys
@@ -474,9 +475,10 @@ def test_cease_and_desist_path_survives_the_remote_shell(tmp_path):
         capture_output=True, text=True, check=True,
     )
     assert parent in printed.stdout.splitlines()
-    assert 'sudo chown -R "$(id -un)":"$(id -gn)"' in script
+    assert 'sudo chown -RP "$(id -un)":"$(id -gn)"' in script
+    assert "refusing to chown" in script
     for line in script.splitlines():
-        if 'chown -R "$(id -un)"' in line:
+        if 'chown -RP "$(id -un)"' in line:
             assert "/var/avt" not in shlex.split(line)
     assert "chmod 700 -- /var/avt" in script
     checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
@@ -772,6 +774,10 @@ def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
     assert lock_v2.guest_setup_shell().strip() in script
     assert lock_v2.guest_setup_shell().strip() in lock_v2.startup_script(lock_v2.LOCK_DIR, 10)
     assert script.index("/tmp/avt-go") < script.index("sha256sum -c")
+    assert "import final_render" not in script
+    assert "final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final" in script
+    assert "/tmp/avt-startup-failed" in script
+    assert "AVT_RENDER_FAIL startup-$code" in script
     assert "publish" not in script
     lock = tmp_path / "final_lock_v2"
     (lock / "scripts").mkdir(parents=True)
@@ -804,3 +810,34 @@ def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
     logged = (tmp_path / "out" / "execute.log").read_text()
     assert "Hyperdisk" in captured.err or "Hyperdisk" in captured.out or "Hyperdisk" in logged
     assert "gcloud create failed" in logged
+
+
+def test_refused_ssh_stops_at_four_and_signal_deletes():
+    calls = []
+
+    def call(_argv):
+        calls.append(1)
+        return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection refused\n")
+
+    try:
+        plan._call_each(
+            [plan.gcp_ssh_argv("vm", "p", "z", "true")],
+            call, attempts=24, sleep=lambda _s: None, retry_seconds=0,
+        )
+    except SystemExit as exc:
+        assert "prepare failed" in str(exc)
+    else:
+        raise AssertionError("refused ssh should fail the stage")
+    assert len(calls) == plan.SSH_REFUSED_LIMIT
+    deleted = []
+    previous = signal.getsignal(signal.SIGTERM)
+    plan.install_delete_on_signal(lambda: deleted.append("deleted"))
+    try:
+        handler = signal.getsignal(signal.SIGTERM)
+        try:
+            handler(signal.SIGTERM, None)
+        except SystemExit as exc:
+            assert exc.code == 128 + signal.SIGTERM
+        assert deleted == ["deleted"]
+    finally:
+        signal.signal(signal.SIGTERM, previous)

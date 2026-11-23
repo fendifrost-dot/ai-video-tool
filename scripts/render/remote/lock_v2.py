@@ -16,6 +16,7 @@ import os
 import random
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -871,6 +872,8 @@ cleanup() {{
   rm -f /tmp/avt-env /var/avt/env
   if [ ! -f /var/avt/done ]; then
     touch /var/avt/failed
+    echo startup > /tmp/avt-startup-failed
+    chmod 644 /tmp/avt-startup-failed || true
     echo AVT_RENDER_FAIL
   fi
   echo AVT_RENDER_WAIT_PULL
@@ -1949,12 +1952,27 @@ REHEARSAL_MAX_HOURS = 0.5
 
 
 def rehearsal_startup(render_chunks):
-    """Production setup, then wait for the launcher, then a small real check."""
-    mode = "chunks" if render_chunks else "help"
-    return """#!/bin/bash
+    """Production setup, then wait for the launcher, then a small real check.
+
+    ``final_render.py`` parses argv at import. ``python -c`` makes the program
+    name ``-c`` and exits 2 before mode and --scratch exist. Call the file.
+    """
+    smoke = "chunks" if render_chunks else "help"
+    body = r"""#!/bin/bash
 set -euo pipefail
 set +x
 MAX_MINUTES=30
+# A non-zero exit, including set -e, writes a marker the login user can read.
+# This script does not stop sshd and does not shut the VM down.
+on_exit() {
+  code=$?
+  if [ "$code" -ne 0 ]; then
+    echo "AVT_RENDER_FAIL startup-$code"
+    printf '%s\n' "startup-$code" > /tmp/avt-startup-failed
+    chmod 644 /tmp/avt-startup-failed || true
+  fi
+}
+trap on_exit EXIT
 # No input disk on a rehearsal. Touch the marker before apt so the launcher
 # does not wait out the install, and do not create /tmp or /workspace here.
 mkdir -p /var/avt/checks /var/avt/out /var/avt/scratch/v1e /var/avt/scratch/final /var/avt/scratch/states
@@ -1983,14 +2001,14 @@ echo AVT_STAGE verify_ok
 export GRADE_PARAMS="$LOCK/params/final_params_LOCK_v2.json"
 export TRANS_PARAMS="$GRADE_PARAMS"
 cd "$LOCK/scripts"
+/opt/avt-comp/bin/python -c 'import numpy, scipy, cv2; print("deps", numpy.__version__, scipy.__version__, cv2.__version__)'
 if [ -f /tmp/avt-rehearsal-chunks ]; then
-  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --grain 1 \\
-    --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \\
+  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --grain 1 \
+    --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \
     --lockrepro /tmp/claudia_lockrepro --tree /workspace/partnership --stills 0
   echo AVT_STAGE chunks_ok
 else
-  /opt/avt-comp/bin/python -c 'import final_render, numpy, scipy, cv2; print("imported", final_render.__file__)'
-  /opt/avt-comp/bin/python final_render.py --help
+  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --scratch /var/avt/scratch/final --help
   echo AVT_STAGE help_ok
 fi
 ffmpeg -y -f lavfi -i testsrc=size=320x180:rate=24:duration=0.2 -c:v ffv1 /tmp/smoke.mkv
@@ -2005,7 +2023,11 @@ while [ "$(date +%s)" -lt "$PULL_DEADLINE" ]; do
   fi
   sleep 2
 done
-""".replace("@@SETUP@@", guest_setup_shell()).replace("MODE", mode)
+exit 0
+"""
+    if smoke not in ("chunks", "help"):
+        raise ValueError(smoke)
+    return body.replace("@@SETUP@@", guest_setup_shell())
 
 
 def rehearsal_rows(lock_dir):
@@ -2104,6 +2126,18 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
 
     created = False
     startup = None
+    deleter = {"fn": None}
+
+    def _delete_vm():
+        fn = deleter["fn"]
+        if fn is not None:
+            fn()
+
+    previous_signals = {
+        signal.SIGINT: signal.getsignal(signal.SIGINT),
+        signal.SIGTERM: signal.getsignal(signal.SIGTERM),
+    }
+    plan.install_delete_on_signal(_delete_vm)
     try:
         started = time.monotonic()
         fd, startup = tempfile.mkstemp(prefix="avt-rehearsal-", suffix=".sh")
@@ -2116,7 +2150,11 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         result = logged(create, "create")
         if not mark("create", getattr(result, "returncode", 1) == 0, started):
             return 2
+        if time.monotonic() - started > 180:
+            print("rehearsal create exceeded 180s", file=sys.stderr)
+            return 2
         created = True
+        deleter["fn"] = lambda: logged(plan.gcp_delete_argv(name, project, zone), "delete")
         started = time.monotonic()
         sums = os.path.join(out, "SHA256SUMS.rehearsal")
         with open(sums, "w") as handle:
@@ -2150,6 +2188,7 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             "output_is_dir": True,
             "transfer_attempts": 12,
             "ssh_retry_seconds": 5,
+            "stage_deadline": time.monotonic() + 15 * 60,
             "side_files": {transfer_argvs.parent_local: transfer_argvs.parent_list},
             "lock_rows": None,
         }
@@ -2157,25 +2196,49 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             plan._push_local(mini, lambda argv: logged(argv, "scp" if argv[2] == "scp" else "ssh"), time.sleep)
             copied = True
         except SystemExit as exc:
+            if isinstance(getattr(exc, "code", None), int) and exc.code >= 128:
+                raise
             print(exc, file=sys.stderr)
+            copied = False
+        if time.monotonic() - started > 15 * 60:
+            print("rehearsal transfer exceeded 900s", file=sys.stderr)
             copied = False
         if not mark("transfer", copied, started):
             return 2
         started = time.monotonic()
-        deadline = time.monotonic() + capped * 3600
+        deadline = started + 10 * 60
         serial = ""
+        refused = 0
+        marker = "if [ -f /tmp/avt-startup-failed ]; then echo AVT_STARTUP_FAIL; cat /tmp/avt-startup-failed; else echo AVT_STARTUP_WAIT; fi"
         while time.monotonic() < deadline:
             if (time.monotonic() - started) / 3600.0 * REHEARSAL_RATE > REHEARSAL_CEILING:
                 print("rehearsal elapsed cost would exceed $1; deleting the VM", flush=True)
                 break
             polled = logged(plan.gcp_serial_argv(name, project, zone), "serial")
-            if getattr(polled, "returncode", 1) != 0:
-                time.sleep(5)
-                continue
-            serial = getattr(polled, "stdout", "") or ""
-            if "AVT_REHEARSAL_DONE" in serial or "AVT_RENDER_FAIL" in serial:
+            if getattr(polled, "returncode", 1) == 0:
+                serial = getattr(polled, "stdout", "") or ""
+            if "AVT_REHEARSAL_DONE" in serial or plan.guest_startup_failed(serial):
                 break
-            time.sleep(10)
+            probed = logged(plan.gcp_ssh_argv(name, project, zone, marker), "ssh")
+            probed_text = (getattr(probed, "stdout", "") or "") + (getattr(probed, "stderr", "") or "")
+            if plan.connection_refused(probed):
+                refused += 1
+                print(probed_text, file=sys.stderr)
+                if refused >= plan.SSH_REFUSED_LIMIT:
+                    print("rehearsal ssh refused; failing the guest stage", file=sys.stderr)
+                    break
+                time.sleep(2 ** refused)
+                continue
+            if "AVT_STARTUP_FAIL" in probed_text or plan.guest_startup_failed(probed_text):
+                serial += "\n" + probed_text
+                break
+            time.sleep(5)
+        if plan.guest_startup_failed(serial) or refused >= plan.SSH_REFUSED_LIMIT:
+            mark("setup", False, started)
+            mark("verify", False, started)
+            mark("smoke", False, started)
+            mark("assemble", False, started)
+            return 2
         mark("setup", "stack " in serial or "AVT_STAGE setup" in serial, started)
         mark("verify", "AVT_STAGE verify_ok" in serial, started)
         mark("smoke", "AVT_STAGE chunks_ok" in serial or "AVT_STAGE help_ok" in serial, started)
@@ -2204,8 +2267,11 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             return 2
         return 0
     finally:
+        signal.signal(signal.SIGINT, previous_signals[signal.SIGINT])
+        signal.signal(signal.SIGTERM, previous_signals[signal.SIGTERM])
         started = time.monotonic()
         if created:
+            deleter["fn"] = None
             logged(plan.gcp_delete_argv(name, project, zone), "delete")
         if startup and os.path.isfile(startup):
             os.remove(startup)

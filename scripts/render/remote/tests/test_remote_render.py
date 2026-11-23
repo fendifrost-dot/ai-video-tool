@@ -799,9 +799,10 @@ def test_remote_shell_keeps_spaces_ampersand_quotes_and_parens(tmp_path):
         parent = os.path.dirname(f"{plan.WORK_ROOT}/{rel}")
         assert parent in words
         assert parent in printed
-    assert 'sudo chown -R "$(id -un)":"$(id -gn)"' in script
+    assert 'sudo chown -RP "$(id -un)":"$(id -gn)"' in script
+    assert "refusing to chown" in script
     for line in script.splitlines():
-        if 'chown -R "$(id -un)"' in line:
+        if 'chown -RP "$(id -un)"' in line:
             assert "/var/avt" not in line
     assert "chmod 700 -- /var/avt" in script
     probed = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
