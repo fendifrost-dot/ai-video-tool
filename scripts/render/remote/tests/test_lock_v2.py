@@ -500,6 +500,38 @@ def test_lock_raws_reuse_identical_and_v1e_skips_a_finished_chunk(tmp_path):
     calls.clear()
     lock_v2.ensure_lock_raws(str(tmp_path), names=[name], run_one=run_fresh)
     assert calls == [name]
+    for lock_name, pix in (("warcry", "bgr24"), ("montage", "yuv420p")):
+        folder = os.path.join(lock_v2.LOCKREPRO, lock_name)
+        os.makedirs(folder, exist_ok=True)
+        raw_path = os.path.join(folder, "frames_rgb24.raw")
+        with open(raw_path, "wb") as handle:
+            handle.write(b"raw-frames")
+        body = (
+            "{'name': '%s', 'identical': True, 'pix_fmt': '%s', "
+            "'lock_sha256': '%s', 'raw': '%s'}\n" % (lock_name, pix, digest, raw_path)
+        )
+        repro_path = os.path.join(folder, "repro.json")
+        with open(repro_path, "w") as handle:
+            handle.write(body)
+        calls.clear()
+        got = lock_v2.ensure_lock_raws(str(tmp_path), names=[lock_name], run_one=run_one)
+        assert calls == []
+        assert open(repro_path).read() == body
+        assert all(row["path"].startswith("/tmp/") for row in got)
+    bad = os.path.join(lock_v2.LOCKREPRO, "salad")
+    os.makedirs(bad, exist_ok=True)
+    with open(os.path.join(bad, "frames_rgb24.raw"), "wb") as handle:
+        handle.write(b"raw-frames")
+    with open(os.path.join(bad, "repro.json"), "w") as handle:
+        json.dump({"name": "salad", "identical": False, "pix_fmt": "rgb24", "raw": "x"}, handle)
+    calls.clear()
+    try:
+        lock_v2.ensure_lock_raws(str(tmp_path), names=["salad"], run_one=run_one)
+    except SystemExit as exc:
+        assert "will not be rebuilt" in str(exc)
+    else:
+        raise AssertionError("a present raw was rebuilt")
+    assert calls == []
     chunk_dir = tmp_path / "v1e"
     chunk_dir.mkdir()
     chunk = {"sf0": 3070, "nf": 2, "state_load": None}

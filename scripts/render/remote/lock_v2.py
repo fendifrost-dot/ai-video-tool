@@ -44,7 +44,7 @@ GB_PER_V1E = 15.0
 DOC_INPUT_GB = 28.81
 DOC_INPUT_FILES = 374
 PULL_GB = 8.0
-LOCK_RAW_GB = 8.0
+LOCK_RAW_GB = 7.0
 FINAL_MEASURED_FRAMES = 232
 FINAL_MEASURED_SECONDS = 352.0
 # Planning allowances around the lock doc's measured stages. Not a second rate card.
@@ -2032,28 +2032,62 @@ def _on_stage_printer(timer, timing_file):
     return on_stage
 
 
-def _raw_is_ready(name, expected_sha):
+def _load_repro(path):
+    """repro.json is JSON. A Python literal from the repro script is accepted too."""
+    with open(path) as handle:
+        text = handle.read()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = ast.literal_eval(text)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} is not an object")
+    return data
+
+
+def _inspect_raw(name, expected_sha):
+    """Decide whether /tmp already holds a usable pre-encode raw.
+
+    A present raw that is not identical is a hard stop. Rebuilding it runs in
+    /workspace/partnership, and that disk has no room for a second copy.
+    """
     repro_path = os.path.join(LOCKREPRO, name, "repro.json")
     raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
-    if not os.path.isfile(repro_path) or not os.path.isfile(raw_path) or os.path.getsize(raw_path) <= 0:
-        return False
+    raw_ok = os.path.isfile(raw_path) and os.path.getsize(raw_path) > 0
+    if not os.path.isfile(repro_path) or not raw_ok:
+        return {"ready": False, "blocked": False, "reason": "missing"}
     try:
-        data = _load_json(repro_path)
-    except (OSError, json.JSONDecodeError):
-        return False
-    if data.get("identical") is not True or not data.get("pix_fmt"):
-        return False
+        data = _load_repro(repro_path)
+    except (OSError, json.JSONDecodeError, ValueError, SyntaxError):
+        return {"ready": False, "blocked": True, "reason": "repro.json is not readable"}
+    if data.get("identical") is not True:
+        return {"ready": False, "blocked": True, "reason": "identical is not true"}
+    pix = data.get("pix_fmt")
+    if pix not in ("rgb24", "bgr24", "gbrp", "yuv420p"):
+        return {"ready": False, "blocked": True, "reason": f"pix_fmt {pix} is unsupported"}
     digest = str(data.get("lock_sha256") or "").strip().lower()
     if expected_sha and digest != expected_sha:
-        return False
-    return True
+        shown = digest or "(missing)"
+        return {
+            "ready": False,
+            "blocked": True,
+            "reason": f"lock_sha256 {shown} != parity {expected_sha}",
+        }
+    return {
+        "ready": True,
+        "blocked": False,
+        "rewrite": data.get("raw") != raw_path,
+        "reason": "",
+    }
 
 
 def _normalize_repro_json(name):
-    """Point repro.json at the absolute raw the guest will read."""
+    """Point repro.json at the absolute /tmp raw. Leave a correct file untouched."""
     repro_path = os.path.join(LOCKREPRO, name, "repro.json")
     raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
-    data = _load_json(repro_path)
+    data = _load_repro(repro_path)
+    if data.get("raw") == raw_path:
+        return data
     data["raw"] = raw_path
     _write_json(repro_path, data)
     return data
@@ -2108,17 +2142,22 @@ def _run_repros(names, parallel, run_one):
 def ensure_lock_raws(lock_dir, names=None, parallel=3, run_one=None):
     """Prepare /tmp/claudia_lockrepro/<name>/{frames_rgb24.raw,repro.json} on the launcher.
 
-    An existing repro.json with identical true and the parity lock_sha256 is reused.
-    Otherwise the box runs the repro, at most three at a time. The VM never rebuilds these.
+    An existing repro.json with identical true and the parity lock_sha256 is reused
+    in place. The raws are not copied onto /workspace. A raw that is already on disk
+    and is not identical is left alone and the launch stops. The box runs the repro
+    only when that name has no raw yet, at most three at a time. The VM never rebuilds these.
     """
+    if not str(LOCKREPRO).startswith("/tmp/"):
+        raise SystemExit(f"lock raws stay under /tmp, not {LOCKREPRO}")
     names = list(names or LOCK_NAMES)
     shas = load_lock_shas(lock_dir)
     pending = []
-    ready = []
     for name in names:
-        if _raw_is_ready(name, shas.get(name)):
+        status = _inspect_raw(name, shas.get(name))
+        if status["ready"]:
             print(f"lock raw {name}: reuse", flush=True)
-            ready.append(name)
+        elif status["blocked"]:
+            raise SystemExit(f"lock raw {name} is on disk and will not be rebuilt: {status['reason']}")
         else:
             pending.append(name)
     if pending:
@@ -2126,12 +2165,19 @@ def ensure_lock_raws(lock_dir, names=None, parallel=3, run_one=None):
         _run_repros(pending, parallel, run_one or _default_repro)
     rows = []
     for name in names:
-        if not _raw_is_ready(name, shas.get(name)):
+        status = _inspect_raw(name, shas.get(name))
+        if not status["ready"]:
             raise SystemExit(f"lock raw {name} is not identical")
-        _normalize_repro_json(name)
-        rows.append(_file_row(os.path.join(LOCKREPRO, name, "frames_rgb24.raw")))
-        rows.append(_file_row(os.path.join(LOCKREPRO, name, "repro.json")))
+        if status.get("rewrite"):
+            _normalize_repro_json(name)
+        raw_path = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
+        repro_path = os.path.join(LOCKREPRO, name, "repro.json")
+        rows.append(_file_row(raw_path))
+        rows.append(_file_row(repro_path))
     rows.append(_write_raw_sums([row for row in rows if row["path"].endswith("frames_rgb24.raw")]))
+    for row in rows:
+        if not str(row["path"]).startswith(LOCKREPRO + os.sep):
+            raise SystemExit(f"lock raw escaped /tmp: {row['path']}")
     print(f"lock raws: {len(names)} ready, {sum(row['bytes'] for row in rows)} bytes", flush=True)
     return rows
 
@@ -2149,14 +2195,14 @@ def verify_lock_raws(run):
         path = os.path.join(LOCKREPRO, name, "repro.json")
         if not os.path.isfile(path):
             continue
-        data = _load_json(path)
+        data = _load_repro(path)
         raw = os.path.join(LOCKREPRO, name, "frames_rgb24.raw")
         if data.get("identical") is not True:
             raise SystemExit(f"lock raw {name} identical is not true")
         if data.get("raw") != raw:
             raise SystemExit(f"lock raw {name} raw path is {data.get('raw')}, not {raw}")
-        if not data.get("pix_fmt"):
-            raise SystemExit(f"lock raw {name} repro.json has no pix_fmt")
+        if data.get("pix_fmt") not in ("rgb24", "bgr24", "gbrp", "yuv420p"):
+            raise SystemExit(f"lock raw {name} pix_fmt {data.get('pix_fmt')} is unsupported")
 
 
 def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decoder=None, sleep=time.sleep):
