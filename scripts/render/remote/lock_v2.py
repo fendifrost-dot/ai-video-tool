@@ -122,6 +122,9 @@ PREVIEW_LOGS = (
 V1E_REF_FRAMES = tuple(list(range(3070, 3078)) + list(range(4975, 4981)))
 GUEST_PYTHON = "/opt/avt-comp/bin/python"
 LOCKREPRO = "/tmp/claudia_lockrepro"
+PIPELINE_ROLE = "final pipeline code/params"
+PIPELINE_MODULES = ("board_v1.py", "grade_v1.py", "transitions_v1.py")
+REHEARSAL_RANGE = "124-127"
 SCRATCH = "/var/avt/scratch"
 V1E_DIR = "/var/avt/scratch/v1e"
 FINAL_DIR = "/var/avt/scratch/final"
@@ -2331,16 +2334,29 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         input_files = DOC_INPUT_FILES
         manifest_files = []
         frozen_errors = []
+        pipeline_errors = []
     else:
         input_gb = validate_manifest(manifest) / 1_000_000_000.0
         manifest_files = list(manifest["files"])
         frozen_errors = []
+        pipeline_errors = []
         lock_shas = load_lock_shas(lock_dir)
         if lock_shas:
             _found, frozen_errors, extras = frozen_coverage_errors(manifest["files"], lock_shas)
             if not frozen_errors:
                 manifest_files.extend(extras)
                 input_gb += sum(item["bytes"] for item in extras) / 1_000_000_000.0
+        full_tree = len(manifest["files"]) >= 50 or lock_dir.rstrip("/") == LOCK_DIR
+        if full_tree:
+            gaps = missing_pipeline_modules(manifest["files"])
+            if gaps:
+                pipeline_errors.append(
+                    "final pipeline modules missing from the manifest: " + ", ".join(gaps)
+                )
+            before = {row.get("path") for row in manifest_files}
+            manifest_files = augment_stage_rows(lock_dir, manifest_files)
+            added = [row for row in manifest_files if row.get("path") not in before]
+            input_gb += sum(int(row.get("bytes") or 0) for row in added) / 1_000_000_000.0
         input_files = len(manifest_files)
         manifest_note = ""
     proj = project(
@@ -2384,6 +2400,8 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         reasons.append(
             "frozen renders are not covered by the manifest: " + "; ".join(frozen_errors)
         )
+    if pipeline_errors:
+        reasons.append("refusing to create a VM: " + "; ".join(pipeline_errors))
     if proj["usd"][1] > cost_ceiling:
         reasons.append(
             f"refusing to create a VM: projected cost ${proj['usd'][1]:.2f} "
@@ -2776,8 +2794,91 @@ def local_video_ok(path):
     return probed.returncode == 0 and bool((probed.stdout or "").strip())
 
 
+def _is_pipeline_row(row):
+    role = str(row.get("role") or "").strip()
+    base = os.path.basename(row.get("path") or "")
+    return role == PIPELINE_ROLE or base in PIPELINE_MODULES
+
+
+def missing_pipeline_modules(files):
+    """Basenames from PIPELINE_MODULES that the manifest does not list."""
+    bases = {os.path.basename(row.get("path") or "") for row in files or []}
+    return [name for name in PIPELINE_MODULES if name not in bases]
+
+
+def neighbor_code_rows(paths):
+    """Every .py and .json beside a pipeline module. The import path is the directory."""
+    seen = set(paths)
+    rows = []
+    for path in paths:
+        folder = os.path.dirname(path)
+        if not os.path.isdir(folder):
+            continue
+        for name in sorted(os.listdir(folder)):
+            if not name.endswith((".py", ".json")):
+                continue
+            full = os.path.join(folder, name)
+            if full in seen or not os.path.isfile(full):
+                continue
+            seen.add(full)
+            rows.append({"path": full, "bytes": os.path.getsize(full)})
+    return rows
+
+
+def song_and_literal_rows(lock_dir):
+    """GRADE_PARAMS song_wav, and .py/.json/.wav paths named in final_render.py."""
+    rows = []
+    seen = set()
+    params = os.path.join(lock_dir, "params", "final_params_LOCK_v2.json")
+    if os.path.isfile(params):
+        try:
+            with open(params) as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        master = data.get("master") if isinstance(data, dict) else None
+        wav = master.get("song_wav") if isinstance(master, dict) else None
+        if isinstance(wav, str) and wav.startswith("/") and os.path.isfile(wav):
+            seen.add(wav)
+            rows.append({"path": wav, "bytes": os.path.getsize(wav)})
+    script = os.path.join(lock_dir, "scripts", "final_render.py")
+    if os.path.isfile(script):
+        try:
+            text = open(script).read()
+        except OSError:
+            text = ""
+        for match in re.finditer(r'["\'](/(?:workspace|tmp)/[^"\']+)["\']', text):
+            path = match.group(1)
+            if path in seen or not path.endswith((".py", ".json", ".wav")):
+                continue
+            if not os.path.isfile(path):
+                continue
+            seen.add(path)
+            rows.append({"path": path, "bytes": os.path.getsize(path)})
+    return rows
+
+
+def augment_stage_rows(lock_dir, files):
+    """Add sibling pipeline code and the range inputs. Existing rows stay."""
+    by_path = {}
+    for row in files or []:
+        path = row.get("path")
+        if path:
+            by_path[path] = row
+    module_paths = [row["path"] for row in by_path.values() if _is_pipeline_row(row)]
+    for row in neighbor_code_rows(module_paths):
+        by_path.setdefault(row["path"], row)
+    for row in song_and_literal_rows(lock_dir):
+        by_path.setdefault(row["path"], row)
+    return list(by_path.values())
+
+
 def rehearsal_rows(lock_dir):
-    """scripts, params, and up to three manifest files of at most 5 MB."""
+    """Lock scripts and params, every final-pipeline manifest row, and the range inputs.
+
+    The range is frames 124-127. That needs the params JSON, ``master.song_wav``,
+    the pipeline modules on ``sys.path``, and the spins_T1 raw shipped beside this list.
+    """
     lock_dir = (lock_dir or "").rstrip("/")
     rows = []
     for sub in ("scripts", "params"):
@@ -2785,7 +2886,11 @@ def rehearsal_rows(lock_dir):
         if not os.path.isdir(base):
             continue
         for dirpath, _dirs, names in os.walk(base):
+            if "__pycache__" in dirpath.split(os.sep):
+                continue
             for name in names:
+                if name.startswith(".") or name.endswith(".pyc"):
+                    continue
                 path = os.path.join(dirpath, name)
                 try:
                     size = os.path.getsize(path)
@@ -2793,25 +2898,183 @@ def rehearsal_rows(lock_dir):
                     continue
                 rows.append({"path": path, "bytes": size})
     manifest, _note = peek_manifest(lock_dir) if lock_dir else (None, "")
-    small = []
-    total = None
-    if manifest:
-        total = 0
-        for row in manifest["files"]:
-            size = int(row.get("bytes") or 0)
-            total += size
-            path = row.get("path") or ""
-            if path.startswith(lock_dir + os.sep) or path in {item["path"] for item in rows}:
-                continue
-            if size <= 5_000_000 and os.path.isfile(path):
-                small.append((size, row))
-        small.sort(key=lambda item: item[0])
-        for _size, row in small[:3]:
-            rows.append({"path": row["path"], "bytes": int(row.get("bytes") or 0)})
+    files = (manifest or {}).get("files") or []
+    total = sum(int(row.get("bytes") or 0) for row in files) if manifest else None
+    for row in files:
+        if _is_pipeline_row(row):
+            rows.append(row)
+    rows = augment_stage_rows(lock_dir, rows)
+    names = sorted({
+        os.path.basename(row["path"]) for row in rows
+        if os.path.basename(row.get("path") or "") in PIPELINE_MODULES
+    })
+    if names:
+        print("rehearsal pipeline modules: " + ", ".join(names), flush=True)
     render_chunks = total is not None and total <= 30_000_000 and any(
         path.endswith("final_render.py") for path in (item["path"] for item in rows)
     )
     return rows, render_chunks
+
+
+def _preflight_python():
+    chosen = os.environ.get("AVT_PREFLIGHT_PYTHON") or ""
+    if chosen and os.path.isfile(chosen):
+        return chosen
+    venv = "/workspace/venv_comp/bin/python"
+    if os.path.isfile(venv):
+        return venv
+    return sys.executable
+
+
+def _materialize_stage(sandbox, rows):
+    missing = []
+    for row in rows:
+        src = row.get("path") or ""
+        if not src or not os.path.isfile(src):
+            missing.append(src or "(blank)")
+            continue
+        dest = os.path.join(sandbox, src.lstrip("/"))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if os.path.lexists(dest):
+            continue
+        if src.startswith("/tmp/") or os.path.getsize(src) > 32 * 1024 * 1024:
+            os.symlink(os.path.abspath(src), dest)
+        else:
+            shutil.copy2(src, dest)
+    return missing
+
+
+def _dryrun_argv(python, script, tree, lockrepro):
+    return [
+        python, script, "dryrun", "--range", REHEARSAL_RANGE,
+        "--chunk", "4", "--grain", "1",
+        "--scratch", "/tmp/avt-import-scratch",
+        "--v1e_dir", "/tmp/avt-import-v1e",
+        "--lockrepro", lockrepro,
+        "--tree", tree,
+        "--stills", "0",
+    ]
+
+
+def import_preflight(lock_dir, rows, runner=None):
+    """Lay ``rows`` out like the guest and import final_render for frames 124-127.
+
+    The copy is the only tree the process is given. A module that exists on the
+    launcher but was left out of ``rows`` is not visible. ``runner`` replaces
+    the process spawn in tests.
+    """
+    lock_dir = (lock_dir or "").rstrip("/")
+    rows = [row for row in rows if row.get("path")]
+    by_path = {}
+    for row in rows:
+        by_path.setdefault(row["path"], row)
+    rows = list(by_path.values())
+    script = os.path.join(lock_dir, "scripts", "final_render.py")
+    errors = []
+    if not any(row["path"] == script for row in rows):
+        errors.append(f"import preflight: {script} is not in the staged set")
+    gaps = [
+        name for name in PIPELINE_MODULES
+        if not any(os.path.basename(row["path"]) == name for row in rows)
+    ]
+    if gaps and any(_is_pipeline_row(row) for row in rows):
+        errors.append("import preflight: staged set is missing " + ", ".join(gaps))
+    sandbox = tempfile.mkdtemp(prefix="avt-import-preflight-")
+    try:
+        if not errors:
+            errors.extend(
+                f"import preflight: missing {path}" for path in _materialize_stage(sandbox, rows)
+            )
+        sandbox_script = os.path.join(sandbox, script.lstrip("/"))
+        isolate = any(row["path"].startswith("/workspace/") for row in rows)
+        if isolate and os.path.isdir(os.path.join(sandbox, "workspace")):
+            run_script = script
+            tree = os.path.dirname(lock_dir)
+            params = os.path.join(lock_dir, "params", "final_params_LOCK_v2.json")
+        else:
+            run_script = sandbox_script
+            tree = os.path.dirname(os.path.dirname(os.path.dirname(sandbox_script)))
+            params = os.path.join(sandbox, lock_dir.lstrip("/"), "params", "final_params_LOCK_v2.json")
+        env = os.environ.copy()
+        env["GRADE_PARAMS"] = params
+        env["TRANS_PARAMS"] = params
+        env["PYTHONNOUSERSITE"] = "1"
+        argv = _dryrun_argv(_preflight_python(), run_script, tree, LOCKREPRO)
+        if errors:
+            detail = ""
+            code = 2
+        elif runner is not None:
+            completed = runner(argv, env)
+            code = getattr(completed, "returncode", 1)
+            detail = (getattr(completed, "stdout", "") or "") + (getattr(completed, "stderr", "") or "")
+        else:
+            code, detail = _run_import(sandbox, argv, env, isolate)
+        if not errors and code != 0:
+            text = detail or ""
+            imported = (
+                "ModuleNotFoundError" not in text
+                and "FileNotFoundError" not in text
+                and (
+                    "invalid choice" in text
+                    or "unrecognized arguments" in text
+                    or "usage:" in text.lower()
+                )
+            )
+            if imported:
+                print(
+                    "import preflight: dryrun is not a subcommand; the import ran",
+                    flush=True,
+                )
+                code = 0
+            else:
+                errors.append("import preflight: final_render.py dryrun --range 124-127 failed")
+        if code != 0 and detail:
+            errors.append(detail[-2000:])
+    finally:
+        shutil.rmtree(sandbox, ignore_errors=True)
+    line = "import preflight: pass" if not errors else "import preflight: fail"
+    print(line, flush=True)
+    for err in errors[:12]:
+        print(err, file=sys.stderr)
+    return {"ok": not errors, "errors": errors, "line": line}
+
+
+def _run_import(sandbox, argv, env, isolate):
+    if not isolate:
+        try:
+            completed = subprocess.run(
+                argv, env=env, capture_output=True, text=True, timeout=180,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return 1, str(exc)
+        return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
+    guest = os.path.join(sandbox, "workspace")
+    quoted = " ".join(shlex.quote(part) for part in argv)
+    script = (
+        "set -euo pipefail\n"
+        "mkdir -p /workspace /tmp/avt-import-scratch /tmp/avt-import-v1e\n"
+        f"mount --bind {shlex.quote(guest)} /workspace\n"
+        f"exec {quoted}\n"
+    )
+    try:
+        completed = subprocess.run(
+            ["unshare", "--user", "--mount", "--map-root-user", "bash", "-c", script],
+            env=env, capture_output=True, text=True, timeout=180,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, str(exc)
+    return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
+
+
+def import_preflight_from_lock(lock_dir, raw_rows=()):
+    rows, _chunks = rehearsal_rows(lock_dir)
+    for row in raw_rows or []:
+        rows.append(row)
+    for name in ("frames_rgb24.raw", "repro.json"):
+        path = os.path.join(LOCKREPRO, "spins_T1", name)
+        if os.path.isfile(path):
+            rows.append({"path": path, "bytes": os.path.getsize(path)})
+    return import_preflight(lock_dir, rows)
 
 
 def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
@@ -2862,8 +3125,13 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             return 2
     rows, render_chunks = rehearsal_rows(lock_dir)
     if not rows:
-        print(f"refusing rehearsal: {lock_dir} has no scripts, params, or small inputs", file=sys.stderr)
+        print(f"refusing rehearsal: {lock_dir} has no scripts, params, or pipeline modules", file=sys.stderr)
         return 2
+    if len(manifest_files) >= 50 or lock_dir == LOCK_DIR:
+        checked = import_preflight(lock_dir, rows + list(raw_rows))
+        if not checked["ok"]:
+            print("refusing rehearsal: import preflight failed", file=sys.stderr)
+            return 2
     if call is None:
         call = __import__("remote_render")._subprocess_call
     name = "avt-rehearsal-lock-v2"

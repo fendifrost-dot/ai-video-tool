@@ -619,6 +619,127 @@ def test_rehearsal_transfer_ships_the_raw_and_verify_uses_absolute_paths(tmp_pat
         "[ ! -s /tmp/claudia_lockrepro/spins_T1/frames_rgb24.raw ]" in script
 
 
+def test_rehearsal_stages_the_pipeline_and_import_preflight_runs(tmp_path, capsys):
+    partnership = tmp_path / "partnership"
+    grade = partnership / "first_half" / "claudia_vfx" / "grade_v1"
+    trans = partnership / "first_half" / "claudia_vfx" / "transitions_v1"
+    grade.mkdir(parents=True)
+    trans.mkdir(parents=True)
+    (grade / "board_v1.py").write_text("BOARD = 1\n")
+    (grade / "grade_v1.py").write_text("GRADE = 1\n")
+    (grade / "helper.py").write_text("HELPER = 1\n")
+    (trans / "transitions_v1.py").write_text("TRANS = 1\n")
+    lock = partnership / "final_lock_v2"
+    (lock / "scripts").mkdir(parents=True)
+    (lock / "params").mkdir()
+    wav = partnership / "song.wav"
+    wav.write_bytes(b"wav-bytes")
+    (lock / "params" / "final_params_LOCK_v2.json").write_text(json.dumps({
+        "master": {"song_wav": str(wav)},
+    }))
+    (lock / "scripts" / "final_render.py").write_text(
+        "import os, sys, json\n"
+        "root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))\n"
+        "sys.path.insert(0, os.path.join(root, 'first_half/claudia_vfx/grade_v1'))\n"
+        "sys.path.insert(0, os.path.join(root, 'first_half/claudia_vfx/transitions_v1'))\n"
+        "import board_v1, grade_v1, transitions_v1, helper\n"
+        "P = json.load(open(os.environ['GRADE_PARAMS']))\n"
+        "open(P['master']['song_wav']).close()\n"
+        "if __name__ == '__main__':\n"
+        "    if len(sys.argv) > 1 and sys.argv[1] == 'dryrun' and '124-127' in sys.argv:\n"
+        "        print('dryrun 124-127')\n"
+        "        raise SystemExit(0)\n"
+        "    raise SystemExit(2)\n"
+    )
+    files = []
+    for path in (grade / "board_v1.py", grade / "grade_v1.py", trans / "transitions_v1.py"):
+        payload = path.read_bytes()
+        files.append({
+            "path": str(path),
+            "bytes": len(payload),
+            "sha256": _sha(payload),
+            "role": "final pipeline code/params",
+        })
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps({
+        "n_files": len(files),
+        "total_bytes": sum(row["bytes"] for row in files),
+        "files": files,
+    }))
+    rows, _chunks = lock_v2.rehearsal_rows(str(lock))
+    staged = {row["path"] for row in rows}
+    for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py", "helper.py"):
+        assert any(path.endswith("/" + name) for path in staged)
+    assert str(wav) in staged
+    passed = lock_v2.import_preflight(str(lock), rows)
+    assert passed["ok"], passed["errors"]
+    omitted = [row for row in rows if not row["path"].endswith("/board_v1.py")]
+    failed = lock_v2.import_preflight(str(lock), omitted)
+    assert not failed["ok"]
+    out = capsys.readouterr().out
+    assert "import preflight: pass" in out
+    assert "rehearsal pipeline modules:" in out
+
+
+def test_full_run_keeps_pipeline_modules_in_the_stage_list(tmp_path):
+    lock = tmp_path / "final_lock_v2"
+    (lock / "scripts").mkdir(parents=True)
+    (lock / "params").mkdir()
+    wav = tmp_path / "song.wav"
+    wav.write_bytes(b"wav")
+    (lock / "params" / "final_params_LOCK_v2.json").write_text(json.dumps({
+        "master": {"song_wav": str(wav)},
+    }))
+    (lock / "scripts" / "final_render.py").write_text("print('render')\n")
+    grade = tmp_path / "grade_v1"
+    grade.mkdir()
+    files = []
+    for index in range(50):
+        path = tmp_path / f"pad{index}.bin"
+        path.write_bytes(b"x")
+        files.append({"path": str(path), "bytes": 1, "sha256": _sha(b"x")})
+    bare = {
+        "n_files": len(files),
+        "total_bytes": len(files),
+        "files": files,
+    }
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps(bare))
+
+    def plan_for():
+        return lock_v2.build_plan(
+            {"GCP_PROJECT": "p"}, lock_dir=str(lock), zone="us-central1-a", max_hours=8,
+            instance_name="n", confirm=False, output=str(tmp_path / "out"),
+            timing_path=str(tmp_path / "timing.json"), cost_ceiling=15, spot=False,
+            machine_type="c4-standard-16", backend="gcp", stage_from="local",
+            env_file=str(tmp_path / "env"),
+        )
+
+    refused = plan_for()
+    assert "board_v1.py" in refused["refuse_reason"]
+    for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py"):
+        path = grade / name
+        path.write_text(name + "\n")
+        payload = path.read_bytes()
+        files.append({
+            "path": str(path),
+            "bytes": len(payload),
+            "sha256": _sha(payload),
+            "role": "final pipeline code/params",
+        })
+    (grade / "helper.py").write_text("helper\n")
+    covered = {
+        "n_files": len(files),
+        "total_bytes": sum(row["bytes"] for row in files),
+        "files": files,
+    }
+    (lock / "MANIFEST_LOCK_v2_inputs.json").write_text(json.dumps(covered))
+    report = plan_for()
+    assert "board_v1.py" not in report["refuse_reason"]
+    staged = {row["path"] for row in report["transfer_rows"]}
+    for name in ("board_v1.py", "grade_v1.py", "transitions_v1.py", "helper.py"):
+        assert any(path.endswith("/" + name) for path in staged)
+    assert str(wav) in staged
+
+
 def test_runner_source_does_not_hardcode_a_content_hash():
     text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
     assert re.search(r"\b[0-9a-f]{64}\b", text) is None
