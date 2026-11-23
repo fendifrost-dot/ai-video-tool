@@ -808,6 +808,33 @@ def probe_errors(data, frames=None, codec=None):
     return errors
 
 
+def guest_setup_shell():
+    """The apt and pip block production and the rehearsal both run.
+
+    One function, so a pin change cannot land in only one of them.
+    """
+    return """export DEBIAN_FRONTEND=noninteractive
+SETUP_BEGAN=$(date +%s)
+apt-get update
+apt-get install -y python3-venv python3-pip ffmpeg
+encoders=$(ffmpeg -hide_banner -encoders)
+echo "$encoders" | grep -q ffv1
+echo "$encoders" | grep -q libx264
+echo "$encoders" | grep -q prores_ks
+python3 -m venv /opt/avt-comp
+/opt/avt-comp/bin/pip install --quiet 'numpy==2.5.5' 'scipy==1.18.1' 'opencv-python-headless>=5.1,<5.2'
+/opt/avt-comp/bin/python - <<'PY'
+import numpy, scipy, cv2
+assert numpy.__version__ == "2.5.5", numpy.__version__
+assert scipy.__version__ == "1.18.1", scipy.__version__
+assert str(cv2.__version__).startswith("5.1"), cv2.__version__
+print("stack", numpy.__version__, scipy.__version__, cv2.__version__)
+PY
+SETUP_SEC=$(( $(date +%s) - SETUP_BEGAN ))
+echo "AVT_STAGE setup ${SETUP_SEC}"
+"""
+
+
 def startup_script(lock_dir, max_minutes, ram_gb=60, vcpu=16):
     quoted = shlex.quote(lock_dir)
     return f"""#!/bin/bash
@@ -857,26 +884,8 @@ cleanup() {{
 trap cleanup EXIT
 shutdown -h +"$MAX_MINUTES" || true
 echo AVT_RENDER_START
-export DEBIAN_FRONTEND=noninteractive
-SETUP_BEGAN=$(date +%s)
-apt-get update
-apt-get install -y python3-venv python3-pip ffmpeg
-encoders=$(ffmpeg -hide_banner -encoders)
-echo "$encoders" | grep -q ffv1
-echo "$encoders" | grep -q libx264
-echo "$encoders" | grep -q prores_ks
-python3 -m venv /opt/avt-comp
-/opt/avt-comp/bin/pip install --quiet 'numpy==2.5.5' 'scipy==1.18.1' 'opencv-python-headless>=5.1,<5.2'
-/opt/avt-comp/bin/python - <<'PY'
-import numpy, scipy, cv2
-assert numpy.__version__ == "2.5.5", numpy.__version__
-assert scipy.__version__ == "1.18.1", scipy.__version__
-assert str(cv2.__version__).startswith("5.1"), cv2.__version__
-print("stack", numpy.__version__, scipy.__version__, cv2.__version__)
-PY
-SETUP_SEC=$(( $(date +%s) - SETUP_BEGAN ))
+@@SETUP@@
 printf '{{"stages":{{"setup":%s}}}}\\n' "$SETUP_SEC" > /var/avt/timing.json
-echo "AVT_STAGE setup ${{SETUP_SEC}}"
 DEADLINE=$(( $(date +%s) + MAX_MINUTES * 60 ))
 while [ "$(date +%s)" -lt "$DEADLINE" ]; do
   if [ -f /tmp/avt-go ] && [ -f /tmp/avt-env ]; then
@@ -908,7 +917,7 @@ cd /tmp/avt-remote
 echo AVT_RENDER_DONE
 touch /var/avt/done
 exit 0
-"""
+""".replace("@@SETUP@@", guest_setup_shell())
 
 
 def _mkdir_command(paths):
@@ -922,7 +931,7 @@ def _mkdir_command(paths):
 
 
 def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir,
-                   tree_files=()):
+                   tree_files=(), copy_tree=True):
     """Copy the lock tree and the manifest. Unsafe names are staged, then moved.
 
     OpenSSH 10 scp is SFTP and does not strip shell quotes. Every scp target is
@@ -954,7 +963,7 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     transfer_argvs.parent_list = parent_list
     transfer_argvs.parent_local = parent_local
     dest_dir = os.path.dirname(lock_dir) or "/"
-    if not plan.path_needs_staging(dest_dir):
+    if copy_tree and not plan.path_needs_staging(dest_dir):
         argvs.append(plan.gcp_scp_argv(
             name, project, zone, lock_dir, plan.scp_spec(name, dest_dir), recurse=True,
         ))
@@ -1910,70 +1919,149 @@ def format_report(report):
     return "\n".join(lines) + "\n"
 
 
-REHEARSAL_MACHINE = "e2-standard-4"
-REHEARSAL_RATE = 0.14
+# 4/16 of the c4-standard-16 proposal rate ($0.79), rounded up.
+REHEARSAL_MACHINE = "c4-standard-4"
+REHEARSAL_RATE = 0.20
 REHEARSAL_CEILING = 1.0
+REHEARSAL_MAX_HOURS = 0.5
 
 
-def rehearsal_startup():
-    """Install the real stack, then encode a few frames with both delivery codecs."""
+def rehearsal_startup(render_chunks):
+    """Production setup, then wait for the launcher, then a small real check."""
+    mode = "chunks" if render_chunks else "help"
     return """#!/bin/bash
 set -euo pipefail
-echo AVT_STAGE create 0
-export DEBIAN_FRONTEND=noninteractive
-echo AVT_STAGE setup_begin
-apt-get update
-apt-get install -y python3-venv python3-pip ffmpeg
-encoders=$(ffmpeg -hide_banner -encoders)
-echo "$encoders" | grep -q ffv1
-echo "$encoders" | grep -q libx264
-echo "$encoders" | grep -q prores_ks
-python3 -m venv /opt/avt-comp
-/opt/avt-comp/bin/pip install --quiet 'numpy==2.5.5' 'scipy==1.18.1' 'opencv-python-headless>=5.1,<5.2'
-/opt/avt-comp/bin/python - <<'PY'
-import numpy, scipy, cv2
-assert numpy.__version__ == "2.5.5"
-assert scipy.__version__ == "1.18.1"
-assert str(cv2.__version__).startswith("5.1")
-print("stack", numpy.__version__, scipy.__version__, cv2.__version__)
-PY
-echo AVT_STAGE setup_ok
-WAV=/workspace/partnership/second_half/inputs/audio/PARTNERSHIP\\ -\\ CEASE\\ \\&\\ DESIST\\ MASTER\\ \\ -\\ 11.15.26.wav
-# The path is one Python string so the spaces and & are not shell syntax.
-/opt/avt-comp/bin/python - <<'PY'
-import os
-path = "/workspace/partnership/second_half/inputs/audio/PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
-assert os.path.isfile(path), path
-print("wav", os.path.getsize(path))
-PY
+set +x
+MAX_MINUTES=30
+mkdir -p /var/avt/out /var/avt/checks /tmp/claudia_lockrepro
+@@SETUP@@
+# The launcher touches this only after scp and mv. Do not look at inputs before it.
+DEADLINE=$(( $(date +%s) + MAX_MINUTES * 60 ))
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  if [ -f /tmp/avt-go ]; then
+    break
+  fi
+  sleep 5
+done
+if [ ! -f /tmp/avt-go ]; then
+  echo AVT_RENDER_FAIL missing-go
+  exit 1
+fi
+LOCK=/workspace/partnership/final_lock_v2
+if [ -f /tmp/avt-rehearsal-sums ]; then
+  sha256sum -c /tmp/avt-rehearsal-sums
+fi
 echo AVT_STAGE verify_ok
+export GRADE_PARAMS="$LOCK/params/final_params_LOCK_v2.json"
+export TRANS_PARAMS="$GRADE_PARAMS"
+cd "$LOCK/scripts"
+if [ -f /tmp/avt-rehearsal-chunks ]; then
+  /opt/avt-comp/bin/python final_render.py chunks --range 0-23 --chunk 24 --grain 1 \\
+    --scratch /var/avt/scratch/final --v1e_dir /var/avt/scratch/v1e \\
+    --lockrepro /tmp/claudia_lockrepro --tree /workspace/partnership --stills 0
+  echo AVT_STAGE chunks_ok
+else
+  /opt/avt-comp/bin/python -c 'import final_render, numpy, scipy, cv2; print("imported", final_render.__file__)'
+  /opt/avt-comp/bin/python final_render.py --help
+  echo AVT_STAGE help_ok
+fi
 ffmpeg -y -f lavfi -i testsrc=size=320x180:rate=24:duration=0.2 -c:v ffv1 /tmp/smoke.mkv
-ffmpeg -y -i /tmp/smoke.mkv -c:v libx264 -crf 14 /tmp/smoke.mp4
-ffmpeg -y -i /tmp/smoke.mkv -c:v prores_ks -profile:v 3 /tmp/smoke.mov
+ffmpeg -y -i /tmp/smoke.mkv -c:v libx264 -crf 14 /var/avt/out/rehearsal_h264.mp4
+ffmpeg -y -i /tmp/smoke.mkv -c:v prores_ks -profile:v 3 /var/avt/out/rehearsal_prores.mov
 echo AVT_STAGE assemble_ok
 echo AVT_REHEARSAL_DONE
-sleep 15
-"""
+PULL_DEADLINE=$(( $(date +%s) + 600 ))
+while [ "$(date +%s)" -lt "$PULL_DEADLINE" ]; do
+  if [ -f /tmp/avt-pulled ]; then
+    break
+  fi
+  sleep 2
+done
+""".replace("@@SETUP@@", guest_setup_shell()).replace("MODE", mode)
 
 
-def run_rehearsal(args, env, call, confirm):
-    """One cheap VM. Cap $1. Always delete it. No input disk is created."""
+def rehearsal_rows(lock_dir):
+    """scripts, params, and up to three manifest files of at most 5 MB."""
+    lock_dir = (lock_dir or "").rstrip("/")
+    rows = []
+    for sub in ("scripts", "params"):
+        base = os.path.join(lock_dir, sub)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, _dirs, names in os.walk(base):
+            for name in names:
+                path = os.path.join(dirpath, name)
+                try:
+                    size = os.path.getsize(path)
+                except OSError:
+                    continue
+                rows.append({"path": path, "bytes": size})
+    manifest, _note = peek_manifest(lock_dir) if lock_dir else (None, "")
+    small = []
+    total = None
+    if manifest:
+        total = 0
+        for row in manifest["files"]:
+            size = int(row.get("bytes") or 0)
+            total += size
+            path = row.get("path") or ""
+            if path.startswith(lock_dir + os.sep) or path in {item["path"] for item in rows}:
+                continue
+            if size <= 5_000_000 and os.path.isfile(path):
+                small.append((size, row))
+        small.sort(key=lambda item: item[0])
+        for _size, row in small[:3]:
+            rows.append({"path": row["path"], "bytes": int(row.get("bytes") or 0)})
+    render_chunks = total is not None and total <= 30_000_000 and any(
+        path.endswith("final_render.py") for path in (item["path"] for item in rows)
+    )
+    return rows, render_chunks
+
+
+def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
+    """c4-standard-4, Debian 13, Hyperdisk. Cap $1. Always delete the VM."""
+    fetch = wheel_fetch or _pypi_wheel_json
+    try:
+        gaps, notes = plan.cpython313_wheel_gaps(fetch)
+    except Exception as exc:
+        print(f"refusing rehearsal: could not read the wheel index ({exc})", file=sys.stderr)
+        return 2
+    if gaps:
+        print(
+            "refusing rehearsal: no CPython 3.13 manylinux x86_64 wheel for "
+            + ", ".join(gaps)
+            + ". Debian 13 cannot pip-install the production pins.",
+            file=sys.stderr,
+        )
+        return 2
+    print("stack wheels: " + "; ".join(notes), flush=True)
+    capped = plan.cost_cap_hours(REHEARSAL_MAX_HOURS, REHEARSAL_CEILING, REHEARSAL_RATE)
+    projected = capped * REHEARSAL_RATE
     if not confirm:
         print(
-            f"rehearsal dry-run: {REHEARSAL_MACHINE} at ${REHEARSAL_RATE}/h, "
-            f"hard cap ${REHEARSAL_CEILING:.0f}. No VM was created.",
+            f"rehearsal dry-run: {REHEARSAL_MACHINE} (debian-13, hyperdisk-balanced) "
+            f"at ${REHEARSAL_RATE}/h, armed {plan.duration_flag(capped)}, "
+            f"hard cap ${REHEARSAL_CEILING:.0f}, projected ${projected:.2f}. "
+            "No VM was created.",
             flush=True,
         )
         return 0
-    projected = (20.0 / 60.0) * REHEARSAL_RATE
     if projected > REHEARSAL_CEILING:
         print("refusing rehearsal: projected cost exceeds $1", file=sys.stderr)
+        return 2
+    lock_dir = (getattr(args, "lock_dir", "") or LOCK_DIR).rstrip("/")
+    rows, render_chunks = rehearsal_rows(lock_dir)
+    if not rows:
+        print(f"refusing rehearsal: {lock_dir} has no scripts, params, or small inputs", file=sys.stderr)
         return 2
     if call is None:
         call = __import__("remote_render")._subprocess_call
     name = "avt-rehearsal-lock-v2"
     project = env.get("GCP_PROJECT", "")
     zone = args.zone
+    out = getattr(args, "output", "") or "rehearsal-out"
+    os.makedirs(out, exist_ok=True)
+    log_path = os.path.join(out, "execute.log")
     stages = []
 
     def mark(stage, ok, started):
@@ -1983,78 +2071,125 @@ def run_rehearsal(args, env, call, confirm):
         print(f"rehearsal {stage}: {label} {seconds:.1f}s", flush=True)
         return ok
 
+    def logged(argv, label):
+        return plan.logged_gcloud(call, argv, log_path, label)
+
     created = False
     startup = None
     try:
         started = time.monotonic()
         fd, startup = tempfile.mkstemp(prefix="avt-rehearsal-", suffix=".sh")
         with os.fdopen(fd, "w") as handle:
-            handle.write(rehearsal_startup())
+            handle.write(rehearsal_startup(render_chunks))
         create = plan.gcp_create_argv(
-            name, project, zone, machine=REHEARSAL_MACHINE, max_hours=20.0 / 60.0,
-            disk_gb=30, startup_file=startup,
+            name, project, zone, machine=REHEARSAL_MACHINE, max_hours=capped,
+            disk_gb=30, startup_file=startup, image_family="debian-13",
         )
-        result = call(create)
-        ok = mark("create", getattr(result, "returncode", 1) == 0, started)
-        if not ok:
+        result = logged(create, "create")
+        if not mark("create", getattr(result, "returncode", 1) == 0, started):
             return 2
         created = True
         started = time.monotonic()
-        wav = (
-            "/workspace/partnership/second_half/inputs/audio/"
-            "PARTNERSHIP - CEASE & DESIST MASTER  - 11.15.26.wav"
+        sums = os.path.join(out, "SHA256SUMS.rehearsal")
+        with open(sums, "w") as handle:
+            for row in rows:
+                digest = plan.sha256_file(row["path"])
+                handle.write(f"{digest}  {row['path']}\n")
+        env_file = os.path.join(out, "rehearsal.env")
+        with open(env_file, "w") as handle:
+            handle.write("AVT_REMOTE_RENDER_CONFIRM=1\n")
+        argvs = transfer_argvs(
+            name, project, zone, lock_dir, rows, env_file,
+            os.path.dirname(plan.__file__), copy_tree=False,
         )
-        local = getattr(args, "rehearsal_wav", "") or wav
-        scp_argv, move = plan.stage_scp_argv(name, project, zone, local, wav, 224)
-        mkdir = plan.pack_dir_batches(
-            [os.path.dirname(wav), plan.INCOMING_ROOT, "/workspace/partnership"],
-            name, project, zone, probe="workspace",
-        )
-        copied = True
-        for argv in mkdir + [scp_argv]:
-            if getattr(call(argv), "returncode", 1) != 0:
-                copied = False
-                break
-        if move and copied:
-            mv = plan.mv_batch_argvs(name, project, zone, [move])
-            copied = all(getattr(call(argv), "returncode", 1) == 0 for argv in mv)
+        mode = os.path.join(out, "rehearsal-chunks")
+        if render_chunks:
+            with open(mode, "w") as handle:
+                handle.write("chunks\n")
+            argvs.insert(-1, plan.gcp_scp_argv(
+                name, project, zone, mode, plan.scp_spec(name, "/tmp/avt-rehearsal-chunks"),
+            ))
+        argvs.insert(-1, plan.gcp_scp_argv(
+            name, project, zone, sums, plan.scp_spec(name, "/tmp/avt-rehearsal-sums"),
+        ))
+        mini = {
+            "transfer_argv": argvs,
+            "transfer_rows": rows,
+            "instance_name": name,
+            "project": project,
+            "zone": zone,
+            "output": out,
+            "output_is_dir": True,
+            "transfer_attempts": 12,
+            "ssh_retry_seconds": 5,
+            "side_files": {transfer_argvs.parent_local: transfer_argvs.parent_list},
+            "lock_rows": None,
+        }
+        try:
+            plan._push_local(mini, lambda argv: logged(argv, "scp" if argv[2] == "scp" else "ssh"), time.sleep)
+            copied = True
+        except SystemExit as exc:
+            print(exc, file=sys.stderr)
+            copied = False
         if not mark("transfer", copied, started):
             return 2
         started = time.monotonic()
-        deadline = time.monotonic() + 15 * 60
+        deadline = time.monotonic() + capped * 3600
         serial = ""
         while time.monotonic() < deadline:
-            polled = call(plan.gcp_serial_argv(name, project, zone))
+            if (time.monotonic() - started) / 3600.0 * REHEARSAL_RATE > REHEARSAL_CEILING:
+                print("rehearsal elapsed cost would exceed $1; deleting the VM", flush=True)
+                break
+            polled = logged(plan.gcp_serial_argv(name, project, zone), "serial")
+            if getattr(polled, "returncode", 1) != 0:
+                time.sleep(5)
+                continue
             serial = getattr(polled, "stdout", "") or ""
-            if "AVT_REHEARSAL_DONE" in serial:
+            if "AVT_REHEARSAL_DONE" in serial or "AVT_RENDER_FAIL" in serial:
                 break
-            if "AVT_RENDER_FAIL" in serial or "E:" in serial and "Unable to locate" in serial:
-                break
-            time.sleep(5)
-        setup_ok = "AVT_STAGE setup_ok" in serial and "AVT_STAGE verify_ok" in serial
+            time.sleep(10)
+        mark("setup", "stack " in serial or "AVT_STAGE setup" in serial, started)
+        mark("verify", "AVT_STAGE verify_ok" in serial, started)
+        mark("smoke", "AVT_STAGE chunks_ok" in serial or "AVT_STAGE help_ok" in serial, started)
         assemble_ok = "AVT_STAGE assemble_ok" in serial
-        mark("setup", setup_ok, started)
-        mark("verify", "verify_ok" in serial, started)
         mark("assemble", assemble_ok, started)
         started = time.monotonic()
-        out = getattr(args, "output", "") or "rehearsal-out"
-        os.makedirs(out, exist_ok=True)
-        pull_ok = True
-        for remote, dest in (("/tmp/smoke.mp4", "smoke.mp4"), ("/tmp/smoke.mov", "smoke.mov")):
-            argv = plan.gcp_scp_argv(name, project, zone, plan.scp_spec(name, remote), os.path.join(out, dest))
-            if getattr(call(argv), "returncode", 1) != 0:
+        paths = [
+            "/var/avt/out/rehearsal_h264.mp4",
+            "/var/avt/out/rehearsal_prores.mov",
+        ]
+        pull_ok = getattr(logged(
+            plan.gcp_ssh_argv(name, project, zone, plan.wrap_remote_command(plan.publish_pull_script(paths))),
+            "ssh",
+        ), "returncode", 1) == 0
+        for remote in paths:
+            dest = os.path.join(out, os.path.basename(remote))
+            argv = plan.gcp_scp_argv(
+                name, project, zone, plan.scp_spec(name, plan.staged_pull_path(remote)), dest,
+            )
+            if getattr(logged(argv, "scp"), "returncode", 1) != 0:
                 pull_ok = False
+        if pull_ok:
+            logged(plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-pulled"), "ssh")
         mark("pull-back", pull_ok, started)
-        if not (setup_ok and assemble_ok and pull_ok):
+        if not (assemble_ok and pull_ok):
             return 2
         return 0
     finally:
         started = time.monotonic()
         if created:
-            call(plan.gcp_delete_argv(name, project, zone))
+            logged(plan.gcp_delete_argv(name, project, zone), "delete")
         if startup and os.path.isfile(startup):
             os.remove(startup)
         mark("teardown", True, started)
         print("rehearsal stages:", flush=True)
         for stage, label, seconds in stages:
             print(f"  {stage}: {label} {seconds:.1f}s", flush=True)
+
+
+def _pypi_wheel_json(package, version):
+    from urllib.request import urlopen
+    import json as _json
+    url = f"https://pypi.org/pypi/{package}/json" if not version else f"https://pypi.org/pypi/{package}/{version}/json"
+    with urlopen(url, timeout=30) as response:
+        return _json.load(response)

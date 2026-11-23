@@ -671,3 +671,75 @@ def test_path_preflight_accepts_the_cease_path_and_odd_names(tmp_path, capsys):
     argvs = lock_v2.transfer_argvs("vm", "p", "z", str(lock), rows, "/tmp/env", os.path.dirname(lock_v2.__file__))
     cease = next(argv for argv in argvs if plan.final_of(argv) == names[0])
     assert "'" not in cease[-1] and '"' not in cease[-1]
+
+
+def _wheel_fetch(package, version):
+    if package == "opencv-python-headless":
+        return {"releases": {
+            "5.1.0.95": [{
+                "filename": "opencv_python_headless-5.1.0.95-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+            }],
+        }}
+    return {"urls": [{
+        "filename": f"{package}-{version}-cp313-cp313-manylinux_2_28_x86_64.whl",
+    }]}
+
+
+def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
+    gaps, notes = plan.cpython313_wheel_gaps(_wheel_fetch)
+    assert gaps == []
+    assert any("numpy==2.5.5" in note for note in notes)
+    assert any("abi3" in note or "opencv" in note for note in notes)
+    broken = dict(_wheel_fetch("opencv-python-headless", None))
+    broken["releases"] = {"5.1.0.95": [{"filename": "opencv_python_headless-5.1.0.95.tar.gz"}]}
+
+    def missing(package, version):
+        if package == "opencv-python-headless":
+            return broken
+        return _wheel_fetch(package, version)
+
+    class Args:
+        zone = "us-central1-a"
+        lock_dir = str(tmp_path)
+        output = str(tmp_path / "out")
+        dry_run = False
+
+    assert lock_v2.run_rehearsal(Args(), {}, None, False, wheel_fetch=missing) == 2
+    assert "no CPython 3.13" in capsys.readouterr().err
+    script = lock_v2.rehearsal_startup(False)
+    assert "c4-standard-4" not in script
+    assert lock_v2.guest_setup_shell().strip() in script
+    assert lock_v2.guest_setup_shell().strip() in lock_v2.startup_script(lock_v2.LOCK_DIR, 10)
+    assert script.index("/tmp/avt-go") < script.index("sha256sum -c")
+    assert "publish" not in script
+    lock = tmp_path / "final_lock_v2"
+    (lock / "scripts").mkdir(parents=True)
+    (lock / "scripts" / "final_render.py").write_text("print('help')\n")
+    (lock / "params").mkdir()
+    (lock / "params" / "final_params_LOCK_v2.json").write_text("{}\n")
+    args = Args()
+    args.lock_dir = str(lock)
+    args.output = str(tmp_path / "out")
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if len(argv) > 3 and argv[3] == "create":
+            result = Result(1, stdout="")
+            result.stderr = "ERROR: E2 does not support Hyperdisk\n"
+            return result
+        return Result(0)
+
+    code = lock_v2.run_rehearsal(
+        args, {"GCP_PROJECT": "demo"}, call, True, wheel_fetch=_wheel_fetch,
+    )
+    assert code == 2
+    create = next(argv for argv in calls if len(argv) > 3 and argv[3] == "create")
+    assert "c4-standard-4" in create
+    assert "hyperdisk-balanced" in create
+    assert "debian-13" in create
+    assert "e2-standard-4" not in create
+    captured = capsys.readouterr()
+    logged = (tmp_path / "out" / "execute.log").read_text()
+    assert "Hyperdisk" in captured.err or "Hyperdisk" in captured.out or "Hyperdisk" in logged
+    assert "gcloud create failed" in logged

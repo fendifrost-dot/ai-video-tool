@@ -1738,17 +1738,91 @@ def write_prepare_failure(output, text, output_is_dir=False):
     return path
 
 
-def format_create_failure(argv, result):
-    """argv plus the gcloud stderr/stdout of a failed instance create."""
+def format_gcloud_failure(label, argv, result):
+    """argv plus the stderr/stdout of one failed gcloud call."""
     code = getattr(result, "returncode", 1)
     lines = [
-        f"gcloud create failed ({code})",
+        f"gcloud {label} failed ({code})",
         "argv:",
         _argv_text(argv),
         "--- last output lines ---",
         _tail_text(_result_text(result), 50) or "(no stdout or stderr)",
     ]
     return "\n".join(lines) + "\n"
+
+
+def format_create_failure(argv, result):
+    """argv plus the gcloud stderr/stdout of a failed instance create."""
+    return format_gcloud_failure("create", argv, result)
+
+
+def logged_gcloud(call, argv, log_path, label):
+    """Run one gcloud argv. A failure is written to stdout and ``log_path``."""
+    try:
+        result = call(argv)
+    except OSError as exc:
+        result = type("CallResult", (), {})()
+        result.returncode = 1
+        result.stdout = ""
+        result.stderr = f"{exc.__class__.__name__}: {exc}"
+    if getattr(result, "returncode", 1) != 0:
+        text = format_gcloud_failure(label, argv, result)
+        sys.stdout.write(text)
+        sys.stderr.write(text)
+        if log_path:
+            try:
+                parent = os.path.dirname(log_path)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                with open(log_path, "a") as handle:
+                    handle.write(text)
+            except OSError as exc:
+                sys.stderr.write(f"could not write {log_path} ({exc})\n")
+    return result
+
+
+def _wheel_names(payload):
+    urls = payload.get("urls") or []
+    return [item.get("filename") or "" for item in urls]
+
+
+def wheel_supports_cpython313_manylinux_x86_64(filename):
+    """True for a cp313 wheel or an abi3 wheel pip can install on CPython 3.13."""
+    name = filename or ""
+    if "manylinux" not in name or "x86_64" not in name or not name.endswith(".whl"):
+        return False
+    return "cp313" in name or "abi3" in name
+
+
+def cpython313_wheel_gaps(fetch):
+    """Packages with no Debian 13 / CPython 3.13 x86_64 wheel.
+
+    ``fetch(name, version)`` returns the PyPI JSON. ``version`` None means the
+    latest release. opencv 5.1 publishes abi3 wheels, which install on 3.13.
+    """
+    gaps = []
+    notes = []
+    for package, version in (("numpy", "2.5.5"), ("scipy", "1.18.1")):
+        payload = fetch(package, version)
+        names = _wheel_names(payload)
+        if any(wheel_supports_cpython313_manylinux_x86_64(name) and "cp313" in name for name in names):
+            notes.append(f"{package}=={version} cp313 manylinux x86_64")
+        else:
+            gaps.append(f"{package}=={version}")
+    payload = fetch("opencv-python-headless", None)
+    releases = payload.get("releases") or {}
+    found = None
+    for version in releases:
+        if not str(version).startswith("5.1."):
+            continue
+        names = [item.get("filename") or "" for item in releases[version]]
+        if any(wheel_supports_cpython313_manylinux_x86_64(name) for name in names):
+            found = version
+    if found:
+        notes.append(f"opencv-python-headless=={found} manylinux x86_64 (cp313 or abi3)")
+    else:
+        gaps.append("opencv-python-headless 5.1.x")
+    return gaps, notes
 
 
 def write_execute_log(output, text, output_is_dir=False):
