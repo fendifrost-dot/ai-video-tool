@@ -410,6 +410,54 @@ def test_vhs_missing_from_the_manifest_uses_the_known_path(tmp_path):
     assert any("vhs" in item and "missing" in item for item in missing)
 
 
+def test_reused_disk_skips_matching_tree_sha_and_chmods_writable(tmp_path):
+    lock = tmp_path / "final_lock_v2"
+    lock.mkdir()
+    note = lock / "note.txt"
+    note.write_bytes(b"tree-bytes")
+    os.chmod(note, 0o444)
+    stale = lock / "dryrun" / "SUPERSEDED.txt"
+    stale.parent.mkdir()
+    stale.write_bytes(b"old")
+    os.chmod(stale, 0o444)
+    (lock / "SHA256SUMS").write_text(f"{hashlib.sha256(b'tree-bytes').hexdigest()}  note.txt\n")
+    rows = lock_v2.tree_transfer_rows(str(lock))
+    assert [row["path"] for row in rows] == [str(note)]
+    argvs = lock_v2.transfer_argvs(
+        "vm", "p", "z", str(lock), [], "/tmp/env", os.path.dirname(plan.__file__), copy_tree=True,
+    )
+    assert not any("--recurse" in argv for argv in argvs)
+    prepared = "\n".join(
+        plan.remote_script(argv[-1]) for argv in argvs if len(argv) > 2 and argv[2] == "ssh"
+    )
+    assert "chmod -R u+w" in prepared
+    assert "/workspace" in prepared
+    copied = []
+
+    def call(argv):
+        if len(argv) > 2 and argv[2] == "ssh" and "sha256sum" in plan.remote_script(argv[-1]):
+            return Result(0, stdout=str(note) + "\n")
+        if len(argv) > 2 and argv[2] == "scp" and str(note) in argv[-1]:
+            copied.append(argv)
+        return Result(0, stdout="AVT_PARENTS_OK\n")
+
+    plan._push_local({
+        "transfer_argv": argvs,
+        "transfer_rows": [],
+        "tree_rows": rows,
+        "instance_name": "vm",
+        "project": "p",
+        "zone": "z",
+        "output": str(tmp_path),
+        "output_is_dir": True,
+        "transfer_attempts": 1,
+        "side_files": {
+            lock_v2.transfer_argvs.parent_local: lock_v2.transfer_argvs.parent_list,
+        },
+    }, call, lambda _seconds: None)
+    assert copied == []
+
+
 def test_runner_source_does_not_hardcode_a_content_hash():
     text = open(os.path.join(HERE, "..", "lock_v2.py")).read()
     assert re.search(r"\b[0-9a-f]{64}\b", text) is None

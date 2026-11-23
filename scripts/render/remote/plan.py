@@ -858,6 +858,11 @@ def _chown_login_user(roots):
         f'sudo chown -RP "$(id -un)":"$(id -gn)" -- {quoted}'
         + _fail_line("sudo chown failed")
     )
+    # chown does not clear mode 0444. A reused input disk keeps those bits.
+    lines.append(
+        f"sudo chmod -R u+w -- {quoted}"
+        + _fail_line("sudo chmod u+w failed")
+    )
     return "\n".join(lines)
 
 
@@ -2057,6 +2062,7 @@ def _row_remote(row, root=WORK_ROOT):
 # whole argv, leaving room for the environment.
 ARGV_LIMIT = 128 * 1024
 PROBE_LIST = "/tmp/avt-probe-list"
+SHA_LIST = "/tmp/avt-sha-list"
 # Fixed reader. The path list is a file, not part of this command. base64 keeps
 # spaces, '&', quotes, and newlines out of the shell. stat -c is GNU.
 PROBE_READER = """set -euo pipefail
@@ -2092,6 +2098,52 @@ def argv_within_limit(argv, limit=ARGV_LIMIT):
         if len(os.fsencode(str(part))) > limit:
             return False
     return argv_nbytes(argv) <= limit
+
+
+SHA_READER = """set -euo pipefail
+list=/tmp/avt-sha-list
+if [ ! -f "$list" ]; then
+  echo "AVT_PROBE_FAIL missing sha list" >&2
+  exit 1
+fi
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    "" ) continue ;;
+  esac
+  digest=${line%% *}
+  blob=${line#* }
+  path=$(printf '%s' "$blob" | base64 -d) || continue
+  if [ -f "$path" ]; then
+    got=$(sha256sum -- "$path" | awk '{print $1}')
+    if [ "$got" = "$digest" ]; then
+      printf '%s\\n' "$path"
+    fi
+  fi
+done < "$list"
+"""
+
+
+def encode_sha_list(pairs):
+    """One ``sha256 base64(path)`` line per tree file."""
+    lines = []
+    for path, digest in pairs:
+        digest = str(digest or "").strip().lower()
+        if len(digest) != 64 or not isinstance(path, str) or not path:
+            continue
+        blob = base64.b64encode(path.encode("utf-8")).decode("ascii")
+        lines.append(f"{digest} {blob}")
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n"
+
+
+def sha_probe_commands(name, project, zone, pairs, list_file):
+    if not encode_sha_list(pairs):
+        return []
+    return [
+        gcp_scp_argv(name, project, zone, list_file, scp_spec(name, SHA_LIST)),
+        gcp_ssh_argv(name, project, zone, wrap_remote_command(SHA_READER)),
+    ]
 
 
 def encode_probe_list(pairs):
@@ -2220,6 +2272,39 @@ def _present_from_probe(text, wanted):
     return found
 
 
+def _probe_sha(plan_obj, call, pairs):
+    """Paths whose guest sha256 already matches. None means copy every tree file."""
+    commands = sha_probe_commands(
+        plan_obj["instance_name"], plan_obj.get("project"), plan_obj.get("zone"),
+        pairs, list_file="",
+    )
+    if not commands:
+        return set()
+    fd, local = tempfile.mkstemp(prefix="avt-sha-", suffix=".list")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(encode_sha_list(pairs))
+        commands = sha_probe_commands(
+            plan_obj["instance_name"], plan_obj.get("project"), plan_obj.get("zone"),
+            pairs, list_file=local,
+        )
+        result = None
+        for argv in commands:
+            try:
+                result = call(argv)
+            except OSError:
+                return None
+            if getattr(result, "returncode", 1) != 0:
+                return None
+        wanted = {path for path, _digest in pairs}
+        return _present_from_probe(getattr(result, "stdout", "") or "", wanted)
+    finally:
+        try:
+            os.remove(local)
+        except OSError:
+            pass
+
+
 def _probe_present(plan_obj, call, pairs):
     """Copy a path list, then ask which files are already the right size.
 
@@ -2323,6 +2408,16 @@ def _push_local(plan, call, sleep):
         body = body[:-1]
     pairs = _lock_pairs(rows)
     present = _probe_present(plan, call, pairs)
+    tree_pairs = [
+        (row.get("path"), row.get("sha256"))
+        for row in (plan.get("tree_rows") or [])
+        if row.get("path") and row.get("sha256")
+    ]
+    matched = _probe_sha(plan, call, tree_pairs) if tree_pairs else set()
+    if present is None:
+        present = set()
+    if matched:
+        present = set(present) | set(matched)
     skipped_finals = set()
     if present:
         before = len(body)

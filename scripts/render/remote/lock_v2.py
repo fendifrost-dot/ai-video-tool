@@ -1219,10 +1219,35 @@ def _mkdir_command(paths):
     return plan.wrap_remote_command(plan.prepare_tree_script(dirs, probe="workspace"))
 
 
+def tree_transfer_rows(lock_dir):
+    """Files named in SHA256SUMS. The guest compares these by sha, not by a recurse."""
+    lock_dir = lock_dir.rstrip("/")
+    sums_path = os.path.join(lock_dir, "SHA256SUMS")
+    if not os.path.isfile(sums_path):
+        return []
+    rows = []
+    with open(sums_path) as handle:
+        listed = parse_sha256sums(handle.read())
+    for digest, name in listed:
+        path = os.path.join(lock_dir, name)
+        if not os.path.isfile(path):
+            continue
+        rows.append({
+            "path": path,
+            "sha256": digest,
+            "bytes": os.path.getsize(path),
+            "tree": True,
+        })
+    return rows
+
+
 def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir,
                    tree_files=(), copy_tree=True):
     """Copy the lock tree and the manifest. Unsafe names are staged, then moved.
 
+    The lock tree is one scp per SHA256SUMS file, not ``scp --recurse``. A reused
+    disk may already hold that tree mode 0444; skip-existing leaves matching
+    shas in place, and the preflight ``chmod u+w`` lets a mismatch be replaced.
     OpenSSH 10 scp is SFTP and does not strip shell quotes. Every scp target is
     a plain path. A name with spaces, ``&``, a colon, or an apostrophe is copied
     to ``/workspace/.avt-incoming/<index>`` and ``mv --`` places it.
@@ -1239,6 +1264,12 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     for path in tree_files:
         finals.append(path)
         parents.add(os.path.dirname(path))
+    tree_rows = tree_transfer_rows(lock_dir) if copy_tree else []
+    manifest_paths = {row.get("path") for row in manifest_files}
+    tree_rows = [row for row in tree_rows if row["path"] not in manifest_paths]
+    for row in tree_rows:
+        parents.add(os.path.dirname(row["path"]))
+    transfer_argvs.tree_rows = tree_rows
     argvs = plan.pack_dir_batches(sorted(p for p in parents if p), name, project, zone, probe="workspace")
     parent_names = sorted(p for p in parents if p)
     parent_list = plan.encode_probe_list([(path, 0) for path in parent_names])
@@ -1251,15 +1282,17 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     ))
     transfer_argvs.parent_list = parent_list
     transfer_argvs.parent_local = parent_local
-    dest_dir = os.path.dirname(lock_dir) or "/"
-    if copy_tree and not plan.path_needs_staging(dest_dir):
-        argvs.append(plan.gcp_scp_argv(
-            name, project, zone, lock_dir, plan.scp_spec(name, dest_dir), recurse=True,
-        ))
     moves = []
     for index, row in enumerate(manifest_files):
         scp_argv, move = plan.stage_scp_argv(
             name, project, zone, row["path"], row["path"], index,
+        )
+        argvs.append(scp_argv)
+        if move:
+            moves.append(move)
+    for index, row in enumerate(tree_rows):
+        scp_argv, move = plan.stage_scp_argv(
+            name, project, zone, row["path"], row["path"], 100000 + index,
         )
         argvs.append(scp_argv)
         if move:
@@ -2172,6 +2205,7 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         "transfer_attempts": 24,
         "manifest_checked": False,
         "transfer_rows": manifest_files,
+        "tree_rows": [],
         "verified_files": None,
         "lock_path": "",
         "lock_rows": None,
@@ -2197,6 +2231,7 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
     report["transfer_argv"] = transfer_argvs(
         instance_name, project_id, zone, report["lock_dir"], manifest_files, env_file, remote_dir,
     )
+    report["tree_rows"] = list(getattr(transfer_argvs, "tree_rows", []) or [])
     report["side_files"] = {
         transfer_argvs.parent_local: transfer_argvs.parent_list,
     }
