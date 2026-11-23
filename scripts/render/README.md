@@ -18,3 +18,15 @@ in `docs/RENDER_CONTRACT_AND_BOUNDARY.md`.
 
 The Partnership verse compositor (`render_verse_v9look_v1e_p.py`, locked, not in this repo) has its own runner in
 `scripts/render/remote/`. That path is a dry-run by default. Read `docs/REMOTE_RENDER.md` before any execute.
+
+## Effects preview copies
+
+`scripts/render/preview/make_preview.py` turns a finished effects file into the small copy AVT plays in place over
+the song (Review and the Cut page), checks its frame count against the stretch of the song it covers, and prints
+where to upload it and the row to file. It uploads nothing. Contract: `docs/design/EFFECTS_PREVIEW.md`; how post
+uses it: `docs/recipes/EFFECTS_PREVIEW.md`.
+
+```
+python3 -I scripts/render/preview/make_preview.py <finished file> --section storm_verse --version 1 --song-frames 3070-4980 --out-dir <folder>
+python3 -m pytest scripts/render/preview/tests                                                     # needs ffmpeg
+```

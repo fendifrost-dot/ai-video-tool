@@ -5,6 +5,7 @@ import {
 } from "../../../supabase/functions/edit-render/model";
 import { clipAtTime, formatTimecode, sourceTimeAt, songTimeAt } from "@/lib/editor/playback";
 import { needsSeek, seekMediaExact, snapToFrame } from "@/lib/editor/mediaSeek";
+import { effectsAt, effectsLabel, effectsMediaTime, type EffectsSpan } from "@/lib/storyboard/effectsPreview";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -19,6 +20,14 @@ type Props = {
   compareSourceTime?: number | null;
   compareLabel?: string | null;
   compareNote?: string | null;
+  /**
+   * The stretches of the SONG that have a preview copy of built effects (effectsPreview.ts effectsLayer). With
+   * `effectsOn`, the copy is laid over the monitor for its stretch, addressed by the cut's song clock.
+   */
+  effects?: readonly EffectsSpan[];
+  effectsOn?: boolean;
+  /** Signed link per preview-copy asset id. */
+  effectsUrls?: Record<string, string>;
   className?: string;
 };
 
@@ -91,17 +100,25 @@ export function SequencePreview({
   compareSourceTime,
   compareLabel,
   compareNote,
+  effects,
+  effectsOn = false,
+  effectsUrls,
   className,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const compareRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const fxRef = useRef<HTMLVideoElement>(null);
   const clip = clipAtTime(sequence, playhead);
   const url = clip?.assetId ? mediaByAsset[clip.assetId] ?? null : null;
   const srcTime = clip ? sourceTimeAt(clip, playhead) : 0;
   const songTime = songTimeAt(sequence, playhead);
   const dur = durationSeconds(sequence);
   const fps = sequence.fps;
+  // a preview copy of built effects owns this moment of the song when there is one and the switch is on
+  const fx = effectsOn && effects?.length ? effectsAt(effects, songTime) : null;
+  const fxUrl = fx ? effectsUrls?.[fx.preview.assetId] ?? null : null;
+  const fxTime = fx ? effectsMediaTime(fx.preview, songTime).at : 0;
 
   useEffect(() => {
     void syncElement(videoRef.current, url, srcTime, playing, playbackRate, fps);
@@ -110,6 +127,14 @@ export function SequencePreview({
   useEffect(() => {
     void syncElement(audioRef.current, songUrl, songTime, playing, playbackRate, fps);
   }, [songUrl, songTime, playing, playbackRate, fps]);
+
+  useEffect(() => {
+    if (!fxUrl) {
+      fxRef.current?.pause();
+      return;
+    }
+    void syncElement(fxRef.current, fxUrl, fxTime, playing, playbackRate, fps);
+  }, [fxUrl, fxTime, playing, playbackRate, fps, playhead]);
 
   useEffect(() => {
     if (!compareUrl) return;
@@ -143,6 +168,21 @@ export function SequencePreview({
                 : clip
                   ? "Loading picture…"
                   : "Move the playhead onto a clip"}
+            </div>
+          )}
+          {/* what post has built, as rendered: over the cut's own picture for its stretch of the song */}
+          <video
+            ref={fxRef}
+            className={cn("pointer-events-none absolute inset-0 h-full w-full bg-black object-contain", fxUrl ? "opacity-100" : "opacity-0")}
+            playsInline
+            muted
+            preload="metadata"
+            data-testid="preview-effects"
+            data-effects={fx && fxUrl ? fx.preview.assetId : ""}
+          />
+          {fx && fxUrl && (
+            <div className="pointer-events-none absolute right-2 top-2 rounded bg-sky-500/25 px-2 py-0.5 text-[10px] font-medium text-sky-100 backdrop-blur" data-testid="preview-effects-badge">
+              effects · {effectsLabel(fx.preview)}
             </div>
           )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-3 pb-2.5 pt-10">

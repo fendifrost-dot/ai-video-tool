@@ -20,6 +20,7 @@ import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { measuredBeatMap, planConformToBeats } from "@/lib/storyboard/conform";
 import { dressRecordOf } from "@/lib/storyboard/dress";
+import { parseEffectsPreview } from "@/lib/storyboard/effectsPreview";
 import { filedSeedanceSeconds } from "@/lib/storyboard/seedanceDuration";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
@@ -459,6 +460,7 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     takeCheck: parseTakeCheck((a.metadata_json as { take_check?: unknown } | null)?.take_check),
     footageAnalyses: parseFootageAnalyses((a.metadata_json as { footage_analysis?: unknown } | null)?.footage_analysis),
     acceptance: parseAcceptance((a.metadata_json as { acceptance?: unknown } | null)?.acceptance),
+    effectsPreview: parseEffectsPreview(a.metadata_json),
   };
 }
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { Pause, Play, SkipBack, SkipForward, Sparkles } from "lucide-react";
 import { DEFAULT_PROJECT_ASPECT, frameBoxStyle, frameSize, type ProjectAspect } from "@/lib/project/aspect";
 import { cn } from "@/lib/utils";
 import { formatTimecode } from "@/components/treatment/shotLabels";
+import { clipSpans, effectsAt, effectsCoverage, effectsLabel, effectsMediaTime, type EffectsSpan } from "@/lib/storyboard/effectsPreview";
 import { pictureAt, pictureFilter } from "@/lib/storyboard/events";
 import { DRIFT_TOLERANCE, segmentAt, videoStateAt, videoTick, type MediaAsset, type TimelineSegment } from "@/lib/storyboard/media";
 import { reframeStyle } from "@/lib/storyboard/reframe";
@@ -33,6 +34,11 @@ function placeMedia(el: HTMLElement, place: Placement) {
  *
  * This is a preview assembled in the browser. It reads the same timeline a renderer would read (media.ts
  * buildTimeline); it is not a render.
+ *
+ * EFFECTS (effectsPreview.ts): where post has filed a preview copy of what it built, that copy is laid over the
+ * board for its stretch of the song, addressed by song time like everything else. It is the effect as rendered, at
+ * a small size; the shot's own timed events and reframe are not put on it (they are already in it). Switched off,
+ * or with no copies, the board plays exactly as it did.
  */
 export function SequencePlayer({
   timeline,
@@ -41,6 +47,7 @@ export function SequencePlayer({
   onSegment,
   jumpTo,
   aspect = DEFAULT_PROJECT_ASPECT,
+  effects,
 }: {
   timeline: TimelineSegment[];
   assets: ReadonlyMap<string, MediaAsset>;
@@ -51,9 +58,15 @@ export function SequencePlayer({
   jumpTo?: { t: number; n: number } | null;
   /** The project's frame: the stage takes its shape. */
   aspect?: ProjectAspect;
+  /** The stretches of the song that have a preview copy of built effects (effectsPreview.ts effectsLayer), whole song. */
+  effects?: readonly EffectsSpan[];
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const videos = useRef(new Map<string, HTMLVideoElement>());
+  // the preview copies of built effects, one element per file, laid over the picture
+  const fxVideos = useRef(new Map<string, HTMLVideoElement>());
+  const [fxOn, setFxOn] = useState(true);
+  const [activeFx, setActiveFx] = useState<string | null>(null);
   // the picture layer (every video and image) and the white laid over it: a shot's timed effects are put on these
   const pictureLayer = useRef<HTMLDivElement>(null);
   const flashLayer = useRef<HTMLDivElement>(null);
@@ -67,6 +80,11 @@ export function SequencePlayer({
   const end = timeline.length ? timeline[timeline.length - 1].end : 0;
   const start = timeline.length ? timeline[0].start : 0;
 
+  // the copies that fall inside what is being played (the whole song, or a section of it)
+  const spans = useMemo(() => (effects?.length && end > start ? clipSpans(effects, start, end) : []), [effects, start, end]);
+  const fxPreviews = useMemo(() => [...new Map(spans.map((s) => [s.preview.assetId, s.preview])).values()], [spans]);
+  const fxCovered = useMemo(() => effectsCoverage(spans, start, end), [spans, start, end]);
+
   const videoAssetIds = useMemo(() => [...new Set(timeline.flatMap((s) => (s.media.kind === "video" ? [s.media.assetId] : [])))], [timeline]);
   const refs = useMemo(() => {
     const out: MediaRef[] = song ? [song] : [];
@@ -75,8 +93,9 @@ export function SequencePlayer({
       const a = assets.get(s.media.assetId);
       if (a) out.push(playbackRef(a));
     }
+    for (const p of fxPreviews) out.push({ bucket: p.bucket, path: p.path });
     return out;
-  }, [timeline, assets, song]);
+  }, [timeline, assets, song, fxPreviews]);
   const urls = useSignedRefs(refs);
   const urlOf = useCallback(
     (assetId: string) => {
@@ -97,14 +116,52 @@ export function SequencePlayer({
         setActiveId(seg.shotId);
         onSegment?.(seg);
       }
-      // the shot's timed effects, at this moment of the song — the arithmetic a render applies (events.ts pictureAt)
-      const p = seg && seg.events?.length ? pictureAt(seg.events, Math.max(0, now - seg.start)) : null;
+      // a preview copy of built effects owns this moment when there is one and the switch is on
+      const fx = fxOn ? effectsAt(spans, now) : null;
+      const fxId = fx?.preview.assetId ?? null;
+      setActiveFx((prev) => (prev === fxId ? prev : fxId));
+      // the shot's timed effects, at this moment of the song — the arithmetic a render applies (events.ts pictureAt).
+      // Not under a preview copy: what post built already has them in it.
+      const p = !fx && seg && seg.events?.length ? pictureAt(seg.events, Math.max(0, now - seg.start)) : null;
       if (pictureLayer.current) {
         pictureLayer.current.style.filter = p ? pictureFilter(p) : "none";
         pictureLayer.current.dataset.brightness = String(p ? p.brightness : 1);
       }
       if (flashLayer.current) flashLayer.current.style.opacity = String(p ? p.flash : 0);
-      const activeAsset = seg?.media.kind === "video" ? seg.media.assetId : null;
+      for (const [id, el] of fxVideos.current) {
+        if (id !== fxId) {
+          if (!el.paused) el.pause();
+          continue;
+        }
+        // addressed by the song, like a take: never slid, and held on its last frame if the file is short
+        const tick = videoTick({ state: effectsMediaTime(fx!.preview, now, el.duration), currentTime: el.currentTime, ended: el.ended, playing: isPlaying });
+        if (tick.seekTo != null) {
+          try {
+            el.currentTime = tick.seekTo;
+          } catch {
+            // not seekable yet
+          }
+        }
+        if (tick.seekTo != null || tick.run) el.playbackRate = tick.rate;
+        if (tick.run) {
+          if (el.paused) safePlay(el);
+        } else if (!el.paused) el.pause();
+      }
+      // have the next copy waiting on the frame it comes in on
+      const nextFx = fxOn ? spans.find((s) => s.start > now && s.start - now < 1.5 && s.preview.assetId !== fxId) : undefined;
+      if (nextFx) {
+        const el = fxVideos.current.get(nextFx.preview.assetId);
+        const at = nextFx.start - nextFx.preview.songStart;
+        if (el && el.paused && Math.abs(el.currentTime - at) > DRIFT_TOLERANCE) {
+          try {
+            el.currentTime = at;
+          } catch {
+            // not seekable yet
+          }
+        }
+      }
+      // under a copy the board's own video rests; it is cued again when the copy ends
+      const activeAsset = !fx && seg?.media.kind === "video" ? seg.media.assetId : null;
       for (const [id, el] of videos.current) {
         if (id !== activeAsset) {
           if (!el.paused) el.pause();
@@ -146,8 +203,15 @@ export function SequencePlayer({
         }
       }
     },
-    [timeline, activeId, onSegment, frame],
+    [timeline, activeId, onSegment, frame, spans, fxOn],
   );
+
+  // the switch is thrown while paused: no tick would put the right picture up
+  useEffect(() => {
+    sync(audio.current?.currentTime ?? t, !!audio.current && !audio.current.paused);
+    // only when the switch or the copies change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fxOn, spans]);
 
   // the clock: while the song plays, follow it every frame
   useEffect(() => {
@@ -213,11 +277,12 @@ export function SequencePlayer({
 
   const activeImage = active?.media.kind === "image" ? urlOf(active.media.assetId) : undefined;
   const activeVideoId = active?.media.kind === "video" ? active.media.assetId : null;
+  const activeFxSpan = activeFx ? spans.find((s) => s.preview.assetId === activeFx) ?? null : null;
   const imagePlace = activeImage && imageSize?.src === activeImage ? reframeStyle(imageSize.w, imageSize.h, active?.reframe, frame) : null;
 
   return (
     <div className="space-y-3" data-testid="sequence-player" data-active-shot={active?.key ?? ""} data-playing={playing ? "true" : "false"}>
-      <div className="relative mx-auto overflow-hidden rounded-xl bg-black" style={frameBoxStyle(aspect, "68vh")} data-testid="sequence-stage" data-media-kind={active?.media.kind ?? "none"} data-aspect={aspect}>
+      <div className="relative mx-auto overflow-hidden rounded-xl bg-black" style={frameBoxStyle(aspect, "68vh")} data-testid="sequence-stage" data-media-kind={active?.media.kind ?? "none"} data-aspect={aspect} data-effects={activeFx ?? ""}>
         <div ref={pictureLayer} className="absolute inset-0" data-testid="sequence-picture">
         {videoAssetIds.map((id) => {
           const src = urlOf(id);
@@ -252,8 +317,31 @@ export function SequencePlayer({
           />
         )}
         </div>
+        {/* what post has built, as rendered: over the board's picture, under the labels */}
+        <div className="pointer-events-none absolute inset-0" data-testid="sequence-effects">
+          {fxPreviews.map((p) => {
+            const src = urls[mediaRefKey({ bucket: p.bucket, path: p.path })];
+            if (!src) return null;
+            return (
+              <video
+                key={p.assetId}
+                ref={(el) => {
+                  if (el) fxVideos.current.set(p.assetId, el);
+                  else fxVideos.current.delete(p.assetId);
+                }}
+                src={src}
+                muted
+                playsInline
+                preload={p.assetId === activeFx ? "auto" : "metadata"}
+                className={cn("absolute inset-0 h-full w-full bg-black object-contain", p.assetId === activeFx ? "opacity-100" : "opacity-0")}
+                onLoadedMetadata={() => p.assetId === activeFx && sync(audio.current?.currentTime ?? t, !!audio.current && !audio.current.paused)}
+                data-effects-asset-id={p.assetId}
+              />
+            );
+          })}
+        </div>
         <div ref={flashLayer} className="pointer-events-none absolute inset-0 bg-white" style={{ opacity: 0 }} data-testid="sequence-flash" aria-hidden />
-        {active?.media.kind === "none" && (
+        {active?.media.kind === "none" && !activeFx && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center" data-testid="sequence-slate">
             <span className="font-mono text-3xl font-semibold text-white/25">{String(active.index).padStart(2, "0")}</span>
             <p className="max-w-xl text-sm leading-relaxed text-white/70">{active.scene}</p>
@@ -265,7 +353,12 @@ export function SequencePlayer({
             {String(active.index).padStart(2, "0")} · {formatTimecode(active.start)}–{formatTimecode(active.end)}
           </span>
         )}
-        {active && active.media.kind !== "none" && (
+        {activeFxSpan && (
+          <span className="pointer-events-none absolute right-2 top-2 rounded bg-sky-500/25 px-1.5 py-0.5 text-[10px] font-medium text-sky-100 backdrop-blur" data-testid="sequence-effects-badge">
+            effects · {effectsLabel(activeFxSpan.preview)}
+          </span>
+        )}
+        {active && active.media.kind !== "none" && !activeFx && (
           <span className={cn("pointer-events-none absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium backdrop-blur", ROLE_STYLE[active.media.role])}>
             {mediaLabel({ role: active.media.role, base: active.media.base, asset: assets.get(active.media.assetId) })}
           </span>
@@ -286,6 +379,23 @@ export function SequencePlayer({
         <span className="font-mono text-xs tabular-nums text-foreground/70" data-testid="sequence-time">
           {formatTimecode(t)} / {formatTimecode(end)}
         </span>
+        {spans.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setFxOn((on) => !on)}
+            aria-pressed={fxOn}
+            className={cn("ml-auto flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium", fxOn ? "border-sky-400/50 bg-sky-500/15 text-sky-100" : "border-border text-foreground/55 hover:bg-white/5")}
+            title="Play the preview copies post has filed of the effects it built, in place over the board"
+            data-testid="sequence-effects-toggle"
+            data-on={fxOn ? "true" : "false"}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Effects {fxOn ? "on" : "off"}
+            <span className="font-normal text-foreground/45" data-testid="sequence-effects-coverage">
+              · built for {formatTimecode(fxCovered.seconds)} of {formatTimecode(Math.max(0, end - start))}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* the song, with every cut marked ---------------------------------------- */}
@@ -309,6 +419,21 @@ export function SequencePlayer({
               style={{ left: `${((s.start - start) / Math.max(0.001, end - start)) * 100}%` }}
             />
           ))}
+        {/* where post has built effects: one bar per stretch that has a preview copy */}
+        {spans.map((s) => (
+          <button
+            key={`${s.preview.assetId}:${s.start}`}
+            type="button"
+            onClick={() => seek(s.start + 0.001)}
+            className={cn("absolute bottom-0 h-1.5 rounded-sm", fxOn ? "bg-sky-400/80" : "bg-sky-400/30", s.preview.assetId === activeFx && "bg-sky-300")}
+            style={{ left: `${((s.start - start) / Math.max(0.001, end - start)) * 100}%`, width: `${((s.end - s.start) / Math.max(0.001, end - start)) * 100}%` }}
+            title={`Effects: ${effectsLabel(s.preview)} · ${formatTimecode(s.start)}–${formatTimecode(s.end)}`}
+            aria-label={`Go to the effects preview ${effectsLabel(s.preview)}`}
+            data-testid="sequence-effects-span"
+            data-section={s.preview.section}
+            data-version={s.preview.version}
+          />
+        ))}
       </div>
 
       {songUrl ? (
