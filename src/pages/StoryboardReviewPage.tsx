@@ -22,6 +22,7 @@ import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } fro
 import { aspectOfProject } from "@/lib/project/aspect";
 import { useProject } from "@/lib/queries/projects";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
+import { effectsLayer, effectsPreviewsOf } from "@/lib/storyboard/effectsPreview";
 import { buildTimeline, isOriginalTake, isUsableSync, timelineIssues, type TimelineSegment } from "@/lib/storyboard/media";
 import { normalSection, sectionFromSearch, sectionOf, type ReviewSection } from "@/lib/storyboard/section";
 import { directorNotes, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
@@ -67,6 +68,8 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
     if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url.href);
   }, [section]);
   const timeline = useMemo(() => sectionOf(whole, section), [whole, section]);
+  // the preview copies post has filed of the effects it built: which stretch of the song each one owns
+  const effects = useMemo(() => effectsLayer(effectsPreviewsOf(media.list)), [media.list]);
   const inSection = section != null && timeline.length > 0 && timeline.length < whole.length;
   const issues = useMemo(() => timelineIssues(whole), [whole]);
   const songPath = media.song?.file_url ?? null;
@@ -159,10 +162,17 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
                 <span className="text-foreground/45">the whole song</span>
               )}
             </div>
-            <SequencePlayer timeline={timeline} assets={media.byId} song={song} onSegment={setActive} jumpTo={jump} aspect={aspect} />
+            <SequencePlayer timeline={timeline} assets={media.byId} song={song} onSegment={setActive} jumpTo={jump} aspect={aspect} effects={effects} />
             <p className="text-[11px] leading-relaxed text-foreground/45" data-testid="review-truth">
               This is a preview assembled in your browser from lighter copies of the footage. Cuts land on the shot boundaries; transitions, camera moves on your takes and the final grade are not shown. A
               finished render is not made in the app yet.
+              {effects.length > 0 && (
+                <span data-testid="review-effects-truth">
+                  {" "}
+                  Where the bar under the song is blue, post has filed a small preview copy of the effects it built, and that copy plays in place of the plain clip while Effects is on. It is the effect as rendered, at a small
+                  size: judge timing and the idea here, colour and fine detail on the render.
+                </span>
+              )}
             </p>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">

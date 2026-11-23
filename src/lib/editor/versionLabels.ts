@@ -1,3 +1,4 @@
+import { claimsEffectsPreview } from "@/lib/storyboard/effectsPreview";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 import type { DerivedMethod } from "@/lib/storyboard/media";
 
@@ -73,6 +74,8 @@ export function groupVersions(assets: ProjectAsset[]): Record<VersionKind, Proje
   };
   for (const a of assets) {
     if (!a.file_url) continue;
+    // a preview copy of built effects is post's small file, not a version to cut with
+    if (claimsEffectsPreview(a.metadata_json)) continue;
     const mime = (a.metadata_json as Record<string, unknown> | null)?.mime_type;
     const isVideo =
       (typeof mime === "string" && mime.startsWith("video/")) ||

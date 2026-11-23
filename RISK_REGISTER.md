@@ -474,6 +474,19 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
   - authenticated service-role functions that sign caller paths without an ownership check (REF-1 family);
   - legacy anonymous sessions still match `*_own` on their own folders;
   - the CDN keeps serving a requester's copy cached during the open period until `max-age` (≤1 h) expires.
+- **2026-11-23, effects preview (PR #528) — what SEC-4 lets through there, and one older finding from its review**
+  (`docs/reviews/PR528_CLASS_C_REVIEWS_2026-11-23.md`):
+  - OBSERVED (read of the code): a `project_assets` row with `metadata_json.effects_preview` puts a video over a
+    stretch of the project's Review and Cut players without any board placement. While `project_assets` and
+    `project-exports` are writable beyond the owner, one inserted row does it. Bounded in the app: only a file in
+    `project-exports` under `effects_preview/` is played, the layer is built from 50 sections at most, and a
+    rejected row is not shown. Closes with the DoD above.
+  - HYPOTHESIS, older than #528 (found by its security review, not introduced by it): `signRefs`
+    (`src/components/storyboard/signedUrls.ts`) passes a row's `metadata_json.bucket` to the storage client without
+    an allowlist, and the client puts the bucket into the request path unencoded, so a row with a bucket like
+    `../../../auth/v1/…` would make the owner's browser send a signed-in POST to another path of the same origin.
+    Whether the server acts on such a request is NOT tested. Named test: unit test that `signRefs` refuses any
+    bucket outside the app's bucket list, then the allowlist itself (its own Class C change: signed-link logic).
 
 ## SEC-5 — Sign-up is on at the auth server; the app's sign-in form only hides it
 
