@@ -1006,12 +1006,14 @@ def staged_pull_path(remote_path):
     return PULL_STAGE + "/" + os.path.basename(remote_path.rstrip("/"))
 
 
-def publish_pull_script(paths):
+def publish_pull_script(paths, required=True):
     """Copy root-only outputs to ``/tmp/avt-pull`` for the login user.
 
-    The guest render runs as root. ``/var/avt`` is mode 700, so scp as the
-    login user cannot read it. A workspace file the guest created as root may
-    also be mode 600. This copy is what the pull scp reads.
+    The guest render runs as root. ``/var/avt`` is mode 700, so a login-user
+    ``[ -e ]`` is false for a file that is there, and the copy was skipped.
+    Existence is ``sudo test``. A required path that is missing fails the
+    script after every path has been attempted, so the scp is not pointed at
+    a directory that was never created.
     """
     lines = [
         "set -euo pipefail",
@@ -1019,13 +1021,14 @@ def publish_pull_script(paths):
         'sudo -n true || fail "sudo -n was refused while publishing outputs for pull-back"',
         "sudo rm -rf -- /tmp/avt-pull" + _fail_line("could not clear /tmp/avt-pull"),
         "sudo mkdir -p -- /tmp/avt-pull" + _fail_line("could not create /tmp/avt-pull"),
+        "missing=0",
     ]
     for path in paths:
         dest = staged_pull_path(path)
         parent = os.path.dirname(dest) or "/"
         src_q = shlex.quote(path)
         dest_q = shlex.quote(dest)
-        lines.append(f"if [ -e {src_q} ]; then")
+        lines.append(f"if sudo test -e {src_q}; then")
         lines.append(
             f"  sudo mkdir -p -- {shlex.quote(parent)}"
             + _fail_line(f"could not create {parent}")
@@ -1036,14 +1039,21 @@ def publish_pull_script(paths):
         )
         lines.append("else")
         lines.append(f"  echo {shlex.quote('AVT_PULL_MISSING ' + path)} >&2")
+        lines.append("  missing=1")
         lines.append("fi")
     lines.extend([
         'sudo chown -R "$(id -un)":"$(id -gn)" -- /tmp/avt-pull'
         + _fail_line("could not chown /tmp/avt-pull to the login user"),
         "sudo chmod -R a+rX -- /tmp/avt-pull"
         + _fail_line("could not make /tmp/avt-pull readable"),
-        "echo AVT_PULL_PUBLISHED",
     ])
+    if required:
+        lines.extend([
+            'if [ "$missing" -ne 0 ]; then',
+            '  fail "required output was not published"',
+            "fi",
+        ])
+    lines.append("echo AVT_PULL_PUBLISHED")
     return "\n".join(lines) + "\n"
 
 

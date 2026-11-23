@@ -508,6 +508,9 @@ def test_lock_v2_pull_copies_var_avt_out_before_scp():
     assert "sudo cp -a -- /var/avt/checks /tmp/avt-pull/checks" in script
     assert "sudo cp -a -- /var/avt/guest.log /tmp/avt-pull/guest.log" in script
     assert "sudo cp -a -- /var/avt/timing.json /tmp/avt-pull/timing.json" in script
+    assert "sudo test -e /var/avt/out/" in script
+    assert "[ -e /var/avt" not in script
+    assert 'fail "required output was not published"' in script
     assert "chmod 700" not in script
     sources = [
         found for argv in argvs if argv[2] == "scp"
@@ -841,3 +844,32 @@ def test_refused_ssh_stops_at_four_and_signal_deletes():
         assert deleted == ["deleted"]
     finally:
         signal.signal(signal.SIGTERM, previous)
+    serial = "\n".join([
+        "AVT_STAGE setup 21",
+        "AVT_STAGE verify 1.5",
+        "AVT_STAGE smoke 3",
+        "AVT_STAGE assemble 4.25",
+    ])
+    assert lock_v2.stage_seconds(serial, "setup") == 21
+    assert lock_v2.stage_seconds(serial, "verify") == 1.5
+    assert lock_v2.stage_seconds(serial, "smoke") == 3
+    assert lock_v2.stage_seconds(serial, "assemble") == 4.25
+    assert len({
+        lock_v2.stage_seconds(serial, name)
+        for name in ("setup", "verify", "smoke", "assemble")
+    }) == 4
+    rehearsal = lock_v2.rehearsal_startup(False)
+    assert "rehearsal_chunk.mkv" in rehearsal
+    assert "ffprobe" in rehearsal
+    assert "AVT_STAGE smoke" in rehearsal
+    assert "AVT_STAGE assemble" in rehearsal
+    assert "AVT_STAGE verify_ok" not in rehearsal
+    pulls = lock_v2._pull_commands(
+        "vm", "p", "z",
+        ["/var/avt/out/rehearsal_h264.mp4", "/var/avt/out/rehearsal_prores.mov"],
+        [("/var/avt/out/rehearsal_h264.mp4", "/out/rehearsal_h264.mp4", False)],
+    )
+    published = plan.remote_script(pulls[0][-1])
+    assert "sudo test -e /var/avt/out/rehearsal_h264.mp4" in published
+    assert "sudo cp -a -- /var/avt/out/rehearsal_h264.mp4 /tmp/avt-pull/out/rehearsal_h264.mp4" in published
+    assert plan.scp_remote_path(pulls[1][-2]) == "/tmp/avt-pull/out/rehearsal_h264.mp4"
