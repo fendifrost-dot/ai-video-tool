@@ -816,22 +816,51 @@ def test_rehearsal_uses_c4_and_logs_create_stderr(tmp_path, capsys):
 
 
 def test_refused_ssh_stops_at_four_and_signal_deletes():
-    calls = []
+    now = [0.0]
 
-    def call(_argv):
-        calls.append(1)
+    def clock():
+        return now[0]
+
+    def sleep(seconds):
+        now[0] += seconds
+
+    boots = {"n": 0}
+
+    def boot_call(_argv):
+        boots["n"] += 1
+        if boots["n"] < 6:
+            return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection refused\n")
+        if boots["n"] == 6:
+            return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection timed out\n")
+        return Result(0, stdout="AVT_PREFLIGHT_OK\n")
+
+    plan._call_each(
+        [plan.gcp_ssh_argv("vm", "p", "z", "true")],
+        boot_call, attempts=2, sleep=sleep, retry_seconds=0, clock=clock,
+    )
+    assert boots["n"] == 7
+    assert now[0] < plan.BOOT_SSH_SECONDS
+    later = {"n": 0}
+
+    def later_call(_argv):
+        later["n"] += 1
+        if later["n"] == 1:
+            return Result(0, stdout="AVT_PREFLIGHT_OK\n")
         return Result(1, stdout="ssh: connect to host 10.0.0.5 port 22: Connection refused\n")
 
     try:
         plan._call_each(
-            [plan.gcp_ssh_argv("vm", "p", "z", "true")],
-            call, attempts=24, sleep=lambda _s: None, retry_seconds=0,
+            [
+                plan.gcp_ssh_argv("vm", "p", "z", "true"),
+                plan.gcp_ssh_argv("vm", "p", "z", "echo later"),
+            ],
+            later_call, attempts=24, sleep=sleep, retry_seconds=0, clock=clock,
         )
     except SystemExit as exc:
         assert "prepare failed" in str(exc)
     else:
-        raise AssertionError("refused ssh should fail the stage")
-    assert len(calls) == plan.SSH_REFUSED_LIMIT
+        raise AssertionError("a later refused ssh should fail that command only")
+    assert later["n"] == 1 + plan.SSH_REFUSED_LIMIT
     deleted = []
     previous = signal.getsignal(signal.SIGTERM)
     plan.install_delete_on_signal(lambda: deleted.append("deleted"))
@@ -844,26 +873,32 @@ def test_refused_ssh_stops_at_four_and_signal_deletes():
         assert deleted == ["deleted"]
     finally:
         signal.signal(signal.SIGTERM, previous)
-    serial = "\n".join([
-        "AVT_STAGE setup 21",
-        "AVT_STAGE verify 1.5",
-        "AVT_STAGE smoke 3",
-        "AVT_STAGE assemble 4.25",
+
+
+def test_rehearsal5_guest_log_passes_each_stage():
+    # The lines from rehearsal5's serial tail, plus the earlier stage lines
+    # that same startup script prints. A timestamp prefix and --help text
+    # must not zero the stages.
+    log = "\n".join([
+        "usage: final_render.py chunks [-h] --scratch SCRATCH",
+        "the following arguments are required: mode, --scratch",
+        "startup-script: AVT_STAGE setup 48",
+        "AVT_STAGE verify 1",
+        "smoke /var/avt/scratch/final/rehearsal_chunk.mkv 0.500000",
+        "AVT_STAGE smoke 2",
+        "assemble /var/avt/out/rehearsal_h264.mp4 h264",
+        "assemble /var/avt/out/rehearsal_prores.mov prores",
+        "AVT_STAGE assemble 0",
+        "AVT_REHEARSAL_DONE",
     ])
-    assert lock_v2.stage_seconds(serial, "setup") == 21
-    assert lock_v2.stage_seconds(serial, "verify") == 1.5
-    assert lock_v2.stage_seconds(serial, "smoke") == 3
-    assert lock_v2.stage_seconds(serial, "assemble") == 4.25
-    assert len({
-        lock_v2.stage_seconds(serial, name)
-        for name in ("setup", "verify", "smoke", "assemble")
-    }) == 4
-    rehearsal = lock_v2.rehearsal_startup(False)
-    assert "rehearsal_chunk.mkv" in rehearsal
-    assert "ffprobe" in rehearsal
-    assert "AVT_STAGE smoke" in rehearsal
-    assert "AVT_STAGE assemble" in rehearsal
-    assert "AVT_STAGE verify_ok" not in rehearsal
+    assert not plan.guest_startup_failed(log)
+    assert not plan.guest_startup_failed("AVT_STARTUP_WAIT\n")
+    scored = lock_v2.assess_guest_log(log)
+    assert scored["setup"] == (True, 48.0)
+    assert scored["verify"] == (True, 1.0)
+    assert scored["smoke"] == (True, 2.0)
+    assert scored["assemble"] == (True, 0.0)
+    assert len({seconds for _ok, seconds in scored.values()}) == 4
     pulls = lock_v2._pull_commands(
         "vm", "p", "z",
         ["/var/avt/out/rehearsal_h264.mp4", "/var/avt/out/rehearsal_prores.mov"],

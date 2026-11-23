@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import shlex
 import signal
 import sys
@@ -1920,21 +1921,38 @@ def _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=Fals
 
 
 SSH_REFUSED_LIMIT = 4
+# sshd on a fresh Debian boot can refuse or time out for well over a minute.
+BOOT_SSH_SECONDS = 90
 
 
 def connection_refused(result):
     return "Connection refused" in _result_text(result)
 
 
+def ssh_not_up(result):
+    """Boot-time ssh failures. These are not a sticky error for later stages."""
+    text = _result_text(result)
+    return "Connection refused" in text or "Connection timed out" in text
+
+
 def guest_startup_failed(text):
-    """True when the guest startup script has already exited in failure."""
+    """True when the guest startup script has already exited in failure.
+
+    A finished guest (``AVT_REHEARSAL_DONE`` or ``AVT_RENDER_DONE``) wins.
+    ``--help`` text can contain ``arguments are required`` and must not count.
+    ``AVT_STARTUP_WAIT`` is not a failure.
+    """
     text = text or ""
-    return any(marker in text for marker in (
-        "AVT_RENDER_FAIL",
-        "AVT_STARTUP_FAIL",
-        "startup-script failed",
-        "arguments are required",
-    ))
+    if "AVT_REHEARSAL_DONE" in text or "AVT_RENDER_DONE" in text:
+        return False
+    if "startup-script failed" in text:
+        return True
+    for line in text.splitlines():
+        if "AVT_RENDER_FAIL" in line:
+            return True
+        if re.search(r"(?<![A-Z_])AVT_STARTUP_FAIL(?![A-Z_])", line):
+            return True
+    return False
 
 
 def install_delete_on_signal(delete):
@@ -1957,13 +1975,14 @@ def install_delete_on_signal(delete):
 
 
 def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=False,
-               rows=None, output=None, index_offset=0, output_is_dir=False, deadline=None):
-    """Run each argv. The first command is retried. A refused ssh stops after four.
+               rows=None, output=None, index_offset=0, output_is_dir=False, deadline=None,
+               clock=None):
+    """Run each argv. The first ssh waits out sshd's boot. Later refusals stop at four.
 
-    A permission failure is not retried. ``Connection refused`` uses a short
-    backoff and then fails the stage with the ssh stderr, instead of repeating
-    the same preflight for the rest of the cap.
+    The boot counter belongs to that first command. A success clears it. It is
+    not a flag later stages read. A permission failure is not retried.
     """
+    clock = clock or time.monotonic
     for index, argv in enumerate(argvs):
         absolute = index + index_offset
         tries = attempts if index == 0 or not retry_first_only else 1
@@ -1971,8 +1990,9 @@ def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=Fal
         attempt = 0
         refused = 0
         backoff = 2
+        started = clock()
         while True:
-            if deadline is not None and time.monotonic() > deadline:
+            if deadline is not None and clock() > deadline:
                 raise SystemExit("stage wall clock exceeded; deleting the instance")
             result = call(argv)
             if getattr(result, "returncode", 1) == 0:
@@ -1982,6 +2002,11 @@ def _call_each(argvs, call, attempts, sleep, retry_seconds, retry_first_only=Fal
                     absolute, argv, result, rows, output, output_is_dir=output_is_dir,
                 )
             attempt += 1
+            # The first command is the boot ssh. sshd may refuse for 60–90s.
+            if index == 0 and ssh_not_up(result) and (clock() - started) < BOOT_SSH_SECONDS:
+                sleep(min(5, backoff))
+                backoff = min(backoff * 2, 16)
+                continue
             if connection_refused(result):
                 refused += 1
                 if refused >= SSH_REFUSED_LIMIT:

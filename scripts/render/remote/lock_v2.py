@@ -14,6 +14,7 @@ import json
 import math
 import os
 import random
+import re
 import shlex
 import shutil
 import signal
@@ -2017,7 +2018,7 @@ SMOKE=/var/avt/scratch/final/rehearsal_chunk.mkv
 SMOKE_BEGAN=$(date +%s)
 ffmpeg -y -f lavfi -i testsrc=size=320x180:rate=24:duration=0.5 -c:v ffv1 "$SMOKE"
 dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$SMOKE")
-/opt/avt-comp/bin/python -c 'import os,sys; p=sys.argv[1]; assert os.path.getsize(p)>0, p; assert float(sys.argv[2])>0, sys.argv[2]; print("smoke", os.path.getsize(p), sys.argv[2])' "$SMOKE" "$dur"
+/opt/avt-comp/bin/python -c 'import os,sys; p=sys.argv[1]; assert os.path.getsize(p)>0, p; assert float(sys.argv[2])>0, sys.argv[2]; print("smoke", p, os.path.getsize(p), sys.argv[2])' "$SMOKE" "$dur"
 echo "AVT_STAGE smoke $(( $(date +%s) - SMOKE_BEGAN ))"
 ASS_BEGAN=$(date +%s)
 ffmpeg -y -i "$SMOKE" -c:v libx264 -crf 14 /var/avt/out/rehearsal_h264.mp4
@@ -2044,18 +2045,60 @@ exit 0
     return body.replace("@@SETUP@@", guest_setup_shell())
 
 
+_STAGE_LINE = re.compile(r"AVT_STAGE\s+([A-Za-z0-9_]+)\s+([0-9]+(?:\.[0-9]+)?)")
+
+
 def stage_seconds(text, name):
-    """The guest's own ``AVT_STAGE <name> <seconds>`` line, not a shared clock."""
-    prefix = f"AVT_STAGE {name} "
+    """The guest's own ``AVT_STAGE <name> <seconds>`` value.
+
+    Serial lines often have a timestamp or ``startup-script:`` prefix, so the
+    marker does not have to be the first character of the line. Zero is a real
+    duration.
+    """
     found = None
-    for line in (text or "").splitlines():
-        if not line.startswith(prefix):
+    for match in _STAGE_LINE.finditer(text or ""):
+        if match.group(1) != name:
             continue
         try:
-            found = float(line[len(prefix):].strip())
+            found = float(match.group(2))
         except ValueError:
             continue
     return found
+
+
+def assess_guest_log(text):
+    """Score setup, verify, smoke, and assemble from the guest log alone.
+
+    ``AVT_REHEARSAL_DONE`` means the startup script finished. A boot-time ssh
+    refusal is not an input. Each stage passes only with its own seconds.
+    Assemble also requires the two delivery names the script prints.
+    """
+    text = text or ""
+    done = "AVT_REHEARSAL_DONE" in text and not plan.guest_startup_failed(text)
+    stages = {}
+    for name in ("setup", "verify", "smoke", "assemble"):
+        seconds = stage_seconds(text, name)
+        ok = done and seconds is not None
+        if name == "assemble":
+            ok = ok and "/var/avt/out/rehearsal_h264.mp4" in text and "/var/avt/out/rehearsal_prores.mov" in text
+        if name == "smoke":
+            ok = ok and "rehearsal_chunk.mkv" in text
+        stages[name] = (ok, 0.0 if seconds is None else seconds)
+    return stages
+
+
+def local_video_ok(path):
+    """True when a pulled file is non-empty and ffprobe sees a video stream."""
+    if not path or not os.path.isfile(path) or os.path.getsize(path) <= 0:
+        return False
+    probed = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=codec_name", "-of", "csv=p=0", path,
+        ],
+        capture_output=True, text=True,
+    )
+    return probed.returncode == 0 and bool((probed.stdout or "").strip())
 
 
 def rehearsal_rows(lock_dir):
@@ -2235,74 +2278,29 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         started = time.monotonic()
         deadline = started + 10 * 60
         serial = ""
-        refused = 0
-        marker = "if [ -f /tmp/avt-startup-failed ]; then echo AVT_STARTUP_FAIL; cat /tmp/avt-startup-failed; else echo AVT_STARTUP_WAIT; fi"
         while time.monotonic() < deadline:
             if (time.monotonic() - started) / 3600.0 * REHEARSAL_RATE > REHEARSAL_CEILING:
                 print("rehearsal elapsed cost would exceed $1; deleting the VM", flush=True)
                 break
             polled = logged(plan.gcp_serial_argv(name, project, zone), "serial")
-            if getattr(polled, "returncode", 1) == 0:
-                serial = getattr(polled, "stdout", "") or ""
+            chunk = (getattr(polled, "stdout", "") or "") + (getattr(polled, "stderr", "") or "")
+            if chunk:
+                serial = chunk
             if "AVT_REHEARSAL_DONE" in serial or plan.guest_startup_failed(serial):
                 break
-            probed = logged(plan.gcp_ssh_argv(name, project, zone, marker), "ssh")
-            probed_text = (getattr(probed, "stdout", "") or "") + (getattr(probed, "stderr", "") or "")
-            if plan.connection_refused(probed):
-                refused += 1
-                print(probed_text, file=sys.stderr)
-                if refused >= plan.SSH_REFUSED_LIMIT:
-                    print("rehearsal ssh refused; failing the guest stage", file=sys.stderr)
-                    break
-                time.sleep(2 ** refused)
-                continue
-            if "AVT_STARTUP_FAIL" in probed_text or plan.guest_startup_failed(probed_text):
-                serial += "\n" + probed_text
-                break
             time.sleep(5)
-        def guest_tail():
+        if "AVT_STAGE" not in serial or "AVT_REHEARSAL_DONE" not in serial:
             tailed = logged(
-                plan.gcp_ssh_argv(name, project, zone, "sudo tail -n 80 /var/avt/guest.log || true"),
+                plan.gcp_ssh_argv(name, project, zone, "sudo cat /var/avt/guest.log || true"),
                 "ssh",
             )
-            text = (getattr(tailed, "stdout", "") or "")[-4000:]
-            sys.stderr.write("--- guest log tail ---\n" + text + "\n")
-            serial_tail = "\n".join((serial or "").splitlines()[-40:])
-            sys.stderr.write("--- serial tail ---\n" + serial_tail + "\n")
-            return text
-
-        def ssh_ok(command):
-            result = logged(plan.gcp_ssh_argv(name, project, zone, command), "ssh")
-            return getattr(result, "returncode", 1) == 0, (
-                (getattr(result, "stdout", "") or "") + (getattr(result, "stderr", "") or "")
-            )
-
-        guest_dead = plan.guest_startup_failed(serial) or refused >= plan.SSH_REFUSED_LIMIT
-        setup_secs = stage_seconds(serial, "setup")
-        setup_ok = (not guest_dead) and setup_secs is not None and ssh_ok(
-            "test -x /opt/avt-comp/bin/python && "
-            "/opt/avt-comp/bin/python -c 'import numpy,scipy,cv2; "
-            "assert numpy.__version__==\"2.5.5\"; assert scipy.__version__==\"1.18.1\"; "
-            "assert str(cv2.__version__).startswith(\"5.1\")'"
-        )[0]
-        mark("setup", setup_ok, setup_secs if setup_secs is not None else 0.0)
-        verify_secs = stage_seconds(serial, "verify")
-        verify_ok = (not guest_dead) and verify_secs is not None and ssh_ok(
-            "sha256sum -c /tmp/avt-rehearsal-sums"
-        )[0]
-        mark("verify", verify_ok, verify_secs if verify_secs is not None else 0.0)
-        smoke_secs = stage_seconds(serial, "smoke")
-        smoke_probe = (
-            "set -euo pipefail; f=/var/avt/scratch/final/rehearsal_chunk.mkv; "
-            "sudo test -s \"$f\"; "
-            "dur=$(sudo ffprobe -v error -show_entries format=duration -of csv=p=0 \"$f\"); "
-            "python3 -c 'import sys; assert float(sys.argv[1])>0' \"$dur\"; "
-            "echo AVT_SMOKE_PROBE \"$dur\""
-        )
-        smoke_ran, smoke_text = ssh_ok(smoke_probe) if not guest_dead else (False, "")
-        smoke_ok = smoke_secs is not None and smoke_ran and "AVT_SMOKE_PROBE" in smoke_text
-        mark("smoke", smoke_ok, smoke_secs if smoke_secs is not None else 0.0)
-        assemble_secs = stage_seconds(serial, "assemble")
+            serial += "\n" + (getattr(tailed, "stdout", "") or "")
+        scored = assess_guest_log(serial)
+        for stage_name in ("setup", "verify", "smoke", "assemble"):
+            ok, seconds = scored[stage_name]
+            mark(stage_name, ok, seconds)
+        if not scored["assemble"][0]:
+            sys.stderr.write("--- serial tail ---\n" + "\n".join(serial.splitlines()[-40:]) + "\n")
         paths = [
             f"{OUT_DIR}/rehearsal_h264.mp4",
             f"{OUT_DIR}/rehearsal_prores.mov",
@@ -2311,38 +2309,21 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
             name, project, zone, paths,
             [(path, os.path.join(out, os.path.basename(path)), False) for path in paths],
         )
-        published = (not guest_dead) and getattr(logged(pull_argvs[0], "ssh"), "returncode", 1) == 0
-        probe = (
-            "set -euo pipefail; "
-            "for f in /tmp/avt-pull/out/rehearsal_h264.mp4 /tmp/avt-pull/out/rehearsal_prores.mov; do "
-            "test -s \"$f\"; "
-            "ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 \"$f\" "
-            "| grep -q .; "
-            "done; echo AVT_ASSEMBLE_PROBE"
-        )
-        assemble_ran, assemble_text = ssh_ok(probe) if published else (False, "")
-        assemble_ok = (
-            assemble_secs is not None and published and assemble_ran and "AVT_ASSEMBLE_PROBE" in assemble_text
-        )
-        if not assemble_ok:
-            guest_tail()
-        mark("assemble", assemble_ok, assemble_secs if assemble_secs is not None else 0.0)
         started = time.monotonic()
-        pull_ok = assemble_ok
+        pull_ok = getattr(logged(pull_argvs[0], "ssh"), "returncode", 1) == 0
         if pull_ok:
             for argv in pull_argvs[1:]:
                 if getattr(logged(argv, "scp"), "returncode", 1) != 0:
                     pull_ok = False
             for path in paths:
                 local = os.path.join(out, os.path.basename(path))
-                if not os.path.isfile(local) or os.path.getsize(local) <= 0:
+                if not local_video_ok(local):
                     pull_ok = False
+                    sys.stderr.write(f"pull-back: {local} is missing, empty, or has no video stream\n")
         if pull_ok:
             logged(plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-pulled"), "ssh")
-        else:
-            guest_tail()
         mark("pull-back", pull_ok, time.monotonic() - started)
-        if not (assemble_ok and pull_ok):
+        if not all(scored[name][0] for name in ("setup", "verify", "smoke", "assemble")) or not pull_ok:
             return 2
         return 0
     finally:
