@@ -59,7 +59,7 @@ What execute does:
 
 Wall time is recorded for create, transfer, setup, parity, state pass, chunks, concat, pull-back, and teardown. The timing file and the stdout block are that record plus the elapsed on-demand cost.
 
-`--cost-ceiling` defaults to `5` dollars at the proposal rate, including when `--spot` is set (Spot is not priced, so the ceiling stays the on-demand number). Execute refuses to create the VM when the projected upper bound would exceed it. That projection is the span you asked for (`--nf`, default the verse of 1911 frames), including the state pass, plus one hour of transfer allowance on a local stage. The default verse prints about **$3.84**. The full song with a state pass prints **$6.79–$7.71** and execute refuses it at the default ceiling. While the VM exists, elapsed cost is checked on the same rate; crossing the ceiling deletes the instance.
+`--cost-ceiling` defaults to `5` dollars at the proposal rate, including when `--spot` is set (Spot is not priced, so the ceiling stays the on-demand number). The dry-run prints one line, `full song vs ceiling:`, with the 2-wide wall and dollars against that cap. 18 GB at 100 Mbit/s is 0.40 h, inside the 0.75 h setup, so the copy does not add a second hour. Execute refuses to create the VM when the 2-wide upper bound for the span you asked for (`--nf`, default the verse) would exceed the cap. The full song on that band is about **$2.66–$2.96**, under $5. While the VM exists, elapsed cost is checked on the same rate; crossing the ceiling deletes the instance.
 
 The guest still runs `render_verse_v9look_v1e_p.py`. Put that file, the wav, and every other input in the lock. Rows that are not on AVT are expected. They have to be on disk at the lock's relative path under `--work-root`.
 
@@ -139,7 +139,7 @@ Optional flags: `--machine-type` (default `c4-standard-16`), `--max-hours` (defa
 
 Workers: `(RAM − 4 GB) / 7.5 GB`. A c4-standard-16 (60 GB) starts 7. The locked script asks OpenCV for 6 threads, so 16 vCPUs keep about 2 of those busy at once. The cost line uses that CPU cap so it does not pretend a 7× speedup.
 
-For 5542 frames at 3.4–3.9 s/frame, 2-wide, plus 0.75 h of setup, the on-demand ceiling printed by the dry-run is **$2.66–$2.96** if snapshots already exist, and **$6.79–$7.71** if the state-only pass is a second full decode. The verse itself (1911 frames) is about 1.65–1.79 h without that second pass. These are ceilings at $0.79/h, not an invoice.
+For 5542 frames at 3.4–3.9 s/frame, 2-wide, plus 0.75 h of setup, the on-demand band is **$2.66–$2.96**. That is the figure the dry-run compares with the ceiling. The older **$6.79–$7.71** number adds a second full decode, run strictly before the chunks. The guest does not do that. It starts chunk 0 beside `--state_only`, and starts each later chunk when its snapshot file appears. The compositor argv is the same, so the pixels are the same. If `--state_only` is as heavy as a full decode it occupies one of the two CPU slots and the wall is one pass, **$4.73–$5.34**, which is over the $5 ceiling by $0.34 at 3.9 s/frame. The locked compositor is not in this repo, and `unused.mp4` is the only sign that the state walk is not a delivered encode, so the gate uses the 2-wide band. The verse itself (1911 frames) is about 1.65–1.79 h on that band. These are ceilings at $0.79/h, not an invoice.
 
 ## Teardown
 

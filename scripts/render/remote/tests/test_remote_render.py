@@ -337,7 +337,13 @@ def test_uncapped_duration_stays_hours_and_the_default_ceiling_is_under_five_dol
         stage_from="local", lock_summary={"missing": [], "files": [], "on_avt": 0},
         lock_path="/tmp/LOCK_v2.json",
     )
-    assert full["projected_usd_hi"] > 5.0
+    # The gated figure is the 2-wide band, about $2.66–$2.96, not a second decode.
+    assert full["projected_usd_hi"] < 5.0
+    assert full["cost_full_song"]["proposal_usd"][1] < 5.0
+    one_hi = plan.one_pass_hours(plan.FULL_SONG_FRAMES, plan.SEC_HI) * plan.PROPOSAL_USD_PER_HOUR
+    assert one_hi > 5.0
+    assert full["cost_full_song"]["with_state_pass_usd"][1] > one_hi
+    assert plan.transfer_hours() < plan.OVERHEAD_H
 
 
 def test_local_dry_run_needs_no_avt_credentials_and_calls_nothing(tmp_path, capsys):
@@ -364,6 +370,9 @@ def test_local_dry_run_needs_no_avt_credentials_and_calls_nothing(tmp_path, caps
     assert "full_sf3290.png" in out and "full_sf3301.png" in out
     assert "state pass" in out and "pull-back" in out
     assert "not uploaded to AVT" in out
+    assert "full song vs ceiling:" in out
+    assert "2.66" in out or "$2.66" in out
+    assert "(under)" in out
     assert str(lock) in out
     assert "lock rows: 1" in out
     assert "no AVT object: 1" in out
@@ -497,13 +506,84 @@ def test_projected_cost_over_the_ceiling_does_not_create(tmp_path, capsys):
         ["--backend", "gcp", "--execute", "--stage-from", "local",
          "--lock", str(lock), "--work-root", str(tmp_path),
          "--parity-dir", str(tmp_path), "--nf", str(plan.FULL_SONG_FRAMES),
-         "--env-file", str(tmp_path / "env"), "--cost-ceiling", "5"],
+         "--env-file", str(tmp_path / "env"), "--cost-ceiling", "2"],
         env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
         call=lambda argv: calls.append(argv) or Result(),
     )
     assert code == 2
     assert calls == []
     assert "would exceed the ceiling" in capsys.readouterr().err
+
+
+def test_full_song_at_the_default_ceiling_is_not_refused(tmp_path, capsys):
+    lock = _lock(tmp_path / "LOCK_v2.json", [])
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(tmp_path),
+         "--parity-dir", str(tmp_path), "--nf", str(plan.FULL_SONG_FRAMES),
+         "--env-file", str(tmp_path / "env"), "--cost-ceiling", "5",
+         "--output", str(tmp_path / "final.mp4")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    assert calls[0][3] == "create"
+    assert "would exceed the ceiling" not in capsys.readouterr().err
+
+
+def test_pipeline_starts_chunk_zero_beside_the_state_walk(tmp_path):
+    built = plan.guest_steps("python3", plan.WORK_ROOT, str(tmp_path), nf=8, workers=2)
+    later = [step for step in built["steps"] if step.get("parallel") and "--state_load" in step["argv"]][0]
+    snap = later["argv"][later["argv"].index("--state_load") + 1]
+    order = []
+
+    class Proc:
+        def __init__(self, argv):
+            self.argv = list(argv)
+            self.returncode = None
+            if "--state_only" in self.argv:
+                order.append("start-state")
+            elif "--state_load" in self.argv:
+                order.append("start-later")
+            else:
+                order.append("start-chunk0")
+
+        def poll(self):
+            if "--state_only" in self.argv:
+                if "start-chunk0" in order and self.returncode is None:
+                    os.makedirs(os.path.dirname(snap), exist_ok=True)
+                    open(snap, "wb").close()
+                    self.returncode = 0
+                    order.append("end-state")
+                    return 0
+                return self.returncode
+            self.returncode = 0
+            return 0
+
+        def wait(self):
+            self.returncode = 0
+            return 0
+
+        def kill(self):
+            self.returncode = -9
+
+    plan.run_steps(
+        built["steps"], lambda argv: None, lambda: plan.parity_verdict(0, "linux"),
+        spawn=lambda argv: Proc(argv), slots=2, pipe_sleep=lambda _s: None,
+    )
+    assert order.index("start-chunk0") < order.index("end-state")
+    assert order.index("end-state") < order.index("start-later")
+    assert os.path.isfile(snap)
+    assert "--state_load" in later["argv"]
+    assert later["argv"][later["argv"].index("--state_load") + 1] == snap
 
 
 def test_elapsed_cost_deletes_the_instance():

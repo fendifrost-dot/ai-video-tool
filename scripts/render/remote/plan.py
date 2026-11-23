@@ -35,8 +35,10 @@ OVERHEAD_H = 0.75
 PROPOSAL_USD_PER_HOUR = 0.79
 # Hard stop for a paid run. Elapsed cost uses this same on-demand rate, including Spot.
 DEFAULT_COST_CEILING_USD = 5.0
-# Planning pad for pushing the lock tree. Measured elapsed cost is what aborts a live VM.
-LOCAL_TRANSFER_ALLOWANCE_H = 1.0
+# The launcher's lock tree, and a plain scp rate used only for the dry-run line.
+# 18e9 bytes at 100 Mbit/s is 0.40 h, which sits inside the 0.75 h setup pad.
+LOCAL_TREE_GB = 18.0
+ASSUMED_SCP_MBPS = 100.0
 
 # Frames already proven identical between the locked compositor and the chunk
 # runner on the Linux box (ptest_v1e/IDENTITY.json, look_v1e_vs_p).
@@ -486,11 +488,77 @@ def concat_list(chunks):
     return "".join(f"file 'c{c['sf0']}.mp4'\n" for c in chunks)
 
 
-def run_steps(steps, call, compare, parallel_call=None, on_stage=None):
+def state_load_path(argv):
+    if "--state_load" not in argv:
+        return None
+    return argv[argv.index("--state_load") + 1]
+
+
+def run_pipelined(state_argv, chunk_argvs, spawn, slots, sleep=time.sleep, poll_seconds=0.2,
+                  max_spins=100000):
+    """Run the state walk beside the chunks. Same argv, so the pixels do not change.
+
+    Chunk 0 has no snapshot and starts at once. A later chunk starts when its
+    ``state_<frame>.npz`` is on disk and a CPU slot is free. The state process
+    holds one slot until it exits. ``spawn`` returns an object with ``poll``,
+    ``wait``, and ``kill`` (a ``subprocess.Popen``).
+    """
+    slots = max(1, int(slots))
+    running = []
+    pending = list(chunk_argvs)
+    failed = None
+    state_proc = spawn(state_argv)
+    running.append(("state", state_proc))
+
+    def reap():
+        nonlocal failed
+        alive = []
+        for name, proc in running:
+            code = proc.poll()
+            if code is None:
+                alive.append((name, proc))
+            elif code != 0 and failed is None:
+                failed = (name, code)
+        running[:] = alive
+
+    spins = 0
+    while pending or running:
+        spins += 1
+        if spins > max_spins:
+            for _, proc in running:
+                proc.kill()
+            raise SystemExit("state walk did not produce the snapshot")
+        reap()
+        if failed:
+            for _, proc in running:
+                proc.kill()
+            raise SystemExit(f"{failed[0]} exited {failed[1]}")
+        started = False
+        while pending and len(running) < slots:
+            path = state_load_path(pending[0])
+            if path and not os.path.isfile(path):
+                if state_proc.poll() is not None:
+                    for _, proc in running:
+                        proc.kill()
+                    raise SystemExit(f"state walk ended without {os.path.basename(path)}")
+                break
+            argv = pending.pop(0)
+            running.append(("chunk", spawn(argv)))
+            started = True
+        if not started:
+            sleep(poll_seconds)
+    if state_proc.poll() not in (0, None):
+        raise SystemExit(f"state exited {state_proc.poll()}")
+
+
+def run_steps(steps, call, compare, parallel_call=None, on_stage=None, spawn=None, slots=2,
+              pipe_sleep=time.sleep):
     """Run steps in order. A failed compare does not start the full render.
 
     ``call`` and ``parallel_call`` receive argv lists. The default parallel path
     starts every chunk argv through ``call`` only after compare has accepted.
+    When ``spawn`` is set, the state walk and the chunks share the CPU slots:
+    chunk 0 starts immediately, and a later chunk waits for its snapshot.
     ``on_stage(name, phase)`` sees parity, state_pass, chunks, and concat.
     """
     def mark(name, phase):
@@ -508,6 +576,21 @@ def run_steps(steps, call, compare, parallel_call=None, on_stage=None):
             if not result["acceptable"]:
                 raise SystemExit(result["verdict"])
             i += 1
+            continue
+        if step["name"] == "state_only" and spawn is not None:
+            state_argv = step["argv"]
+            i += 1
+            group = []
+            while i < len(steps) and steps[i].get("parallel"):
+                group.append(steps[i]["argv"])
+                i += 1
+            mark("state_pass", "begin")
+            mark("chunks", "begin")
+            try:
+                run_pipelined(state_argv, group, spawn, slots, sleep=pipe_sleep)
+            finally:
+                mark("state_pass", "end")
+                mark("chunks", "end")
             continue
         if step.get("parallel"):
             group = []
@@ -589,17 +672,57 @@ def uses_state_pass(chunks):
     return any(chunk.get("state_load") for chunk in chunks)
 
 
-def projected_usd_hi(cost, state_pass, transfer_allowance_h=0.0):
-    """Upper on-demand dollars for the span that will actually render.
+def transfer_hours(gib=LOCAL_TREE_GB, mbps=ASSUMED_SCP_MBPS):
+    """Hours to copy ``gib`` gigabytes (decimal) at ``mbps`` megabits/s."""
+    if mbps <= 0:
+        raise ValueError("mbps must be positive")
+    seconds = (float(gib) * 1_000_000_000 * 8) / (float(mbps) * 1_000_000)
+    return seconds / 3600.0
 
-    The state-only pass is included when a later chunk loads a snapshot.
-    ``transfer_allowance_h`` is a planning pad for a local push, not a measurement.
+
+def one_pass_hours(frames, sec, overhead_h=OVERHEAD_H):
+    """One in-order pass of every frame, plus setup. Not a second decode on top."""
+    return _hours(frames, sec, 1) + overhead_h
+
+
+def projected_usd_hi(cost, transfer_h=0.0):
+    """Upper on-demand dollars for the 2-wide render the owner priced.
+
+    ``cost_band`` also stores a stacked "state pass is a second full decode" figure.
+    That stack is not this projection. A copy that finishes inside the setup pad
+    adds nothing; a slower copy adds only the part that sticks out past setup.
     """
     rate = cost.get("usd_per_hour")
     if rate is None:
         return None
-    hours = cost["with_state_pass_hours"][1] if state_pass else cost["proposal_hours"][1]
-    return (hours + float(transfer_allowance_h)) * rate
+    extra = max(0.0, float(transfer_h) - float(cost["overhead_hours"]))
+    return (cost["proposal_hours"][1] + extra) * rate
+
+
+def full_song_vs_ceiling(rate, ceiling, slots=2):
+    """One line: full-song wall and dollars against the ceiling.
+
+    The first pair is the 2-wide render (the gated projection). The second pair is
+    one overlapped pass, which is the wall if ``--state_only`` repeats a full
+    decode and occupies one of the two CPU slots while the other slot renders.
+    """
+    two = cost_band(FULL_SONG_FRAMES, max(1, slots), rate)
+    one_hours = (
+        one_pass_hours(FULL_SONG_FRAMES, SEC_LO),
+        one_pass_hours(FULL_SONG_FRAMES, SEC_HI),
+    )
+    one_usd = (one_hours[0] * rate, one_hours[1] * rate)
+
+    def side(high):
+        return "under" if high <= ceiling else "over"
+
+    return (
+        f"full song vs ceiling: {_hours_text(two['proposal_hours'])}, "
+        f"{_usd(two['proposal_usd'])} vs ${ceiling:.2f} ({side(two['proposal_usd'][1])}); "
+        f"one overlapped pass if state_only repeats a full decode: "
+        f"{one_hours[0]:.2f}–{one_hours[1]:.2f} h, ${one_usd[0]:.2f}–${one_usd[1]:.2f} "
+        f"vs ${ceiling:.2f} ({side(one_usd[1])})"
+    )
 
 
 def mkdir_command(rels, remote_root=WORK_ROOT):
@@ -889,7 +1012,7 @@ def gcp_prepare_argv(name, project, zone, env_file, remote_dir):
     ]
 
 
-def startup_script(max_minutes=480, stage_from="avt"):
+def startup_script(max_minutes=480, stage_from="avt", vcpu=None):
     """Guest boot script. Trap and a timed shutdown both run, plus GCP max-run-duration.
 
     Secrets arrive as /tmp/avt-env over scp, not in instance metadata. The trap removes
@@ -897,11 +1020,17 @@ def startup_script(max_minutes=480, stage_from="avt"):
     token in the env file; the guest only checks the confirm flag and the lock JSON.
     """
     if stage_from == "local":
-        return _startup_script_local(max_minutes)
-    return _startup_script_avt(max_minutes)
+        return _startup_script_local(max_minutes, vcpu=vcpu)
+    return _startup_script_avt(max_minutes, vcpu=vcpu)
 
 
-def _startup_script_avt(max_minutes):
+def _vcpu_flag(vcpu):
+    if not vcpu:
+        return ""
+    return f"  --vcpu {int(vcpu)} \\\n"
+
+
+def _startup_script_avt(max_minutes, vcpu=None):
     return f"""#!/bin/bash
 # Generated by scripts/render/remote. Do not put secrets in this file.
 set -euo pipefail
@@ -939,7 +1068,7 @@ python3 -m venv /opt/avt-comp
 /opt/avt-comp/bin/pip install --quiet 'numpy==2.5.5' 'scipy==1.18.1' 'opencv-python-headless'
 cd /tmp/avt-remote
 /opt/avt-comp/bin/python remote_render.py --guest --backend linux \
-  --work-root /workspace/partnership/second_half \
+{_vcpu_flag(vcpu)}  --work-root /workspace/partnership/second_half \
   --parity-dir "${{AVT_PARITY_DIR:-/var/avt/parity}}" || {{
   echo AVT_RENDER_FAIL guest
   exit 1
@@ -950,7 +1079,7 @@ sleep 20
 """
 
 
-def _startup_script_local(max_minutes):
+def _startup_script_local(max_minutes, vcpu=None):
     """Install while the launcher is still copying. Render only after /tmp/avt-go.
 
     The wait covers a multi-gigabyte scp. It is bounded by the same MAX_MINUTES as
@@ -1012,7 +1141,7 @@ cd /tmp/avt-remote
 /opt/avt-comp/bin/python -u remote_render.py --guest --backend linux \\
   --stage-from local \\
   --lock /var/avt/lock.json \\
-  --work-root /workspace/partnership/second_half \\
+{_vcpu_flag(vcpu)}  --work-root /workspace/partnership/second_half \\
   --parity-dir "${{AVT_PARITY_DIR:-/var/avt/parity}}" \\
   --timing-file /var/avt/timing.json || {{
   echo AVT_RENDER_FAIL guest
@@ -1303,16 +1432,16 @@ def build_plan(backend, env, sf0=VERSE_SF0, nf=VERSE_NF, ram_gb=None, vcpu=None,
     # The project check is separate so a missing project is not reported as a missing file.
     if backend == "gcp" and stage_from == "local":
         blocked = lock_summary is None
-        transfer_allowance = LOCAL_TRANSFER_ALLOWANCE_H
+        transfer_h = transfer_hours()
     elif backend == "gcp":
         blocked = lock_summary is None or bool(missing)
-        transfer_allowance = 0.0
+        transfer_h = 0.0
     else:
         blocked = False
-        transfer_allowance = 0.0
+        transfer_h = 0.0
     rate = spec.get("usd_per_hour")
     cost_verse = cost_band(nf, effective, rate)
-    projected = projected_usd_hi(cost_verse, state_pass, transfer_allowance if backend == "gcp" else 0.0)
+    projected = projected_usd_hi(cost_verse, transfer_h if backend == "gcp" else 0.0)
     capped = cost_cap_hours(max_hours, cost_ceiling, rate if backend == "gcp" else None)
     max_seconds = int(float(max_hours) * 3600)
     remote_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1353,7 +1482,9 @@ def build_plan(backend, env, sf0=VERSE_SF0, nf=VERSE_NF, ram_gb=None, vcpu=None,
         "cost_ceiling_usd": cost_ceiling,
         "projected_usd_hi": projected,
         "usd_per_hour": rate,
-        "transfer_allowance_hours": transfer_allowance if backend == "gcp" else 0.0,
+        "transfer_hours": transfer_h if backend == "gcp" else 0.0,
+        "scp_mbps": ASSUMED_SCP_MBPS,
+        "tree_gb": LOCAL_TREE_GB,
         "uses_state_pass": state_pass,
         "capped_hours": capped,
         "output": output,
@@ -1384,7 +1515,9 @@ def build_plan(backend, env, sf0=VERSE_SF0, nf=VERSE_NF, ram_gb=None, vcpu=None,
         # First ssh only. About two minutes for the guest to accept a connection.
         plan["transfer_attempts"] = 24 if stage_from == "local" else 1
         guest_minutes = max(1, int(math.floor(capped * 60.0)))
-        plan["startup_script"] = startup_script(max_minutes=guest_minutes, stage_from=stage_from)
+        plan["startup_script"] = startup_script(
+            max_minutes=guest_minutes, stage_from=stage_from, vcpu=spec.get("vcpu"),
+        )
         if stage_from == "local":
             plan["transfer_argv"] = local_transfer_argvs(
                 instance_name, project, zone, rows or [], source_root, lock_path,
@@ -1467,17 +1600,23 @@ def _ceiling_lines(plan):
         )
     projected = plan.get("projected_usd_hi")
     if projected is not None:
-        allowance = plan.get("transfer_allowance_hours") or 0
-        if allowance:
-            extra = f", including the state pass and {allowance:.2f} h of transfer allowance"
-        elif plan.get("uses_state_pass"):
-            extra = ", including the state pass"
-        else:
-            extra = ""
-        lines.append(f"projected on-demand upper bound for this span{extra}: ${projected:.2f}")
+        lines.append(
+            f"projected on-demand upper bound for this span (2-wide, setup included): ${projected:.2f}"
+        )
         if ceiling is not None and projected > ceiling:
             lines.append(
                 "execute would refuse: projected cost exceeds the ceiling. No VM would be created."
+            )
+    if plan.get("cost_full_song", {}).get("usd_per_hour") is not None and ceiling is not None:
+        lines.append(full_song_vs_ceiling(
+            plan["cost_full_song"]["usd_per_hour"], ceiling, slots=plan.get("effective_workers") or 2,
+        ))
+        if plan.get("stage_from") == "local":
+            lines.append(
+                f"scp {plan.get('tree_gb', LOCAL_TREE_GB):.0f} GB at "
+                f"{plan.get('scp_mbps', ASSUMED_SCP_MBPS):.0f} Mbit/s is "
+                f"{plan.get('transfer_hours', 0):.2f} h, inside the {OVERHEAD_H} h setup "
+                "when the copy is not slower than that pad."
             )
     if plan.get("backend") == "gcp" and plan.get("capped_hours") is not None:
         lines.append(

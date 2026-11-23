@@ -170,6 +170,9 @@ def run_guest(args, env):
     def call(argv):
         subprocess.run(argv, check=True, env=child_env)
 
+    def spawn(argv):
+        return subprocess.Popen(argv, env=child_env)
+
     def compare():
         count = compare_png_dirs(
             os.path.join(run_dir, "parity", "stills"), args.parity_dir, plan.still_names(),
@@ -186,7 +189,11 @@ def run_guest(args, env):
             print(f"AVT_STAGE {name} {seconds:.3f}", flush=True)
 
     run_dir_final = os.path.join(run_dir, "final.mp4")
-    plan.run_steps(built["steps"], call, compare, on_stage=on_stage)
+    guest_vcpu = args.vcpu or (16 if args.backend == "linux" else None)
+    slots = plan.cpu_slots(guest_vcpu) or started
+    plan.run_steps(
+        built["steps"], call, compare, on_stage=on_stage, spawn=spawn, slots=slots,
+    )
     if args.timing_file:
         plan.write_guest_timing(args.timing_file, timer.seconds)
     if token and os.path.isfile(run_dir_final):
