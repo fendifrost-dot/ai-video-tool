@@ -101,6 +101,15 @@ MACHINES = {
         "usd_per_hour": PROPOSAL_USD_PER_HOUR,
         "family": "intel",
     },
+    # us-central1 on-demand. Catalog $1.1860/h (2026-11-12); a second read was $1.2096/h.
+    # The higher figure, rounded up. 24 vCPU is this project's C4 per-VM quota.
+    "c4-standard-24": {
+        "backend": "gcp",
+        "vcpu": 24,
+        "ram_gb": 90,
+        "usd_per_hour": 1.21,
+        "family": "intel",
+    },
     # us-central1 on-demand, Linux, no disk. Catalog $1.58136/h on 2026-11-12, rounded up.
     "c4-standard-32": {
         "backend": "gcp",
@@ -1057,7 +1066,12 @@ def local_transfer_argvs(name, project, zone, rows, source_root, lock_path,
     """
     remote_root = WORK_ROOT
     rels = [row["rel"] for row in rows]
-    argvs = [gcp_ssh_argv(name, project, zone, mkdir_command(rels, remote_root))]
+    dirs = {remote_root, "/tmp/avt-remote", STAGE_DIR, "/workspace/partnership", VAR_AVT}
+    for rel in rels:
+        parent = os.path.dirname(rel)
+        if parent and parent != ".":
+            dirs.add(os.path.join(remote_root, parent))
+    argvs = pack_dir_batches(sorted(dirs), name, project, zone, probe="workspace")
     for row in rows:
         local = os.path.join(source_root, row["rel"])
         remote = os.path.join(remote_root, row["rel"])
@@ -1572,6 +1586,34 @@ def write_prepare_failure(output, text, output_is_dir=False):
     return path
 
 
+def format_create_failure(argv, result):
+    """argv plus the gcloud stderr/stdout of a failed instance create."""
+    code = getattr(result, "returncode", 1)
+    lines = [
+        f"gcloud create failed ({code})",
+        "argv:",
+        _argv_text(argv),
+        "--- last output lines ---",
+        _tail_text(_result_text(result), 50) or "(no stdout or stderr)",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def write_execute_log(output, text, output_is_dir=False):
+    """Write a create failure to ``execute.log`` and ``prepare_failure.log``."""
+    failure = prepare_failure_path(output, output_is_dir=output_is_dir)
+    if not failure:
+        return None
+    directory = os.path.dirname(failure) or "."
+    os.makedirs(directory, exist_ok=True)
+    execute_path = os.path.join(directory, "execute.log")
+    with open(execute_path, "w") as handle:
+        handle.write(text)
+    with open(failure, "w") as handle:
+        handle.write(text)
+    return execute_path
+
+
 def _raise_prepare_failure(index, argv, result, rows, output, output_is_dir=False):
     text = format_prepare_failure(index, argv, result, rows=rows)
     sys.stderr.write(text)
@@ -1643,27 +1685,132 @@ def _row_remote(row, root=WORK_ROOT):
     return None
 
 
-def size_probe_script(pairs):
-    """Print absolute paths that already exist at the lock's byte size.
+# gcloud puts every argument in one exec. A 374-path probe exceeded ARG_MAX
+# (E2BIG, "Argument list too long"). Stay under this for each element and the
+# whole argv, leaving room for the environment.
+ARGV_LIMIT = 128 * 1024
+PROBE_LIST = "/tmp/avt-probe-list"
+# Fixed reader. The path list is a file, not part of this command. base64 keeps
+# spaces, '&', quotes, and newlines out of the shell. stat -c is GNU.
+PROBE_READER = """set -euo pipefail
+list=/tmp/avt-probe-list
+if [ ! -f "$list" ]; then
+  echo "AVT_PROBE_FAIL missing list" >&2
+  exit 1
+fi
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    "" ) continue ;;
+  esac
+  size=${line%% *}
+  blob=${line#* }
+  path=$(printf '%s' "$blob" | base64 -d) || continue
+  if [ -f "$path" ] && [ "$(stat -c %s -- "$path")" -eq "$size" ]; then
+    printf '%s\\n' "$path"
+  fi
+done < "$list"
+"""
 
-    A missing size is not a match. The guest is Debian, so ``stat -c`` is GNU.
-    """
+
+def argv_nbytes(argv):
+    """Bytes this argv would hand to exec, including a NUL after each element."""
+    total = 0
+    for part in argv:
+        total += len(os.fsencode(str(part))) + 1
+    return total
+
+
+def argv_within_limit(argv, limit=ARGV_LIMIT):
+    for part in argv:
+        if len(os.fsencode(str(part))) > limit:
+            return False
+    return argv_nbytes(argv) <= limit
+
+
+def encode_probe_list(pairs):
+    """One ``size base64(path)`` line per file. Empty when nothing is probeable."""
     lines = []
     for path, size in pairs:
         try:
             size_i = int(size)
         except (TypeError, ValueError):
             continue
-        if size_i < 0 or not path:
+        if size_i < 0 or not isinstance(path, str) or not path:
             continue
-        quoted = shlex.quote(path)
-        lines.append(
-            f"if [ -f {quoted} ] && [ \"$(stat -c %s -- {quoted})\" -eq {size_i} ]; then "
-            f"printf '%s\\n' {quoted}; fi"
-        )
+        blob = base64.b64encode(path.encode("utf-8")).decode("ascii")
+        lines.append(f"{size_i} {blob}")
     if not lines:
         return ""
     return "\n".join(lines) + "\n"
+
+
+def decode_probe_list(text):
+    """Inverse of ``encode_probe_list``. A bad line is skipped."""
+    found = []
+    for line in (text or "").splitlines():
+        if " " not in line:
+            continue
+        size_s, blob = line.split(" ", 1)
+        try:
+            size_i = int(size_s)
+            path = base64.b64decode(blob).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            continue
+        found.append((path, size_i))
+    return found
+
+
+def probe_commands(name, project, zone, pairs, list_file):
+    """scp the path list, then a short ssh that reads it. Neither argv grows with the rows."""
+    if not encode_probe_list(pairs):
+        return []
+    return [
+        gcp_scp_argv(name, project, zone, list_file, scp_spec(name, PROBE_LIST)),
+        gcp_ssh_argv(name, project, zone, wrap_remote_command(PROBE_READER)),
+    ]
+
+
+def pack_dir_batches(dirs, name, project, zone, probe="workspace"):
+    """ssh commands that mkdir ``dirs``. Each argv stays within ``ARGV_LIMIT``.
+
+    The first command is the write probe. Later commands only mkdir the parents
+    that did not fit. One path is never split across commands.
+    """
+    pending = [path for path in dirs if path]
+    batches = []
+    first = []
+    for path in pending:
+        trial = first + [path]
+        argv = gcp_ssh_argv(
+            name, project, zone, wrap_remote_command(prepare_tree_script(trial, probe=probe)),
+        )
+        if first and not argv_within_limit(argv):
+            break
+        first = trial
+    batches.append(first)
+    pending = pending[len(first):]
+    while pending:
+        chunk = []
+        for path in pending:
+            trial = chunk + [path]
+            argv = gcp_ssh_argv(
+                name, project, zone,
+                wrap_remote_command(prepare_tree_script(trial, probe=None)),
+            )
+            if chunk and not argv_within_limit(argv):
+                break
+            chunk = trial
+        if not chunk:
+            chunk = [pending[0]]
+        batches.append(chunk)
+        pending = pending[len(chunk):]
+    argvs = []
+    for index, batch in enumerate(batches):
+        script = prepare_tree_script(batch, probe=probe if index == 0 else None)
+        argvs.append(gcp_ssh_argv(
+            name, project, zone, wrap_remote_command(script),
+        ))
+    return argvs
 
 
 def without_existing(argvs, present):
@@ -1706,20 +1853,41 @@ def _present_from_probe(text, wanted):
     return found
 
 
-def _probe_present(plan, call, pairs):
-    """One ssh. None means the check failed and the caller must copy."""
-    script = size_probe_script(pairs)
-    if not script:
-        return set()
-    argv = gcp_ssh_argv(
-        plan["instance_name"], plan.get("project"), plan.get("zone"),
-        wrap_remote_command(script),
+def _probe_present(plan_obj, call, pairs):
+    """Copy a path list, then ask which files are already the right size.
+
+    None means the check failed and the caller must copy. The list is a file,
+    so the gcloud argv does not grow with the manifest. An OSError from an
+    over-long argv is the same as a failed check.
+    """
+    commands = probe_commands(
+        plan_obj["instance_name"], plan_obj.get("project"), plan_obj.get("zone"),
+        pairs, list_file="",
     )
-    result = call(argv)
-    if getattr(result, "returncode", 1) != 0:
-        return None
-    wanted = {path for path, _size in pairs}
-    return _present_from_probe(getattr(result, "stdout", "") or "", wanted)
+    if not commands:
+        return set()
+    fd, local = tempfile.mkstemp(prefix="avt-probe-", suffix=".list")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(encode_probe_list(pairs))
+        commands = probe_commands(
+            plan_obj["instance_name"], plan_obj.get("project"), plan_obj.get("zone"),
+            pairs, list_file=local,
+        )
+        for argv in commands:
+            try:
+                result = call(argv)
+            except OSError:
+                return None
+            if getattr(result, "returncode", 1) != 0:
+                return None
+        wanted = {path for path, _size in pairs}
+        return _present_from_probe(getattr(result, "stdout", "") or "", wanted)
+    finally:
+        try:
+            os.remove(local)
+        except OSError:
+            pass
 
 
 def _push_local(plan, call, sleep):
@@ -1878,11 +2046,31 @@ def execute_gcp(plan, call, sleep=time.sleep, clock=time.monotonic):
             if script:
                 startup_path = _write_startup(script)
                 create_argv = _with_startup(create_argv, startup_path)
-            created_result = call(create_argv)
+            try:
+                created_result = call(create_argv)
+            except OSError as exc:
+                created_result = type("CreateResult", (), {})()
+                created_result.returncode = 1
+                created_result.stdout = ""
+                created_result.stderr = f"{exc.__class__.__name__}: {exc}"
         finally:
             timer.end("create")
         if created_result.returncode != 0:
-            raise SystemExit(f"gcloud create failed ({created_result.returncode}); no instance to delete")
+            text = format_create_failure(create_argv, created_result)
+            sys.stderr.write(text)
+            log_path = None
+            try:
+                log_path = write_execute_log(
+                    plan.get("output"), text, output_is_dir=bool(plan.get("output_is_dir")),
+                )
+            except OSError as exc:
+                sys.stderr.write(f"could not write execute.log ({exc})\n")
+            message = (
+                f"gcloud create failed ({created_result.returncode}); no instance to delete"
+            )
+            if log_path:
+                message += f". see {log_path}"
+            raise SystemExit(message)
         created = True
         billing_start = clock()
         timer.begin("transfer")
