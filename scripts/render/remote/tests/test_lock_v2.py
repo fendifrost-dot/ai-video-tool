@@ -78,20 +78,34 @@ def test_v1e_chunks_match_the_lock_order_and_final_ranges_cover_the_song():
 def test_projection_includes_transfer_and_install_and_stays_under_five_dollars():
     ram, vcpu, rate = lock_v2.machine_spec()
     proj = lock_v2.project(ram, vcpu, lock_v2.DOC_INPUT_GB, 5, rate)
-    assert proj["v1e_started"] == 4
+    # 16 vCPU / 6 threads is the binding cap, under the 4 that 60 GB would start.
+    assert proj["v1e_started"] == 2
     assert proj["v1e_effective"] == 2
     assert proj["final_started"] == 4
-    assert proj["parts_hours"]["transfer"][0] > 0.5
+    assert proj["transfer_mb_s"] == 30
+    assert proj["parts_hours"]["transfer"][0] < 0.5
     assert proj["parts_hours"]["install"][1] >= 0.25
+    assert proj["parts_hours"]["final_chunks"][0] < proj["parts_hours"]["final_chunks"][1]
     assert proj["usd"][0] < proj["usd"][1] < 5
     assert proj["under"] is True
     text = lock_v2.projection_text(proj)
     assert "LOCK_v2 vs ceiling:" in text
     assert "(under)" in text
     assert "ffv1, libx264, prores_ks" in text
+    assert "sequential" in text
     low = lock_v2.project(ram, vcpu, lock_v2.DOC_INPUT_GB, 1, rate)
     assert low["under"] is False
     assert low["usd"][1] > 1
+    ram32, vcpu32, rate32 = lock_v2.machine_spec("c4-standard-32")
+    wide_proj = lock_v2.project(
+        ram32, vcpu32, lock_v2.DOC_INPUT_GB, 15, rate32, machine="c4-standard-32",
+    )
+    assert wide_proj["v1e_started"] == 5
+    assert wide_proj["final_started"] == 8
+    assert wide_proj["usd"][1] < 15
+    assert wide_proj["hours"][1] < proj["hours"][1]
+    highmem = lock_v2.machine_spec("c4-highmem-32")
+    assert highmem[0] == 248 and highmem[1] == 32 and highmem[2] >= rate32
 
 
 def test_recipe_argv_runs_state_then_chunks_and_keeps_scripts_unmodified():
@@ -257,8 +271,9 @@ def test_dry_run_prints_the_plan_and_calls_nothing(capsys):
     out = capsys.readouterr().out
     assert "recipe: lock_v2" in out
     assert "c4-standard-16" in out
-    assert "v1e workers started: 4" in out
-    assert "v1e wall-clock cap: 2" in out
+    assert "c4-standard-32" in out
+    assert "machine comparison" in out
+    assert "v1e workers: 2" in out
     assert "final_render workers: 4" in out
     assert "120 GB" in out
     assert "LOCK_v2 vs ceiling:" in out
@@ -445,10 +460,147 @@ def test_cease_and_desist_path_survives_the_remote_shell(tmp_path):
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
     parent = os.path.dirname(str(wav))
     assert parent in shlex.split(script)
+    user_line = next(
+        line.strip() for line in script.splitlines()
+        if line.strip().startswith("sudo mkdir -p -- ") and parent in line
+    )
+    operands = user_line[len("sudo mkdir -p -- "):].split(" || ", 1)[0]
     printed = subprocess.run(
-        ["bash", "-c", "printf '%s\\n' " + script[len("mkdir -p -- "):]],
+        ["bash", "-c", "printf '%s\\n' " + operands],
         capture_output=True, text=True, check=True,
     )
     assert parent in printed.stdout.splitlines()
+    assert 'sudo chown -R "$(id -un)":"$(id -gn)"' in script
+    for line in script.splitlines():
+        if 'chown -R "$(id -un)"' in line:
+            assert "/var/avt" not in shlex.split(line)
+    assert "chmod 700 -- /var/avt" in script
+    checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert checked.returncode == 0, checked.stderr
     # Hashing opens the path. It does not hand the name to a shell.
     assert lock_v2.verify_manifest_files(manifest["files"], plan.sha256_file) == []
+
+
+def test_startup_leaves_workspace_to_the_login_user_and_passes_bash_n():
+    script = lock_v2.startup_script(lock_v2.LOCK_DIR, 300, ram_gb=120, vcpu=32)
+    head, _, tail = script.partition("if [ ! -f /tmp/avt-go ]")
+    early = [line for line in head.splitlines() if line.startswith("mkdir ")]
+    assert early and all("/workspace" not in line and "/tmp/" not in line for line in early)
+    assert "chmod 700 /var/avt" in head
+    assert "chown root:root /var/avt" in head
+    assert "mkdir -p /tmp/claudia_lockrepro /tmp/avt-remote /workspace/partnership" in tail
+    assert "--ram-gb 120 --vcpu 32" in script
+    assert "install -m 600 /tmp/avt-env /var/avt/env" in script
+    checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert checked.returncode == 0, checked.stderr
+
+
+def test_lock_v2_pull_copies_var_avt_out_before_scp():
+    argvs = lock_v2.pull_argvs("vm", "p", "z", "/out", "/out/timing.json")
+    script = plan.remote_script(argvs[0][-1])
+    assert f"sudo cp -a -- /var/avt/out/{lock_v2.H264_NAME} /tmp/avt-pull/out/{lock_v2.H264_NAME}" in script
+    assert "sudo cp -a -- /var/avt/checks /tmp/avt-pull/checks" in script
+    assert "sudo cp -a -- /var/avt/guest.log /tmp/avt-pull/guest.log" in script
+    assert "sudo cp -a -- /var/avt/timing.json /tmp/avt-pull/timing.json" in script
+    assert "chmod 700" not in script
+    sources = [
+        found for argv in argvs if argv[2] == "scp"
+        for part in argv
+        if (found := plan.scp_remote_path(part))
+    ]
+    assert sources == [
+        f"/tmp/avt-pull/out/{lock_v2.H264_NAME}",
+        f"/tmp/avt-pull/out/{lock_v2.PRORES_NAME}",
+        "/tmp/avt-pull/checks",
+        "/tmp/avt-pull/guest.log",
+        "/tmp/avt-pull/timing.json",
+    ]
+    failed = lock_v2.failure_pull_argvs("vm", "p", "z", "/out", "/out/timing.json")
+    assert failed[-1][-1] == "touch /tmp/avt-pulled"
+    assert plan.scp_remote_path(failed[1][-2]) == "/tmp/avt-pull/guest.log"
+    checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert checked.returncode == 0, checked.stderr
+
+
+def test_c4_standard_32_scales_workers_and_stays_under_fifteen_dollars(tmp_path, capsys):
+    terms = lock_v2.v1e_workers(120, 32)
+    assert terms == {"ram": 8, "cpu": 5, "chunks": 9, "started": 5}
+    assert lock_v2.v1e_workers(248, 32)["started"] == 5
+    assert lock_v2.final_workers_for_cpu(32, 24) == 8
+    ranges = lock_v2.final_ranges(8)
+    assert len(ranges) == 8
+    cursor = 0
+    for start, end in ranges:
+        assert start == cursor
+        assert start % lock_v2.FINAL_CHUNK == 0
+        cursor = end + 1
+    assert cursor == plan.FULL_SONG_FRAMES
+    compared = lock_v2.comparison_text(lock_v2.DOC_INPUT_GB, 15)
+    assert "c4-standard-16:" in compared and "c4-standard-32:" in compared
+    assert "$" in compared and " h," in compared
+
+    lock, _clip = _make_tree(tmp_path)
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    preview = remote_render.main(
+        ["--backend", "gcp", "--dry-run", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--machine-type", "c4-standard-32", "--cost-ceiling", "15"],
+        env={"GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert preview == 0
+    preview_out = capsys.readouterr().out
+    assert calls == []
+    assert "machine comparison" in preview_out
+    assert "c4-standard-16:" in preview_out and "c4-standard-32:" in preview_out
+    assert "v1e workers: 5" in preview_out
+    assert "final_render workers: 8" in preview_out
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--output", str(tmp_path / "out"),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-wide",
+         "--machine-type", "c4-standard-32", "--cost-ceiling", "15"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    assert "c4-standard-32" in calls[0]
+    assert "SPOT" not in calls[0]
+    assert calls[-1][3] == "delete"
+    assert "ceiling: $15.00" in capsys.readouterr().out
+    summary = json.loads((tmp_path / "out" / "timing.json").read_text())
+    assert summary["projection"]["v1e_started"] == 5
+    assert summary["projection"]["final_started"] == 8
+    assert summary["projection"]["usd"][1] < 15
+    assert "c4-standard-16:" in summary["comparison_text"]
+    assert "c4-standard-32:" in summary["comparison_text"]
+
+    refused = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--machine-type", "c4-standard-96",
+         "--cost-ceiling", "15", "--env-file", str(tmp_path / "env2")],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert refused == 2
+    assert "unknown --machine-type" in capsys.readouterr().err
+
+    before = len(calls)
+    tight = remote_render.main(
+        ["--backend", "gcp", "--dry-run", "--stage-from", "local", "--recipe", "lock_v2",
+         "--lock-dir", str(lock), "--machine-type", "c4-highmem-32", "--cost-ceiling", "15"],
+        env={"GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert tight == 0
+    text = capsys.readouterr().out
+    assert "c4-highmem-32" in text
+    assert "248" in text
+    assert len(calls) == before

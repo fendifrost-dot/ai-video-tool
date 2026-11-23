@@ -458,10 +458,18 @@ def test_local_execute_pushes_the_tree_pulls_the_file_and_deletes(tmp_path, caps
     assert pushed
     assert any(part.endswith(f":/workspace/partnership/second_half/{rel}") for argv in pushed for part in argv)
     assert any(str(lock) in argv for argv in calls)
-    assert any(part.endswith(":/var/avt/lock.json") for argv in calls for part in argv)
-    assert any(part.endswith(":/" + "workspace/partnership/second_half/remote_run/final.mp4") or
-               part.endswith(":/workspace/partnership/second_half/remote_run/final.mp4")
-               for argv in calls for part in argv)
+    assert any(
+        plan.scp_remote_path(part) == "/tmp/avt-stage/lock.json"
+        for argv in calls if argv[2] == "scp" for part in argv
+    )
+    assert any(
+        "/var/avt/lock.json" in plan.remote_script(argv[-1])
+        for argv in calls if argv[2] == "ssh" and argv[-1].startswith("printf ")
+    )
+    assert any(
+        plan.scp_remote_path(part) == "/tmp/avt-pull/final.mp4"
+        for argv in calls if argv[2] == "scp" for part in argv
+    )
     assert any(argv[-1] == str(output) for argv in calls)
     assert seen_env["text"].strip().splitlines() == ["AVT_REMOTE_RENDER_CONFIRM=1"]
     assert seen_env["mode"] == 0o600
@@ -636,10 +644,19 @@ def test_scp_paths_keep_spaces_and_the_lock_name(tmp_path):
     remote = f"{plan.WORK_ROOT}/{rel}"
     assert plan.scp_remote_path(copied[0][-1]) == remote
     assert argvs[-1][2] == "ssh"
-    assert "touch /tmp/avt-go" in argvs[-1]
+    assert argvs[-1][-1] == "touch /tmp/avt-go"
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
     assert f"{plan.WORK_ROOT}/inputs/my audio" in shlex.split(script)
-    assert any(part.endswith(":/var/avt/lock.json") and "LOCK_v2.json" in argv[-2] for argv in argvs for part in argv)
+    assert any(
+        plan.scp_remote_path(part) == "/tmp/avt-stage/lock.json" and "LOCK_v2.json" in argv[-2]
+        for argv in argvs for part in argv
+    )
+    install = [
+        plan.remote_script(argv[-1]) for argv in argvs
+        if argv[2] == "ssh" and "install -m 600" in plan.remote_script(argv[-1])
+    ]
+    assert install and "/var/avt/lock.json" in install[0]
+    assert "chmod 700 -- /var/avt" in install[0]
 
 
 def test_local_startup_mentions_no_token_and_passes_bash_n():
@@ -761,9 +778,13 @@ def test_remote_shell_keeps_spaces_ampersand_quotes_and_parens(tmp_path):
         assert _bash_word(word) == remote
     assert "MASTER  -" in f"{plan.WORK_ROOT}/{CEASE_REL}"
     script = plan.remote_script(plan.gcloud_rejoin(argvs[0][-1]))
-    words = shlex.split(script)
-    assert words[:3] == ["mkdir", "-p", "--"]
-    listing = "printf '%s\\n' " + script[len("mkdir -p -- "):]
+    user_line = next(
+        line.strip() for line in script.splitlines()
+        if line.strip().startswith("sudo mkdir -p -- ") and plan.WORK_ROOT in line
+    )
+    words = shlex.split(user_line.split(" || ", 1)[0])
+    assert words[:4] == ["sudo", "mkdir", "-p", "--"]
+    listing = "printf '%s\\n' " + user_line[len("sudo mkdir -p -- "):].split(" || ", 1)[0]
     printed = subprocess.run(
         ["bash", "-c", listing], capture_output=True, text=True, check=True,
     ).stdout.splitlines()
@@ -771,6 +792,13 @@ def test_remote_shell_keeps_spaces_ampersand_quotes_and_parens(tmp_path):
         parent = os.path.dirname(f"{plan.WORK_ROOT}/{rel}")
         assert parent in words
         assert parent in printed
+    assert 'sudo chown -R "$(id -un)":"$(id -gn)"' in script
+    for line in script.splitlines():
+        if 'chown -R "$(id -un)"' in line:
+            assert "/var/avt" not in line
+    assert "chmod 700 -- /var/avt" in script
+    probed = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert probed.returncode == 0, probed.stderr
     startup = plan.startup_script(stage_from="local")
     assert "CEASE" not in startup
     concat = [step for step in plan.guest_steps("python3", plan.WORK_ROOT, "/tmp/run", nf=8, workers=1)["steps"]
@@ -920,3 +948,106 @@ def test_a_failed_copy_is_not_retried_when_the_bytes_are_already_there(tmp_path,
     assert f"skip-existing: {remote}" in capsys.readouterr().out
     assert not (tmp_path / "prepare_failure.log").exists()
     assert calls[-1][3] == "delete"
+
+
+def test_local_startup_does_not_claim_workspace_before_the_copy():
+    script = plan.startup_script(stage_from="local")
+    head, _, tail = script.partition("if [ ! -f /tmp/avt-go ]")
+    early = [line for line in head.splitlines() if line.startswith("mkdir ")]
+    assert early and all("/workspace" not in line and "/tmp/" not in line for line in early)
+    assert "mkdir -p /var/avt" in head
+    assert "chmod 700 /var/avt" in head
+    assert "chown root:root /var/avt" in head
+    assert "/workspace/partnership/second_half" in tail
+    assert "install -m 600 /tmp/avt-env /var/avt/env" in script
+    checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert checked.returncode == 0, checked.stderr
+
+
+def test_pull_publishes_root_outputs_for_the_login_user(tmp_path):
+    final = os.path.join(plan.WORK_ROOT, "remote_run", "final.mp4")
+    argvs = plan.local_pull_argvs("vm", "p", "z", str(tmp_path / "final.mp4"), str(tmp_path / "t.json"))
+    script = plan.remote_script(argvs[0][-1])
+    assert f"sudo cp -a -- {final} /tmp/avt-pull/final.mp4" in script
+    assert "sudo cp -a -- /var/avt/timing.json /tmp/avt-pull/timing.json" in script
+    assert 'sudo chown -R "$(id -un)":"$(id -gn)" -- /tmp/avt-pull' in script
+    assert "sudo chmod -R a+rX -- /tmp/avt-pull" in script
+    sources = [
+        found for argv in argvs if argv[2] == "scp"
+        for part in argv
+        if (found := plan.scp_remote_path(part))
+    ]
+    assert sources == ["/tmp/avt-pull/final.mp4", "/tmp/avt-pull/timing.json"]
+    assert "touch /tmp/avt-go" not in script
+    checked = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    assert checked.returncode == 0, checked.stderr
+
+
+def test_preflight_permission_failure_stops_before_the_copy(tmp_path, capsys):
+    root, lock = _local_tree(tmp_path, ["plates/a.npy"])
+    calls = []
+
+    def call(argv):
+        calls.append(list(argv))
+        if len(argv) > 3 and argv[3] == "delete":
+            return Result(0)
+        if argv[2] == "ssh" and "avt-write-probe" in plan.remote_script(argv[-1]):
+            return Result(
+                1,
+                stdout="mkdir: cannot create directory '/workspace': Permission denied\n"
+                "AVT_PREFLIGHT_FAIL: login user cannot write /workspace/partnership\n",
+            )
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--output", str(tmp_path / "out" / "final.mp4"),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 2
+    captured = capsys.readouterr()
+    err = captured.err
+    assert "prepare failed at step 0" in err
+    assert "AVT_PREFLIGHT_FAIL" in err
+    assert "prepare_failure.log" in err
+    assert not any(argv[2] == "scp" for argv in calls)
+    preflights = [
+        argv for argv in calls
+        if argv[2] == "ssh" and "avt-write-probe" in plan.remote_script(argv[-1])
+    ]
+    assert len(preflights) == 1
+    assert calls[-1][3] == "delete"
+    assert "ceiling: $5.00" in captured.out
+    log = (tmp_path / "out" / "prepare_failure.log").read_text()
+    assert "Permission denied" in log
+
+
+def test_preflight_retries_a_refused_connection_then_copies(tmp_path, capsys):
+    root, lock = _local_tree(tmp_path, ["plates/a.npy"])
+    tries = {"n": 0}
+
+    def call(argv):
+        if argv[2] == "ssh" and "avt-write-probe" in plan.remote_script(argv[-1]):
+            tries["n"] += 1
+            if tries["n"] < 3:
+                return Result(1, stdout="Connection refused\n")
+            return Result(0, stdout="AVT_PREFLIGHT_OK\n")
+        if "get-serial-port-output" in argv:
+            return Result(stdout="AVT_RENDER_DONE")
+        return Result(0)
+
+    code = remote_render.main(
+        ["--backend", "gcp", "--execute", "--stage-from", "local",
+         "--lock", str(lock), "--work-root", str(root),
+         "--parity-dir", str(tmp_path), "--output", str(tmp_path / "final.mp4"),
+         "--env-file", str(tmp_path / "env"), "--instance-name", "avt-test",
+         "--cost-ceiling", "5"],
+        env={"AVT_REMOTE_RENDER_CONFIRM": "1", "GCP_PROJECT": "avt-render"},
+        call=call,
+    )
+    assert code == 0, capsys.readouterr()
+    assert tries["n"] == 3

@@ -100,9 +100,28 @@ STAGE_LABELS = (
 _HEX = set("0123456789abcdef")
 
 
-def machine_spec():
-    spec = plan.MACHINES[MACHINE]
+# Measured copy was about 53 MB/s. Plan at 30 MB/s so a slower link still fits the band.
+TRANSFER_MB_S = 30.0
+# High end of final_render assumes this fraction of a perfect split across workers.
+FINAL_EFFICIENCY = 0.70
+COMPARE_MACHINES = ("c4-standard-16", "c4-standard-32")
+
+
+def machine_spec(name=None):
+    """RAM, vCPU, and the on-demand hourly rate for a priced GCP shape."""
+    name = name or MACHINE
+    spec = plan.MACHINES.get(name)
+    if not spec or spec.get("usd_per_hour") is None or spec.get("backend") != "gcp":
+        return None
     return spec["ram_gb"], spec["vcpu"], spec["usd_per_hour"]
+
+
+def known_machines():
+    names = []
+    for name, spec in plan.MACHINES.items():
+        if spec.get("backend") == "gcp" and spec.get("usd_per_hour"):
+            names.append(name)
+    return names
 
 
 def v1e_workers_for_ram(ram_gb):
@@ -126,11 +145,30 @@ def v1e_effective_workers(started, vcpu):
     return min(started, slots)
 
 
-def final_workers_for_cpu(vcpu, n_spans):
-    """Disjoint final_render processes. Four cores each on the priced machine.
+def v1e_workers(ram_gb, vcpu, n_chunks=None):
+    """How many v1e processes to run at once.
 
-    The cost gate does not divide by this count. The only measured rate is one
-    process. These workers are still started; .done markers keep a rerun safe.
+    The three caps are RAM at 15 GB each, the locked runner's 6 OpenCV threads,
+    and the number of chunks. On c4-standard-32 that is min(8, 5, 9) = 5.
+    """
+    if n_chunks is None:
+        n_chunks = len(v1e_chunk_table())
+    by_ram = v1e_workers_for_ram(ram_gb)
+    by_cpu = max(1, int(vcpu) // plan.CV2_THREADS) if vcpu else by_ram
+    by_chunks = max(1, int(n_chunks))
+    started = max(1, min(by_ram, by_cpu, by_chunks))
+    return {
+        "ram": by_ram,
+        "cpu": by_cpu,
+        "chunks": by_chunks,
+        "started": started,
+    }
+
+
+def final_workers_for_cpu(vcpu, n_spans):
+    """Disjoint final_render processes. Four cores each, .done markers keep a rerun safe.
+
+    Ranges are groups of 240-frame chunks, so every start stays on a chunk boundary.
     """
     if not vcpu:
         started = 1
@@ -188,18 +226,39 @@ def _hours_pair(minutes):
     return (minutes[0] / 60.0, minutes[1] / 60.0)
 
 
-def project(ram_gb, vcpu, input_gb, ceiling, rate):
-    """Upper-bound wall clock. final_render stays at the measured one-process rate."""
-    started = v1e_workers_for_ram(ram_gb)
-    effective = v1e_effective_workers(started, vcpu)
+def _transfer_mbps():
+    return TRANSFER_MB_S * 8.0
+
+
+def final_hour_band(workers):
+    """Measured per-process rate, divided by the worker count.
+
+    The low end is a perfect split. The high end keeps ``FINAL_EFFICIENCY`` of
+    that split, so a range that does not scale in a straight line still fits.
+    Lock repro and the state pass are not in this band: they stay one process.
+    """
+    per_frame = FINAL_MEASURED_SECONDS / FINAL_MEASURED_FRAMES
+    one = plan.FULL_SONG_FRAMES * per_frame / 3600.0
+    workers = max(1, int(workers))
+    low = one / workers
+    high = one / max(1.0, workers * FINAL_EFFICIENCY)
+    if high < low:
+        low, high = high, low
+    return low, high, per_frame
+
+
+def project(ram_gb, vcpu, input_gb, ceiling, rate, machine=MACHINE):
+    """Wall clock for this shape. Serial stages are not divided by the worker count."""
+    terms = v1e_workers(ram_gb, vcpu)
+    started = terms["started"]
     spans = final_spans()
     final_started = final_workers_for_cpu(vcpu, len(spans))
-    transfer = plan.transfer_hours(input_gb)
-    pull = plan.transfer_hours(PULL_GB)
-    per_frame = FINAL_MEASURED_SECONDS / FINAL_MEASURED_FRAMES
-    final_h = plan.FULL_SONG_FRAMES * per_frame / 3600.0
-    v1e_lo = plan.VERSE_NF * plan.SEC_LO / 3600.0 / effective
-    v1e_hi = plan.VERSE_NF * plan.SEC_HI / 3600.0 / effective
+    mbps = _transfer_mbps()
+    transfer = plan.transfer_hours(input_gb, mbps)
+    pull = plan.transfer_hours(PULL_GB, mbps)
+    final_lo, final_hi, per_frame = final_hour_band(final_started)
+    v1e_lo = plan.VERSE_NF * plan.SEC_LO / 3600.0 / started
+    v1e_hi = plan.VERSE_NF * plan.SEC_HI / 3600.0 / started
     parts = {
         "transfer": (transfer, transfer),
         "install": _hours_pair(INSTALL_MIN),
@@ -207,13 +266,14 @@ def project(ram_gb, vcpu, input_gb, ceiling, rate):
         "lock_repro": _hours_pair(REPRO_MIN),
         "state_pass": _hours_pair(STATE_MIN),
         "v1e_chunks": (v1e_lo, v1e_hi),
-        "final_chunks": (final_h, final_h),
+        "final_chunks": (final_lo, final_hi),
         "assemble": _hours_pair(ASSEMBLE_MIN),
         "pull_back": (pull, pull),
     }
     low = sum(item[0] for item in parts.values())
     high = sum(item[1] for item in parts.values())
     return {
+        "machine": machine,
         "parts_hours": {key: [item[0], item[1]] for key, item in parts.items()},
         "hours": [low, high],
         "usd": [low * rate, high * rate],
@@ -221,11 +281,14 @@ def project(ram_gb, vcpu, input_gb, ceiling, rate):
         "ceiling": ceiling,
         "under": (high * rate) <= ceiling,
         "input_gb": input_gb,
+        "transfer_mb_s": TRANSFER_MB_S,
+        "v1e_terms": terms,
         "v1e_started": started,
-        "v1e_effective": effective,
+        "v1e_effective": started,
         "final_started": final_started,
         "final_spans": len(spans),
         "final_seconds_per_frame": per_frame,
+        "final_efficiency": FINAL_EFFICIENCY,
         "ram_gb": ram_gb,
         "vcpu": vcpu,
     }
@@ -237,31 +300,49 @@ def _band(pair, digits=2):
 
 def projection_text(proj):
     parts = proj["parts_hours"]
+    terms = proj["v1e_terms"]
     lines = [
-        "LOCK_v2 projection (c4-standard-16 on demand, not a live quote):",
-        f"  transfer {proj['input_gb']:.2f} GB at {plan.ASSUMED_SCP_MBPS:.0f} Mbit/s: "
-        f"{parts['transfer'][0]:.2f} h",
+        f"LOCK_v2 projection ({proj['machine']} on demand, not a live quote):",
+        f"  transfer {proj['input_gb']:.2f} GB at {proj['transfer_mb_s']:.0f} MB/s "
+        f"(margin under the measured ~53 MB/s): {parts['transfer'][0]:.2f} h",
         "  install ffmpeg (ffv1, libx264, prores_ks) + numpy 2.5.5, scipy 1.18.1, opencv 5.1.x: "
         f"{_band(parts['install'])} h",
         f"  verify SHA256SUMS + manifest: {_band(parts['verify'])} h",
         f"  lock repro, 7 locks, sequential: {_band(parts['lock_repro'])} h",
-        f"  v1e state pass: {_band(parts['state_pass'])} h",
-        f"  v1e chunks, {plan.VERSE_NF} frames, {proj['v1e_started']} workers started, "
-        f"wall-clock cap {proj['v1e_effective']} "
-        f"({proj['vcpu']} vCPU / {plan.CV2_THREADS} OpenCV threads): "
+        f"  v1e state pass, sequential: {_band(parts['state_pass'])} h",
+        f"  v1e chunks, {plan.VERSE_NF} frames, {proj['v1e_started']} workers "
+        f"(min of {terms['ram']} from RAM, {terms['cpu']} from "
+        f"{proj['vcpu']} vCPU / {plan.CV2_THREADS} threads, {terms['chunks']} chunks): "
         f"{_band(parts['v1e_chunks'])} h",
         f"  final_render, {plan.FULL_SONG_FRAMES} frames at "
-        f"{proj['final_seconds_per_frame']:.3f} s/frame, one measured stream "
-        f"({proj['final_started']} workers started, speedup not assumed): "
-        f"{parts['final_chunks'][0]:.2f} h",
+        f"{proj['final_seconds_per_frame']:.3f} s/frame, "
+        f"{proj['final_started']} workers, perfect split on the low end, "
+        f"{proj['final_efficiency']:.0%} of that split on the high end: "
+        f"{_band(parts['final_chunks'])} h",
         f"  assemble + md5-list checks: {_band(parts['assemble'])} h",
-        f"  pull-back {PULL_GB:.0f} GB: {parts['pull_back'][0]:.2f} h",
+        f"  pull-back {PULL_GB:.0f} GB at {proj['transfer_mb_s']:.0f} MB/s: "
+        f"{parts['pull_back'][0]:.2f} h",
         (
             f"LOCK_v2 vs ceiling: {_band(proj['hours'])} h, "
             f"${proj['usd'][0]:.2f}–${proj['usd'][1]:.2f} vs ${proj['ceiling']:.2f} "
             f"({'under' if proj['under'] else 'over'})"
         ),
     ]
+    return "\n".join(lines)
+
+
+def comparison_text(input_gb, ceiling):
+    """c4-standard-16 and c4-standard-32, wall hours and dollars, same inputs."""
+    lines = ["machine comparison (wall hours and on-demand dollars, us-central1):"]
+    for name in COMPARE_MACHINES:
+        ram, vcpu, rate = machine_spec(name)
+        proj = project(ram, vcpu, input_gb, ceiling, rate, machine=name)
+        lines.append(
+            f"  {name}: {_band(proj['hours'])} h, "
+            f"${proj['usd'][0]:.2f}–${proj['usd'][1]:.2f} "
+            f"({proj['v1e_started']} v1e, {proj['final_started']} final, ${rate:.2f}/h, "
+            f"{'under' if proj['under'] else 'over'} ${ceiling:.2f})"
+        )
     return "\n".join(lines)
 
 
@@ -712,15 +793,22 @@ def probe_errors(data, frames=None, codec=None):
     return errors
 
 
-def startup_script(lock_dir, max_minutes):
+def startup_script(lock_dir, max_minutes, ram_gb=60, vcpu=16):
     quoted = shlex.quote(lock_dir)
     return f"""#!/bin/bash
 # Generated by scripts/render/remote. LOCK_v2 local stage: no AVT token is read or echoed.
 set -euo pipefail
 set +x
 MAX_MINUTES={int(max_minutes)}
-mkdir -p /var/avt/checks /var/avt/out /var/avt/scratch/v1e /var/avt/scratch/final /var/avt/scratch/states /tmp/claudia_lockrepro /tmp/avt-remote
+# Do not mkdir /workspace, /tmp/avt-remote, or /tmp/claudia_lockrepro here.
+# This script is root. The launcher ssh creates those and chowns them to the
+# login user before scp. A root mkdir of a path that user still has to write
+# would leave it unwritable. mkdir -p after /tmp/avt-go does not take ownership
+# back. /var/avt stays root mode 700. The launcher sudo-copies its outputs to
+# /tmp/avt-pull before scp, because the login user cannot read mode 700.
+mkdir -p /var/avt/checks /var/avt/out /var/avt/scratch/v1e /var/avt/scratch/final /var/avt/scratch/states
 chmod 700 /var/avt
+chown root:root /var/avt
 touch /var/avt/guest.log
 exec > >(tee -a /var/avt/guest.log) 2>&1
 cleanup() {{
@@ -774,6 +862,8 @@ if [ ! -f /tmp/avt-go ] || [ ! -f /tmp/avt-env ]; then
   echo AVT_RENDER_FAIL missing-env
   exit 1
 fi
+# The preflight already created these and chowned them to the login user.
+mkdir -p /tmp/claudia_lockrepro /tmp/avt-remote /workspace/partnership
 install -m 600 /tmp/avt-env /var/avt/env
 rm -f /tmp/avt-env
 set -a
@@ -784,6 +874,7 @@ cd /tmp/avt-remote
   --stage-from local \\
   --recipe lock_v2 \\
   --lock-dir {quoted} \\
+  --ram-gb {float(ram_gb):g} --vcpu {int(vcpu)} \\
   --timing-file /var/avt/timing.json || {{
   echo AVT_RENDER_FAIL guest
   exit 1
@@ -795,9 +886,13 @@ exit 0
 
 
 def _mkdir_command(paths):
-    quoted = " ".join(shlex.quote(path) for path in sorted(p for p in set(paths) if p))
     # gcloud splits --command on every space. The wrapper keeps a double space in a directory.
-    return plan.wrap_remote_command(f"mkdir -p -- {quoted}")
+    # sudo mkdir plus chown runs in this ssh. It does not wait for the root startup script.
+    dirs = {p for p in set(paths) if p}
+    dirs.update({
+        "/workspace", "/workspace/partnership", "/tmp/avt-remote", LOCKREPRO, "/var/avt",
+    })
+    return plan.wrap_remote_command(plan.prepare_tree_script(dirs, probe="workspace"))
 
 
 def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remote_dir):
@@ -829,45 +924,46 @@ def transfer_argvs(name, project, zone, lock_dir, manifest_files, env_file, remo
     return argvs
 
 
+def _pull_commands(name, project, zone, paths, dests):
+    """Publish root-owned /var/avt paths, then scp the login-user copies."""
+    argvs = [plan.gcp_ssh_argv(
+        name, project, zone, plan.wrap_remote_command(plan.publish_pull_script(paths)),
+    )]
+    for path, dest, recurse in dests:
+        argvs.append(plan.gcp_scp_argv(
+            name, project, zone, plan.scp_spec(name, plan.staged_pull_path(path)), dest,
+            recurse=recurse,
+        ))
+    return argvs
+
+
 def pull_argvs(name, project, zone, output_dir, timing_path):
-    return [
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, f"{OUT_DIR}/{H264_NAME}"),
-            os.path.join(output_dir, H264_NAME),
-        ),
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, f"{OUT_DIR}/{PRORES_NAME}"),
-            os.path.join(output_dir, PRORES_NAME),
-        ),
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, CHECKS_DIR),
-            os.path.join(output_dir, "checks"), recurse=True,
-        ),
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, "/var/avt/guest.log"),
-            os.path.join(output_dir, "guest.log"),
-        ),
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, "/var/avt/timing.json"), timing_path,
-        ),
+    paths = [
+        f"{OUT_DIR}/{H264_NAME}",
+        f"{OUT_DIR}/{PRORES_NAME}",
+        CHECKS_DIR,
+        "/var/avt/guest.log",
+        "/var/avt/timing.json",
     ]
+    dests = [
+        (f"{OUT_DIR}/{H264_NAME}", os.path.join(output_dir, H264_NAME), False),
+        (f"{OUT_DIR}/{PRORES_NAME}", os.path.join(output_dir, PRORES_NAME), False),
+        (CHECKS_DIR, os.path.join(output_dir, "checks"), True),
+        ("/var/avt/guest.log", os.path.join(output_dir, "guest.log"), False),
+        ("/var/avt/timing.json", timing_path, False),
+    ]
+    return _pull_commands(name, project, zone, paths, dests)
 
 
 def failure_pull_argvs(name, project, zone, output_dir, timing_path):
-    argvs = [
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, "/var/avt/guest.log"),
-            os.path.join(output_dir, "guest.log"),
-        ),
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, CHECKS_DIR),
-            os.path.join(output_dir, "checks"), recurse=True,
-        ),
-        plan.gcp_scp_argv(
-            name, project, zone, plan.scp_spec(name, "/var/avt/timing.json"), timing_path,
-        ),
-        plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-pulled"),
+    paths = ["/var/avt/guest.log", CHECKS_DIR, "/var/avt/timing.json"]
+    dests = [
+        ("/var/avt/guest.log", os.path.join(output_dir, "guest.log"), False),
+        (CHECKS_DIR, os.path.join(output_dir, "checks"), True),
+        ("/var/avt/timing.json", timing_path, False),
     ]
+    argvs = _pull_commands(name, project, zone, paths, dests)
+    argvs.append(plan.gcp_ssh_argv(name, project, zone, "touch /tmp/avt-pulled"))
     return argvs
 
 
@@ -1268,7 +1364,7 @@ def run_guest(args, assert_stack_fn=None, call=None, spawn=None, run=None, decod
             with open("/proc/meminfo") as handle:
                 ram = ram_gb_from_meminfo(handle.read())
         vcpu = args.vcpu or os.cpu_count() or 1
-        v1e_slots = v1e_workers_for_ram(ram)
+        v1e_slots = v1e_workers(ram, vcpu)["started"]
         final_slots = final_workers_for_cpu(vcpu, len(final_spans()))
         python = _guest_python()
         steps, envs = build_recipe(python, lock_dir, v1e_slots, final_slots, vcpu)
@@ -1306,12 +1402,14 @@ def _guest_python():
     return sys.executable or "python3"
 
 
-def exact_command(lock_dir, zone, ceiling, execute=False, output="LOCK_v2_deliverables"):
+def exact_command(lock_dir, zone, ceiling, execute=False, output="LOCK_v2_deliverables",
+                  machine_type=MACHINE):
     body = (
         "python3 scripts/render/remote/remote_render.py "
         "--backend gcp --stage-from local --recipe lock_v2 "
         f"--lock-dir {shlex.quote(lock_dir)} "
-        f"--zone {shlex.quote(zone)} --cost-ceiling {ceiling:g}"
+        f"--zone {shlex.quote(zone)} --machine-type {shlex.quote(machine_type)} "
+        f"--cost-ceiling {ceiling:g}"
     )
     if execute:
         return f"AVT_REMOTE_RENDER_CONFIRM=1 {body} --execute --output {shlex.quote(output)}"
@@ -1320,7 +1418,9 @@ def exact_command(lock_dir, zone, ceiling, execute=False, output="LOCK_v2_delive
 
 def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, timing_path,
                cost_ceiling, spot, machine_type, backend, stage_from, env_file):
-    ram, vcpu, rate = machine_spec()
+    requested = machine_type or MACHINE
+    spec = machine_spec(requested)
+    ram, vcpu, rate = spec if spec else machine_spec(MACHINE)
     manifest, manifest_note = peek_manifest(lock_dir)
     if manifest is None:
         input_gb = DOC_INPUT_GB
@@ -1331,12 +1431,13 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         input_files = len(manifest["files"])
         manifest_files = manifest["files"]
         manifest_note = ""
-    proj = project(ram, vcpu, input_gb, cost_ceiling, rate)
+    proj = project(ram, vcpu, input_gb, cost_ceiling, rate, machine=requested if spec else MACHINE)
     text = projection_text(proj)
+    compared = comparison_text(input_gb, cost_ceiling)
     capped = plan.cost_cap_hours(max_hours, cost_ceiling, rate)
     reasons = []
     if backend != "gcp":
-        reasons.append("refusing to create a VM: LOCK_v2 runs on GCP c4-standard-16.")
+        reasons.append("refusing to create a VM: LOCK_v2 runs on GCP.")
     if stage_from != "local":
         reasons.append(
             "refusing to create a VM: LOCK_v2 copies absolute paths from the launcher "
@@ -1347,10 +1448,15 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
             "refusing to create a VM: this project has no preemptible quota, "
             "so LOCK_v2 does not request a Spot VM."
         )
-    if machine_type != MACHINE:
+    if spec is None:
         reasons.append(
-            f"refusing to create a VM: LOCK_v2 is priced on {MACHINE} at ${rate}/h. "
-            f"This project has {CPU_QUOTA} on-demand vCPUs and no preemptible quota."
+            f"refusing to create a VM: unknown --machine-type {requested}. "
+            f"Known: {', '.join(known_machines())}."
+        )
+    elif vcpu > CPU_QUOTA:
+        reasons.append(
+            f"refusing to create a VM: {requested} is {vcpu} vCPU and the project quota "
+            f"is CPUS_ALL_REGIONS {CPU_QUOTA} on demand."
         )
     if proj["usd"][1] > cost_ceiling:
         reasons.append(
@@ -1369,7 +1475,7 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
     report = {
         "recipe": RECIPE,
         "backend": "gcp",
-        "machine": MACHINE,
+        "machine": requested if spec else MACHINE,
         "family": "intel",
         "ram_gb": ram,
         "vcpu": vcpu,
@@ -1391,6 +1497,7 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         "manifest_files": input_files,
         "projection": proj,
         "projection_text": text,
+        "comparison_text": compared,
         "projected_usd_hi": proj["usd"][1],
         "cost_ceiling_usd": cost_ceiling,
         "usd_per_hour": rate,
@@ -1419,12 +1526,14 @@ def build_plan(env, lock_dir, zone, max_hours, instance_name, confirm, output, t
         "lock_rows": None,
     }
     report["create_argv"] = plan.gcp_create_argv(
-        instance_name, project_id, zone, machine=MACHINE, spot=False,
+        instance_name, project_id, zone, machine=report["machine"], spot=False,
         max_hours=capped, disk_gb=DISK_GB,
     )
     report["delete_argv"] = plan.gcp_delete_argv(instance_name, project_id, zone)
     report["serial_argv"] = plan.gcp_serial_argv(instance_name, project_id, zone)
-    report["startup_script"] = startup_script(report["lock_dir"], guest_minutes)
+    report["startup_script"] = startup_script(
+        report["lock_dir"], guest_minutes, ram_gb=ram, vcpu=vcpu,
+    )
     report["transfer_argv"] = transfer_argvs(
         instance_name, project_id, zone, report["lock_dir"], manifest_files, env_file, remote_dir,
     )
@@ -1445,7 +1554,7 @@ def format_report(report):
     creds = report["credentials"]
     lines = [
         f"recipe: {RECIPE}",
-        f"backend: gcp ({MACHINE}, intel, {report['ram_gb']} GB, {report['vcpu']} vCPU)",
+        f"backend: gcp ({report['machine']}, intel, {report['ram_gb']} GB, {report['vcpu']} vCPU)",
         f"dry-run: {'yes' if report['dry_run'] else 'no — execute was requested'}",
         "A dry-run does not call gcloud and does not create a VM, a disk, or a bucket.",
         f"stage-from: {report['stage_from']}",
@@ -1459,16 +1568,21 @@ def format_report(report):
         f"disk: {DISK_GB} GB hyperdisk-balanced (the lock's working set is about 80 GB)",
         f"quota: {CPU_QUOTA} on-demand vCPUs across regions, no preemptible quota. "
         f"This plan uses {report['vcpu']}. Spot is refused.",
-        f"v1e workers started: {report['workers_started']} "
-        f"({report['ram_gb']:.0f} GB / {GB_PER_V1E:.0f} GB). "
+        f"v1e workers: {report['workers_started']} "
+        f"(min of {report['projection']['v1e_terms']['ram']} from "
+        f"{report['ram_gb']:.0f} GB / {GB_PER_V1E:.0f} GB, "
+        f"{report['projection']['v1e_terms']['cpu']} from "
+        f"{report['vcpu']} vCPU / {plan.CV2_THREADS} OpenCV threads, "
+        f"{report['projection']['v1e_terms']['chunks']} chunks). "
         "A worker peaked at 8.9–10.4 GB and was OOM-killed on 15 GB.",
-        f"v1e wall-clock cap: {report['v1e_effective']} "
-        f"({report['vcpu']} vCPU / {plan.CV2_THREADS} threads in the locked runner)",
-        f"final_render workers: {report['final_started']} disjoint ranges, "
-        f"{report['projection']['final_spans']} chunks of {FINAL_CHUNK}, resumable .done markers",
+        f"final_render workers: {report['final_started']} "
+        f"(floor({report['vcpu']}/4)), "
+        f"{report['projection']['final_spans']} chunks of {FINAL_CHUNK}, "
+        "disjoint .done-safe ranges",
         f"inputs: {report['input_files']} files, {report['input_gb']:.2f} GB"
         + (f" ({report['manifest_note']}; projection uses the lock doc)" if report["manifest_note"]
            else " (from the manifest)"),
+        report["comparison_text"],
         report["projection_text"],
         *(
             ["Execute hashes the lock dir and every manifest path before create. "
@@ -1481,13 +1595,24 @@ def format_report(report):
         f"armed max runtime: {plan.duration_flag(report['capped_hours'])} "
         f"(the shorter of --max-hours {report['max_hours']} and the cost ceiling at the proposal rate)",
         "verification: per-frame md5 lists. Container and file hashes are not the check.",
+        "preflight: one ssh before the copy runs sudo mkdir -p, "
+        'chowns /workspace, /tmp/avt-remote, and /tmp/claudia_lockrepro with '
+        'sudo chown -R "$(id -un)":"$(id -gn)", and writes then reads a test file '
+        "under /workspace/partnership. A failure stops the run before the ~29 GB push. "
+        "/var/avt stays root mode 700. The guest render is root. Pull-back sudo-copies "
+        "/var/avt/out, /var/avt/checks, /var/avt/guest.log, and /var/avt/timing.json to "
+        "/tmp/avt-pull so the login user can scp them. /tmp/avt-env, /tmp/avt-go, and "
+        "/tmp/avt-pulled stay in /tmp.",
         "on any failure the launcher pulls /var/avt/guest.log and /var/avt/checks before delete.",
         "dry-run command:",
-        "  " + exact_command(report["lock_dir"], report["zone"], report["cost_ceiling_usd"], execute=False),
+        "  " + exact_command(
+            report["lock_dir"], report["zone"], report["cost_ceiling_usd"],
+            execute=False, machine_type=report["machine"],
+        ),
         "execute command:",
         "  " + exact_command(
             report["lock_dir"], report["zone"], report["cost_ceiling_usd"],
-            execute=True, output=report["output"],
+            execute=True, output=report["output"], machine_type=report["machine"],
         ),
         "guest order: sha256sum -c SHA256SUMS; re-hash every manifest row; "
         "7 lock repros, sequential, identical=True or per-frame md5; "
