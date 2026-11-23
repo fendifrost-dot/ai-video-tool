@@ -247,34 +247,75 @@ def test_sha256sums_and_manifest_stop_on_a_mismatch(tmp_path):
         lock_v2.preflight(str(lock))
 
 
-def test_frozen_renders_must_be_in_the_sha_check_and_tolerance_is_not_a_sha():
-    root = "/workspace/partnership/final_lock_v2"
-    names = {
-        "vhs": f"{root}/vhs/renders/vhs_static_preview_v5b_1080p.mp4",
-        "salad": f"{root}/salad/renders/salad_v1b.mp4",
-        "spins_T1": f"{root}/spins/renders/spins_v1c_T1.mp4",
-        "spins_T2T3": f"{root}/spins/renders/spins_v1c_T2T3.mp4",
-        "spins_T4": f"{root}/spins/renders/spins_v1c_T4.mp4",
-        "warcry": f"{root}/warcry/renders/warcry_v9c.mp4",
-        "montage": f"{root}/montage/renders/montage_v3b.mp4",
-    }
-    paths = list(names.values())
-    rels = [path[len(root) + 1:] for path in paths]
-    found, errors = lock_v2.frozen_coverage_errors(paths, rels, root)
+def _pad_sha(prefix):
+    return (prefix + ("ab" * 32))[:64]
+
+
+def test_frozen_renders_match_the_manifest_sha_not_sha256sums():
+    base = "/workspace/partnership/first_half/claudia_vfx"
+    rows = [
+        {
+            "path": f"{base}/vhs/v5b/lock/vhs_static_preview_v5b_1080p.mp4",
+            "sha256": _pad_sha("d269656e"),
+        },
+        {
+            "path": f"{base}/pixel_sort_salad/v1b/lock/pixel_sort_salad_preview_v1b_1080p.mp4",
+            "sha256": _pad_sha("c0ffee01"),
+        },
+        {
+            "path": f"{base}/spin_transitions/v1c/lock/spin_T1_v1c_preview_1080p.mp4",
+            "sha256": _pad_sha("d701e77e"),
+        },
+        {
+            "path": f"{base}/spin_transitions/v1c/lock/spin_T2T3_v1c_preview_1080p.mp4",
+            "sha256": _pad_sha("f73755ad"),
+        },
+        {
+            "path": f"{base}/spin_transitions/v1c/lock/spin_T4_v1c_preview_1080p.mp4",
+            "sha256": _pad_sha("893d65b6"),
+        },
+        {
+            "path": f"{base}/war_cry/claudia_build/v9c/lock/warcry_v9c_clip_1080p.mp4",
+            "sha256": _pad_sha("0a0a0a0a"),
+        },
+        {
+            "path": f"{base}/reverse_montage/v3b/lock/reverse_montage_preview_v3b_1080p.mp4",
+            "sha256": _pad_sha("b1b1b1b1"),
+        },
+    ]
+    log = "\n".join(
+        "{'name': '%s', 'lock_sha256': '%s', 'identical': False}" % (name, row["sha256"])
+        for name, row in (
+            ("vhs", rows[0]),
+            ("salad", rows[1]),
+            ("spins_T1", rows[2]),
+            ("spins_T2T3", rows[3]),
+            ("spins_T4", rows[4]),
+            ("war_cry", rows[5]),
+            ("reverse_montage", rows[6]),
+        )
+    )
+    shas = lock_v2.parse_lock_shas(log)
+    assert shas["spins_T1"] == rows[2]["sha256"]
+    assert shas["warcry"] == rows[5]["sha256"]
+    found, errors = lock_v2.frozen_coverage_errors(rows, shas)
     assert errors == []
-    assert set(found) == set(names)
-    missing_sums, sum_errors = lock_v2.frozen_coverage_errors(paths, rels[:-1], root)
-    assert any("SHA256SUMS" in item for item in sum_errors)
-    assert "montage" not in missing_sums or any("montage" in item for item in sum_errors)
-    short, short_errors = lock_v2.resolve_frozen_renders(paths[:-1])
-    assert any("montage" in item for item in short_errors)
-    assert "montage" not in short
+    assert found["spins_T1"].endswith("spin_T1_v1c_preview_1080p.mp4")
+    assert found["vhs"].endswith("vhs_static_preview_v5b_1080p.mp4")
+    assert found["salad"].endswith("pixel_sort_salad_preview_v1b_1080p.mp4")
+    assert "SHA256SUMS" not in " ".join(errors)
+    bad = [dict(row) for row in rows]
+    bad[2] = dict(bad[2], sha256=_pad_sha("ffffffff"))
+    _found, bad_errors = lock_v2.frozen_coverage_errors(bad, shas)
+    assert any("spins_T1" in item and "matched 0" in item for item in bad_errors)
+    by_name, name_errors = lock_v2.frozen_coverage_errors(rows, None)
+    assert name_errors == []
+    assert by_name["spins_T2T3"].endswith("spin_T2T3_v1c_preview_1080p.mp4")
     assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x30")
     assert lock_v2.frame_pair_ok(b"\x10\x20\x30", b"\x10\x20\x32")
     assert not lock_v2.frame_pair_ok(b"\x00" * 30, b"\xff" * 30)
     text = lock_v2.projection_text(lock_v2.project(60, 16, 1, 15, 0.79))
     assert "lock repro: skipped" in text
-    assert "7 locks, sequential, opt-in" not in text
 
 
 def test_runner_source_does_not_hardcode_a_content_hash():

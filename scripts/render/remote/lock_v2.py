@@ -8,6 +8,7 @@ and change when the grain params change. A dry-run calls no cloud API.
 
 from __future__ import annotations
 
+import ast
 import glob
 import hashlib
 import json
@@ -58,19 +59,37 @@ V1E_BOUNDARIES = (3070, 3310, 3550, 3790, 4030, 4224, 4464, 4704, 4975, 4981)
 V1E_SF0 = V1E_BOUNDARIES[0]
 V1E_END = V1E_BOUNDARIES[-1]
 LOCK_NAMES = ("vhs", "salad", "spins_T1", "spins_T2T3", "spins_T4", "warcry", "montage")
-# Frozen renders the assemble step reads. Each tuple is (lock name, tokens that
-# must all appear in exactly one video path). That path has to be in both
-# SHA256SUMS and the manifest. The guest links it into /tmp/claudia_lockrepro
-# and does not rebuild it.
-FROZEN_RENDER_TOKENS = (
-    ("vhs", ("vhs_static_preview_v5b_1080p.mp4",)),
-    ("salad", ("salad", "v1b")),
-    ("spins_T1", ("spins", "v1c", "T1")),
-    ("spins_T2T3", ("spins", "v1c", "T2T3")),
-    ("spins_T4", ("spins", "v1c", "T4")),
-    ("warcry", ("v9c",)),
-    ("montage", ("montage", "v3b")),
+# Basename of each frozen render in MANIFEST_LOCK_v2_inputs.json. The top-level
+# SHA256SUMS only lists the 46 tree files, so these are gated by the manifest
+# row sha256. The parity log's lock_sha256 is the unambiguous match.
+FROZEN_RENDER_NAMES = (
+    ("vhs", "vhs_static_preview_v5b_1080p.mp4"),
+    ("salad", "pixel_sort_salad_preview_v1b_1080p.mp4"),
+    ("spins_T1", "spin_T1_v1c_preview_1080p.mp4"),
+    ("spins_T2T3", "spin_T2T3_v1c_preview_1080p.mp4"),
+    ("spins_T4", "spin_T4_v1c_preview_1080p.mp4"),
+    ("warcry", "warcry_v9c_clip_1080p.mp4"),
+    ("montage", "reverse_montage_preview_v3b_1080p.mp4"),
 )
+LOCK_REPRO_LOG = "parity/lock_repro_box_2026-11-23.log"
+_LOCK_NAME_ALIASES = {
+    "vhs": "vhs",
+    "salad": "salad",
+    "pixel_sort_salad": "salad",
+    "spins_t1": "spins_T1",
+    "spin_t1": "spins_T1",
+    "t1": "spins_T1",
+    "spins_t2t3": "spins_T2T3",
+    "spin_t2t3": "spins_T2T3",
+    "t2t3": "spins_T2T3",
+    "spins_t4": "spins_T4",
+    "spin_t4": "spins_T4",
+    "t4": "spins_T4",
+    "warcry": "warcry",
+    "war_cry": "warcry",
+    "montage": "montage",
+    "reverse_montage": "montage",
+}
 PSNR_MIN_DB = 50.0
 MAX_CHANNEL_DIFF = 2
 REPRO_SCRIPT = (
@@ -548,63 +567,123 @@ def _video_path(path):
     return str(path).lower().endswith((".mp4", ".mov", ".mkv"))
 
 
-def _rel_under(path, lock_dir):
-    path = str(path).replace("\\", "/")
-    root = lock_dir.rstrip("/")
-    if path == root or path.startswith(root + "/"):
-        return path[len(root):].lstrip("/")
-    return path
+def _canonical_lock_name(name):
+    return _LOCK_NAME_ALIASES.get(str(name or "").strip().lower())
 
 
-def resolve_frozen_renders(paths):
-    """One video path per locked piece. Ambiguous or missing pieces are errors."""
+def parse_lock_shas(text):
+    """``name`` -> ``lock_sha256`` from the parity repro log."""
+    found = {}
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if "lock_sha256" not in line or "{" not in line:
+            continue
+        blob = line[line.find("{"):line.rfind("}") + 1]
+        obj = None
+        try:
+            obj = json.loads(blob)
+        except json.JSONDecodeError:
+            try:
+                obj = ast.literal_eval(blob)
+            except (SyntaxError, ValueError):
+                obj = None
+        if not isinstance(obj, dict):
+            continue
+        canonical = _canonical_lock_name(obj.get("name"))
+        digest = str(obj.get("lock_sha256") or "").strip().lower()
+        if canonical and len(digest) == 64 and all(char in _HEX for char in digest):
+            found[canonical] = digest
+    return found
+
+
+def load_lock_shas(lock_dir):
+    path = os.path.join(lock_dir, LOCK_REPRO_LOG)
+    if not os.path.isfile(path):
+        return {}
+    with open(path) as handle:
+        return parse_lock_shas(handle.read())
+
+
+def resolve_frozen_renders(rows, lock_shas=None):
+    """One manifest row per locked piece.
+
+    When ``lock_shas`` has a name, that exact manifest sha wins. Otherwise the
+    basename in ``FROZEN_RENDER_NAMES`` is the match. SHA256SUMS is not consulted:
+    it only lists the 46 tree files.
+    """
+    lock_shas = lock_shas or {}
+    by_sha = {}
+    for row in rows or []:
+        digest = str(row.get("sha256") or "").strip().lower()
+        path = row.get("path") or ""
+        if len(digest) == 64 and path:
+            by_sha.setdefault(digest, []).append(path)
     found = {}
     errors = []
-    pool = [path for path in paths if _video_path(path)]
-    for name, tokens in FROZEN_RENDER_TOKENS:
+    for name, filename in FROZEN_RENDER_NAMES:
+        digest = lock_shas.get(name)
+        if lock_shas:
+            if not digest:
+                errors.append(f"frozen render {name}: no lock_sha256 in {LOCK_REPRO_LOG}")
+                continue
+            hits = by_sha.get(digest, [])
+            if len(hits) != 1:
+                errors.append(
+                    f"frozen render {name}: lock_sha256 {digest} matched {len(hits)} manifest rows, expected 1"
+                )
+                continue
+            found[name] = hits[0]
+            continue
         hits = [
-            path for path in pool
-            if all(token in path.replace("\\", "/") for token in tokens)
+            row.get("path") or ""
+            for row in rows or []
+            if os.path.basename(row.get("path") or "") == filename
         ]
-        # T1 must not also be the T2T3 or T4 file when the token is a short id.
-        if name == "spins_T1":
-            hits = [path for path in hits if "T2T3" not in path and "T4" not in path]
         if len(hits) != 1:
             errors.append(
-                f"frozen render {name} ({' '.join(tokens)}): "
-                f"{len(hits)} matches, expected 1"
+                f"frozen render {name} ({filename}): {len(hits)} manifest matches, expected 1"
             )
             continue
         found[name] = hits[0]
     return found, errors
 
 
-def frozen_coverage_errors(paths, sums_rels, lock_dir):
-    """Every frozen render assemble reads must be in SHA256SUMS and the manifest."""
-    found, errors = resolve_frozen_renders(paths)
-    sums = {name.replace("\\", "/") for name in sums_rels}
-    manifest_rels = {_rel_under(path, lock_dir) for path in paths}
-    for name, path in found.items():
-        rel = _rel_under(path, lock_dir)
-        if rel not in sums and path not in sums:
-            errors.append(f"frozen render {name} is not in SHA256SUMS: {rel}")
-        if rel not in manifest_rels and path not in paths:
-            errors.append(f"frozen render {name} is not in the manifest: {rel}")
-    if set(found) != {item[0] for item in FROZEN_RENDER_TOKENS} and not errors:
-        errors.append("frozen render set is incomplete")
-    return found, errors
+def frozen_coverage_errors(rows, lock_shas=None):
+    """Every frozen render must be a manifest row. The row sha is the gate."""
+    return resolve_frozen_renders(rows, lock_shas)
+
+
+def rehearsal_frozen_gate(lock_dir):
+    """Same frozen-render resolution the full launch uses, against the whole manifest.
+
+    A rehearsal that only copies scripts never noticed a bad match. This runs
+    before the VM whenever the manifest is the real 374-file list.
+    """
+    lock_dir = (lock_dir or "").rstrip("/")
+    manifest, _note = peek_manifest(lock_dir)
+    files = (manifest or {}).get("files") or []
+    if len(files) < 50 and lock_dir != LOCK_DIR:
+        return None
+    lock_shas = load_lock_shas(lock_dir)
+    if not lock_shas:
+        raise SystemExit(f"frozen renders: {LOCK_REPRO_LOG} has no lock_sha256 entries")
+    found, errors = frozen_coverage_errors(files, lock_shas)
+    if errors:
+        raise SystemExit("frozen renders are not covered by the manifest:\n" + "\n".join(errors))
+    print(
+        f"frozen renders: {len(found)}/{len(FROZEN_RENDER_NAMES)} manifest sha match",
+        flush=True,
+    )
+    return found
 
 
 def stage_frozen_renders(lock_dir, dest_root=LOCKREPRO):
-    """Link the sha-verified renders into the directory final_render reads."""
+    """Link the manifest-verified renders into the directory final_render reads."""
     lock_dir = lock_dir.rstrip("/")
     data = load_manifest(lock_dir)
-    paths = [row["path"] for row in data["files"]]
-    with open(os.path.join(lock_dir, "SHA256SUMS")) as handle:
-        sums = [name for _digest, name in parse_sha256sums(handle.read())]
-    found, errors = frozen_coverage_errors(paths, sums, lock_dir)
+    found, errors = frozen_coverage_errors(data["files"], load_lock_shas(lock_dir))
     if errors:
-        raise SystemExit("frozen renders are not covered by the sha check:\n" + "\n".join(errors))
+        raise SystemExit("frozen renders are not covered by the manifest:\n" + "\n".join(errors))
     linked = {}
     for name, src in found.items():
         dest = os.path.join(dest_root, name, "renders", os.path.basename(src))
@@ -612,7 +691,8 @@ def stage_frozen_renders(lock_dir, dest_root=LOCKREPRO):
         if os.path.lexists(dest) or os.path.exists(dest):
             os.remove(dest)
         os.symlink(src, dest)
-        linked[name] = {"source": src, "link": dest}
+        row = next(item for item in data["files"] if item.get("path") == src)
+        linked[name] = {"source": src, "link": dest, "sha256": str(row.get("sha256") or "").lower()}
     return linked
 
 
@@ -662,13 +742,13 @@ def preflight(lock_dir, run=None, hasher=None):
     paths = [row["path"] for row in data["files"]]
     frozen = {}
     if len(paths) >= 50 or lock_dir.rstrip("/") == LOCK_DIR:
-        frozen, frozen_errors = frozen_coverage_errors(
-            paths, [name for _digest, name in sums], lock_dir,
-        )
+        lock_shas = load_lock_shas(lock_dir)
+        if not lock_shas:
+            raise SystemExit(f"frozen renders: {LOCK_REPRO_LOG} has no lock_sha256 entries")
+        frozen, frozen_errors = frozen_coverage_errors(data["files"], lock_shas)
         if frozen_errors:
             raise SystemExit(
-                "frozen renders are not covered by SHA256SUMS and the manifest:\n"
-                + "\n".join(frozen_errors)
+                "frozen renders are not covered by the manifest:\n" + "\n".join(frozen_errors)
             )
     return {"files": len(data["files"]), "tree": tree_n, "manifest": data, "frozen": frozen}
 
@@ -2380,6 +2460,11 @@ def run_rehearsal(args, env, call, confirm, wheel_fetch=None):
         )
         return 2
     print("stack wheels: " + "; ".join(notes), flush=True)
+    try:
+        rehearsal_frozen_gate(getattr(args, "lock_dir", "") or LOCK_DIR)
+    except SystemExit as exc:
+        print(exc, file=sys.stderr)
+        return 2
     capped = plan.cost_cap_hours(REHEARSAL_MAX_HOURS, REHEARSAL_CEILING, REHEARSAL_RATE)
     projected = capped * REHEARSAL_RATE
     if not confirm:
