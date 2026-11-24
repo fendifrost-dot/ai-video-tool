@@ -73,7 +73,7 @@ Before Fendi sees it ($0, every time):
 1. The proof from A5 (when step A ran): 0.
 2. `scripts/edit/face_check.py` sheet: his face against his face pictures, row by row.
 3. `scripts/edit/mouth_scan.py out.mp4 out.csv 12`: in b-roll his mouth is at rest (mean ≤ 0.08, spread ≤ 0.03).
-4. [`SHOT_RULES.md`](../SHOT_RULES.md) 1–7, said in the post: a moving place (3), never in front of other people (4),
+4. [`SHOT_RULES.md`](../SHOT_RULES.md) 1–7, said in the post: a moving place (3), never pasted over a picture of people (4; people moving in the scene behind him are allowed, 24 Nov 2026),
    his light, colour and grain match the place (5), the place's angle and scale (6), waist up, never centre-front (7).
 5. Post the clip with the sheet. Fendi judges. File on his word ([`MCP_UPLOAD_AND_FILE.md`](MCP_UPLOAD_AND_FILE.md)),
    with the method, the source take, the swap job, the script commit and the proof in `metadata_json.derived_from`.

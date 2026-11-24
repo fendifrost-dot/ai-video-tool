@@ -115,7 +115,7 @@ approved setting. Do not change the script to make a shot pass: a failing shot i
 Pick the frame by eye from a tile of the dressed, face-put-back clip (mouth closed, hands composed), export it at the
 4K size (`ffmpeg -ss <t> -i dressed_4k.mp4 -frames:v 1 frame.png`). To place him in a generated plate: matte the frame
 (`matte-video-proxy` on the clip, or RobustVideoMatting offline), scale him to the plate's distance, match light
-direction, colour and grain (rule 5), never in front of other people (rule 4). On a still cover rule 3 (a moving
+direction, colour and grain (rule 5), never laid over a still picture of people (rule 4, amended 24 Nov 2026: people moving in the scene behind him are allowed). On a still cover rule 3 (a moving
 plate) does not apply; on a video it does.
 
 ### 7. Post, then file on his word
