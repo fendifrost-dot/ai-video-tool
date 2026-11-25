@@ -102,3 +102,75 @@ def test_command_line_end_to_end(tmp_path):
     # a wider lens than the take was shot on does not exist from the same position
     r = subprocess.run([sys.executable, TOOL, "--src", src, "--out", out, "--lens", "none", "--focal", "20", "--mode", "same_position"], capture_output=True, text=True)
     assert r.returncode != 0 and "does not exist" in (r.stderr + r.stdout)
+
+
+# ----------------------------------------------------------------------------- depth mode (the model is replaced by a known map)
+def test_metric_depth_is_tied_at_two_points():
+    rel = np.array([[0.2, 0.6, 1.0]], np.float32)
+    inv = LL.metric_inverse_depth(rel, near_rel=1.0, far_rel=0.2, subject_m=1.0, far_m=5.0)
+    assert inv[0, 2] == pytest.approx(1.0) and inv[0, 0] == pytest.approx(0.2) and inv[0, 1] == pytest.approx(0.6)
+    far_away = LL.metric_inverse_depth(rel, 1.0, 0.2, 1.0, None)
+    assert far_away[0, 0] == pytest.approx(1e-4) and far_away[0, 2] == pytest.approx(1.0)
+
+
+def test_radius_map_agrees_with_the_one_plane_numbers():
+    phone, diag = SG.load_phone("iphone_14"); lens = phone["lenses"]["1x"]; w_mm, _ = SG.frame_mm("vertical", diag)
+    s, B = 0.914, 1.6
+    inv = np.array([[1 / s, 1 / (s + B)]], np.float32)
+    r = LL.radius_map_px(inv, "same_framing", s, 28.0, 85.0, 1.8, lens, w_mm, 1080, 1.0)
+    focus, bg = LL.target_distances("same_framing", s, B, 28.0, 85.0)
+    r_t = LL.blur_radius_px(85.0, 1.8, focus, bg, w_mm, 1080); r_s = LL.source_radius_px(lens, s, B, w_mm, 1080, 1.0)
+    assert r[0, 0] == pytest.approx(0.0, abs=0.05) and r[0, 1] == pytest.approx((r_t ** 2 - r_s ** 2) ** 0.5, rel=0.01)
+
+
+def test_a_radius_map_blurs_each_part_by_its_own_amount():
+    frame, alpha = scene()
+    radius = np.zeros((H, W), np.float32); radius[:, W // 2:] = 7.0
+    out = LL.depth_of_field(frame, alpha, radius)
+    assert np.array_equal(out[alpha >= 1.0], frame[alpha >= 1.0])
+    left = np.zeros((H, W), bool); left[:, :20] = True; right = np.zeros((H, W), bool); right[:, -20:] = True
+    assert int(np.abs(out[left].astype(int) - frame[left].astype(int)).max()) <= 1          # radius 0: the picture as it was
+    assert out[..., 1][right].std() < 0.35 * frame[..., 1][right].std()                      # radius 7: the checker is gone
+
+
+def _moved(dx):
+    """The checker wall with a hard-edged red figure moved sideways by dx pixels: (frame, alpha)."""
+    yy, xx = np.mgrid[0:H, 0:W]; chk = ((xx // 6 + yy // 6) % 2).astype(bool)
+    f = np.zeros((H, W, 3), np.uint8); f[chk] = (30, 180, 40); f[~chk] = (20, 90, 40)
+    a = np.zeros((H, W), np.float32); a[60:160, 46 + dx:74 + dx] = 1.0
+    f[a >= 1.0] = (10, 10, 230)
+    return f, a
+
+
+def test_clean_plate_takes_him_out():
+    samples = [_moved(-30), _moved(0), _moved(30)]
+    plate, hole = LL.clean_plate(samples)
+    assert int(plate[..., 2].max()) < 120                         # no red figure left (the wall's red is 40)
+    stays = [_moved(0), _moved(0)]
+    plate2, hole2 = LL.clean_plate(stays)
+    assert hole2.any() and int(plate2[..., 2].max()) < 120       # where he always stands, the wall is filled in
+
+
+def test_static_depth_places_him_without_a_ghost():
+    """A stand-in for the model: the wall's depth ramps left to right, he is nearest, and (like the real model) each
+    picture is rescaled to 0..1 on its own, so the with-him and without-him maps do not share a scale."""
+    ramp = np.tile(np.linspace(0.2, 0.6, W, dtype=np.float32), (H, 1))
+    def fake(img):
+        d = ramp.copy(); d[(img[..., 2] > 150) & (img[..., 1] < 80)] = 1.0
+        return (d - d.min()) / (d.max() - d.min())
+    samples = [_moved(-20), _moved(0), _moved(20)]
+    inv, anchors = LL.static_inverse_depth(samples, subject_m=1.0, far_m=5.0, depth_fn=fake)
+    # the wall behind where he stands follows the ramp: no step, no dip where his outline was
+    row = inv[110]; assert float(np.abs(np.diff(row)).max()) < 0.02
+    # tied to metres: the far edge is near 1/5, and his raw depth (1.0) maps to 1/1
+    far_raw = float(np.percentile(ramp, 2)); expect = lambda raw: 0.2 + (raw - far_raw) / (1.0 - far_raw) * (1.0 - 0.2)
+    assert inv[110, 1] == pytest.approx(expect(ramp[110, 1]), abs=0.03) and inv[110, W - 2] == pytest.approx(expect(ramp[110, W - 2]), abs=0.03)
+
+
+def test_camera_shift_reads_the_background_not_him():
+    rng = np.random.default_rng(3); wall = cv2.GaussianBlur((rng.random((H, W, 3)) * 255).astype(np.uint8), (0, 0), 1.2)
+    a0 = np.zeros((H, W), np.float32); a0[60:160, 30:58] = 1.0; a1 = np.zeros((H, W), np.float32); a1[60:160, 60:88] = 1.0
+    f0 = wall.copy(); f0[a0 >= 1.0] = (10, 10, 230); f1 = wall.copy(); f1[a1 >= 1.0] = (10, 10, 230)
+    assert LL.camera_shift_px(f0, f1, a0, a1) < 0.5                # he walked 30 px; the camera did not move
+    moved = np.roll(wall, 5, axis=1)
+    assert LL.camera_shift_px(wall, moved) == pytest.approx(5.0, abs=0.6)
