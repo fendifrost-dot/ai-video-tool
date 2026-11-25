@@ -3,9 +3,11 @@
 Asked for by Fendi, 25 Nov 2026: "a camera lens emulator for my iPhone for when I shoot videos or … an emulator
 effect built into AVT to instantly replicate a lens/distance/camera".
 
-**Status.** The 85 mm f/1.8 look on the Hyenas close-up (one background plane) was judged by Fendi on 25 Nov 2026:
-asked "Does the 85 mm clip look right to you?", he answered yes. The depth-map version was posted the same day and
-is NOT yet judged. `PROBLEM_INDEX.md` has no row for this: the index is at 9,497 of the 9,500 characters its hook
+**Status.** Both looks on the Hyenas close-up at 85 mm f/1.8 were judged by Fendi on 25 Nov 2026. One background
+plane: asked "Does the 85 mm clip look right to you?", he answered yes. The depth map: "The depth looks right and
+it's not a matter of preference both can be fitting depending on the song". So neither replaces the other: pick
+per song, and offer both when it is not obvious.
+`PROBLEM_INDEX.md` has no row for this: the index is at 9,497 of the 9,500 characters its hook
 test allows, so a row needs someone to decide what leaves it.
 
 Two tools, both $0 and deterministic:
@@ -99,7 +101,7 @@ about ±25 %).
 | Run | Blur applied | Proof | Read | Fendi |
 |---|---|---|---|---|
 | `portrait_85` f/1.8, one plane 1.6 m behind him | 27.5 px disc everywhere | 0 | wall softened, outline clean at cap, beard, shoulders, hands; the floor is blurred as much as the wall (too much) | "yes" (looks right) |
-| `portrait_85` f/1.8, `--depth --far-m 2.5` | 15 to 27 px by distance (background read as 1.6 to 2.5 m) | 0 | the floor near the camera stays sharper; the wall above the quilt blurs more than the quilt; no ghost of him in the map | not yet judged |
+| `portrait_85` f/1.8, `--depth --far-m 2.5` | 15 to 27 px by distance (background read as 1.6 to 2.5 m) | 0 | the floor near the camera stays sharper; the wall above the quilt blurs more than the quilt; no ghost of him in the map | "The depth looks right" |
 | `anamorphic_35` f/2, one plane | 16.0 px, oval | 0 | **fault, not sent**: the preset's flare fires on his white jersey stripes and smears bright bands across the wall | — |
 | Garage car shot `IMG_6496.mov` 10–14 s, no him, `clean_50` f/1.4, 50 mm crop, focus on the Jeep at 8.5 m, far 40 m (both ESTIMATES) | 0.1 to 8.4 px | n/a | depth map reads cars, pillar, far garage and hood correctly; the visible change is mild, as the optics say for a focus at 28 ft | not sent as a look |
 
