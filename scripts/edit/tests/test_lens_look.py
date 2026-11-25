@@ -309,3 +309,17 @@ def test_the_proof_is_measured_before_his_pixels_are_copied_back():
     assert drift == 7                                                                    # ... the damage is what gets reported,
     assert seen["equal_before_copy"] is True                                             # the float maths itself had left him alone,
     assert np.array_equal(out[solid], frame[solid])                                      # and the copy-back comes after the measurement
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_a_failed_rerun_leaves_the_earlier_file_alone(tmp_path):
+    frame, alpha = scene(); a8 = (alpha * 255).astype(np.uint8)
+    src = str(tmp_path / "src.mp4"); al = str(tmp_path / "alpha.mp4"); empty = str(tmp_path / "empty.mp4"); out = str(tmp_path / "out.mp4")
+    _video(src, [frame] * 6, "bgr24"); _video(al, [a8] * 6, "gray"); _video(empty, [np.zeros((H, W), np.uint8)] * 6, "gray")
+    args = lambda m: [sys.executable, TOOL, "--src", src, "--alpha", m, "--out", out, "--lens", "none", "--focal", "85", "--f-stop", "1.8", "--subject-m", "0.9", "--background-m", "1.6"]
+    assert subprocess.run(args(al), capture_output=True, text=True).returncode == 0
+    good = open(out, "rb").read(); side = open(out + ".json").read()
+    r = subprocess.run(args(empty), capture_output=True, text=True)
+    assert r.returncode != 0
+    assert open(out, "rb").read() == good and open(out + ".json").read() == side      # the earlier render and its record are untouched
+    assert sorted(os.listdir(tmp_path)) == sorted(["src.mp4", "alpha.mp4", "empty.mp4", "out.mp4", "out.mp4.json"])   # and nothing half-written is left

@@ -57,6 +57,18 @@ GAMMA = 2.2
 DEPTH_MODEL_SHA256 = "afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c"
 
 
+_MODEL_OK = {}
+def checked_depth_model():
+    """The depth model's sha256, after checking the file is there and is the pinned one. Never downloads."""
+    path = CE.DEPTH_MODEL
+    if path not in _MODEL_OK:
+        if not os.path.isfile(path): raise SystemExit(f"the depth model is not at {path}; pass --depth-model or set AVT_DEPTH_MODEL (this tool does not download it)")
+        got = sha256(path)
+        if got != DEPTH_MODEL_SHA256: raise SystemExit(f"{path} is not the pinned depth model (sha256 {got[:12]}..., expected {DEPTH_MODEL_SHA256[:12]}...); not loading it")
+        _MODEL_OK[path] = got
+    return _MODEL_OK[path]
+
+
 def local_path(path):
     """A file path for ffmpeg / ffprobe: absolute (so it can never read as an option) and a local file only."""
     if "://" in path or path.startswith(("-", "pipe:", "concat:", "subfile,")): raise SystemExit(f"not a local file path: {path}")
@@ -148,8 +160,7 @@ def static_inverse_depth(samples, subject_m, far_m, focus_at=None, depth_fn=None
     on the pixels far from him (the model's scale and offset change from picture to picture).
     Without a matte (a scene without him): the median of the samples' depth, focused at `focus_at`."""
     if depth_fn is None:
-        if not os.path.isfile(CE.DEPTH_MODEL): raise SystemExit(f"the depth model is not at {CE.DEPTH_MODEL}; this tool does not download it")
-        depth_fn = CE.plate_depth
+        checked_depth_model(); depth_fn = CE.plate_depth
     if samples[0][1] is None:
         if focus_at is None: raise SystemExit("--depth without his matte needs --focus-at x,y (the point that is in focus)")
         rel = np.median(np.stack([depth_fn(f) for f, _ in samples]), axis=0).astype(np.float32)
@@ -361,7 +372,8 @@ def main():
     if a.compare: a.compare = local_path(a.compare)
     if a.sheet: a.sheet = local_path(a.sheet)
     inputs = {os.path.realpath(p) for p in (a.src, a.alpha) if p}
-    for w in (a.out, a.compare, a.sheet, a.out + ".json", a.out + ".blurmap.jpg"):
+    for w in (a.out, a.compare, a.sheet, a.out + ".json", a.out + ".blurmap.jpg", a.out + ".v.mp4", a.out + ".mux.mp4",
+              a.compare and a.compare + ".v.mp4", a.compare and a.compare + ".mux.mp4"):
         if w and os.path.realpath(w) in inputs: raise SystemExit(f"{w} is one of the inputs: an output must not overwrite the source or the matte")
     presets = json.load(open(os.path.join(HERE, "lens_presets.json")))["presets"]
     if a.lens != "none" and a.lens not in presets: raise SystemExit(f"--lens is 'none' or one of: {', '.join(presets)}")
@@ -425,9 +437,7 @@ def main():
                   f"blur disc {2 * r_t:.1f} px wide ({SG.blur_word(2 * r_t / OW)}); the source lens already gave {2 * r_s:.1f} px; applying {2 * radius:.1f} px")
         else:
             if a.depth_model: CE.DEPTH_MODEL = a.depth_model
-            if not os.path.isfile(CE.DEPTH_MODEL): raise SystemExit(f"the depth model is not at {CE.DEPTH_MODEL}; pass --depth-model or set AVT_DEPTH_MODEL")
-            model_hash = sha256(CE.DEPTH_MODEL)
-            if model_hash != DEPTH_MODEL_SHA256: raise SystemExit(f"{CE.DEPTH_MODEL} is not the pinned depth model (sha256 {model_hash[:12]}..., expected {DEPTH_MODEL_SHA256[:12]}...); not loading it")
+            model_hash = checked_depth_model()
             k = max(2, min(a.depth_samples, total))
             picks = sorted({first + int(total * (q + 0.5) / k) for q in range(k)})
             times = [p_ / fps for p_ in picks]
@@ -463,7 +473,6 @@ def main():
     temps = [a.out + ".v.mp4"] + ([a.compare + ".v.mp4"] if a.compare else [])
     worst = 0; done = 0; shots = {}; cover = []; zero = np.zeros((OH, OW), np.float32)
     want = {int(total * f) for f in (0.15, 0.5, 0.85)}
-    ok = False
     try:
         enc = writer(temps[0], OW, OH, fps, a.crf)
         cmp_enc = writer(temps[1], 2 * OW, OH, fps, a.crf + 2) if a.compare else None
@@ -494,19 +503,19 @@ def main():
                   + (f"; EMPTY on {empty} of {done} frames, where the whole frame is blurred" if empty else "") + ")")
             print(f"max |out - source| inside his matte, before the lens character: {worst}  (measured before his pixels are copied back)")
             if worst != 0: raise SystemExit("the blur reached his solid pixels: this is a bug, nothing was written")
-        for path, tmp in zip((a.out, a.compare), temps + [None]):
+        finished = []
+        for path, tmp in zip((a.out, a.compare), temps[:2] + [None]):
             if path is None: continue
             # The picture decides the length: the audio is cut to the frames written, never the frames to the audio.
             seek = (["-ss", f"{first / fps:.4f}"] if first else []) + ["-t", f"{done / fps:.4f}"]
+            mux = path + ".mux.mp4"; temps.append(mux)
             subprocess.run(["ffmpeg", "-v", "error", "-y", "-protocol_whitelist", "file", "-i", tmp, "-protocol_whitelist", "file"] + seek + ["-i", a.src,
-                            "-map", "0:v:0", "-map", "1:a:0?", "-c:v", "copy", "-c:a", "aac", path], check=True)
-        ok = True
-    finally:                                              # fail closed: a run that stops leaves no finished-looking file and no half-written one
-        for tmp in temps:
+                            "-map", "0:v:0", "-map", "1:a:0?", "-c:v", "copy", "-c:a", "aac", "-f", "mp4", mux], check=True)
+            finished.append((mux, path))
+        for mux, path in finished: os.replace(mux, path)   # only now, with every file complete, does anything take its final name
+    finally:                                              # fail closed: a run that stops leaves no half-written file, and never
+        for tmp in temps:                                 # deletes or damages a file that was already at --out before it began
             if os.path.exists(tmp): os.remove(tmp)
-        if not ok:
-            for path in (a.out, a.compare):
-                if path and os.path.exists(path): os.remove(path)
 
     if a.sheet and shots:
         rows = []
