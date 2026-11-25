@@ -262,6 +262,10 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Also found:** neither November migration is applied (STORE-5), so the put-back's SQL is self-contained; the
   job table's policy admits only rows tied to an edit sequence, so a put-back is queued and read through two
   functions of its own; the worker `box` is alive and polling but has claimed nothing since 18 Oct 2026; and SEC-6.
+- **Also offline-only (2026-11-25):** the lens look and shoot guide (`scripts/edit/lens_look.py`,
+  `shoot_guide.py`; `docs/recipes/LENS_LOOK.md`). Before `lens_look.py` is ever run by a worker on rows of
+  `edit_renders`, its inputs must be server-resolved file paths, never row-carried strings: today it accepts only
+  local files (absolute paths, `-protocol_whitelist file`) because the operator supplies them.
 - **Pointer:** `docs/handoffs/HANDOFF_AVT_BUILT_IN_METHODS_2026-11-19.md` §4; the design note above.
 - **DoD (target):** a put-back queued from the app or the MCP runs on a registered worker, files a clip only with
   proof 0 recorded on the asset, the c033 fixture reproduces through it, a whole-frame Dress output cannot be made a
@@ -584,3 +588,10 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Residual:** a person who sets the confirm variable and has a GCP project spends the proposal rate (about $0.79/h on demand) until the instance is deleted, and at most the ceiling (default $5; the armed max-run at that ceiling is 22784s). Spot price is not quoted, and the guard still uses the on-demand rate. Plate memmaps and the 4K ProRes deliverables are not on AVT, so an AVT-stage GCP execute stays blocked until those files are in storage or the work tree. Local stage reads them from the launcher's disk instead. The scp path needs a network route to the VM; the service account is not granted a storage role. LOCK_v2's final_render band divides the measured per-process rate by `floor(vCPU/4)`, with the high end at 70% of that split. The state pass and the lock repros stay one process. A VM slower than the band is stopped by the elapsed-cost delete rather than by a container hash. `c4-highmem-32` does not add workers over `c4-standard-32`, because both are CPU-capped at 5 v1e and 8 final; it costs more ($5.10 on the high end at the doc size). Skip-existing matches byte size, not a second hash; the launcher already hashed the tree before create, and a fresh VM has no files to skip. The v1e transfer plan stays at 100 Mbit/s. The LOCK_v2 plan uses 30 MB/s, under the 53 MB/s that execute measured. A 32-vCPU run at $1.59/h spends faster than the $0.79/h shape, still capped by the ceiling the caller passed.
 - **DoD:** dry-run on a machine with no gcloud prints the plan and creates nothing. Not run against a live project in this change.
 
+## MODEL-1 — Local model weights fetched from an unpinned URL and loaded unchecked
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Open (mitigated for one consumer) · **Owner:** Products (AVT) · **Opened:** 2026-11-25
+- **Summary:** `scripts/edit/camera_engine.py` `plate_depth` downloads `depth_anything_v2_small.onnx` with `curl` from a Hugging Face `resolve/main` URL when the file is missing, and opens whatever file is at that path with onnxruntime. Nothing checks the file's hash. A changed upstream file or a swapped local file would be loaded as the depth model by every tool that calls `plate_depth` (`camera_engine.py`, `camera_coverage.py`'s 2.5D path).
+- **Mitigations:** `scripts/edit/lens_look.py` (2026-11-25) never downloads: it refuses when the file is absent and loads only the file whose sha256 equals the one pinned in its source (`DEPTH_MODEL_SHA256`, the hash Hugging Face published for the file fetched to the T7 that day). An ONNX model is data run by onnxruntime, not Python code; the scripts run offline on the owner's Mac with no provider key in reach.
+- **Residual:** `camera_engine.py` itself still downloads and loads unchecked. Found by the security review of PR 531; left alone there because that file is the proven camera stack and was out of that change's scope.
+- **DoD:** `plate_depth` verifies the pinned sha256 before `InferenceSession` and does not download without the operator asking.

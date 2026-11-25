@@ -174,3 +174,138 @@ def test_camera_shift_reads_the_background_not_him():
     assert LL.camera_shift_px(f0, f1, a0, a1) < 0.5                # he walked 30 px; the camera did not move
     moved = np.roll(wall, 5, axis=1)
     assert LL.camera_shift_px(wall, moved) == pytest.approx(5.0, abs=0.6)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_command_line_guards(tmp_path):
+    frame, alpha = scene(); a8 = (alpha * 255).astype(np.uint8)
+    src = str(tmp_path / "src.mp4"); al = str(tmp_path / "alpha.mp4"); out = str(tmp_path / "out.mp4")
+    _video(src, [frame] * 12, "bgr24"); _video(al, [a8] * 12, "gray")
+    run = lambda *args: subprocess.run([sys.executable, TOOL, *args], capture_output=True, text=True)
+    # an output may not be the source or the matte, however the path is spelled
+    r = run("--src", src, "--out", str(tmp_path / "." / "src.mp4"), "--lens", "none")
+    assert r.returncode != 0 and "must not overwrite" in (r.stderr + r.stdout) and os.path.getsize(src) > 0
+    # only a local file is read
+    r = run("--src", "http://example.invalid/a.mp4", "--out", out, "--lens", "none")
+    assert r.returncode != 0 and "not a local file path" in (r.stderr + r.stdout)
+    # a file that is not the pinned depth model is not loaded
+    r = run("--src", src, "--alpha", al, "--out", out, "--lens", "none", "--focal", "85", "--f-stop", "1.8", "--subject-m", "0.9",
+            "--depth", "--depth-model", src)
+    assert r.returncode != 0 and "not the pinned depth model" in (r.stderr + r.stdout) and not os.path.exists(out)
+    # a window keeps every frame it rendered: the picture decides the length, not the audio
+    r = run("--src", src, "--alpha", al, "--out", out, "--lens", "none", "--focal", "85", "--f-stop", "1.8", "--subject-m", "0.9",
+            "--background-m", "1.6", "--start", "0.125", "--duration", "0.25")
+    assert r.returncode == 0, r.stderr
+    n = subprocess.run(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", out],
+                       capture_output=True, text=True).stdout.strip()
+    assert int(n) == json.load(open(out + ".json"))["source"]["frames"] == 6
+
+
+# ----------------------------------------------------------------------------- pairing by frame index (architecture review, 25 Nov 2026)
+def _numbered(path, n, pix, audio=False, extra=()):
+    """A clip whose frame k is a flat grey of level 10 + 4k, lossless, so a decoded frame says which frame it is."""
+    frames = [np.full((H, W, 3) if pix == "bgr24" else (H, W), 10 + 4 * k, np.uint8) for k in range(n)]
+    if not audio and not extra: return _video(path, frames, pix)
+    raw = path + ".raw.mp4"; _video(raw, frames, pix)
+    cmd = ["ffmpeg", "-v", "error", "-y", *extra, "-i", raw]
+    if audio: cmd += ["-f", "lavfi", "-i", f"sine=frequency=440:duration={n / 24 + 0.2:.3f}", "-c:a", "aac"]
+    r = subprocess.run(cmd + ["-c:v", "copy", path], capture_output=True, text=True)
+    os.remove(raw); return r.returncode == 0
+
+
+def _levels(gen): return [int(round(float(f.mean()))) for f in gen]
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_reader_pairs_by_frame_index_even_with_a_sound_track(tmp_path):
+    src = str(tmp_path / "src.mp4"); al = str(tmp_path / "alpha.mp4")
+    assert _numbered(src, 48, "bgr24", audio=True); _numbered(al, 48, "gray")
+    want = [10 + 4 * k for k in range(13, 21)]
+    got_s = _levels(LL.reader(src, W, H, "bgr24", first=13, count=8)); got_a = _levels(LL.reader(al, W, H, "gray", first=13, count=8))
+    assert all(abs(g - w) <= 1 for g, w in zip(got_s, want)) and len(got_s) == 8      # no frame repeated at the start of a window
+    assert all(abs(g - w) <= 1 for g, w in zip(got_a, want)) and len(got_a) == 8
+    picks = [3, 17, 40]
+    assert [abs(g - (10 + 4 * k)) <= 1 for g, k in zip(_levels(LL.reader(src, W, H, "bgr24", picks=picks)), picks)] == [True] * 3
+    assert len(list(LL.reader(src, W, H, "bgr24"))) == LL.probe(src)[3] == 48          # the whole clip: as many frames as were counted
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_probe_gives_the_displayed_size_of_a_rotated_clip(tmp_path):
+    plain = str(tmp_path / "plain.mp4"); _numbered(plain, 4, "bgr24")
+    assert LL.probe(plain)[:2] == (W, H)
+    turned = str(tmp_path / "turned.mp4")
+    if not _numbered(turned, 4, "bgr24", extra=("-display_rotation", "90")): pytest.skip("this ffmpeg cannot write a rotation tag")
+    w, h = LL.probe(turned)[:2]
+    assert (w, h) == (H, W)                                                             # stored upright-tagged sideways: read as displayed
+    assert next(LL.reader(turned, w, h, "bgr24")).shape == (h, w, 3)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_window_with_sound_keeps_matte_and_picture_together(tmp_path):
+    """The figure moves 3 px a frame and the matte moves with it. A matte one frame off leaves a strip of him
+    blurred and a strip of wall sharp inside his outline; paired right, his whole body is the source's."""
+    frames, mattes = [], []
+    for k in range(36):
+        f, a_ = _moved(-40 + 3 * k); frames.append(f); mattes.append((a_ * 255).astype(np.uint8))
+    raw = str(tmp_path / "raw.mp4"); src = str(tmp_path / "src.mp4"); al = str(tmp_path / "alpha.mp4"); out = str(tmp_path / "out.mp4")
+    _video(raw, frames, "bgr24"); _video(al, mattes, "gray")
+    assert subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", raw, "-f", "lavfi", "-i", "sine=frequency=440:duration=1.7", "-c:v", "copy", "-c:a", "aac", src]).returncode == 0
+    r = subprocess.run([sys.executable, TOOL, "--src", src, "--alpha", al, "--out", out, "--lens", "none", "--focal", "85", "--f-stop", "1.8",
+                        "--subject-m", "0.9", "--background-m", "1.6", "--start", "0.51", "--duration", "0.5", "--crf", "0"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    meta = json.load(open(out + ".json")); first = meta["source"]["first_frame"]
+    assert first == 12 and meta["source"]["frames"] == 12 and meta["matte_solid_share_of_frame"]["least"] > 0.05
+    got = list(LL.reader(out, W, H, "bgr24"))
+    assert len(got) == 12
+    for i in (0, 5, 11):                                                                 # his body in the output is the red figure of the SAME source frame
+        _, a_ = _moved(-40 + 3 * (first + i)); body = cv2.erode(a_, np.ones((5, 5), np.uint8)) >= 1.0
+        assert float(got[i][..., 2][body].min()) > 180 and float(got[i][..., 1][body].max()) < 60
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_empty_matte_and_bad_arguments_are_refused(tmp_path):
+    frame, alpha = scene()
+    src = str(tmp_path / "src.mp4"); al = str(tmp_path / "alpha.mp4"); out = str(tmp_path / "out.mp4")
+    _video(src, [frame] * 6, "bgr24"); _video(al, [np.zeros((H, W), np.uint8)] * 6, "gray")
+    dof = ["--src", src, "--alpha", al, "--out", out, "--lens", "none", "--focal", "85", "--f-stop", "1.8", "--subject-m", "0.9", "--background-m", "1.6"]
+    run = lambda args: subprocess.run([sys.executable, TOOL, *args], capture_output=True, text=True)
+    r = run(dof)
+    assert r.returncode != 0 and "matte is empty" in (r.stderr + r.stdout)
+    assert not os.path.exists(out) and not os.path.exists(out + ".v.mp4") and not os.path.exists(out + ".json")   # fail closed
+    for bad, say in ((["--subject-m", "0"], "--subject-m must be above 0"), (["--f-stop", "-2"], "--f-stop must be above 0"), (["--about", "0.5"], "--about is two numbers")):
+        r = run(dof + bad)
+        assert r.returncode != 0 and say in (r.stderr + r.stdout) and "Traceback" not in r.stderr
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_same_position_crop_and_output_size(tmp_path):
+    frame, alpha = scene(); a8 = (alpha * 255).astype(np.uint8)
+    src = str(tmp_path / "src.mp4"); al = str(tmp_path / "alpha.mp4"); out = str(tmp_path / "out.mp4")
+    _video(src, [frame] * 6, "bgr24"); _video(al, [a8] * 6, "gray")
+    r = subprocess.run([sys.executable, TOOL, "--src", src, "--alpha", al, "--out", out, "--lens", "none", "--focal", "56", "--mode", "same_position",
+                        "--f-stop", "2", "--subject-m", "0.9", "--background-m", "1.6", "--out-short-px", "60"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    meta = json.load(open(out + ".json"))
+    assert meta["physics"]["crop"] == pytest.approx(2.0) and (meta["output"]["width"], meta["output"]["height"]) == (60, 100)
+    assert meta["proof_max_diff_inside_matte"] == 0 and LL.probe(out)[:2] == (60, 100)
+    assert meta["arguments"]["mode"] == "same_position" and meta["ffmpeg"].startswith("ffmpeg")
+
+
+def test_the_proof_is_measured_before_his_pixels_are_copied_back():
+    frame, alpha = scene(); solid = alpha >= 1.0
+    wrong = frame.copy(); wrong[solid] //= 2
+    assert LL.solid_drift(frame, frame, solid) == 0 and LL.solid_drift(wrong, frame, solid) > 50      # a real difference, not a constant
+    assert LL.solid_drift(wrong, frame, np.zeros_like(solid)) == 0                                    # nothing solid: nothing to measure (main() refuses an empty matte)
+    out, drift = LL.depth_of_field(frame, alpha, 7.0, check=True)
+    assert drift == 0 and np.array_equal(out[solid], frame[solid])
+    seen = {}
+    real = LL.solid_drift
+    def spy(o, f, m):
+        seen["equal_before_copy"] = bool(np.array_equal(o[m], f[m])); o[m] = 0          # damage his pixels in the float result ...
+        return 7
+    LL.solid_drift = spy
+    try: out, drift = LL.depth_of_field(frame, alpha, 7.0, check=True)
+    finally: LL.solid_drift = real
+    assert drift == 7                                                                    # ... the damage is what gets reported,
+    assert seen["equal_before_copy"] is True                                             # the float maths itself had left him alone,
+    assert np.array_equal(out[solid], frame[solid])                                      # and the copy-back comes after the measurement

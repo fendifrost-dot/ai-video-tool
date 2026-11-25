@@ -61,13 +61,26 @@ python3 scripts/edit/lens_look.py --src take.mp4 --alpha alpha.mp4 --out look.mp
 
 - `--mode same_framing` (default): the framing stays; the blur is what the target lens gives once the camera has
   backed off until the framing matches. `--mode same_position`: the camera stays; the view is cropped.
-- The matte pairs with the picture frame by frame; a different frame count is refused (PROBLEM_INDEX, "a strip of
-  the take's white wall inside his outline").
+- The matte pairs with the picture frame by frame, by frame INDEX, never by the clock (PROBLEM_INDEX, "a strip of
+  the take's white wall inside his outline"). A different frame count is refused, a matte with frames left over
+  is refused, and `--start` / `--duration` are turned into frame numbers used for picture, matte and depth samples
+  alike. (The first version read by time; with a sound track and `--start` the picture gained a repeated frame the
+  matte did not. Found by the architecture review, fixed before merge.)
+- A rotation tag is honoured (a raw upright iPhone file is stored sideways). A clip with unevenly spaced frames
+  comes out constant-rate at its average rate, and the run says so.
 - The blur's source excludes him and a 3-pixel ring round him (a normalised convolution), so no dark rim of him
   spreads into the background. Under his soft edge the sharp background is swapped for the blurred one.
-- Printed proof on every run: `max |out - source| inside his matte, before the lens character: 0`. The run fails
-  if it is not 0. The lens character then finishes the whole frame, him included, as a lens does.
-- A sidecar `look.mp4.json` records the settings, the distances, the input hashes and the commit.
+- Printed on every run: how much of the frame his matte is solid on (an empty matte is refused: with nothing
+  protected the whole frame would blur), and `max |out - source| inside his matte, before the lens character: 0`.
+  That number is measured on the blur's own result before his pixels are copied back, so wrong maths shows in it;
+  the run writes nothing if it is not 0.
+- What "his pixels" means exactly: in the frame BEFORE the lens character, every pixel where his matte is solid is
+  the decoded (and, when cropped or resized, the cropped or resized) source pixel. The delivered file is that frame
+  through the lens character (grain, contrast, vignette on the whole picture, him included) and the video encoder.
+- A sidecar `look.mp4.json` records the settings, the distances, the input hashes and the commit. It holds local
+  paths: keep it next to the output, do not upload it.
+- Inputs are local files only, and an output may not be the source or the matte. If the proof is not 0 the run
+  writes no output file at all.
 - **Run it last.** The swap, the cut-out and the put-back need the sharp picture.
 
 ### A background at many distances: `--depth`
@@ -79,15 +92,17 @@ python3 scripts/edit/lens_look.py --src take.mp4 --alpha alpha.mp4 --out look.mp
 ```
 
 - The model (Depth-Anything-v2 small, ONNX, CPU; the one `camera_engine.plate_depth` uses) gives distances only and
-  draws nothing. It is on the T7, sha256 `afb6a5c2…a1df10c`, 99 MB (Fendi okayed the download, 25 Nov 2026).
+  draws nothing. It is on the T7, 99 MB (Fendi okayed the download, 25 Nov 2026). The tool never downloads it and
+  loads only the file whose sha256 is the one pinned in its source (`DEPTH_MODEL_SHA256`; RISK_REGISTER MODEL-1).
 - It gives relative depth, so two distances tie it to metres: `--subject-m` (camera to him) and `--far-m` (camera to
   the farthest thing in the picture; omit for "far away").
 - ONE depth map per clip, so the blur cannot flicker. A camera that moves is refused (the background's shift across
   the samples is measured on points outside his matte; over 2 px stops the run). Per-frame depth is not built.
-- **The model never sees him.** Run on a frame with him in it, its depth is soft at his outline and leaves a ghost of
-  him in the wall's blur (seen on the first try, 25 Nov). The map is taken from the scene with him removed
-  (`clean_plate`: the median of the frames where he is not, filled in where he always stands); his own distance is
-  carried over by a straight-line fit on the pixels far from him.
+- **The depth map is made from the scene with him removed.** Run on a frame with him in it, the model's depth is
+  soft at his outline and leaves a ghost of him in the wall's blur (seen on the first try, 25 Nov). So the map comes
+  from `clean_plate` (the median of the frames where he is not, filled in where he always stands). The model does
+  still read the frames with him in them, but only to find his own distance, which is carried into the clean map's
+  scale by a straight-line fit on the pixels far from him.
 - A scene without him: no `--alpha`; `--focus-at x,y --subject-m D` says what is in focus and how far it is.
 - The blur map is saved next to the output (`look.mp4.blurmap.jpg`): look at it before trusting the picture.
 
@@ -125,6 +140,10 @@ Neither pass adds flicker at his outline.
 4. **The oval bokeh here is tall** (as anamorphic glass gives); `camera_engine.dof_levels` stretches its blur
    sideways. OBSERVED, left alone.
 5. Things nearer than him are blurred inside the background layer only; they do not spread over him.
+8. **One depth map for the clip.** Something that moves in the background (a person walking through, a car) is
+   blurred by the distance of what stands behind it in the map, not by its own.
+9. **4K input is slow on this Mac:** about 4 s a frame in depth mode, and 1.2–1.8 GB of memory (the architecture
+   review's measurement). Run it as the only heavy job, or render at `--out-short-px 1080`.
 6. Scripts only. Not in the app, not a render-worker job.
 7. Not compared with a real lens. A side-by-side with a real 50 mm or 85 mm photograph of the same set-up would
    move the blur from HYPOTHESIS to VERIFIED.

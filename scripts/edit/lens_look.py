@@ -49,9 +49,18 @@ sys.path.insert(0, HERE)
 import camera_engine as CE   # noqa: E402  (lens_post: the proven lens-character stack)
 import shoot_guide as SG     # noqa: E402  (frame_mm, blur_disc_mm, the phone table)
 
-VERSION = 2
+VERSION = 3
 ALPHA_LO, ALPHA_HI = 8, 247   # DECISION: an 8-bit matte from a video codec carries a few levels of noise; below / above these it is clear / solid
 GAMMA = 2.2
+# The one depth model this tool will load: onnx-community/depth-anything-v2-small, onnx/model.onnx, 99,060,839 bytes.
+# Checked before the model is opened, so a swapped or half-downloaded file stops the run.
+DEPTH_MODEL_SHA256 = "afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c"
+
+
+def local_path(path):
+    """A file path for ffmpeg / ffprobe: absolute (so it can never read as an option) and a local file only."""
+    if "://" in path or path.startswith(("-", "pipe:", "concat:", "subfile,")): raise SystemExit(f"not a local file path: {path}")
+    return os.path.abspath(path)
 
 
 # ----------------------------------------------------------------------------- optics
@@ -138,7 +147,9 @@ def static_inverse_depth(samples, subject_m, far_m, focus_at=None, depth_fn=None
     distance is found in each sample's with-him depth and carried into the clean map's scale by a straight-line fit
     on the pixels far from him (the model's scale and offset change from picture to picture).
     Without a matte (a scene without him): the median of the samples' depth, focused at `focus_at`."""
-    depth_fn = depth_fn or CE.plate_depth
+    if depth_fn is None:
+        if not os.path.isfile(CE.DEPTH_MODEL): raise SystemExit(f"the depth model is not at {CE.DEPTH_MODEL}; this tool does not download it")
+        depth_fn = CE.plate_depth
     if samples[0][1] is None:
         if focus_at is None: raise SystemExit("--depth without his matte needs --focus-at x,y (the point that is in focus)")
         rel = np.median(np.stack([depth_fn(f) for f, _ in samples]), axis=0).astype(np.float32)
@@ -189,7 +200,7 @@ def blur_background(lin, weight, radius, aspect=1.0):
     return num / np.maximum(den, 1e-4)[..., None], den
 
 
-def depth_of_field(frame, alpha, radius, aspect=1.0, guard_px=3, levels=5):
+def depth_of_field(frame, alpha, radius, aspect=1.0, guard_px=3, levels=5, check=False):
     """frame: HxWx3 uint8; alpha: HxW float 0..1 (1 = him). The background blurred, him untouched.
     radius: one number (one background plane) or an HxW map of radii (a depth map); a map is rendered as a blend
     of `levels` blur levels. out = source + (1 - alpha) * (blurred background - sharp background): where he is
@@ -211,8 +222,16 @@ def depth_of_field(frame, alpha, radius, aspect=1.0, guard_px=3, levels=5):
     out = lin + (1.0 - alpha)[..., None] * (blurred - sharp)
     out = (np.clip(out, 0, 1) ** (1.0 / GAMMA) * 255.0 + 0.5).astype(np.uint8)
     solid = alpha >= 1.0
-    out[solid] = frame[solid]                               # exact, not "close": his solid pixels never pass through the float maths
-    return out
+    # MEASURED before anything is copied back: how far the blur maths moved his solid pixels. The formula adds
+    # (1 - alpha) * something, so this is 0 unless the code is wrong; main() stops the run if it is not.
+    drift = solid_drift(out, frame, solid)
+    out[solid] = frame[solid]
+    return (out, drift) if check else out
+
+
+def solid_drift(out, frame, solid):
+    """Largest difference (8-bit levels) between two pictures on his solid pixels; 0 when there are none."""
+    return int(np.abs(out[solid].astype(np.int16) - frame[solid].astype(np.int16)).max()) if solid.any() else 0
 
 
 def vignette_map(W, H):
@@ -236,16 +255,37 @@ def crop_to_lens(img, crop, about, interp, out_wh=None):
 
 # ----------------------------------------------------------------------------- io
 def probe(path):
-    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries", "stream=width,height,r_frame_rate,nb_read_frames",
-                          "-of", "json", path], capture_output=True, text=True, check=True).stdout
-    s = json.loads(out)["streams"][0]; a, b = s["r_frame_rate"].split("/")
-    return int(s["width"]), int(s["height"]), float(a) / float(b), int(s["nb_read_frames"])
+    """(width, height, fps, frames, note) of the picture AS DISPLAYED: a rotation tag (a phone held upright stores a
+    sideways picture) is applied, because ffmpeg applies it when it decodes. frames is a real count of decoded frames.
+    fps is the average rate, so a clip whose frames are unevenly spaced keeps its length."""
+    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries",
+                          "stream=width,height,r_frame_rate,avg_frame_rate,nb_read_frames:stream_side_data=rotation:stream_tags=rotate",
+                          "-of", "json", local_path(path)], capture_output=True, text=True, check=True).stdout
+    s = json.loads(out)["streams"][0]
+    def rate(v):
+        a, b = (v or "0/1").split("/"); return float(a) / float(b) if float(b) else 0.0
+    rot = 0.0
+    for sd in s.get("side_data_list", []) or []:
+        if "rotation" in sd: rot = float(sd["rotation"])
+    if not rot and "rotate" in (s.get("tags") or {}): rot = float(s["tags"]["rotate"])
+    w, h = int(s["width"]), int(s["height"])
+    if int(round(abs(rot))) % 180 == 90: w, h = h, w
+    r, avg = rate(s.get("r_frame_rate")), rate(s.get("avg_frame_rate"))
+    fps = avg if avg > 0 else r
+    note = None if (r <= 0 or abs(avg - r) / r < 0.005) else f"variable frame rate (nominal {r:.3f}, average {avg:.3f}): the output is constant-rate at the average"
+    return w, h, fps, int(s["nb_read_frames"]), note
 
 
-def reader(path, W, H, pix, start=0.0, duration=None, frames=None):
+def reader(path, W, H, pix, first=0, count=None, picks=None):
+    """Decoded frames by INDEX, never by clock: frames first .. first+count-1, or exactly the frames in `picks`.
+    -fps_mode passthrough hands over each decoded frame once (no frame is repeated or dropped to fit a rate), so
+    frame k of the picture and frame k of the matte are the same k (PROBLEM_INDEX: pair frame by frame)."""
     ch = 3 if pix == "bgr24" else 1
-    cmd = ["ffmpeg", "-v", "error"] + (["-ss", f"{start:.4f}"] if start else []) + (["-t", f"{duration:.4f}"] if duration else []) + ["-i", path]
-    cmd += (["-frames:v", str(frames)] if frames else []) + ["-vf", f"scale={W}:{H}", "-f", "rawvideo", "-pix_fmt", pix, "-"]
+    sel = ""
+    if picks is not None: sel = "select='" + "+".join(f"eq(n,{int(k)})" for k in sorted(set(picks))) + "',"; count = len(set(picks))
+    elif first > 0: sel = f"select='gte(n,{int(first)})',"
+    cmd = ["ffmpeg", "-v", "error", "-protocol_whitelist", "file", "-i", local_path(path), "-an", "-vf", f"{sel}scale={W}:{H}", "-fps_mode", "passthrough"]
+    cmd += (["-frames:v", str(int(count))] if count else []) + ["-f", "rawvideo", "-pix_fmt", pix, "-"]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     try:
         while True:
@@ -260,7 +300,7 @@ def reader(path, W, H, pix, start=0.0, duration=None, frames=None):
 def writer(path, W, H, fps, crf):
     return subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", f"{fps:.6f}", "-i", "-",
                              "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-pix_fmt", "yuv420p",
-                             "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", path], stdin=subprocess.PIPE)
+                             "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", local_path(path)], stdin=subprocess.PIPE)
 
 
 def sha256(path):
@@ -316,6 +356,13 @@ def main():
     ap.add_argument("--sheet", default=None, help="also write a still sheet: three frames and his outline enlarged")
     a = ap.parse_args()
 
+    a.src = local_path(a.src); a.out = local_path(a.out)
+    if a.alpha: a.alpha = local_path(a.alpha)
+    if a.compare: a.compare = local_path(a.compare)
+    if a.sheet: a.sheet = local_path(a.sheet)
+    inputs = {os.path.realpath(p) for p in (a.src, a.alpha) if p}
+    for w in (a.out, a.compare, a.sheet, a.out + ".json", a.out + ".blurmap.jpg"):
+        if w and os.path.realpath(w) in inputs: raise SystemExit(f"{w} is one of the inputs: an output must not overwrite the source or the matte")
     presets = json.load(open(os.path.join(HERE, "lens_presets.json")))["presets"]
     if a.lens != "none" and a.lens not in presets: raise SystemExit(f"--lens is 'none' or one of: {', '.join(presets)}")
     lens = None if a.lens == "none" else dict(presets[a.lens])
@@ -323,16 +370,31 @@ def main():
     if a.source_lens not in phone["lenses"]: raise SystemExit(f"--source-lens is one of: {', '.join(phone['lenses'])}")
     src_lens = phone["lenses"][a.source_lens]; focal_src = float(src_lens["focal_eq_mm"])
     focal = float(a.focal if a.focal else (lens["focal_mm"] if lens else focal_src))
-    W, H, fps, n = probe(a.src)
+    if a.f_stop is not None and a.f_stop <= 0: raise SystemExit("--f-stop must be above 0")
+    if a.subject_m is not None and a.subject_m <= 0: raise SystemExit("--subject-m must be above 0")
+    if a.background_m is not None and a.background_m <= 0: raise SystemExit("--background-m must be above 0")
+    if a.far_m is not None and a.subject_m is not None and a.far_m <= a.subject_m: raise SystemExit("--far-m must be farther than --subject-m")
+    def point(text, name):
+        try: x, y = (float(v) for v in text.split(","))
+        except ValueError: raise SystemExit(f"{name} is two numbers x,y between 0 and 1")
+        if not (0 <= x <= 1 and 0 <= y <= 1): raise SystemExit(f"{name} is two numbers x,y between 0 and 1")
+        return (x, y)
+    W, H, fps, n, rate_note = probe(a.src)
+    if rate_note: print(f"note: {rate_note}")
     if a.out_short_px:
         k = a.out_short_px / min(W, H); OW, OH = int(round(W * k / 2)) * 2, int(round(H * k / 2)) * 2
     else: OW, OH = W, H
     w_mm, _ = SG.frame_mm("vertical" if H > W else "horizontal", diag)
     crop = focal / focal_src if a.mode == "same_position" else 1.0
     if crop < 1.0 - 1e-6: raise SystemExit(f"{focal:g} mm is wider than the {focal_src:g} mm this was shot on; a wider view than was shot does not exist. Use --mode same_framing.")
-    about = tuple(float(v) for v in a.about.split(","))
+    about = point(a.about, "--about")
     aspect = float(lens.get("bokeh_aspect", 1.0)) if lens else 1.0
-    win = dict(start=a.start, duration=a.duration)
+    first = int(round(a.start * fps))                    # the window in FRAMES: the same indices for picture, matte and depth samples
+    total = n - first if a.duration is None else int(round(a.duration * fps))
+    total = min(total, n - first)
+    if a.max_frames: total = min(total, a.max_frames)
+    if first < 0 or total < 1: raise SystemExit(f"the window is empty: the clip has {n} frames, the window starts at frame {first}")
+    win = dict(first=first, count=total)
     def view(img, interp): return crop_to_lens(img, crop, about, interp, (OW, OH))
     def frames_of(path, pix, **kw):                       # the source read at its own size when it is cropped, else straight at the output size
         if crop > 1.0 + 1e-6: return reader(path, W, H, pix, **kw)
@@ -346,8 +408,9 @@ def main():
         if a.depth == (a.background_m is not None): raise SystemExit("depth of field needs exactly one of --background-m (one plane) or --depth (a depth map)")
         if not a.depth and not a.alpha: raise SystemExit("--background-m blurs one plane behind his matte: it needs --alpha")
         if a.alpha:
-            an = probe(a.alpha)[3]
+            aw, ah, _, an, _ = probe(a.alpha)
             if an != n: raise SystemExit(f"matte and picture must pair frame by frame: {a.alpha} has {an} frames, {a.src} has {n}")
+            if abs(aw / ah - W / H) > 0.01: raise SystemExit(f"the matte is {aw}x{ah} and the picture {W}x{H}: not the same shape")
         physics.update({"f_stop": a.f_stop, "subject_m": a.subject_m, "bokeh_aspect": aspect})
         if not a.depth:
             focus_m, bg_m = target_distances(a.mode, a.subject_m, a.background_m, focal_src, focal)
@@ -362,28 +425,26 @@ def main():
                   f"blur disc {2 * r_t:.1f} px wide ({SG.blur_word(2 * r_t / OW)}); the source lens already gave {2 * r_s:.1f} px; applying {2 * radius:.1f} px")
         else:
             if a.depth_model: CE.DEPTH_MODEL = a.depth_model
-            if not os.path.exists(CE.DEPTH_MODEL): raise SystemExit(f"the depth model is not at {CE.DEPTH_MODEL}; pass --depth-model or set AVT_DEPTH_MODEL")
-            span = (a.duration if a.duration else n / fps - a.start); k = max(2, a.depth_samples)
-            if a.max_frames: span = min(span, a.max_frames / fps)
-            times = [a.start + span * (j + 0.5) / k for j in range(k)]
-            samples = []
-            for t in times:
-                fr = next(frames_of(a.src, "bgr24", start=t, frames=1), None)
-                if fr is None: continue
-                al = None
-                if a.alpha:
-                    raw = next(frames_of(a.alpha, "gray", start=t, frames=1), None)
-                    al = None if raw is None else matte(raw)
-                samples.append((view(fr, cv2.INTER_LANCZOS4), al))
+            if not os.path.isfile(CE.DEPTH_MODEL): raise SystemExit(f"the depth model is not at {CE.DEPTH_MODEL}; pass --depth-model or set AVT_DEPTH_MODEL")
+            model_hash = sha256(CE.DEPTH_MODEL)
+            if model_hash != DEPTH_MODEL_SHA256: raise SystemExit(f"{CE.DEPTH_MODEL} is not the pinned depth model (sha256 {model_hash[:12]}..., expected {DEPTH_MODEL_SHA256[:12]}...); not loading it")
+            k = max(2, min(a.depth_samples, total))
+            picks = sorted({first + int(total * (q + 0.5) / k) for q in range(k)})
+            times = [p_ / fps for p_ in picks]
+            pics = list(frames_of(a.src, "bgr24", picks=picks))
+            mats = list(frames_of(a.alpha, "gray", picks=picks)) if a.alpha else [None] * len(pics)
+            if len(mats) != len(pics): raise SystemExit("matte and picture gave a different number of depth samples: they do not pair")
+            samples = [(view(fr, cv2.INTER_LANCZOS4), None if m is None else matte(m)) for fr, m in zip(pics, mats)]
+            del pics, mats
             if len(samples) < 2: raise SystemExit("could not read enough frames for the depth map")
             shift = max(camera_shift_px(samples[0][0], sm[0], samples[0][1], sm[1]) for sm in samples[1:])
             if shift > 2.0: raise SystemExit(f"the camera moves (the background shifts {shift:.1f} px across the depth samples). One depth map would smear; per-frame depth is not built. Use --background-m, or a locked-off stretch.")
-            focus_at = tuple(float(v) for v in a.focus_at.split(",")) if a.focus_at else None
+            focus_at = point(a.focus_at, "--focus-at") if a.focus_at else None
             inv, anchors = static_inverse_depth(samples, a.subject_m, a.far_m, focus_at)
             radius = radius_map_px(inv, a.mode, a.subject_m, focal_src, focal, a.f_stop, src_lens, w_mm, OW, crop)
             cap = float(np.percentile(radius, 99.5)); radius = np.minimum(radius, cap)
             bgm = (samples[0][1] < 0.02) if samples[0][1] is not None else np.ones(radius.shape, bool)
-            depth_meta = {"model": CE.DEPTH_MODEL, "model_sha256": sha256(CE.DEPTH_MODEL), "samples_at_s": [round(t, 3) for t in times], "anchors": anchors,
+            depth_meta = {"model": CE.DEPTH_MODEL, "model_sha256": model_hash, "sample_frames": picks, "samples_at_s": [round(t, 3) for t in times], "anchors": anchors,
                           "far_m": a.far_m, "camera_shift_px": round(shift, 2),
                           "distance_m_percentiles_5_50_95": [round(float(1 / np.percentile(inv[bgm], q)), 2) for q in (95, 50, 5)],
                           "blur_radius_px_percentiles_5_50_95": [round(float(np.percentile(radius[bgm], q)), 2) for q in (5, 50, 95)], "blur_radius_px_max": round(cap, 2)}
@@ -399,45 +460,58 @@ def main():
     has_dof = bool(a.f_stop) and float(np.max(radius)) >= 0.6
     vig = vignette_map(OW, OH) if lens else None
     rng = np.random.default_rng(11)
-    enc = writer(a.out + ".v.mp4", OW, OH, fps, a.crf)
-    cmp_enc = writer(a.compare + ".v.mp4", 2 * OW, OH, fps, a.crf + 2) if a.compare else None
-    alphas = frames_of(a.alpha, "gray", **win) if (a.alpha and has_dof) else None
-    total = int(round((a.duration or (n / fps - a.start)) * fps)); want = {int(total * f) for f in (0.15, 0.5, 0.85)}
-    if a.max_frames: want = {int(a.max_frames * f) for f in (0.15, 0.5, 0.85)}
-    worst = 0; done = 0; picks = {}; zero = np.zeros((OH, OW), np.float32)
-    for i, frame in enumerate(frames_of(a.src, "bgr24", **win)):
-        if a.max_frames and i >= a.max_frames: break
-        base = view(frame, cv2.INTER_LANCZOS4)
-        out = base; al = None
-        if has_dof:
-            if alphas is not None:
-                raw = next(alphas, None)
-                if raw is None: raise SystemExit(f"the matte ran out at frame {i}")
-                al = matte(raw)
-            out = depth_of_field(base, zero if al is None else al, radius, aspect, a.edge_guard_px if al is not None else 0)
-            if al is not None:
-                solid = al >= 1.0
-                if solid.any(): worst = max(worst, int(np.abs(out[solid].astype(np.int16) - base[solid].astype(np.int16)).max()))
-        final = CE.lens_post(out, lens, (0.0, 0.0), rng, vig) if lens else out
-        enc.stdin.write(final.tobytes())
-        if cmp_enc: cmp_enc.stdin.write(np.hstack([label(base, "source"), label(final, f"{focal:g} mm" + (f" f/{a.f_stop:g}" if a.f_stop else "") + f" {a.lens}")]).tobytes())
-        if a.sheet and i in want: picks[i] = (base.copy(), final.copy(), None if al is None else al.copy())
-        done += 1
-    enc.stdin.close(); enc.wait()
-    for path, e in ((a.out, None), (a.compare, cmp_enc)):
-        if path is None: continue
-        if e: e.stdin.close(); e.wait()
-        seek = (["-ss", f"{a.start:.4f}"] if a.start else []) + (["-t", f"{a.duration:.4f}"] if a.duration else [])
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", path + ".v.mp4"] + seek + ["-i", a.src, "-map", "0:v:0", "-map", "1:a:0?", "-c:v", "copy", "-c:a", "aac", "-shortest", path], check=True)
-        os.remove(path + ".v.mp4")
-    if alphas is not None:
-        print(f"max |out - source| inside his matte, before the lens character: {worst}")
-        if worst != 0: raise SystemExit("his solid pixels changed in the depth-of-field pass: this is a bug, do not use the output")
+    temps = [a.out + ".v.mp4"] + ([a.compare + ".v.mp4"] if a.compare else [])
+    worst = 0; done = 0; shots = {}; cover = []; zero = np.zeros((OH, OW), np.float32)
+    want = {int(total * f) for f in (0.15, 0.5, 0.85)}
+    ok = False
+    try:
+        enc = writer(temps[0], OW, OH, fps, a.crf)
+        cmp_enc = writer(temps[1], 2 * OW, OH, fps, a.crf + 2) if a.compare else None
+        alphas = frames_of(a.alpha, "gray", **win) if (a.alpha and has_dof) else None
+        for i, frame in enumerate(frames_of(a.src, "bgr24", **win)):
+            base = view(frame, cv2.INTER_LANCZOS4)
+            out = base; al = None
+            if has_dof:
+                if alphas is not None:
+                    raw = next(alphas, None)
+                    if raw is None: raise SystemExit(f"the matte ran out at frame {i} of the window: matte and picture do not pair")
+                    al = matte(raw); cover.append(float((al >= 1.0).mean()))
+                out, drift = depth_of_field(base, zero if al is None else al, radius, aspect, a.edge_guard_px if al is not None else 0, check=True)
+                worst = max(worst, drift)
+            final = CE.lens_post(out, lens, (0.0, 0.0), rng, vig) if lens else out
+            enc.stdin.write(final.tobytes())
+            if cmp_enc: cmp_enc.stdin.write(np.hstack([label(base, "source"), label(final, f"{focal:g} mm" + (f" f/{a.f_stop:g}" if a.f_stop else "") + f" {a.lens}")]).tobytes())
+            if a.sheet and i in want: shots[i] = (base.copy(), final.copy(), None if al is None else al.copy())
+            done += 1
+        enc.stdin.close(); enc.wait()
+        if cmp_enc: cmp_enc.stdin.close(); cmp_enc.wait()
+        if done != total: raise SystemExit(f"read {done} frames of the picture, expected {total}: not writing a clip of the wrong length")
+        if alphas is not None:
+            if next(alphas, None) is not None: raise SystemExit("the matte has frames left over after the picture ended: matte and picture do not pair")
+            if max(cover) <= 0.0: raise SystemExit("his matte is empty on every frame (wrong file, or black = him?): nothing would be protected, so nothing was written")
+            empty = sum(1 for c in cover if c <= 0.0)
+            print(f"his matte is solid on {100 * float(np.median(cover)):.1f} % of the frame (least {100 * min(cover):.1f} %"
+                  + (f"; EMPTY on {empty} of {done} frames, where the whole frame is blurred" if empty else "") + ")")
+            print(f"max |out - source| inside his matte, before the lens character: {worst}  (measured before his pixels are copied back)")
+            if worst != 0: raise SystemExit("the blur reached his solid pixels: this is a bug, nothing was written")
+        for path, tmp in zip((a.out, a.compare), temps + [None]):
+            if path is None: continue
+            # The picture decides the length: the audio is cut to the frames written, never the frames to the audio.
+            seek = (["-ss", f"{first / fps:.4f}"] if first else []) + ["-t", f"{done / fps:.4f}"]
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-protocol_whitelist", "file", "-i", tmp, "-protocol_whitelist", "file"] + seek + ["-i", a.src,
+                            "-map", "0:v:0", "-map", "1:a:0?", "-c:v", "copy", "-c:a", "aac", path], check=True)
+        ok = True
+    finally:                                              # fail closed: a run that stops leaves no finished-looking file and no half-written one
+        for tmp in temps:
+            if os.path.exists(tmp): os.remove(tmp)
+        if not ok:
+            for path in (a.out, a.compare):
+                if path and os.path.exists(path): os.remove(path)
 
-    if a.sheet and picks:
+    if a.sheet and shots:
         rows = []
-        for i in sorted(picks):
-            b, f, al = picks[i]; row = np.hstack([label(b, f"source f{i}"), label(f, "lens look")])
+        for i in sorted(shots):
+            b, f, al = shots[i]; row = np.hstack([label(b, f"source f{i}"), label(f, "lens look")])
             if al is not None:
                 ec = edge_crop(b, f, al)
                 if ec is not None: row = np.hstack([row, cv2.resize(ec, (int(ec.shape[1] * OH / ec.shape[0]), OH))])
@@ -445,16 +519,22 @@ def main():
         wmax = max(r.shape[1] for r in rows)
         cv2.imwrite(a.sheet, np.vstack([cv2.copyMakeBorder(r, 0, 0, 0, wmax - r.shape[1], cv2.BORDER_CONSTANT) for r in rows]), [cv2.IMWRITE_JPEG_QUALITY, 90])
 
-    try: commit = subprocess.run(["git", "-C", HERE, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    except OSError: commit = ""
-    meta = {"tool": "scripts/edit/lens_look.py", "version": VERSION, "commit": commit,
+    def sh(cmd):
+        try: return subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+        except OSError: return ""
+    commit = sh(["git", "-C", HERE, "rev-parse", "HEAD"])
+    dirty = bool(sh(["git", "-C", HERE, "status", "--porcelain", "--", "lens_look.py", "shoot_guide.py", "camera_engine.py", "lens_presets.json", "phone_cameras.json"]))
+    ffv = (sh(["ffmpeg", "-version"]).splitlines() or [""])[0]
+    meta = {"tool": "scripts/edit/lens_look.py", "version": VERSION, "commit": commit, "uncommitted_changes": dirty, "ffmpeg": ffv,
+            "arguments": {k: v for k, v in sorted(vars(a).items())},
             "model": None if depth_meta is None else "depth-anything-v2-small (ONNX): distances only, draws nothing", "seed": 11,
-            "source": {"path": a.src, "sha256": sha256(a.src), "width": W, "height": H, "fps": fps, "frames": done, "start_s": a.start,
-                       "camera": f"{phone['label']} {a.source_lens}"},
+            "source": {"path": a.src, "sha256": sha256(a.src), "width": W, "height": H, "fps": fps, "frames": done, "first_frame": first, "start_s": round(first / fps, 4), "frame_rate_note": rate_note,
+                       "camera": f"{phone['label']} {a.source_lens}", "lens": src_lens},
             "output": {"width": OW, "height": OH},
             "matte": None if not a.alpha else {"path": a.alpha, "sha256": sha256(a.alpha), "levels": [ALPHA_LO, ALPHA_HI]},
             "lens": {"preset": a.lens, "values": lens}, "physics": physics,
-            "proof_max_diff_inside_matte": worst if alphas is not None else None,
+            "proof_max_diff_inside_matte": worst if cover else None,
+            "matte_solid_share_of_frame": None if not cover else {"median": round(float(np.median(cover)), 4), "least": round(min(cover), 4), "empty_frames": sum(1 for c in cover if c <= 0.0)},
             "evidence": {"blur_size": "VERIFIED against the thin-lens formula (tests/test_lens_look.py); HYPOTHESIS that it matches a photograph through that lens until one is shot side by side",
                          "distances": "as given on the command line; with --depth, in between is the model's ESTIMATE tied to the two given distances",
                          "perspective": "NOT changed: it is the take's own"}}
