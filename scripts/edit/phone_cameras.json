@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "note": "Phone cameras for shoot_guide.py and lens_look.py. Focal lengths are full-frame equivalents measured on the picture diagonal (43.27 mm), the usual meaning of '26 mm lens' on a phone. Every value carries its evidence label. Add a phone by adding an object.",
+  "reference_diagonal_mm": 43.27,
+  "phones": {
+    "iphone_14": {
+      "label": "iPhone 14",
+      "_evidence": "VERIFIED: com.apple.quicktime.model = 'iPhone 14' on the Hyenas takes (14 Nov 2026) and Partnership car shot IMG_6496 (read with ffprobe, 25 Nov 2026).",
+      "video": {"long_px": 3840, "short_px": 2160, "_": "VERIFIED on the same files: 3840x2160"},
+      "lenses": {
+        "0.5x": {
+          "focal_eq_mm": 14.0, "f_stop": 2.4, "real_focal_mm": 1.54,
+          "_": "ESTIMATE: Apple lists the ultra wide as 13 mm f/2.4; 14 mm allows the same ~7 % video crop as the main camera. Not measured on a take."
+        },
+        "1x": {
+          "focal_eq_mm": 28.0, "f_stop": 1.5, "real_focal_mm": 5.7,
+          "_": "ESTIMATE +/-7 %: Apple lists the main camera as 26 mm f/1.5; 4K video crops in a little, and the repo's sets already use 28 mm (blender/storm_set.json, hyenas_set.json). OBSERVED consistent with the Hyenas close-up takes at 3 ft and 5 ft: 28 mm predicts 1.23 m and 2.05 m of height in frame, which is what those frames show of a 1.905 m man."
+        }
+      },
+      "_no_tele": "VERIFIED from Apple's model line-up: the iPhone 14 (not Pro) has no telephoto. 2x and beyond is a crop of the 1x camera, the same crop lens_look.py makes from the 4K file."
+    }
+  }
+}
