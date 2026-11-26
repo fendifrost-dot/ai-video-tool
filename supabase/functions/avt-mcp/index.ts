@@ -30,6 +30,8 @@ import { JOB_TOOL_NAMES } from "./jobContract.ts";
 import { runJobTool } from "./jobHandlers.ts";
 import { deleteGuardStatus } from "./storeContract.ts";
 import { lockedPathBlock, runStoreTool, STORE_TOOL_NAMES } from "./storeHandlers.ts";
+import { CAMERA_MOVE_TOOL_NAMES } from "../_shared/cameraMoves/toolDefs.ts";
+import { runCameraMoveTool } from "../_shared/cameraMoves/tools.ts";
 import { planStyleFromToolArgs } from "../_shared/styleLearn.ts";
 import type { EditSequence, RenderAspect, RenderKind } from "../_shared/editModel.ts";
 import {
@@ -532,6 +534,11 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
       if (!planned.ok) throw new ToolError(planned.error);
       return toolText(planned.value);
     }
+  }
+  if ((CAMERA_MOVE_TOOL_NAMES as readonly string[]).includes(name)) {
+    const planned = runCameraMoveTool(name, args);
+    if (!planned.ok) throw new ToolError(planned.error);
+    return toolText(planned.value);
   }
   if ((JOB_TOOL_NAMES as readonly string[]).includes(name)) {
     try {
