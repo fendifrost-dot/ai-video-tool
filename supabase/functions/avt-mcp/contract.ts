@@ -2,11 +2,12 @@
 // outside AI may reach. No network or database here, so all of it
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
+import { ALTER_TOOLS } from "../_shared/alter/toolDefs.ts";
 import { CAMERA_MOVE_TOOLS } from "../_shared/cameraMoves/toolDefs.ts";
 import { JOB_TOOL_DEFS } from "./jobContract.ts";
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.9.0";
+export const SERVER_VERSION = "1.10.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -17,6 +18,7 @@ export const INSTRUCTIONS = [
   "Projects: video_projects; boards: shots (per video_variations); casting/continuity: continuity_entities; generated files: project_assets + provider_jobs.",
   "Put bytes into Storage with avt_upload_asset (a signed upload URL, or base64 up to 50 MB). File a shot primary in one transaction with avt_file_asset. Delete one of your own objects with avt_delete_object. None of these call a paid provider.",
   "Camera moves: avt_camera_move_list, avt_camera_move_get, avt_camera_move_prompt, avt_camera_move_match, avt_camera_move_plan. The plan builds a fal Seedance reference-to-video body and does not submit it. The default plate has no generated person.",
+  "ALTER: avt_alter_presets, avt_alter_prompt, avt_alter_plan, avt_alter_check. Draft body only. A rapping shot without a mouth series does not pass. Nothing is submitted.",
 ].join("\n");
 
 // ---------------------------------------------------------------------------------------------------- credentials
@@ -1200,6 +1202,7 @@ export const TOOLS = [
     },
   },
   ...CAMERA_MOVE_TOOLS,
+  ...ALTER_TOOLS,
   ...JOB_TOOL_DEFS,
 ] as const;
 

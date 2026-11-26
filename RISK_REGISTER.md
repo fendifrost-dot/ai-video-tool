@@ -38,6 +38,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [STORE-5](#store-5--catalog-resumable-upload-and-locked-asset-delete) | Catalog, tus upload, locked-asset delete | Medium | Confirmed (design) | Open (in review; not deployed) | Platform (AVT) |
 | [STYLE-1](#style-1--style-learn-draft-is-not-a-finished-cut) | Style Learn draft is not a finished cut | Low | Confirmed (design) | Open (in review; not deployed) | Products (AVT) |
 | [CAMMOVE-1](#cammove-1--camera-move-planner-describes-a-paid-fal-request-and-does-not-send-it) | Camera-move planner describes a paid fal request and does not send it | Low | Confirmed (design) | Open (not deployed) | Products (AVT) |
+| [ALTER-1](#alter-1--alter-draft-planner-and-face-put-back) | ALTER draft planner and face put-back | Medium | Confirmed (design) | Open (not deployed) | Products (AVT) |
 | [RENDER-REMOTE-1](#render-remote-1--partnership-chunk-render-on-a-rented-vm-or-a-mac-studio) | Partnership chunk render can rent a GCP VM | Low | Confirmed (design) | Open (mitigated: dry-run default, confirm env, teardown; not deployed) | Products (AVT) |
 
 ---
@@ -597,6 +598,15 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Mitigations:** the planner has no `fetch`. `generate_audio` is false. An http URL is dropped. A performance plate does not attach a face photo. A non-performance shot is refused without `face_check` or `put_back`.
 - **Residual:** a later change that posts the envelope would spend Fal money and would redraw a plate. The pill clips are not in storage until someone runs the stage script and uploads them.
 - **DoD:** not deployed. Tests cover the unsent body. No provider-live call.
+
+## ALTER-1 — ALTER draft planner and face put-back
+
+- **Severity:** Medium · **Confidence:** Confirmed (design) · **Status:** Open (not deployed) · **Owner:** Products (AVT) · **Opened:** 2026-11-26
+- **Class:** C (a fal Seedance payload, and a face composite on a performance). Do not merge without architecture, product, and security sign-off. No Lovable Publish, no edge redeploy, and no SQL in this change.
+- **Summary:** ALTER builds an unsent 480p Seedance reference draft (`draft: true`, `generate_audio: false`). A rapping shot without a mouth series or an identity distance is CHECK and is not finalized. The fallback composites the original face and mouth where a mask is supplied, then the original audio is muxed by an ffmpeg argv that is not run. See `docs/alter/METHOD.md`.
+- **Mitigations:** no `fetch` in the planner. Mouth timing 0.6 and identity distance 0.25 are the existing sung-line gates. The Scenario structure gates are labeled as that skill's calibration, not a measurement of his footage. The landmark watch warns only.
+- **Residual:** a later change that posts the envelope spends Fal money and can redraw his mouth. The composite does not track a face until a mask is supplied per frame.
+- **DoD:** not deployed. Tests cover the unsent body, a failed mouth, and the pixel put-back. No provider-live call.
 
 ## MODEL-1 — Local model weights fetched from an unpinned URL and loaded unchecked
 
