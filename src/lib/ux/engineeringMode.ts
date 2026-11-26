@@ -37,6 +37,7 @@ export const DEFAULT_ENGINEERING_MODE: EngineeringMode = "creative";
  * - `timeline`      — music-video editor / timeline
  * - `continuity`    — temporal continuity locking
  * - `runs`          — batch runs: a shot list submitted to the providers from the app
+ * - `alter`         — one change on a take, drafted and checked, not sent
  */
 export const ADVANCED_DESTINATION_KEYS = [
   // 2026-10-03: the creative workflow is Setup → Treatment → Storyboard → Review → Export. The library, the
@@ -46,6 +47,7 @@ export const ADVANCED_DESTINATION_KEYS = [
   "video",
   "scorecards",
   "style",
+  "alter",
   "shots",
   "cover-flight",
   "hero-frame",

@@ -39,6 +39,7 @@ import { Route as ArtistsIdIndexRouteImport } from './routes/artists.$id.index'
 import { Route as ArtistsIdLooksRouteImport } from './routes/artists.$id.looks'
 import { Route as ProductsIdManufacturingRouteImport } from './routes/products.$id.manufacturing'
 import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
+import { Route as ProjectsIdAlterRouteImport } from './routes/projects.$id.alter'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdCoverFlightRouteImport } from './routes/projects.$id.cover-flight'
@@ -212,6 +213,11 @@ const ProjectsIdIndexRoute = ProjectsIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdAlterRoute = ProjectsIdAlterRouteImport.update({
+  id: '/alter',
+  path: '/alter',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
   id: '/assets',
   path: '/assets',
@@ -352,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/projects/': typeof ProjectsIndexRoute
   '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
+  '/projects/$id/alter': typeof ProjectsIdAlterRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
@@ -397,6 +404,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
+  '/projects/$id/alter': typeof ProjectsIdAlterRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/projects/': typeof ProjectsIndexRoute
   '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
+  '/projects/$id/alter': typeof ProjectsIdAlterRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
@@ -508,6 +517,7 @@ export interface FileRouteTypes {
     | '/projects/'
     | '/artists/$id/looks'
     | '/products/$id/manufacturing'
+    | '/projects/$id/alter'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/cover-flight'
@@ -553,6 +563,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/projects'
     | '/products/$id/manufacturing'
+    | '/projects/$id/alter'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/cover-flight'
@@ -607,6 +618,7 @@ export interface FileRouteTypes {
     | '/projects/'
     | '/artists/$id/looks'
     | '/products/$id/manufacturing'
+    | '/projects/$id/alter'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/cover-flight'
@@ -857,6 +869,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/projects/$id/'
       preLoaderRoute: typeof ProjectsIdIndexRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/alter': {
+      id: '/projects/$id/alter'
+      path: '/alter'
+      fullPath: '/projects/$id/alter'
+      preLoaderRoute: typeof ProjectsIdAlterRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
     '/projects/$id/assets': {
@@ -1142,6 +1161,7 @@ const ProjectsIdShotsRouteWithChildren = ProjectsIdShotsRoute._addFileChildren(
 )
 
 interface ProjectsIdRouteChildren {
+  ProjectsIdAlterRoute: typeof ProjectsIdAlterRoute
   ProjectsIdAssetsRoute: typeof ProjectsIdAssetsRoute
   ProjectsIdContinuityRoute: typeof ProjectsIdContinuityRoute
   ProjectsIdCoverFlightRoute: typeof ProjectsIdCoverFlightRoute
@@ -1164,6 +1184,7 @@ interface ProjectsIdRouteChildren {
 }
 
 const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
+  ProjectsIdAlterRoute: ProjectsIdAlterRoute,
   ProjectsIdAssetsRoute: ProjectsIdAssetsRoute,
   ProjectsIdContinuityRoute: ProjectsIdContinuityRoute,
   ProjectsIdCoverFlightRoute: ProjectsIdCoverFlightRoute,

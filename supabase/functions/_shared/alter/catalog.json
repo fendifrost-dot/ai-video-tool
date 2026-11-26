@@ -1,0 +1,550 @@
+{
+  "attribution": {
+    "title": "scenario-alter",
+    "license": "MIT",
+    "source": "https://www.scenario.com/explorations/alter/",
+    "note": "Preset text and the checker's published gates come from the scenario-alter skill (frontmatter license: MIT). AVT does not call the Scenario MCP. Prompts address fal's @Video1 and @Image1 tags."
+  },
+  "openings": {
+    "O": "Edit @Video1. Keep absolutely everything exactly the same, frame for frame: {who} (face, body, every movement and expression), the camera movement, framing and lens, the set, the light and the timing.",
+    "M": "Edit @Video1. Keep exactly the same camera movement, framing, timing and every movement, gesture and expression of {who}, frame for frame.",
+    "R": "Restyle @Video1 completely into {style}. Redraw every part of every frame in this style, {who} and the whole background alike; nothing may stay photographic: no photo texture, no lens look, no film grain. Keep exactly the same camera movement, framing, timing and every movement of {who}, frame for frame.",
+    "R_photo": "Restyle @Video1 completely into {style}. Keep exactly the same camera movement, framing, timing and every movement of {who}, frame for frame."
+  },
+  "close": {
+    "O": "Nothing else changes. No text, no letters, no logos, no watermarks.",
+    "M": "Nothing else changes. No text, no letters, no logos, no watermarks.",
+    "R": "It must look like a version of the shot made from scratch in this style, not a filter over the video. No text, no letters, no logos.",
+    "R_photo": "No text, no letters, no logos."
+  },
+  "presets": [
+    {
+      "name": "product-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "Change only the {object} in the hand: it becomes the {product} from @Image1, held exactly the same way at the same size, printed and lit exactly as in @Image1.",
+      "fill": {
+        "object": "what is held now, e.g. white paper coffee cup",
+        "product": "the new product, e.g. slim cream drinks can with a blue circle"
+      },
+      "refs": [
+        "target frame: a frame of this shot with the new product already in the hand"
+      ]
+    },
+    {
+      "name": "label-redesign",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "Change only the printed artwork on the {container}: it looks exactly like @Image1, printed for real on the material, following its curve, with the same highlights, condensation and frost on top of the print.",
+      "fill": {
+        "container": "e.g. glass bottle, ribbed can"
+      },
+      "refs": [
+        "target frame: a frame of this shot with the new artwork printed on"
+      ]
+    },
+    {
+      "name": "colourway",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "Change only the colour of the {object} to {colour}, same material, same finish, same reflections, as in @Image1.",
+      "fill": {
+        "object": "e.g. sneakers, car, jacket",
+        "colour": "e.g. matte forest green"
+      },
+      "refs": [
+        "target frame in the new colour"
+      ]
+    },
+    {
+      "name": "de-logo",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": false,
+      "change": "Remove every logo, brand mark, word and number from the {object}; the surfaces stay plain, same material and colour.",
+      "fill": {
+        "object": "e.g. t-shirt, cap, cup"
+      },
+      "refs": []
+    },
+    {
+      "name": "prop-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": false,
+      "change": "The {prop} becomes the {new_prop} from @Image1, same size in the hand, moving exactly as the original does.",
+      "fill": {
+        "prop": "e.g. umbrella",
+        "new_prop": "e.g. paper parasol"
+      },
+      "refs": [
+        "the new prop, alone on a plain background or in a frame of this shot"
+      ]
+    },
+    {
+      "name": "device-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "The {device} becomes the {new_device} from @Image1, same grip, same screen angle; the screen shows {screen}.",
+      "fill": {
+        "device": "e.g. phone",
+        "new_device": "e.g. foldable phone",
+        "screen": "plain light or a dark screen"
+      },
+      "refs": [
+        "target frame with the new device in the hand"
+      ]
+    },
+    {
+      "name": "food-drink-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "The {food} becomes the {new_food} from @Image1, same portion size, same steam or condensation, same way of eating or drinking.",
+      "fill": {
+        "food": "e.g. bowl of noodles",
+        "new_food": "e.g. bowl of ramen with a soft egg"
+      },
+      "refs": [
+        "target frame with the new food or drink"
+      ]
+    },
+    {
+      "name": "vehicle-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": false,
+      "change": "The {vehicle} becomes the {new_vehicle} from @Image1, same path, speed, lane and reflections; no badges, no plate text.",
+      "fill": {
+        "vehicle": "e.g. grey hatchback",
+        "new_vehicle": "e.g. red vintage roadster"
+      },
+      "refs": [
+        "the new vehicle, ideally a render or photo from a similar angle"
+      ]
+    },
+    {
+      "name": "shoe-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "The shoes become the {shoes} from @Image1, plain uppers with no logos, stars, stripes or patches, same steps and ground contact.",
+      "fill": {
+        "shoes": "e.g. tan suede desert boots"
+      },
+      "refs": [
+        "target frame with the new shoes on the feet"
+      ]
+    },
+    {
+      "name": "accessory-swap",
+      "group": "Products and props",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": false,
+      "change": "Add or change only the {accessory} to the one in @Image1, sitting naturally and moving with the body.",
+      "fill": {
+        "accessory": "e.g. round tortoiseshell glasses"
+      },
+      "refs": [
+        "the accessory, or a target frame with it worn"
+      ]
+    },
+    {
+      "name": "outfit",
+      "group": "Wardrobe and look",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "Change only the clothes to the outfit in @Image1, which is a frame of this same shot: {outfit}. Same fit to the body, the fabric moving and creasing naturally with every movement.",
+      "fill": {
+        "outfit": "e.g. a long camel wool overcoat, open, over a white t-shirt"
+      },
+      "refs": [
+        "target frame: this shot's frame with the new outfit on"
+      ]
+    },
+    {
+      "name": "costume",
+      "group": "Wardrobe and look",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "The clothes become {costume} as in @Image1, worn naturally, same movement.",
+      "fill": {
+        "costume": "e.g. medieval plate armour"
+      },
+      "refs": [
+        "target frame with the costume on"
+      ]
+    },
+    {
+      "name": "season-outfit",
+      "group": "Wardrobe and look",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": false,
+      "change": "Dress {who} for {season}: {clothes}, same movement; the set and light stay as they are.",
+      "fill": {
+        "season": "e.g. winter",
+        "clothes": "e.g. a puffer coat and a knitted scarf"
+      },
+      "refs": []
+    },
+    {
+      "name": "hair-makeup",
+      "group": "Wardrobe and look",
+      "mode": "swap",
+      "opening": "O",
+      "check": "swap",
+      "targetFrame": true,
+      "change": "Change only the hair to {hair} and the makeup to {makeup}, as in @Image1; face, expression and identity unchanged.",
+      "fill": {
+        "hair": "e.g. a platinum bob",
+        "makeup": "e.g. bold red lips"
+      },
+      "refs": [
+        "target frame with the new hair and makeup"
+      ]
+    },
+    {
+      "name": "recast",
+      "group": "Cast and character",
+      "mode": "motion",
+      "opening": "M",
+      "check": "recast",
+      "targetFrame": true,
+      "change": "The person becomes the person in @Image1, which is a frame of this same shot: {new_person}. Same movements, expressions and lip movements; the clothes, the set and the light stay exactly as in @Video1.",
+      "fill": {
+        "new_person": "who they become: age, face, hair, skin, build"
+      },
+      "refs": [
+        "target frame: this shot's frame with the new person in the same clothes"
+      ]
+    },
+    {
+      "name": "creature",
+      "group": "Cast and character",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "{who} becomes {creature} from @Image1, real anatomy and weight, matching every movement and timing.",
+      "fill": {
+        "creature": "e.g. a hulking moss troll"
+      },
+      "refs": [
+        "the creature, full body"
+      ]
+    },
+    {
+      "name": "animal-swap",
+      "group": "Cast and character",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "The {animal} becomes a {new_animal} from @Image1, real fur and anatomy, same run, same path, same timing.",
+      "fill": {
+        "animal": "e.g. golden retriever",
+        "new_animal": "e.g. snow leopard"
+      },
+      "refs": [
+        "the new animal, full body"
+      ]
+    },
+    {
+      "name": "mascot-3d",
+      "group": "Cast and character",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "{who} becomes the 3D animated character in @Image1, feature-film rendering, same performance.",
+      "fill": {},
+      "refs": [
+        "the character, full body"
+      ]
+    },
+    {
+      "name": "game-character",
+      "group": "Cast and character",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "{who} becomes the game character in @Image1 (exact costume, colours, proportions), performing exactly the same movements.",
+      "fill": {},
+      "refs": [
+        "the character sheet, full body"
+      ]
+    },
+    {
+      "name": "my-character",
+      "group": "Cast and character",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "{who} becomes the recurring character in @Image1, identical face and outfit as in @Image1, same performance.",
+      "fill": {},
+      "refs": [
+        "the same character reference in every video of the series"
+      ]
+    },
+    {
+      "name": "new-location",
+      "group": "World and time",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": true,
+      "change": "Move the whole scene to {location} as in @Image1, which is a frame of this same shot in the new place: new ground, walls, sky and background; same performer, same clothes, same movements and camera path, light motivated by the new place.",
+      "fill": {
+        "location": "e.g. a snowy alpine village path at blue hour"
+      },
+      "refs": [
+        "target frame: this shot's first frame with the new place around the performer"
+      ]
+    },
+    {
+      "name": "time-of-day",
+      "group": "World and time",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "Same place at {time}; the light direction and shadows change, nothing else.",
+      "fill": {
+        "time": "golden hour, blue hour, or night with practical lights"
+      },
+      "refs": []
+    },
+    {
+      "name": "weather",
+      "group": "World and time",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "Same place in {weather}: wet surfaces and reflections, the clothes reacting to it; same movements.",
+      "fill": {
+        "weather": "heavy rain, snow or fog"
+      },
+      "refs": []
+    },
+    {
+      "name": "era",
+      "group": "World and time",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "The scene becomes {era}: set, clothes, props and film look of the period; same movements and camera.",
+      "fill": {
+        "era": "e.g. a 1970s street on film stock"
+      },
+      "refs": []
+    },
+    {
+      "name": "sci-fi",
+      "group": "World and time",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": true,
+      "change": "The scene becomes {world} as in @Image1, same performer and movements, light from the new world.",
+      "fill": {
+        "world": "e.g. a starship corridor"
+      },
+      "refs": [
+        "target frame or a world plate"
+      ]
+    },
+    {
+      "name": "game-level",
+      "group": "World and time",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "The scene becomes the game environment in @Image1 (exact architecture and palette), same performer, movements and camera path.",
+      "fill": {},
+      "refs": [
+        "the environment, ideally from a similar camera height"
+      ]
+    },
+    {
+      "name": "anime",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} is a hand-drawn anime character with the same hair and clothes. The background ({place}) is hand-painted anime background art with flat colour areas and painted clouds.",
+      "fill": {
+        "place": "the place as seen, e.g. the seaside promenade, the sea and the sky"
+      },
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "clay",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} is a plasticine puppet with the same hair and clothes. The background ({place}) is a handmade miniature set of clay, card and felt.",
+      "fill": {
+        "place": "the place as seen"
+      },
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "3d-feature",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} is a stylised 3D animated character with the same hair and clothes. The background ({place}) is a stylised 3D set: soft rounded shapes, sculpted clouds, clean simple surfaces.",
+      "fill": {
+        "place": "the place as seen"
+      },
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "painterly",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} is painted with soft edges and a little underdrawing. The background ({place}) is loose {medium} washes and a few confident strokes.",
+      "fill": {
+        "medium": "watercolour or oil",
+        "place": "the place as seen"
+      },
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "noir",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} wears the same clothes, lit like a 1940s studio picture.",
+      "fill": {},
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "pixel-retro",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} and the background ({place}) are drawn in this style.",
+      "fill": {
+        "retro": "16-bit pixel art, or 1990s console low-poly 3D",
+        "place": "the place as seen, e.g. the seaside promenade, the railing, the sea and the sky"
+      },
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "comic-ink",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} and the background ({place}) are inked in this style.",
+      "fill": {
+        "place": "the place as seen, e.g. the seaside promenade, the railing, the sea and the sky"
+      },
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "animation-to-live",
+      "group": "Restyle",
+      "mode": "restyle",
+      "opening": "R",
+      "check": "restyle",
+      "targetFrame": "optional",
+      "change": "{who} is a real person with the same hair and clothes; every surface is real.",
+      "fill": {},
+      "refs": [
+        "optional target frame: the first frame of this shot fully redrawn in the style (use it when the background stays photographic)"
+      ]
+    },
+    {
+      "name": "market-variant",
+      "group": "Ads and repurposing",
+      "mode": "motion",
+      "opening": "M",
+      "check": "recast",
+      "targetFrame": true,
+      "change": "Recast for {market}: the person becomes the person in @Image1 and the setting becomes {setting} as in @image2; same action, timing and product handling; no signs or text.",
+      "fill": {
+        "market": "e.g. the Japanese market",
+        "setting": "e.g. a Tokyo apartment kitchen"
+      },
+      "refs": [
+        "target frame with the new person",
+        "a plate of the new setting"
+      ]
+    },
+    {
+      "name": "phone-to-studio",
+      "group": "Ads and repurposing",
+      "mode": "motion",
+      "opening": "M",
+      "check": "motion",
+      "targetFrame": false,
+      "change": "Make it look shot by a film crew: clean motivated light, a cinema lens, graded colour; same people, framing and timing.",
+      "fill": {},
+      "refs": []
+    }
+  ]
+}
