@@ -22,7 +22,7 @@ from swap_rate import MINTERPOLATE  # noqa: E402  (the one interpolation setting
 STRETCH_MIN, STRETCH_MAX = 0.90, 1.20
 
 
-def probe(path):
+def probe(path, constant_rate=True):
     """(frames, rate as a Fraction, width, height), counted from the stream, not trusted from the header."""
     r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries",
                         "stream=nb_read_frames,r_frame_rate,avg_frame_rate,width,height", "-of", "json", path],
@@ -30,7 +30,7 @@ def probe(path):
     if r.returncode != 0: raise RuntimeError(f"ffprobe {path}: {r.stderr.strip()[-300:]}")
     s = json.loads(r.stdout)["streams"][0]
     rate = Fraction(s["r_frame_rate"])
-    check_constant_rate(path, rate, s.get("avg_frame_rate"))
+    if constant_rate: check_constant_rate(path, rate, s.get("avg_frame_rate"))
     return int(s["nb_read_frames"]), rate, int(s["width"]), int(s["height"])
 
 
@@ -75,7 +75,7 @@ def conform_command(raw, out, take_frames, take_rate, raw_frames, raw_rate):
 def conform(take, raw, out, force=False):
     """Writes `out` and returns the facts. Raises ValueError when the raw file is not this take a little fast."""
     tf, tr, _, _ = probe(take)          # raises ValueError on a variable frame rate
-    rf, rr, w, h = probe(raw)
+    rf, rr, w, h = probe(raw, constant_rate=not force)
     k = float(stretch(tf, tr, rf, rr))
     if not (STRETCH_MIN <= k <= STRETCH_MAX) and not force:
         raise ValueError(f"the draft is {rf} frames at {float(rr):.3f} fps for a take of {tf} at {float(tr):.3f}: a "
@@ -83,7 +83,7 @@ def conform(take, raw, out, force=False):
                          f"little fast. Check that it is the right clip (use --force only if you know why).")
     r = subprocess.run(conform_command(raw, out, tf, tr, rf, rr), capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(out): raise RuntimeError(f"conform failed: {r.stderr.strip()[-400:]}")
-    of, orate, _, _ = probe(out)
+    of, orate, _, _ = probe(out, constant_rate=False)
     if of != tf or orate != tr:
         raise RuntimeError(f"conformed file is {of} frames at {orate}, the take is {tf} at {tr}")
     return {"take_frames": tf, "take_rate": rate_text(tr), "raw_frames": rf, "raw_rate": rate_text(rr),
@@ -93,7 +93,9 @@ def conform(take, raw, out, force=False):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("take"); ap.add_argument("raw"); ap.add_argument("out")
-    ap.add_argument("--force", action="store_true", help="conform even when the stretch is outside the known band")
+    ap.add_argument("--force", action="store_true",
+                    help="conform even when the stretch is outside the known band or the RAW draft's rate is uneven "
+                         "(the take must always be constant-rate)")
     a = ap.parse_args()
     try:
         print(json.dumps(conform(a.take, a.raw, a.out, a.force), indent=1))

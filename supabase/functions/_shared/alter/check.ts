@@ -80,7 +80,7 @@ function corr(left: ArrayLike<number>, right: ArrayLike<number>): number {
     bb += b * b;
   }
   const den = Math.sqrt(aa * bb);
-  return den > 0 ? dot / den : 0;
+  return den > 0 ? Math.max(-1, Math.min(1, dot / den)) : 0;
 }
 
 function median(values: number[]): number {

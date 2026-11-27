@@ -19,7 +19,10 @@ function text(value: unknown, name: string, max = 4000): string | { error: strin
 
 /** Slot values: a plain object of short strings, or nothing. Anything else is an error, never a cast. */
 class SlotError {
-  constructor(readonly message: string) {}
+  readonly message: string;
+  constructor(message: string) {
+    this.message = message;
+  }
 }
 
 function slotsOf(value: unknown): Record<string, string> | undefined | SlotError {

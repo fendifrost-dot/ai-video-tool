@@ -55,7 +55,7 @@ export const ALTER_TOOLS = [
   {
     name: "avt_alter_check",
     description:
-      "Judge a CONFORMED draft from the report scripts/alter/run_draft.py wrote (report.json: frame measurements, the mouth score, the identity distance). Only the report's numbers are read; the verdict, flags and issues are rebuilt here with the gates in gates.ts. Does not read video and does not call a model. $0. `redrawCleared` means every gate passed, identity included (for a clip that is not a performance: the frame gates only; mouth and face are not judged). `faceNeedsHisEye` means everything measured passed and only the face has no number: Fendi judges the face sheet. Anything else is not cleared.",
+      "Judge a CONFORMED draft from the report scripts/alter/run_draft.py wrote (report.json: frame measurements, the mouth score, the identity distance). Only the report's numbers are read; the verdict, flags and issues are rebuilt here with the gates in gates.ts. Does not read video and does not call a model. $0. `redrawCleared` means every gate passed, identity included (the mouth is judged only on a performance; the face on every clip). `faceNeedsHisEye` means everything measured passed and only the face has no number: Fendi judges the face sheet. Anything else is not cleared.",
     inputSchema: {
       type: "object",
       properties: {

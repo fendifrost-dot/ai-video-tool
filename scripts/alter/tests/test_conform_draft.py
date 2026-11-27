@@ -38,6 +38,9 @@ def test_a_variable_frame_rate_file_is_refused():
     with pytest.raises(ValueError) as e:                                        # a phone's variable-rate file
         cd.check_constant_rate("take.mp4", Fraction(30), "72000/2381")
     assert "variable frame rate" in str(e.value)
+    import inspect
+    src = inspect.getsource(cd.conform)                     # the take is always checked; --force excuses only the raw
+    assert "probe(take)" in src and "probe(raw, constant_rate=not force)" in src
 
 
 def test_run_draft_helpers():

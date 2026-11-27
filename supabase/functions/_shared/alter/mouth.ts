@@ -49,7 +49,7 @@ function corr(left: number[], right: number[]): number | null {
     bb += b * b;
   }
   const den = Math.sqrt(aa * bb);
-  return den > 0 ? dot / den : 0;
+  return den > 0 ? Math.max(-1, Math.min(1, dot / den)) : 0;
 }
 
 function pointDistance(left: MouthPoint[], right: MouthPoint[]): number | null {
@@ -81,6 +81,9 @@ const usable = (frame: MouthFrame | undefined): frame is MouthFrame =>
  * because the song does not move. Shape is the mean lip-point distance in face widths, when both sides carry points.
  * A frame with no face on either side is left out and counted: below MOUTH_COVERAGE_MIN nothing is claimed.
  */
+const TOO_FEW_FRAMES =
+  "mouth: fewer than 3 frames with his face in both clips, so lip sync was not scored";
+
 export function scoreMouth(source: MouthFrame[], output: MouthFrame[]): MouthScore {
   const total = Math.min(source.length, output.length);
   const pairs: Array<[MouthFrame, MouthFrame]> = [];
@@ -102,9 +105,7 @@ export function scoreMouth(source: MouthFrame[], output: MouthFrame[]): MouthSco
     return {
       measured: false,
       ...empty,
-      issues: [
-        "mouth: fewer than 3 frames with his face in both clips, so lip sync was not scored",
-      ],
+      issues: [TOO_FEW_FRAMES],
     };
   }
   if (coverage < MOUTH_COVERAGE_MIN) {
@@ -206,7 +207,9 @@ export function gateTrackScore(score: TrackScore): MouthScore {
       shapeFails: false,
       landmarkWatch: false,
       issues: [
-        `mouth: his face was read on ${(coverage * 100).toFixed(0)}% of the frames of both clips (needs ${MOUTH_COVERAGE_MIN * 100}%). Lip sync is not claimed.`,
+        coverage < MOUTH_COVERAGE_MIN
+          ? `mouth: his face was read on ${(coverage * 100).toFixed(0)}% of the frames of both clips (needs ${MOUTH_COVERAGE_MIN * 100}%). Lip sync is not claimed.`
+          : TOO_FEW_FRAMES,
       ],
     };
   }

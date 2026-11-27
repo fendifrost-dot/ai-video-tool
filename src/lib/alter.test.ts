@@ -554,21 +554,38 @@ describe("ALTER checker", () => {
       driftRuns: Array.from({ length: 40 }, (_, i) => [i * 10, i * 10 + 6]),
     });
     expect(drifting.issues.filter((issue) => issue.startsWith("drift:"))).toHaveLength(11);
-    // not a performance: cleared means the frame gates only, and the words say so
-    const scenery = runAlterTool("avt_alter_check", {
-      report: {
-        ...passed,
-        performance: false,
-        mouth: null,
-        identity: { distance: null },
-        mode: "swap",
-        jumps: [],
-        motionCorrelation: 0.9,
-      },
-    });
-    if (!scenery.ok) throw new Error(scenery.error);
-    expect((scenery.value as Checked).redrawCleared).toBe(true);
-    expect((scenery.value as Checked).next).toContain("the mouth and the face were not judged");
+    // not a performance: the mouth is not judged, but the edit still redraws his face, so the face is
+    const scenery = {
+      ...passed,
+      performance: false,
+      mouth: null,
+      mode: "swap",
+      jumps: [],
+      motionCorrelation: 0.9,
+    };
+    const unjudged = check({ ...scenery, identity: { distance: null } });
+    expect(unjudged.issues.join(" ")).not.toContain("mouth");
+    expect(unjudged.redrawCleared).toBe(false);
+    expect(unjudged.faceNeedsHisEye).toBe(true);
+    expect(check({ ...scenery, identity: { distance: 0.1 } }).redrawCleared).toBe(true);
+    // a correlation that rounds a hair above 1 is still a report
+    expect(rejudge({ ...passed, mouth: { ...passed.mouth, timing: 1, timingBest: 1 } }).ok).toBe(
+      true,
+    );
+    const line = Array.from({ length: 12 }, (_, i) => ({ openness: 0.01 + i * 0.013 }));
+    expect(
+      scoreMouth(
+        line,
+        line.map((frame) => ({ openness: frame.openness * 3 + 0.2 })),
+      ).timing,
+    ).toBeLessThanOrEqual(1);
+    // too few frames is reported as that, by the checker and by a report judged again
+    const two = [{ openness: 0.1 }, { openness: 0.2 }];
+    const short = scoreMouth(two, two);
+    expect(short.issues[0]).toContain("fewer than 3 frames");
+    expect(gateTrackScore({ measured: false, coverage: 1, timing: null }).issues).toEqual(
+      short.issues,
+    );
     expect(rejudge({ ...passed, mouth: null }).ok).toBe(true); // no mouth score: judged, and not cleared
     const noMouth = check({ ...passed, mouth: null });
     expect(noMouth.issues.join(" ")).toContain("no mouth score was supplied");
@@ -714,6 +731,19 @@ describe("ALTER checker", () => {
         face_approval: "That's definitely a pass.",
       }).finalize,
     ).toBeNull();
+    // a redraw of him where he is not rapping still needs the face cleared: a number, or his words
+    const quiet = { ...planArgs, performance: false };
+    const quietReport = { ...passed, performance: false, mouth: null };
+    const noWord = runAlterTool("avt_alter_plan", { ...quiet, draft_check: quietReport });
+    if (!noWord.ok) throw new Error(noWord.error);
+    expect((noWord.value as Planned).finalize).toBeNull();
+    const withWord = runAlterTool("avt_alter_plan", {
+      ...quiet,
+      draft_check: quietReport,
+      face_approval: "That's definitely a pass.",
+    });
+    if (!withWord.ok) throw new Error(withWord.error);
+    expect((withWord.value as Planned).finalize?.note).toContain("not verified by this server");
     // a plan that was never ready has nothing to finalize
     expect(
       finalizeWith({

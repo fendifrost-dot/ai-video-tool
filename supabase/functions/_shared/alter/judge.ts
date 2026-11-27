@@ -113,24 +113,23 @@ export function judge(
     else
       issues.push("mouth: no mouth score was supplied. A rapping shot is not cleared without one.");
   }
+  // The edit redraws his face whether or not he is rapping, so the face is judged on every clip.
   const face = identityIssue(identityDistance);
-  if (face && (m.performance || identityDistance != null)) issues.push(face);
+  if (face) issues.push(face);
   const open = openIssues(issues);
   const mouthOk =
     !m.performance || (mouth?.measured === true && !mouth.timingFails && !mouth.shapeFails);
   const measured = identityDistance != null;
   const faceOk = measured && identityDistance <= IDENTITY_DISTANCE_MAX;
-  const redrawCleared = open.length === 0 && mouthOk && (!m.performance || faceOk);
-  const faceNeedsHisEye = m.performance && open.length === 0 && mouthOk && !measured;
+  const redrawCleared = open.length === 0 && mouthOk && faceOk;
+  const faceNeedsHisEye = open.length === 0 && mouthOk && !measured;
   return {
     issues,
     verdict: issues.some((issue) => !isWarning(issue)) ? "CHECK" : "PASS",
     redrawCleared,
     faceNeedsHisEye,
     next: redrawCleared
-      ? m.performance
-        ? "Cleared by the numbers, identity included. Post the side-by-side and the face sheet."
-        : "The frame gates pass. Not a performance, so the mouth and the face were not judged: look at it and post it."
+      ? "Cleared by the numbers, identity included. Post the side-by-side and the face sheet."
       : faceNeedsHisEye
         ? "Everything measured passed. The face has no number: post the side-by-side and the face sheet, and Fendi judges the face."
         : "Not cleared: read the issues. Re-roll, change the staging, or use his real take. Do not lay his original face back onto the redraw (failed by Fendi, 27 Nov 2026).",
