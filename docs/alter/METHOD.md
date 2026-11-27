@@ -20,6 +20,13 @@ The draft body sets `draft: true` (fal forces 480p) and `generate_audio: false`.
 
 Scenario's "Draft Complete" model was not a separate id in the fal schema checked on 26 Nov 2026. The 1080p body is a second reference call, not a claimed draft-completion endpoint.
 
+## The provider route, as tested (26 Nov 2026)
+
+`TEST_2026-11-26.md` is the first real draft. Two things it proved, both binding on any caller:
+
+- **An edit goes to the video-edit endpoint.** On Higgsfield the edit wording ("Edit @Video1 …") is refused on `reference-to-video`, because an edit takes its length and frame from the source. The working route is Control Center `seedance-2.5-edit` (`bytedance/seedance-2.5/video-edit`): the source clip, optional pictures, a resolution; no duration, no aspect ratio. `plan.ts` still builds the reference body and has not been sent to fal.
+- **Conform the draft before scoring it.** The draft comes back about 7% fast (89 frames for a 96-frame source), as Genjutsu does. Stretch it to the take's length and interpolate to the take's rate (`scripts/edit/swap_rate.py`'s filter) first. Unconformed, the mouth gate reads 0.15 and calls a good draft re-timed; conformed, the same draft reads 0.86 at 0 frames.
+
 ## Gates, and where the numbers come from
 
 | Gate | Number | Where it came from |
