@@ -27,7 +27,7 @@ the new tool (ALTER, section 4), not a planned shot.
 | AVT project | none yet for Meditate (VERIFIED 25 Nov: `video_projects` newest row is Hyenas; re-check before creating one) |
 | Backend | Lovable-managed only, project ref `qoyxgnkvjukovkrvdaiq`; pre-flight in `docs/AGENT_BOOTSTRAP.md` |
 | Money so far | $0. Open `docs/LEDGER_MEDITATE_2026-11-26.md` with the first paid call (columns as in the Partnership ledger, plus an Outcome column: used / unused / my mistake) |
-| This Mac | M1, 8 GB, Blender 5.3 (VERIFIED). One heavy job at a time. Grokbot's handoff names a Mac Studio with `~/avt-render`; that folder is not on this Mac |
+| Machine | Fendi wants the processing on his **Mac Studio** (26 Nov). The MacBook Pro is M1, 8 GB, Blender 5.3 (VERIFIED): if you find yourself on it, one heavy job at a time. Grokbot's handoff names `~/avt-render` on the Studio |
 
 ### His footage (VERIFIED with ffprobe, 26 Nov; all iPhone 14, 3840x2160 stored sideways, rotation -90, 24 fps, HEVC)
 
@@ -54,7 +54,45 @@ the song: find which stretch each take covers before planning anything (section 
 | Takes located and probed | table above | VERIFIED |
 | His Gemini sign-in in his Chrome | checked 25 Nov, plan label "Pro" | OBSERVED; nothing generated |
 
-Nothing else. No sync, no matte, no scene, no generation.
+| Each take synced to the song (step 1, the measuring half) | `docs/sync/meditate.performance-sync.json` | VERIFIED 26 Nov, two methods within 3 ms. song = file + offset: 6547 -18.114, 6548 -12.121, 6549 -10.168, 6550 -12.641 (camera rolled before the song in all four) |
+
+**The video is song 0:00 to 2:38 (DECISION, Fendi 26 Nov):** "the second half of the song is being cut from the video
+we only need the first half for this one", then "Cut at 2:38". Project song = asset
+`14eedbe0-3068-4526-b38d-117cee141dce` (0:00-2:38.00, 300 ms fade; the beat runs through 2:38), same clock as the full
+song to the sample, so the syncs hold. The earlier 3:11.48 cut (`e0b6ce33`) is superseded. Shape (local Whisper,
+OBSERVED): chant 0:03-0:17, verse 1 0:17-1:08, chant 1:08-1:52, fast verse 2 1:52-2:19.6, chant 2:20-2:38. All four
+takes cover all of it (6548, the shortest, runs to 2:50.9).
+
+**Lenses (VERIFIED from the files' own tags):** 6547, 6548, 6549 on the 1x camera (26 mm equivalent, f/1.5); 6550 on
+the 0.5x ultra-wide (13 mm equivalent, f/2.4). Build the Blender cameras with these.
+
+**The four cameras (step 2, ESTIMATES read 26 Nov; lock each in Blender by laying the take over the empty render):**
+`docs/sync/meditate.cameras.json`. 6547: 1x, 2.3 m, camera 1.0 m high (his seated eye level, NOT on the floor), up ~4
+deg, straight on. 6548: 1x, 1.3 m, 0.2 m high, level, about 60 deg off his front on his LEFT. 6549: 1x, 1.05 m, 0.4 m
+high, level, his left profile. 6550: 0.5x, 1.1 m, 0.25 m high, level, front quarter. In 6548 and 6549 he sits turned
+90 deg (the cameras still face the same back wall), so the handoff's "45 degrees off his right side" was wrong. Light:
+soft everywhere, no hard shadows, steady through each take; his sources were LED panels (one high on the wardrobe, two
+low), the vanity mirror and late-afternoon window light. Picture: `/Volumes/T7/_avt_work/meditate_2026-11-26/cams/four_cameras.jpg`.
+
+**Step 3, the two choice stills (26 Nov, $0 on the API):** made on his Gemini plan through gemini.google.com in his
+Chrome (Fendi: "use my browser to run Gemini it's logged in and it doesn't count against my api credits"). FIRST AGENT
+RUN OF THE WEBSITE ROUTE, VERIFIED: the download button gives 1536x2752 JPEG (9:16), no visible watermark in the
+corners; the page preview is only 768x1376, so always use the download button; files land in ~/Downloads, move them to
+the T7 at once. Prompts followed `docs/recipes/PLATE_REALISM_PROMPT.md`, camera written as 6547's (26 mm, level, 1 m
+high, empty seat 2.3 m away). Files: `/Volumes/T7/_avt_work/meditate_2026-11-26/gemini/` (rock_garden_v1, dojo_v1,
+choice_side_by_side). OBSERVED: the dojo scroll's characters may not be real text; fix in the build if it is chosen.
+Waiting on Fendi's choice.
+
+**Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
+on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
+Studio. When told so, he answered "no you don't have to stop": light work carries on on the MacBook; run the heavy
+jobs (Blender scene, renders, mattes measured locally) in a session on the Mac Studio when one is open, with the T7 there. Check with
+`system_profiler SPHardwareDataType | grep -E "Model Name|Memory"` before the first heavy job.
+
+| AVT project created | `295ebf3f-3d92-449c-be13-e2b0f8b3fbc3` (9:16, the takes are portrait) | VERIFIED 26 Nov |
+| Song filed | full song `6e1a926d-7cea-4fd5-aca5-c9f49c7b296f`; the video's cut `14eedbe0-3068-4526-b38d-117cee141dce` (0:00-2:38) | VERIFIED 26 Nov, sha256 checked |
+
+No matte, no scene, no generation yet. Coverage picture: `/Volumes/T7/_avt_work/meditate_2026-11-26/song_coverage.jpg`.
 
 ## 2. Not done: the build, in order
 
