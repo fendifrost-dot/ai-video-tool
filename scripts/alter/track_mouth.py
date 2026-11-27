@@ -38,18 +38,26 @@ ARC_SHA256 = "4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43" 
 
 # ----------------------------------------------------------------------------- pure numpy (tested without the models)
 def arc_model(models_dir):
-    """Path of the identity model, or None when it is not on disk. A file with another checksum is refused: an identity
-    number from an unknown model would clear or fail his face on nothing."""
+    """The identity model's bytes, or None when the file is not on disk. The file is read once and those bytes are both
+    hashed and loaded, so what is checked is what runs. A file with another checksum is refused: an identity number
+    from an unknown model would fail or pass his face on nothing."""
     import hashlib
     p = os.path.join(models_dir, ARC_FILE)
     if not os.path.exists(p): return None
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""): h.update(block)
-    if h.hexdigest() != ARC_SHA256:
-        raise SystemExit(f"refused: {p} is not the pinned identity model (sha256 {h.hexdigest()[:12]}, expected {ARC_SHA256[:12]}); "
+    try:
+        with open(p, "rb") as f: data = f.read()
+    except OSError as e:
+        raise SystemExit(f"refused: {p} cannot be read as the identity model ({e.__class__.__name__}); remove it or put the pinned file there")
+    got = hashlib.sha256(data).hexdigest()
+    if got != ARC_SHA256:
+        raise SystemExit(f"refused: {p} is not the pinned identity model (sha256 {got[:12]}, expected {ARC_SHA256[:12]}); "
                          "remove it or put the pinned file there")
-    return p
+    return data
+
+
+def same_identity_model(src, out):
+    """An identity distance means something only between two tracks made with the pinned model."""
+    return src.get("identity_model_sha256") == ARC_SHA256 and out.get("identity_model_sha256") == ARC_SHA256
 
 
 def face_frame(P):
@@ -115,12 +123,13 @@ def score_tracks(src, out):
                 "open_mean_output": round(float(b.mean()), 4), "open_range_source": round(float(a.max() - a.min()), 4),
                 "pose_turn_difference": round(pose, 4), "pose_ok_for_putback": pose <= POSE_TURN_MAX})
     ea = [p[0]["emb"] for p in both if p[0].get("emb") and p[1].get("emb")]; eb = [p[1]["emb"] for p in both if p[0].get("emb") and p[1].get("emb")]
-    if len(ea) >= 8:
+    if len(ea) >= 8 and same_identity_model(src, out):
         ma = np.mean(ea, axis=0); ma /= np.linalg.norm(ma) + 1e-9; mb = np.mean(eb, axis=0); mb /= np.linalg.norm(mb) + 1e-9
         per = [1.0 - float(np.dot(np.array(e) / (np.linalg.norm(e) + 1e-9), ma)) for e in eb]
-        rep.update({"identity_distance": round(float(1.0 - np.dot(ma, mb)), 3), "identity_p95": round(float(np.percentile(per, 95)), 3)})
+        rep.update({"identity_distance": round(float(1.0 - np.dot(ma, mb)), 3), "identity_p95": round(float(np.percentile(per, 95)), 3),
+                    "identity_model_sha256": ARC_SHA256})
     else:
-        rep.update({"identity_distance": None, "identity_p95": None})
+        rep.update({"identity_distance": None, "identity_p95": None, "identity_model_sha256": None})
     return rep
 
 
@@ -169,7 +178,7 @@ class Finder:
         self.lmk = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=os.path.join(M, "face_landmarker.task")), running_mode=vision.RunningMode.IMAGE, num_faces=1))
         arc = arc_model(M); self.arc = None
-        if arc:
+        if arc is not None:
             import onnxruntime as ort
             self.arc = ort.InferenceSession(arc, providers=["CPUExecutionProvider"]); self.ain = self.arc.get_inputs()[0].name
 

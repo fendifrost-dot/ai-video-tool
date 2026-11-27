@@ -27,7 +27,7 @@ export type AlterReport = {
   driftRuns: [number, number][];
   mouth: MouthScore | null;
   identity: { measured: boolean; fails: boolean; distance: number | null };
-  /** True when the redraw may be used as it is: no open issue, the mouth passed, the face has a passing number. */
+  /** True when the redraw may be used as it is: no open issue, the mouth passed, the face passed a CERTIFIED identity line. */
   redrawCleared: boolean;
   /** True when everything measured passed and only the face is open (no identity number, or one under a line that is not certified): Fendi judges it. */
   faceNeedsHisEye: boolean;
@@ -164,10 +164,18 @@ export function checkAlter(input: {
     input.mouthSource && input.mouthOutput
       ? scoreMouth(input.mouthSource, input.mouthOutput)
       : null;
-  const distance =
-    typeof input.identityDistance === "number" && !Number.isNaN(input.identityDistance)
-      ? input.identityDistance
-      : null;
+  // The same range `rejudge` accepts, so the offline checker and the tool cannot disagree on an impossible number.
+  if (
+    input.identityDistance != null &&
+    !(
+      typeof input.identityDistance === "number" &&
+      Number.isFinite(input.identityDistance) &&
+      input.identityDistance >= 0 &&
+      input.identityDistance <= 2
+    )
+  )
+    throw new Error("identity distance must be between 0 and 2, or absent");
+  const distance = input.identityDistance ?? null;
   const measurements: Measurements = {
     mode: input.mode,
     performance,

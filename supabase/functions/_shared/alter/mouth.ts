@@ -1,5 +1,4 @@
 import {
-  IDENTITY_DISTANCE_MAX,
   LANDMARK_DISTANCE_WATCH,
   MOUTH_COVERAGE_MIN,
   MOUTH_LAG_GAIN,
@@ -249,27 +248,4 @@ export function opennessFromBox(
     }
   }
   return count ? sum / count / 255 : 0;
-}
-
-export function identityFails(distance: number | null | undefined): {
-  measured: boolean;
-  fails: boolean;
-  issue?: string;
-} {
-  if (distance == null || Number.isNaN(distance)) {
-    return {
-      measured: false,
-      fails: false,
-      issue:
-        "identity was not measured. The face is cleared by the number or by Fendi's word on the face sheet, not by this check.",
-    };
-  }
-  if (distance > IDENTITY_DISTANCE_MAX) {
-    return {
-      measured: true,
-      fails: true,
-      issue: `identity distance ${distance.toFixed(3)} is above ${IDENTITY_DISTANCE_MAX} (camera_coverage identity_max). The face is not his.`,
-    };
-  }
-  return { measured: true, fails: false };
 }

@@ -42,7 +42,7 @@ export type Clearance = {
 };
 
 export const IDENTITY_UNMEASURED =
-  "identity was not measured. The face is cleared by the number or by Fendi's word on the face sheet, not by this check.";
+  "identity was not measured. No number clears the face: Fendi judges it on the face sheet.";
 /** The number is under the line, but the line was never measured against a face he rejected (gates.ts). */
 export const IDENTITY_UNCERTIFIED =
   "identity is under the line, but the line is not certified: no face Fendi rejected has been measured against it. The number clears nothing; Fendi judges the face on the sheet.";
@@ -106,7 +106,7 @@ export function frameIssues(m: Measurements): string[] {
 export function identityIssue(distance: number | null): string | null {
   if (distance == null) return IDENTITY_UNMEASURED;
   if (distance > IDENTITY_DISTANCE_MAX)
-    return `identity distance ${distance.toFixed(3)} is above ${IDENTITY_DISTANCE_MAX} (camera_coverage identity_max). The face is not his.`;
+    return `identity distance ${distance.toFixed(3)} is above the line ${IDENTITY_DISTANCE_MAX} (camera_coverage identity_max, not certified). Treated as not his face: a decision that fails closed. Re-roll.`;
   return IDENTITY_GATE_CERTIFIED ? null : IDENTITY_UNCERTIFIED;
 }
 

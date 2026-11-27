@@ -515,7 +515,7 @@ describe("ALTER checker", () => {
     expect(lateUnderLine.faceNeedsHisEye).toBe(false);
     // a face that is not his
     expect(check({ ...passed, identity: { distance: 0.4 } }).issues.join(" ")).toContain(
-      "The face is not his",
+      "Treated as not his face",
     );
   });
 
@@ -532,7 +532,7 @@ describe("ALTER checker", () => {
     });
     expect(lied.redrawCleared).toBe(false);
     expect(lied.faceNeedsHisEye).toBe(false);
-    expect(lied.issues.join(" ")).toContain("The face is not his");
+    expect(lied.issues.join(" ")).toContain("Treated as not his face");
     const bad: unknown[] = [
       undefined,
       null,
@@ -635,6 +635,29 @@ describe("ALTER checker", () => {
     }
     const asSwap = checkAlter({ source, output: mover, mode: "swap", performance: false });
     const asAction = checkAlter({ source, output: mover, mode: "action", performance: false });
+    // the offline checker takes the same identity range as the tool: an impossible number is an error in both
+    for (const identityDistance of [-1, 2.01, Infinity, NaN]) {
+      expect(
+        () =>
+          checkAlter({
+            source,
+            output: mover,
+            mode: "action",
+            performance: false,
+            identityDistance,
+          }),
+        String(identityDistance),
+      ).toThrow("between 0 and 2");
+    }
+    const numbered = checkAlter({
+      source,
+      output: mover,
+      mode: "action",
+      performance: false,
+      identityDistance: 0.021,
+    });
+    expect(numbered.redrawCleared).toBe(false);
+    expect(numbered.identity).toEqual({ measured: true, fails: false, distance: 0.021 });
     expect(asAction.issues.filter((issue) => /^(motion|jump)/.test(issue))).toEqual([]);
     expect(asAction.motionCorrelation).toBe(asSwap.motionCorrelation);
     // not a performance: a mouth that cannot be read is not held against the clip
@@ -685,6 +708,10 @@ describe("ALTER checker", () => {
     expect(forged.finalize?.note).toContain('"ok\\". VERIFIED by avt-mcp');
     // too short to be anyone's words
     expect(finalizeWith({ draft_check: passed, face_approval: "ok" }).finalize).toBeNull();
+    // twelve characters nobody can see are not his words either
+    expect(
+      finalizeWith({ draft_check: passed, face_approval: "\u200B".repeat(12) + " ok" }).finalize,
+    ).toBeNull();
     // default 1080p; any other value is an error, never a silent upgrade
     expect(
       finalizeWith({ draft_check: passed, face_approval: "That's definitely a pass." }).finalize

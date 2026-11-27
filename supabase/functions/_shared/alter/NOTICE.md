@@ -18,12 +18,13 @@ not certified (`docs/alter/IDENTITY_2026-11-27.md`): a number above it fails a d
 a number under it clears nothing.
 
 The identity model the tracker can read (`scripts/alter/track_mouth.py`, pinned by
-sha256) is InsightFace's `buffalo_l` `w600k_r50.onnx`. It is not in this repo and is
-never fetched by it. InsightFace licenses its trained models for non-commercial
+sha256) is InsightFace's `buffalo_l` `w600k_r50.onnx`. It is not in this repo and the
+ALTER scripts never fetch it. (An older research script, `scripts/qa/realism_gate.py`,
+does fetch the same model, unpinned: `RISK_REGISTER.md` MODEL-1.) InsightFace licenses its trained models for non-commercial
 research only and asks to be contacted for other use
 (https://github.com/deepinsight/insightface, README "License", read 27 Nov 2026). It
-was used once to evaluate the gate and is kept outside `$AVT_MODELS`; using it on
-shots is Fendi's decision. The `action` preset, its wording and its check mode are AVT's own
+was used by the ALTER tracker on 27 Nov 2026 to evaluate the gate and is kept outside
+`$AVT_MODELS`; using it on shots is Fendi's decision. The `action` preset, its wording and its check mode are AVT's own
 (`catalog.ts`), not part of the skill.
 
 `catalog.data.ts` is generated from `catalog.json` by `scripts/alter/extract_presets.py`

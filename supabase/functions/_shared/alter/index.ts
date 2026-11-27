@@ -39,7 +39,6 @@ export {
 } from "./gates.ts";
 export {
   gateTrackScore,
-  identityFails,
   opennessFromBox,
   scoreMouth,
   type MouthScore,
