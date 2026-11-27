@@ -27,7 +27,7 @@ the new tool (ALTER, section 4), not a planned shot.
 | AVT project | none yet for Meditate (VERIFIED 25 Nov: `video_projects` newest row is Hyenas; re-check before creating one) |
 | Backend | Lovable-managed only, project ref `qoyxgnkvjukovkrvdaiq`; pre-flight in `docs/AGENT_BOOTSTRAP.md` |
 | Money so far | $0. Open `docs/LEDGER_MEDITATE_2026-11-26.md` with the first paid call (columns as in the Partnership ledger, plus an Outcome column: used / unused / my mistake) |
-| This Mac | M1, 8 GB, Blender 5.3 (VERIFIED). One heavy job at a time. Grokbot's handoff names a Mac Studio with `~/avt-render`; that folder is not on this Mac |
+| Machine | Fendi wants the processing on his **Mac Studio** (26 Nov). The MacBook Pro is M1, 8 GB, Blender 5.3 (VERIFIED): if you find yourself on it, one heavy job at a time. Grokbot's handoff names `~/avt-render` on the Studio |
 
 ### His footage (VERIFIED with ffprobe, 26 Nov; all iPhone 14, 3840x2160 stored sideways, rotation -90, 24 fps, HEVC)
 
@@ -54,7 +54,18 @@ the song: find which stretch each take covers before planning anything (section 
 | Takes located and probed | table above | VERIFIED |
 | His Gemini sign-in in his Chrome | checked 25 Nov, plan label "Pro" | OBSERVED; nothing generated |
 
-Nothing else. No sync, no matte, no scene, no generation.
+| Each take synced to the song (step 1, the measuring half) | `docs/sync/meditate.performance-sync.json` | VERIFIED 26 Nov, two methods within 3 ms. song = file + offset: 6547 -18.114, 6548 -12.121, 6549 -10.168, 6550 -12.641 (camera rolled before the song in all four) |
+
+**The gap (VERIFIED):** the takes cover song 0:00 to at most 3:16.5 (6547); 6548 ends at 2:50.9, 6549 at 3:13.4, 6550
+at 3:04.4. Song 3:16.5 to 4:44.2 has no footage of him, and the song is loud to about 4:20. Asked Fendi (26 Nov) whether
+there is more footage or that stretch is the fight alone. Do not plan it before his answer.
+
+**Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
+on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
+Studio. Run the rest of this build in a session on the Mac Studio, with the T7 plugged into it. Check with
+`system_profiler SPHardwareDataType | grep -E "Model Name|Memory"` before the first heavy job.
+
+Not yet: the project row in AVT, filing the song, writing the syncs into AVT. No matte, no scene, no generation.
 
 ## 2. Not done: the build, in order
 
