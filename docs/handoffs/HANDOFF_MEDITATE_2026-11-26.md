@@ -66,6 +66,14 @@ takes cover all of it (6548, the shortest, runs to 2:50.9).
 **Lenses (VERIFIED from the files' own tags):** 6547, 6548, 6549 on the 1x camera (26 mm equivalent, f/1.5); 6550 on
 the 0.5x ultra-wide (13 mm equivalent, f/2.4). Build the Blender cameras with these.
 
+**The four cameras (step 2, ESTIMATES read 26 Nov; lock each in Blender by laying the take over the empty render):**
+`docs/sync/meditate.cameras.json`. 6547: 1x, 2.3 m, camera 1.0 m high (his seated eye level, NOT on the floor), up ~4
+deg, straight on. 6548: 1x, 1.3 m, 0.2 m high, level, about 60 deg off his front on his LEFT. 6549: 1x, 1.05 m, 0.4 m
+high, level, his left profile. 6550: 0.5x, 1.1 m, 0.25 m high, level, front quarter. In 6548 and 6549 he sits turned
+90 deg (the cameras still face the same back wall), so the handoff's "45 degrees off his right side" was wrong. Light:
+soft everywhere, no hard shadows, steady through each take; his sources were LED panels (one high on the wardrobe, two
+low), the vanity mirror and late-afternoon window light. Picture: `/Volumes/T7/_avt_work/meditate_2026-11-26/cams/four_cameras.jpg`.
+
 **Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
 on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
 Studio. When told so, he answered "no you don't have to stop": light work carries on on the MacBook; run the heavy
