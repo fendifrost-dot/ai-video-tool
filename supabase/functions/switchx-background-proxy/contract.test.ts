@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   SWITCHX_BG_PROVIDER,
   SWITCHX_BG_VENDOR,
+  SWITCHX_KEEP_LANE,
+  SWITCHX_KEEP_MODE,
   beebleEstimateUsd,
   isBeebleAnswerUrl,
+  isSwitchxLane,
   defaultBackgroundPrompt,
+  keepMaskPrompt,
   normalizePrompt,
   readBeebleStatus,
   switchxBackgroundRequest,
   switchxFrames,
+  switchxKeepMaskCheck,
+  switchxKeepMaskRequest,
   switchxSourceCheck,
 } from "./contract.ts";
 
@@ -73,5 +79,46 @@ describe("the SwitchX background request", () => {
     expect(isBeebleAnswerUrl("https://bucket.s3.amazonaws.com/a.mp4")).toBe(true);
     expect(isBeebleAnswerUrl("https://beeble.ai.evil.example/a.mp4")).toBe(false);
     expect(isBeebleAnswerUrl("https://cdn.beeble.ai/" + "x".repeat(2100))).toBe(false);
+  });
+});
+
+describe("the SwitchX keep-mask pass", () => {
+  it("is a queued custom pass: the take, the caller's matte, the words as given, the reference picture", () => {
+    const r = switchxKeepMaskRequest({ sourceVideoUrl: "https://s/take.mp4", alphaUrl: "https://s/matte.mp4", referenceImageUrl: "https://s/shirt.png", prompt: "P" });
+    expect(r).toEqual({ sourceVideoUrl: "https://s/take.mp4", prompt: "P", mode: "custom", alphaUrl: "https://s/matte.mp4", referenceImageUrl: "https://s/shirt.png", queue_only: true });
+    expect(SWITCHX_KEEP_MODE).toBe("custom");
+    // the background pass is unchanged and carries no matte
+    expect(switchxBackgroundRequest({ sourceVideoUrl: "https://s/take.mp4", referenceImageUrl: null, prompt: "P" })).not.toHaveProperty("alphaUrl");
+  });
+
+  it("answers status for both lanes and no other", () => {
+    expect(isSwitchxLane("switchx_background")).toBe(true);
+    expect(isSwitchxLane(SWITCHX_KEEP_LANE)).toBe(true);
+    expect(isSwitchxLane("dress_clip")).toBe(false);
+    expect(isSwitchxLane(undefined)).toBe(false);
+  });
+
+  it("refuses a matte that cannot pair with the take frame by frame", () => {
+    expect(switchxKeepMaskCheck({ sourceSeconds: 3.9667, maskSeconds: 3.9667, maskIsVideo: true, sameAsset: false })).toEqual({ ok: true });
+    expect(switchxKeepMaskCheck({ sourceSeconds: 3.9667, maskSeconds: 4.0, maskIsVideo: true, sameAsset: false })).toEqual({ ok: true });
+    expect(switchxKeepMaskCheck({ sourceSeconds: 3.9667, maskSeconds: 4.2, maskIsVideo: true, sameAsset: false })).toMatchObject({ ok: false, why: expect.stringMatching(/same frames/) });
+    expect(switchxKeepMaskCheck({ sourceSeconds: 4, maskSeconds: null, maskIsVideo: true, sameAsset: false })).toMatchObject({ ok: false, why: expect.stringMatching(/no length/) });
+    expect(switchxKeepMaskCheck({ sourceSeconds: 4, maskSeconds: 4, maskIsVideo: false, sameAsset: false })).toMatchObject({ ok: false, why: expect.stringMatching(/must be a video/) });
+    expect(switchxKeepMaskCheck({ sourceSeconds: 4, maskSeconds: 4, maskIsVideo: true, sameAsset: true })).toMatchObject({ ok: false, why: expect.stringMatching(/the take itself/) });
+  });
+
+  it("has no default words: the caller says what is generated, on one bounded line", () => {
+    expect(keepMaskPrompt(undefined)).toMatchObject({ ok: false });
+    expect(keepMaskPrompt("   ")).toMatchObject({ ok: false, why: expect.stringMatching(/needs the words/) });
+    expect(keepMaskPrompt(" a short-sleeved\n polo  shirt ")).toEqual({ ok: true, prompt: "a short-sleeved polo shirt" });
+    const long = keepMaskPrompt("x".repeat(5000));
+    expect(long.ok && long.prompt.length).toBe(1500);
+  });
+
+  it("names the pass in the estimate, at the same list rate", () => {
+    const e = beebleEstimateUsd(119, "720p", "keep-mask");
+    expect(e.text).toContain("SwitchX keep-mask at 720p");
+    expect(e.usd).toBeCloseTo(beebleEstimateUsd(119).usd, 6);
+    expect(beebleEstimateUsd(119).text).toContain("SwitchX background at 720p");
   });
 });

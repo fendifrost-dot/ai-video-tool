@@ -73,14 +73,18 @@ export function switchxSourceCheck(input: { seconds: number | null; isVideo: boo
 }
 
 /** The list price for `frames` at `resolution`: exact by the per-30-frame rate, and an upper bound at whole blocks of 30. */
-export function beebleEstimateUsd(frames: number, resolution: "720p" | "1080p" = SWITCHX_BG_RESOLUTION): { usd: number; upper: number; text: string } {
+export function beebleEstimateUsd(
+  frames: number,
+  resolution: "720p" | "1080p" = SWITCHX_BG_RESOLUTION,
+  pass: "background" | "keep-mask" = "background",
+): { usd: number; upper: number; text: string } {
   const rate = BEEBLE_USD_PER_30_FRAMES[resolution];
   const usd = Math.round((frames / 30) * rate * 1000) / 1000;
   const upper = Math.round(Math.ceil(frames / 30) * rate * 1000) / 1000;
   return {
     usd,
     upper,
-    text: `≈ $${usd.toFixed(3)} for SwitchX background at ${resolution} (${frames} frames at $${rate} per 30, list; at most $${upper.toFixed(3)})`,
+    text: `≈ $${usd.toFixed(3)} for SwitchX ${pass} at ${resolution} (${frames} frames at $${rate} per 30, list; at most $${upper.toFixed(3)})`,
   };
 }
 
@@ -113,6 +117,78 @@ export function switchxBackgroundRequest(input: { sourceVideoUrl: string; refere
     sourceVideoUrl: input.sourceVideoUrl,
     prompt: input.prompt,
     mode: SWITCHX_BG_MODE,
+    referenceImageUrl: input.referenceImageUrl,
+    queue_only: true,
+  };
+}
+
+/**
+ * The keep-mask pass (26 Nov 2026): the same orchestrator, CC mode "custom" = Beeble alpha_mode "custom". The caller's
+ * own matte video says, frame by frame, what is kept from the take (WHITE) and what Beeble generates from the words and
+ * the reference picture (BLACK). Beeble's guide, "Upload" mode: "White in the alpha: kept from your original footage,
+ * frame for frame, and only relit and restyled", "Black in the alpha: completely generated from your prompt and
+ * reference images". This is the pass a clothing change uses (the garment black; his face, cap, hands and the room white).
+ *
+ * What it is NOT: a finished picture of him. The kept region is relit by the model, so the face-preserving put-back
+ * (docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md) still runs after it, and the proof line is still ours to print.
+ * Which SwitchX version the pay-as-you-go API serves is not stated by Beeble (its schema has no version field).
+ */
+export const SWITCHX_KEEP_LANE = "switchx_keep_mask";
+export const SWITCHX_KEEP_MODE = "custom";
+/** The lanes this function files and answers for. */
+export const SWITCHX_LANES: readonly string[] = [SWITCHX_BG_LANE, SWITCHX_KEEP_LANE];
+/** The matte may differ from the take by this much and still be sent (about one frame at 24 fps). */
+export const SWITCHX_KEEP_LENGTH_SLACK_SECONDS = 0.05;
+
+export function isSwitchxLane(lane: unknown): lane is string {
+  return typeof lane === "string" && SWITCHX_LANES.includes(lane);
+}
+
+/**
+ * Whether a matte may be sent with a take, and why not. Beeble pairs them frame by frame, so a matte of another
+ * length (or a still) would keep and generate the wrong pixels: it is refused here, before anything is spent.
+ */
+export function switchxKeepMaskCheck(input: {
+  sourceSeconds: number;
+  maskSeconds: number | null;
+  maskIsVideo: boolean;
+  sameAsset: boolean;
+}): { ok: true } | { ok: false; why: string } {
+  if (input.sameAsset) return { ok: false, why: "the matte is the take itself" };
+  if (!input.maskIsVideo) return { ok: false, why: "the matte must be a video, one frame per frame of the take" };
+  if (input.maskSeconds == null || !(input.maskSeconds > 0)) return { ok: false, why: "the matte has no length on its record" };
+  const diff = Math.abs(input.maskSeconds - input.sourceSeconds);
+  if (diff > SWITCHX_KEEP_LENGTH_SLACK_SECONDS)
+    return { ok: false, why: `the matte is ${input.maskSeconds.toFixed(2)} s and the take ${input.sourceSeconds.toFixed(2)} s; they must be the same frames` };
+  return { ok: true };
+}
+
+/**
+ * The words of a keep-mask pass: the caller's own, one line, bounded. There is no default: what is generated in the
+ * black region is the whole instruction, and a place-and-lighting default would describe the wrong thing.
+ */
+export function keepMaskPrompt(prompt: unknown): { ok: true; prompt: string } | { ok: false; why: string } {
+  const p = typeof prompt === "string" ? prompt.trim().replace(/\s+/g, " ") : "";
+  if (!p) return { ok: false, why: "a keep-mask pass needs the words for what is generated" };
+  return { ok: true, prompt: p.slice(0, SWITCHX_BG_PROMPT_MAX) };
+}
+
+export type SwitchxKeepMaskRequest = {
+  sourceVideoUrl: string;
+  prompt: string;
+  mode: typeof SWITCHX_KEEP_MODE;
+  alphaUrl: string;
+  referenceImageUrl: string | null;
+  queue_only: true;
+};
+
+/** The body CC's `switchx-restyle` takes for one keep-mask pass, queued. CC sends the words as given (no wrapper). */
+export function switchxKeepMaskRequest(input: { sourceVideoUrl: string; alphaUrl: string; referenceImageUrl: string | null; prompt: string }): SwitchxKeepMaskRequest {
+  return {
+    sourceVideoUrl: input.sourceVideoUrl,
+    prompt: input.prompt,
+    mode: SWITCHX_KEEP_MODE,
+    alphaUrl: input.alphaUrl,
     referenceImageUrl: input.referenceImageUrl,
     queue_only: true,
   };
