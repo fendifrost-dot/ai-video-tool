@@ -145,6 +145,34 @@ measured on his footage; Fendi's yes, in his words, to ONE 480p draft on one sho
 gates, or his real face and mouth put back over it. Take the stretch from the 4K original, not a small copy.
 Do not plan the video around these shots: the video must work with him still.
 
+### The one draft was run (26 Nov 2026, evening)
+
+Fendi said "Run it". One 480p draft of `IMG_6550.MOV` 0:40-0:44 (a 1400 px window from the 4K, head to hands): a fighter
+steps in and punches, he blocks with a forearm while rapping. Record: `docs/alter/TEST_2026-11-26.md` on the PR #534
+branch. Files: `/Volumes/T7/_avt_work/alter_test_2026-11-26/`; project assets `f87ceffe` (raw draft) and `d252fa41`
+(take, redraw, put-back side by side). Both are tests, not shots.
+
+- VERIFIED: his mouth stayed on the song. Timing 0.86 on the take's clock (gate 0.65), best fit 0 frames off, mouth
+  shape 0.051 face widths (warn band, fail is 0.06), face read on 96 of 96 frames.
+- Fendi's words on it, same evening: "The face put back doesn't work as shown the face redraw as generated looked
+  clean. That's definitely a pass." Then: "The face redraw had my face warping." My reading (mine, to be confirmed by
+  him): the redraw as generated passes, and the clip with his face laid back on is the one that warps. Measured: the
+  face region changes 26 % more from frame to frame in the put-back than in the redraw (4.90 against 3.88).
+  **Until he confirms that reading, treat neither clip as approved for a shot.**
+- Identity still has no number (the ArcFace file is not on the Mac).
+
+**The route, if a shot of this kind is approved** (do not rediscover it):
+
+1. `avt_call proxy-provider-call`, endpoint `video-providers-higgsfield-model`, `modelVariant: "seedance-2.5-edit"`,
+   `mode: "video_to_video"`, `referenceVideoUrl` (one signed link to the window), `referenceImageUrls` (his face
+   photographs), `resolution`, `generate_audio: false`. Poll `video-providers-job-status`, `provider: "higgsfield"`.
+2. Never send the edit wording ("Edit @Video1 …") to `seedance-2.5-reference` or `montage-shot`: the provider refuses
+   it before rendering.
+3. The draft comes back about 7 % fast (89 frames for 96). Conform it to the take's length and interpolate to the
+   take's rate before scoring or cutting it in. Scored as delivered, a good draft reads 0.15 and looks re-timed.
+4. Score with `scripts/alter/track_mouth.py` (PR #534 branch): `track` both clips, then `score`.
+5. One draft is one sample: 720p and 1080p, a longer stretch and a dodge that moves his head are not tested.
+
 ## 5. Must-dos (each one is a mistake that already cost money)
 
 Fendi's target for this video: **5-10 % of spend lost to agent mistakes** (Hyenas 19 %, Partnership 16 %, measured
