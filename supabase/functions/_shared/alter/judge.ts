@@ -1,6 +1,7 @@
 import {
   CHANGED_RANGE,
   IDENTITY_DISTANCE_MAX,
+  IDENTITY_GATE_CERTIFIED,
   MOTION_GATED,
   MOTION_MIN,
   RESTYLE_STRUCTURE_MAX,
@@ -33,23 +34,31 @@ export type Measurements = {
 
 export type Clearance = {
   verdict: "PASS" | "CHECK";
-  /** True when the redraw may be used as it is: no open issue, the mouth passed, the face has a passing number. */
+  /** True when the redraw may be used as it is: no open issue, the mouth passed, the face passed a CERTIFIED identity line. */
   redrawCleared: boolean;
-  /** True when everything measured passed and only the face is open: no identity number, so Fendi judges it. */
+  /** True when everything measured passed and only the face is open (no identity number, or one under a line that is not certified): Fendi judges it. */
   faceNeedsHisEye: boolean;
   next: string;
 };
 
 export const IDENTITY_UNMEASURED =
   "identity was not measured. The face is cleared by the number or by Fendi's word on the face sheet, not by this check.";
+/** The number is under the line, but the line was never measured against a face he rejected (gates.ts). */
+export const IDENTITY_UNCERTIFIED =
+  "identity is under the line, but the line is not certified: no face Fendi rejected has been measured against it. The number clears nothing; Fendi judges the face on the sheet.";
+
+/** The two lines that leave the face to his eye without failing the draft. */
+export function isFaceLeftToHim(issue: string): boolean {
+  return issue === IDENTITY_UNMEASURED || issue === IDENTITY_UNCERTIFIED;
+}
 
 export function isWarning(issue: string): boolean {
   return issue.includes("This warns.");
 }
 
-/** Issues that still stand once warnings and the identity-unmeasured line are set aside. */
+/** Issues that still stand once warnings and the two face-left-to-him lines are set aside. */
 export function openIssues(issues: string[]): string[] {
-  return issues.filter((issue) => !isWarning(issue) && issue !== IDENTITY_UNMEASURED);
+  return issues.filter((issue) => !isWarning(issue) && !isFaceLeftToHim(issue));
 }
 
 export function frameIssues(m: Measurements): string[] {
@@ -98,7 +107,7 @@ export function identityIssue(distance: number | null): string | null {
   if (distance == null) return IDENTITY_UNMEASURED;
   if (distance > IDENTITY_DISTANCE_MAX)
     return `identity distance ${distance.toFixed(3)} is above ${IDENTITY_DISTANCE_MAX} (camera_coverage identity_max). The face is not his.`;
-  return null;
+  return IDENTITY_GATE_CERTIFIED ? null : IDENTITY_UNCERTIFIED;
 }
 
 /** Everything that decides: the frame issues, the mouth (a performance only) and the face. */
@@ -120,9 +129,11 @@ export function judge(
   const mouthOk =
     !m.performance || (mouth?.measured === true && !mouth.timingFails && !mouth.shapeFails);
   const measured = identityDistance != null;
-  const faceOk = measured && identityDistance <= IDENTITY_DISTANCE_MAX;
+  const underLine = measured && identityDistance <= IDENTITY_DISTANCE_MAX;
+  // A number clears his face only under a certified line. Until then it can fail a draft, never pass one.
+  const faceOk = underLine && IDENTITY_GATE_CERTIFIED;
   const redrawCleared = open.length === 0 && mouthOk && faceOk;
-  const faceNeedsHisEye = open.length === 0 && mouthOk && !measured;
+  const faceNeedsHisEye = open.length === 0 && mouthOk && (!measured || (underLine && !faceOk));
   return {
     issues,
     verdict: issues.some((issue) => !isWarning(issue)) ? "CHECK" : "PASS",
@@ -131,7 +142,7 @@ export function judge(
     next: redrawCleared
       ? "Cleared by the numbers, identity included. Post the side-by-side and the face sheet."
       : faceNeedsHisEye
-        ? "Everything measured passed. The face has no number: post the side-by-side and the face sheet, and Fendi judges the face."
+        ? "Everything measured passed. No number clears the face (none was measured, or the identity line is not certified): post the side-by-side and the face sheet, and Fendi judges the face."
         : "Not cleared: read the issues. Re-roll, change the staging, or use his real take. Do not lay his original face back onto the redraw (failed by Fendi, 27 Nov 2026).",
   };
 }

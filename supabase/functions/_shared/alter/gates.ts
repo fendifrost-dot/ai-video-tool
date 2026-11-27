@@ -14,8 +14,12 @@ import type { CheckMode } from "./types.ts";
  * certified benchmark.
  *
  * Identity distance 0.25 is the sung-line default already in
- * scripts/edit/camera_coverage.py (`identity_max`). It was NOT measured here:
- * the ArcFace file is not on the machine.
+ * scripts/edit/camera_coverage.py (`identity_max`). First read on his footage
+ * on 27 Nov 2026 (docs/alter/IDENTITY_2026-11-27.md): the draft he passed 0.021,
+ * the put-back he failed 0.010, the take against its own small copy 0.000, him
+ * on two other takes 0.21 to 0.30. No face he rejected has been measured, so
+ * the line is NOT certified: IDENTITY_GATE_CERTIFIED stays false, and a number
+ * under the line clears nothing. A number above it still fails the draft.
  */
 export const STRUCTURE_FLOOR: Record<CheckMode, number> = {
   swap: 0.45,
@@ -62,6 +66,12 @@ export const MOUTH_SHAPE_MAX = 0.06;
 /** Share of frames where his face must be read in BOTH clips before lip sync is claimed. */
 export const MOUTH_COVERAGE_MIN = 0.8;
 export const IDENTITY_DISTANCE_MAX = 0.25;
+/**
+ * False until the line above is derived from evidence that includes a face Fendi rejected
+ * (docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md). While false, an identity number under the line does not clear his face:
+ * he judges the face sheet. Turning this on is a Class C change with its evidence in the same PR.
+ */
+export const IDENTITY_GATE_CERTIFIED: boolean = false;
 /** Lip-point distance, in face widths, that warns without failing. */
 export const LANDMARK_DISTANCE_WATCH = 0.04;
 
@@ -83,7 +93,7 @@ export const GATE_PROVENANCE = {
   mouthCoverageMin:
     "A decision, not a measurement: 0.8. The two front takes read on 96% to 100% of frames; a side-on take read on 3% to 9%.",
   identityDistanceMax:
-    "scripts/edit/camera_coverage.py identity_max default 0.25. Lower is closer. Not measured on 26 Nov 2026: the ArcFace file is not on the machine.",
+    "scripts/edit/camera_coverage.py identity_max default 0.25. Lower is closer. Not certified: on 27 Nov 2026 the draft he passed read 0.021, the put-back he failed 0.010, him on other takes 0.21 to 0.30, and no rejected face was measured (docs/alter/IDENTITY_2026-11-27.md). Above the line fails; under it clears nothing.",
   landmarkDistanceWatch:
     "Fendi's footage, 26 Nov 2026: 0.04 face widths, just above the tracker's own noise (0.032). Warns only.",
 } as const;

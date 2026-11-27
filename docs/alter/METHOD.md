@@ -46,10 +46,10 @@ Re-roll, change the staging, or use his real take. **His original face is not la
 | Mouth re-timed | best fit 2 or more frames off the clock | Same run. Every real redraw fit best at 0 frames; every take moved 2 or more frames against itself fit best off the clock. One frame passes. |
 | Mouth shape | fail above 0.06 face widths, warn above 0.04 | Same run. Identical footage at 480p reads 0.030 to 0.032 apart (the tracker's noise); real redraws 0.026 to 0.029. |
 | Face read | 80% of frames, in both clips | A decision. Below it nothing is claimed about the mouth. |
-| Identity distance | 0.25 | `scripts/edit/camera_coverage.py` `identity_max`. Lower is closer. NOT measured on his footage: the ArcFace file is not on the machine. |
+| Identity distance | above 0.25 fails; under it clears nothing | `scripts/edit/camera_coverage.py` `identity_max`. Lower is closer. NOT certified (`IDENTITY_2026-11-27.md`): the draft he passed read 0.021, the put-back he failed 0.010, him on other takes 0.21 to 0.30; no rejected face measured. `IDENTITY_GATE_CERTIFIED` is false. |
 | Motion and jumps in `action` mode | reported, not judged | A decision on one sample: the passed draft read -0.16 with 33 "jumps", which is the action that was asked for. Structure, change, frozen frames, tail drift and the mouth are still judged. |
 
-A rapping shot with no mouth score is CHECK. With no identity distance it is also CHECK, marked `faceNeedsHisEye`: the tool does not clear a face it did not measure; Fendi judges the face sheet.
+A rapping shot with no mouth score is CHECK. With no identity distance, or with one under the uncertified line, it is also CHECK, marked `faceNeedsHisEye`: the tool does not clear a face on a number nobody has derived from evidence; Fendi judges the face sheet. A distance above the line fails the draft.
 
 ## Reading his face and mouth (local, $0)
 
@@ -63,7 +63,7 @@ node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 -
   --track-source take.json --track-output draft.json --score score.json
 ```
 
-- `score` writes the mouth timing on the take's clock, the best fit within 6 frames and its lag, the mouth-shape distance in face widths, the share of frames read, the head-turn difference, and the identity distance when `$AVT_MODELS/arcface_w600k_r50.onnx` is on disk (null otherwise: a rapping shot is then CHECK).
+- `score` writes the mouth timing on the take's clock, the best fit within 6 frames and its lag, the mouth-shape distance in face widths, the share of frames read, the head-turn difference, and the identity distance when `$AVT_MODELS/arcface_w600k_r50.onnx` is on disk with the pinned checksum (null otherwise; another file under that name is refused).
 - `avt_alter_check` takes the checker's report (`report.json`) as `report` and judges it again from its numbers with the gates above. The measuring happens where the footage is; the thresholds live in `gates.ts` and the verdict logic in `judge.ts` only.
 - One command does all of the above after a draft is downloaded: `python -I scripts/alter/run_draft.py --take take.mp4 --raw raw.mp4 --out work/ --mode action --face …`.
 

@@ -82,7 +82,7 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
 | Face read | 80% of frames in both clips | a decision |
 | Structure kept, share changed | 0.45; 0.4% to 55% | the swap gates; the passed draft read 0.69 and 8.2% |
 | Motion correlation, jumps | reported, not judged, in `action` mode | the passed draft read -0.16 with 33 "jumps": the added action itself |
-| Identity distance | 0.25 when measured | NOT measured: `arcface_w600k_r50.onnx` is not on the Mac. Until it is, Fendi's eye on the face sheet is the gate |
+| Identity distance | above 0.25 fails; under it clears nothing | the line is NOT certified (`../alter/IDENTITY_2026-11-27.md`): the passed draft read 0.021, him on other takes 0.21 to 0.30, no rejected face measured. Fendi's eye on the face sheet is the gate. The model file is on the T7 but outside `$AVT_MODELS` (non-commercial licence, his call) |
 
 ## Never
 
@@ -102,7 +102,9 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
 - The provider's own draft-then-finalize path. Its playground lists `bytedance/seedance-2.5/finalize-draft`
   (`draft_id`, `resolution: "1080p"`) and a `draft` switch on the edit; neither is in its API docs, neither is wired in
   Control Center. It would make the approved 480p draft the delivered clip. Until then full resolution is a new render.
-- An identity number. When `arcface_w600k_r50.onnx` is added to `$AVT_MODELS`, pin its sha256 first (as
-  `scripts/edit/lens_look.py` does for its model): from then on a number can clear a face without his eye.
+- A certified identity line. The model's checksum is pinned and the first readings are in
+  `../alter/IDENTITY_2026-11-27.md`, but no face he rejected has been measured, and the model's licence is
+  non-commercial research only, so it is not in `$AVT_MODELS`. A number never clears his face until the line is
+  certified; do not copy the file into `$AVT_MODELS` for a shot without his word on the licence.
 - A face-steadiness number. The put-back's warp scored BETTER on the mouth gate (0.931) than the clean redraw, so the
   gates here do not see a face that slides. Watch the face in motion; a still sheet cannot show it.

@@ -57,9 +57,9 @@ With these, all 10 same-moment cases pass and all 14 cases moved 2 or more frame
 
 ## Not measured
 
-- **Identity.** The ArcFace file (`arcface_w600k_r50.onnx`, about 166 MB) is not on this Mac, and the tracker does not
-  fetch it. Until it is there the identity distance is null and every rapping redraw is CHECK. The 0.25 line is the
-  older `camera_coverage.py` default, unmeasured on him.
+- **Identity.** Not measured in this run. First readings, the pinned checksum and the model's licence are in
+  `IDENTITY_2026-11-27.md`: the 0.25 line is still the older `camera_coverage.py` default and is not certified, so a
+  number under it clears nothing.
 - **A Seedance redraw.** No ALTER draft exists: nothing has been sent.
 - **Him moving differently from the take** (blocking, dodging). The checker's motion gate compares the redraw's motion
   with the take's and would fail such a shot by design. HYPOTHESIS: it needs its own check mode where motion is

@@ -90,3 +90,19 @@ def test_a_clip_of_another_frame_rate_is_paired_by_time():
     a = frames(slow); b = {"frames": [dict(f) for f in a["frames"][::2]]}
     r = tm.score_tracks(a, b)
     assert r["measured"] and r["paired"] == 96 and r["timing"] > 0.9
+
+
+def test_the_identity_model_is_used_only_with_its_pinned_checksum(tmp_path, monkeypatch):
+    import hashlib, pytest
+    # not on disk: identity is simply not measured
+    assert tm.arc_model(str(tmp_path)) is None
+    # some other file under the model's name: refused, never loaded
+    other = tmp_path / tm.ARC_FILE; other.write_bytes(b"not the model")
+    with pytest.raises(SystemExit) as stop: tm.arc_model(str(tmp_path))
+    assert "not the pinned identity model" in str(stop.value)
+    # the pinned file: its path comes back (the pin is swapped for this small file's own hash)
+    monkeypatch.setattr(tm, "ARC_SHA256", hashlib.sha256(b"not the model").hexdigest())
+    assert tm.arc_model(str(tmp_path)) == str(other)
+    # the real pin is the InsightFace buffalo_l w600k_r50.onnx, read from three listings on 27 Nov 2026
+    monkeypatch.undo()
+    assert tm.ARC_SHA256 == "4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43" and len(tm.ARC_SHA256) == 64

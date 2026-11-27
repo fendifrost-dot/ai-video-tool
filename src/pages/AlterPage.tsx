@@ -82,10 +82,10 @@ export default function AlterPage({ projectId }: { projectId: string }) {
           The three modes and 36 presets follow the MIT scenario-alter skill; the action preset is
           AVT's own. This page builds the Seedance video-edit request for the route Fendi passed and
           does not send it. A rapping redraw is kept only when the mouth timing stays at or above{" "}
-          {MOUTH_TIMING_MIN} and the face passes: an identity distance at or below{" "}
-          {IDENTITY_DISTANCE_MAX}, or his own word on the face sheet. A draft that fails is
-          re-rolled. His original face is not laid back onto a redraw. Every output is planned with
-          the take's audio.
+          {MOUTH_TIMING_MIN} and the face passes: his own word on the face sheet. An identity
+          distance above {IDENTITY_DISTANCE_MAX} fails the draft; a number under that line clears
+          nothing until the line is certified. A draft that fails is re-rolled. His original face is
+          not laid back onto a redraw. Every output is planned with the take's audio.
         </p>
       </section>
 

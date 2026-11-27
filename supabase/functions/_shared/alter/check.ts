@@ -29,7 +29,7 @@ export type AlterReport = {
   identity: { measured: boolean; fails: boolean; distance: number | null };
   /** True when the redraw may be used as it is: no open issue, the mouth passed, the face has a passing number. */
   redrawCleared: boolean;
-  /** True when everything measured passed and only the face is open: no identity number, so Fendi judges it. */
+  /** True when everything measured passed and only the face is open (no identity number, or one under a line that is not certified): Fendi judges it. */
   faceNeedsHisEye: boolean;
   next: string;
   issues: string[];

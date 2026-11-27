@@ -10,6 +10,7 @@ export {
 } from "./catalog.ts";
 export { checkAlter, type AlterReport } from "./check.ts";
 export {
+  IDENTITY_UNCERTIFIED,
   IDENTITY_UNMEASURED,
   frameIssues,
   judge,
@@ -24,6 +25,7 @@ export {
   CHANGED_RANGE,
   GATE_PROVENANCE,
   IDENTITY_DISTANCE_MAX,
+  IDENTITY_GATE_CERTIFIED,
   LANDMARK_DISTANCE_WATCH,
   MOTION_GATED,
   MOTION_MIN,
