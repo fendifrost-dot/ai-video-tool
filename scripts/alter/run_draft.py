@@ -10,6 +10,9 @@
   5. sheet     his face in the draft beside his face in the take and his photographs (face_check.py) -> face_sheet.jpg
   6. compare   take on the left, draft on the right, the take's audio, playable on a phone -> compare.mp4
 
+After Fendi has judged the draft's face, record his verdict with its numbers (face_evidence.py add --run <out>): that
+ledger is the test group a face line is later derived from.
+
 It prints one JSON summary. `report.json` is what avt_alter_check (report) and avt_alter_plan (draft_check) take.
 Exit 0 = cleared, or everything measured passed and the face is Fendi's to judge; 1 = not cleared; 2 = refused. Run with the
 put-back's Python (~/.avt-venv/bin/python -I) and AVT_MODELS set. Nothing here decides that the face is his: with no
@@ -21,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 from conform_draft import conform  # noqa: E402
+from face_evidence import steadiness_summary  # noqa: E402
 
 MODES = ("swap", "recast", "motion", "restyle", "action")
 
@@ -109,6 +113,10 @@ def main():
     written.append("compare.mp4")
 
     mouth = report.get("mouth") or {}
+    try:                                    # extra numbers for the sheet; a fault here must not lose the summary
+        steadiness = steadiness_summary(json.load(open(p("take.json"))), json.load(open(p("draft.json"))))
+    except Exception as e:                  # noqa: BLE001
+        steadiness = {"error": f"{type(e).__name__}: {e}"}
     print(json.dumps({
         "verdict": report["verdict"], "mode": report["mode"],
         "redrawCleared": report.get("redrawCleared"), "faceNeedsHisEye": report.get("faceNeedsHisEye"),
@@ -117,6 +125,7 @@ def main():
                   "shape": score.get("mouth_shape_distance"), "coverage": score.get("coverage"),
                   "timingFails": mouth.get("timingFails"), "shapeFails": mouth.get("shapeFails")},
         "identity_distance": score.get("identity_distance"),
+        "face_steadiness": steadiness,     # against the take; recorded, not gated (face_evidence.py)
         "issues": report.get("issues", []),
         "folder": os.path.abspath(a.out), "written": written,
         "next": report.get("next", "") + ("" if a.face else " No face sheet was written: pass --face."),
