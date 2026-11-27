@@ -83,6 +83,24 @@ high, empty seat 2.3 m away). Files: `/Volumes/T7/_avt_work/meditate_2026-11-26/
 choice_side_by_side). OBSERVED: the dojo scroll's characters may not be real text; fix in the build if it is chosen.
 Waiting on Fendi's choice.
 
+**The place (DECISION, Fendi 26 Nov):** the cliffside kung fu hall with the waterfall garden's autumn colours. He
+rejected the first pair ("that is not a rock garden, the dojo is ok but I think we can do much better ... the scenery
+has to grab peoples attention along with the movement"), loved the colours of the waterfall garden, asked which place
+"allows for the most chaos around me and behind me", took the agent's pick of the cliff hall: "Let's do it". All
+choice stills: `/Volumes/T7/_avt_work/meditate_2026-11-26/gemini/`.
+
+**The hall, built (26 Nov, $0):** `/Volumes/T7/_avt_work/meditate_2026-11-26/hall/meditate_hall_build.py` (Blender 5.3,
+EEVEE, headless; usage in its header). Real geometry textured with Gemini photographs of real materials (`hall/tex/`:
+column lacquer, flagstones, painted beam, lattice door) and a curved backdrop of a Gemini mountain photograph. He sits
+at the origin facing +Y, the open cliff side on his right (+X), the hall turned 14 deg so the cliff opening crosses the
+back of the front camera's frame; from the side cameras the mountains are straight behind him. Moving: lanterns sway
+and flicker, incense smoke rises, maple leaves blow in from the cliff. Cameras from `docs/sync/meditate.cameras.json`.
+**Realism (VERIFIED on 6547 and 6549):** the layout render of each camera, sent to Gemini on his plan as an edit ("a 3D
+layout of a real place ... keep the composition exactly ... real footage, not a render"), comes back a real-looking
+photograph with every column, the railing, the platform, drum, lanterns and burners in place (`hall/real/`). Upload
+from the browser only works from the session's scratchpad, not the T7: copy the still there first. The fight is then
+animated on that real plate per camera (section 3).
+
 **Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
 on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
 Studio. When told so, he answered "no you don't have to stop": light work carries on on the MacBook; run the heavy
