@@ -99,12 +99,15 @@ def test_a_row_needs_his_words_a_label_a_fault_and_something_measured():
     assert fe.make_row(take, take, "s1", "reject", WORDS, about="action")["fault"] is None
     control = fe.make_row(take, take, "take against its small copy", None, kind="control")
     assert control["verdict"] == "control" and control["words"] == ""
+    stranger = fe.make_row(take, take, "another man, same frame", None, kind="other_person")
+    assert (stranger["verdict"], stranger["fault"], stranger["about"], stranger["words"]) == ("reject", "who", "face", "")
+    with pytest.raises(ValueError, match="no frames"): fe.make_row(take, {"frames": []}, "s1", "pass", WORDS)
 
 
 def rows(passes, rejects, key="embedding_jitter", about="face", fault="steady", kind="redraw", takes=3):
     mk = lambda i, v, verdict, k: {"method": fe.METHOD, "verdict": verdict, "about": about, "kind": k, key: v,
                                    "fault": fault if verdict == "reject" else None,
-                                   "take_sha256": f"take{i % takes}", "draft_sha256": f"{verdict}{i}"}
+                                   "take_sha256": f"{'P' if verdict == 'pass' else 'R'}{i % takes}", "draft_sha256": f"{verdict}{i}"}
     return [mk(i, v, "pass", "redraw") for i, v in enumerate(passes)] + [mk(i, v, "reject", kind) for i, v in enumerate(rejects)]
 
 
@@ -119,7 +122,11 @@ def test_a_line_is_proposed_only_from_a_big_enough_group_that_separates():
     assert "candidate_line" not in fe.separation(rows([0.7, 0.8, 0.9, 0.95], [1.4, 1.5, 1.6]), "embedding_jitter")
     assert "candidate_line" not in fe.separation(rows([0.7, 0.8, 0.9, 0.95, 1.0], [1.4, 1.5]), "embedding_jitter")
     one_take = fe.separation(rows([0.7, 0.8, 0.9, 0.95, 1.0], [1.4, 1.5, 1.6], takes=1), "embedding_jitter")
-    assert one_take["takes"] == 1 and "candidate_line" not in one_take
+    assert one_take["takes"] == [1, 1] and "candidate_line" not in one_take
+    lopsided = rows([0.7, 0.8, 0.9, 0.95, 1.0], [1.4, 1.5, 1.6])
+    for r in lopsided:
+        if r["verdict"] == "reject": r["take_sha256"] = "one take"
+    assert fe.separation(lopsided, "embedding_jitter")["takes"] == [3, 1] and "candidate_line" not in fe.separation(lopsided, "embedding_jitter")
 
 
 def test_a_reject_that_reads_as_well_as_a_pass_rules_the_measure_out_for_that_fault():
@@ -171,12 +178,24 @@ def test_the_ledger_from_add_to_show(tmp_path):
     assert "1 rows, 1 verdicts about the face" in shown.stdout and "No line here is certified" in shown.stdout
     as_json = json.loads(cli("show", "--ledger", str(ledger), "--json").stdout)
     assert as_json["certified"] is False and as_json["rows"][0]["verdict"] == "pass"
+    moved = cli(*add[:6], "reject", "--about", "action", *add[9:], "--correct"); assert moved.returncode == 0, moved.stderr
+    live = json.loads(cli("show", "--ledger", str(ledger), "--json").stdout)["rows"]
+    assert len(live) == 1 and live[0]["about"] == "action" and len(ledger.read_text().splitlines()) == 3
+    (tmp_path / "other").mkdir()
+    (tmp_path / "other" / "take.json").write_text(json.dumps(track(emb_noise=0.1, wobble=0.0005, seed=5)))
+    (tmp_path / "other" / "draft.json").write_text(json.dumps(track(emb_noise=0.1, wobble=0.0005, seed=6)))
+    nothing = cli("add", "--run", str(tmp_path / "other"), "--label", "s2", "--verdict", "pass", "--words", WORDS,
+                  "--ledger", str(ledger), "--correct")
+    assert nothing.returncode != 0 and "no row in the ledger to correct" in nothing.stderr
 
 
 def test_refusals(tmp_path):
     no_env = {k: v for k, v in os.environ.items() if k != fe.LEDGER_ENV}
     none = cli("show", env=no_env); assert none.returncode != 0 and "refused" in none.stderr
-    repo = cli("show", "--ledger", os.path.join(fe.ROOT, "docs", "ledger.jsonl")); assert "does not go in the repo" in repo.stderr
+    in_repo = os.path.join(fe.ROOT, "docs", "ledger.jsonl")
+    repo = cli("add", "--run", str(tmp_path), "--label", "s1", "--verdict", "pass", "--words", WORDS, "--ledger", in_repo)
+    assert "does not go in the repo" in repo.stderr and not os.path.exists(in_repo)
+    assert cli("show", "--ledger", in_repo).returncode == 0          # a ledger committed with a Class C PR can be read
     cloud = cli("show", "--ledger", os.path.expanduser("~/Library/Mobile Documents/x/ledger.jsonl")); assert "iCloud" in cloud.stderr
     ledger = tmp_path / "ledger.jsonl"
     missing = cli("add", "--run", str(tmp_path / "nowhere"), "--label", "s1", "--verdict", "pass", "--words", WORDS, "--ledger", str(ledger))

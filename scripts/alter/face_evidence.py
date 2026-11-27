@@ -35,7 +35,8 @@ action, the scene or the mouth is recorded with --about and stays out of the fac
 only (--kind redraw, the default): a put-back or another person's face is shown beside the group, never counted in it,
 except that another person's face counts as a "not him" for identity.
 
-To correct a row, add it again with --correct: the ledger keeps both lines and the later one is used.
+To correct a draft's row, add it again with --correct: the ledger keeps every line, and the corrected one replaces
+all earlier rows for that draft, whatever they were about.
 """
 import argparse, datetime, hashlib, json, math, os, sys
 import numpy as np
@@ -144,6 +145,8 @@ def make_row(take, draft, label, verdict, words="", about="face", kind="redraw",
     if not label.strip(): raise ValueError("label: which shot and which draft")
     if kind == "control":
         verdict, fault = "control", None                      # a measurement of the method, not a verdict of his
+    elif kind == "other_person":
+        verdict, fault, about = "reject", "who", "face"       # not him by construction: no words of his are needed
     else:
         if verdict not in ("pass", "reject"): raise ValueError("verdict is pass or reject")
         if visible(words) < MIN_WORD_CHARS: raise ValueError("words: what Fendi said about this draft, word for word")
@@ -151,6 +154,7 @@ def make_row(take, draft, label, verdict, words="", about="face", kind="redraw",
             if fault not in FAULTS: raise ValueError("fault: what was wrong with the face: who (not him), steady (warps, slides) or other")
         else:
             fault = None
+    if not take.get("frames") or not draft.get("frames"): raise ValueError("a track has no frames")
     m = measure(take, draft)
     if all(m[k] is None for k in MEASURES): raise ValueError("nothing could be measured: his face was not read on both clips")
     return {"method": METHOD, "when": when or datetime.date.today().isoformat(), "project": project, "label": label.strip(),
@@ -162,6 +166,8 @@ def current(rows):
     seen = {}
     for n, r in enumerate(rows):
         pair = (r.get("take_sha256"), r.get("draft_sha256"))
+        if all(pair) and r.get("corrects"):                   # a correction withdraws every earlier row for that draft
+            for k in [k for k in seen if isinstance(k, tuple) and k[:2] == pair]: del seen[k]
         seen[(*pair, r.get("about")) if all(pair) else n] = r
     return list(seen.values())
 
@@ -173,12 +179,12 @@ def separation(rows, key):
     x = [r for r in rows if r["verdict"] == "reject" and r.get("fault") == FAULT_FOR[key] and r.get("kind") in REJECT_KINDS[key]]
     beside = [r for r in rows if r["verdict"] == "reject" and r.get("fault") == FAULT_FOR[key] and r.get("kind") not in REJECT_KINDS[key]]
     pv, xv = [r[key] for r in p], [r[key] for r in x]
-    takes = len({r.get("take_sha256") for r in p + x})
+    takes = [len({r.get("take_sha256") for r in side}) for side in (p, x)]      # takes among passes, among rejects
     out = {"measure": key, "judged_against": f"faces rejected as '{FAULT_FOR[key]}'", "passes": len(p), "rejects": len(x),
            "takes": takes, "highest_pass": max(pv) if pv else None, "lowest_reject": min(xv) if xv else None,
            "certified": False}
-    out["enough"] = enough = len(p) >= MIN_PASSES and len(x) >= MIN_REJECTS and takes >= MIN_TAKES
-    need = f"needs {MIN_PASSES} passes and {MIN_REJECTS} rejects of redraws, from at least {MIN_TAKES} takes"
+    out["enough"] = enough = len(p) >= MIN_PASSES and len(x) >= MIN_REJECTS and min(takes) >= MIN_TAKES
+    need = f"needs {MIN_PASSES} passes and {MIN_REJECTS} rejects of redraws, each from at least {MIN_TAKES} takes"
     if not pv or not xv:
         out["reads"] = f"no comparison yet: {need}"
     elif max(pv) < min(xv):
@@ -214,13 +220,22 @@ def read_ledger(path):
     return rows
 
 
-def ledger_path(arg):
+def ledger_path(arg, writing):
     path = arg or os.environ.get(LEDGER_ENV)
     if not path: sys.exit(f"refused: name the ledger with --ledger or ${LEDGER_ENV} (a .jsonl on the T7, one per project)")
     full = os.path.realpath(os.path.abspath(path))
     if "/Library/Mobile Documents" in full: sys.exit("refused: the ledger does not go in iCloud. Put it on the T7.")
-    if full == ROOT or full.startswith(ROOT + os.sep): sys.exit("refused: the ledger does not go in the repo. Put it on the T7; it reaches the repo only in the PR that proposes a line.")
+    if writing and _repo_of(full): sys.exit("refused: the ledger does not go in the repo. Put it on the T7; it reaches the repo only in the PR that proposes a line.")
     return full
+
+
+def _repo_of(path):
+    """The git checkout a path sits in (any checkout or worktree, not only this one), or None."""
+    d = os.path.dirname(path)
+    while d and d != os.path.dirname(d):
+        if os.path.exists(os.path.join(d, ".git")): return d
+        d = os.path.dirname(d)
+    return None
 
 
 def sha(path):
@@ -240,7 +255,7 @@ def main():
     a.add_argument("--correct", action="store_true", help="replace the earlier row for this draft")
     a.add_argument("--project", default=""); a.add_argument("--when"); a.add_argument("--ledger")
     s = sub.add_parser("show"); s.add_argument("--ledger"); s.add_argument("--json", action="store_true")
-    args = ap.parse_args(); path = ledger_path(args.ledger); rows = read_ledger(path)
+    args = ap.parse_args(); path = ledger_path(args.ledger, args.cmd == "add"); rows = read_ledger(path)
 
     if args.cmd == "add":
         tt = args.take_track or (args.run and os.path.join(args.run, "take.json"))
@@ -252,13 +267,16 @@ def main():
         try:
             row = make_row(json.load(open(tt)), json.load(open(dt)), args.label, args.verdict, args.words, args.about,
                            args.kind, args.fault, args.project, run, args.when)
-        except (ValueError, KeyError, TypeError) as e:
+        except (ValueError, KeyError, TypeError, AttributeError, IndexError) as e:
             sys.exit(f"refused: {e if isinstance(e, ValueError) and str(e) else 'a track is not a track_mouth.py track'}")
         row.update({"take_sha256": sha(tt), "draft_sha256": sha(dt), "tracks": [os.path.basename(tt), os.path.basename(dt)]})
-        same = [r for r in rows if (r.get("take_sha256"), r.get("draft_sha256"), r.get("about")) ==
-                (row["take_sha256"], row["draft_sha256"], row["about"])]
-        if same and not args.correct: sys.exit("refused: this draft's verdict is already in the ledger. To change it, add it again with --correct.")
-        if args.correct: row["corrects"] = len(same)
+        pair = (row["take_sha256"], row["draft_sha256"])
+        earlier = [r for r in current(rows) if (r.get("take_sha256"), r.get("draft_sha256")) == pair]
+        if args.correct:
+            if not earlier: sys.exit("refused: --correct, but this draft has no row in the ledger to correct")
+            row["corrects"] = len(earlier)                    # every earlier row for this draft, whatever it was about
+        elif any(r.get("about") == row["about"] for r in earlier):
+            sys.exit("refused: this draft's verdict is already in the ledger. To change it, add it again with --correct.")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "a") as f: f.write(json.dumps(row) + "\n")
         print(json.dumps(row, indent=1)); return
@@ -278,7 +296,7 @@ def main():
               f"{fmt(r.get('embedding_jitter'))}  {fmt(r.get('shape_wobble'))}  {r['about']:6s}  {r['label']} ({r['when']})")
     print()
     for s_ in seps:
-        print(f"{s_['measure']:18s} against {s_['judged_against']}: passes {s_['passes']}, rejects {s_['rejects']}, takes {s_['takes']}: {s_['reads']}")
+        print(f"{s_['measure']:18s} against {s_['judged_against']}: passes {s_['passes']} (takes {s_['takes'][0]}), rejects {s_['rejects']} (takes {s_['takes'][1]}): {s_['reads']}")
         if s_.get("beside"): print(f"{'':18s} {s_['beside']}")
     print("\nNo line here is certified. A number never clears his face; Fendi judges the face sheet.")
 
