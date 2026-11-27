@@ -56,12 +56,15 @@ the song: find which stretch each take covers before planning anything (section 
 
 | Each take synced to the song (step 1, the measuring half) | `docs/sync/meditate.performance-sync.json` | VERIFIED 26 Nov, two methods within 3 ms. song = file + offset: 6547 -18.114, 6548 -12.121, 6549 -10.168, 6550 -12.641 (camera rolled before the song in all four) |
 
-**The video is the first half of the song (DECISION, Fendi 26 Nov):** "the second half of the song is being cut from
-the video we only need the first half for this one". Project song = asset `e0b6ce33-8027-4eeb-95a7-c17d1f047ca7`,
-song 0:00 to 3:11.48 (the second half's beat hits at 3:11.50), same clock as the full song to the sample, so the syncs
-hold. Shape (local Whisper, OBSERVED): chant 0:03-0:17, verse 1 0:17-1:08, chant 1:08-1:52, fast verse 2 1:52-2:19.6,
-chant 2:20-2:49, beat 2:49-3:04, spoken outro 3:04-3:11 ("... cut that alarm off of me. Thank you."). 6547 and 6549
-cover all of it; 6550 ends at 3:04.4, 6548 at 2:50.9. The uncovered stretch from 3:16 is gone with the second half.
+**The video is song 0:00 to 2:38 (DECISION, Fendi 26 Nov):** "the second half of the song is being cut from the video
+we only need the first half for this one", then "Cut at 2:38". Project song = asset
+`14eedbe0-3068-4526-b38d-117cee141dce` (0:00-2:38.00, 300 ms fade; the beat runs through 2:38), same clock as the full
+song to the sample, so the syncs hold. The earlier 3:11.48 cut (`e0b6ce33`) is superseded. Shape (local Whisper,
+OBSERVED): chant 0:03-0:17, verse 1 0:17-1:08, chant 1:08-1:52, fast verse 2 1:52-2:19.6, chant 2:20-2:38. All four
+takes cover all of it (6548, the shortest, runs to 2:50.9).
+
+**Lenses (VERIFIED from the files' own tags):** 6547, 6548, 6549 on the 1x camera (26 mm equivalent, f/1.5); 6550 on
+the 0.5x ultra-wide (13 mm equivalent, f/2.4). Build the Blender cameras with these.
 
 **Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
 on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
@@ -70,7 +73,7 @@ jobs (Blender scene, renders, mattes measured locally) in a session on the Mac S
 `system_profiler SPHardwareDataType | grep -E "Model Name|Memory"` before the first heavy job.
 
 | AVT project created | `295ebf3f-3d92-449c-be13-e2b0f8b3fbc3` (9:16, the takes are portrait) | VERIFIED 26 Nov |
-| Song filed | asset `6e1a926d-7cea-4fd5-aca5-c9f49c7b296f`, project-audio, sha256 matches the T7 file | VERIFIED 26 Nov |
+| Song filed | full song `6e1a926d-7cea-4fd5-aca5-c9f49c7b296f`; the video's cut `14eedbe0-3068-4526-b38d-117cee141dce` (0:00-2:38) | VERIFIED 26 Nov, sha256 checked |
 
 No matte, no scene, no generation yet. Coverage picture: `/Volumes/T7/_avt_work/meditate_2026-11-26/song_coverage.jpg`.
 

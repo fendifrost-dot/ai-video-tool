@@ -13,7 +13,8 @@
         196.51
       ],
       "agreement_ms": 1,
-      "confidence": "8/10 windows"
+      "confidence": "8/10 windows",
+      "lens": "1x 26 mm f/1.5 (file tags)"
     },
     {
       "file": "IMG_6548.MOV",
@@ -25,7 +26,8 @@
         170.92
       ],
       "agreement_ms": 1,
-      "confidence": "4/11 windows, tight median"
+      "confidence": "4/11 windows, tight median",
+      "lens": "1x 26 mm f/1.5 (file tags)"
     },
     {
       "file": "IMG_6549.MOV",
@@ -37,7 +39,8 @@
         193.41
       ],
       "agreement_ms": 3,
-      "confidence": "6/11 windows, tight median"
+      "confidence": "6/11 windows, tight median",
+      "lens": "1x 26 mm f/1.5 (file tags)"
     },
     {
       "file": "IMG_6550.MOV",
@@ -49,17 +52,19 @@
         184.39
       ],
       "agreement_ms": 1,
-      "confidence": "5/11 windows, tight median"
+      "confidence": "5/11 windows, tight median",
+      "lens": "0.5x 13 mm f/2.4 (file tags)"
     }
   ],
-  "gap": "Moot: Fendi cut the video to the first half (song 0:00-3:11.48, asset e0b6ce33), 26 Nov. 6547 and 6549 cover all of it.",
+  "gap": "Moot: Fendi cut the video at 2:38 (26 Nov). All four takes cover 0:00-2:38.",
   "per_window_tables": "/Volumes/T7/_avt_work/meditate_2026-11-26/sync/",
   "video_song": {
-    "asset_id": "e0b6ce33-8027-4eeb-95a7-c17d1f047ca7",
+    "asset_id": "14eedbe0-3068-4526-b38d-117cee141dce",
     "song_seconds": [
       0.0,
-      191.48
+      158.0
     ],
-    "same_clock": "lag 0 samples at 10, 100, 180 s"
+    "same_clock": "lag 0 samples at 10, 80, 150 s",
+    "superseded": "e0b6ce33 (0-191.48)"
   }
 }
