@@ -7,10 +7,15 @@ import type { CheckMode } from "./types.ts";
  * scenario-alter skill's published numbers (qa.md, calibrated 13 and 21 Oct 2026
  * on that skill's own takes). They are not a measurement of Fendi's footage.
  *
- * Mouth timing 0.6 and identity distance 0.25 are the sung-line defaults already
- * in scripts/edit/camera_coverage.py (`lip_best_fit_min`, `identity_max`).
+ * The mouth gates were measured on Fendi's footage on 26 Nov 2026
+ * (docs/alter/CALIBRATION_2026-11-26.md): two rapping takes, eight Genjutsu
+ * redraws of them, each take against a 480p copy of itself, and each take
+ * against itself moved 1 to 36 frames. They are evidence from two takes, not a
+ * certified benchmark.
  *
- * Landmark distance 0.08 of face width is provisional. It warns only.
+ * Identity distance 0.25 is the sung-line default already in
+ * scripts/edit/camera_coverage.py (`identity_max`). It was NOT measured here:
+ * the ArcFace file is not on the machine.
  */
 export const STRUCTURE_FLOOR: Record<CheckMode, number> = {
   swap: 0.45,
@@ -28,9 +33,21 @@ export const CHANGED_RANGE: Record<CheckMode, readonly [number, number]> = {
 
 export const RESTYLE_STRUCTURE_MAX = 0.65;
 export const MOTION_MIN = 0.6;
-export const MOUTH_TIMING_MIN = 0.6;
+/** Correlation of his mouth opening, the take against the redraw, on the take's clock. */
+export const MOUTH_TIMING_MIN = 0.65;
+/** Frames searched either side for a mouth that is right but late or early. */
+export const MOUTH_MAX_LAG = 6;
+/** A best fit this many frames off the clock still passes (one frame is 33 to 42 ms). Two or more is re-timed. */
+export const MOUTH_LAG_OK = 1;
+/** How much better the off-clock fit must be before the redraw is called re-timed. */
+export const MOUTH_LAG_GAIN = 0.02;
+/** Mean lip-point distance in face widths above which the redraw draws other mouth shapes. */
+export const MOUTH_SHAPE_MAX = 0.06;
+/** Share of frames where his face must be read in BOTH clips before lip sync is claimed. */
+export const MOUTH_COVERAGE_MIN = 0.8;
 export const IDENTITY_DISTANCE_MAX = 0.25;
-export const LANDMARK_DISTANCE_WATCH = 0.08;
+/** Lip-point distance, in face widths, that warns without failing. */
+export const LANDMARK_DISTANCE_WATCH = 0.04;
 
 export const GATE_PROVENANCE = {
   structureFloor: "scenario-alter qa.md, 21 Oct 2026 calibration. Not measured on Fendi's footage.",
@@ -40,9 +57,15 @@ export const GATE_PROVENANCE = {
   motionMin:
     "scenario-alter qa.md. Below 0.60 the output was re-timed or frozen on their coarse grid.",
   mouthTimingMin:
-    "scripts/edit/camera_coverage.py lip_best_fit_min default 0.6, the sung-line gate.",
+    "Fendi's footage, 26 Nov 2026: halfway between the highest wrong-moment score at 0.4 s or more (0.567) and the lowest real redraw of the same performance (0.744). The same take at 480p scored 0.775 and 0.953.",
+  mouthLag:
+    "Same run: all eight real redraws and both 480p copies fit best on the clock (0 frames). A take moved 2 or more frames against itself fit best off the clock every time. One frame passes.",
+  mouthShapeMax:
+    "Same run: identical footage at 480p reads 0.030 to 0.032 face widths apart (the tracker's own noise); real redraws 0.026 to 0.029. The fail line is twice the noise, the watch line 0.04.",
+  mouthCoverageMin:
+    "A decision, not a measurement: 0.8. The two front takes read on 96% to 100% of frames; a side-on take read on 3% to 9%.",
   identityDistanceMax:
-    "scripts/edit/camera_coverage.py identity_max default 0.25. Lower is closer.",
+    "scripts/edit/camera_coverage.py identity_max default 0.25. Lower is closer. Not measured on 26 Nov 2026: the ArcFace file is not on the machine.",
   landmarkDistanceWatch:
-    "Provisional. About one lip-height of error. Warns only. Not a certified benchmark.",
+    "Fendi's footage, 26 Nov 2026: 0.04 face widths, just above the tracker's own noise (0.032). Warns only.",
 } as const;

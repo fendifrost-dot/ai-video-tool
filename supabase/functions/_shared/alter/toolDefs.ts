@@ -57,6 +57,11 @@ export const ALTER_TOOLS = [
         mouth_source: { type: "array", items: { type: "number" } },
         mouth_output: { type: "array", items: { type: "number" } },
         identity_distance: { type: "number" },
+        track_score: {
+          type: "object",
+          description:
+            "The JSON that scripts/alter/track_mouth.py score writes for the take and the redraw (timing, mouth_shape_distance, coverage, lag_frames, pose_ok_for_putback, identity_distance). Judged with the same gates as a mouth series.",
+        },
       },
       required: ["mode", "changed_area", "structure_median", "motion_correlation"],
     },

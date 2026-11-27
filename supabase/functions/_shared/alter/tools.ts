@@ -6,7 +6,7 @@ import {
   RESTYLE_STRUCTURE_MAX,
   STRUCTURE_FLOOR,
 } from "./gates.ts";
-import { scoreMouth } from "./mouth.ts";
+import { gateTrackScore, scoreMouth, type MouthScore, type TrackScore } from "./mouth.ts";
 import { planAlter } from "./plan.ts";
 import { buildAlterPrompt } from "./prompt.ts";
 import type { AlterMode, CheckMode, MouthFrame } from "./types.ts";
@@ -103,19 +103,37 @@ export function runAlterTool(name: string, args: Record<string, unknown>): Resul
     const performance = args.performance !== false;
     const mouthSource = series(args.mouth_source);
     const mouthOutput = series(args.mouth_output);
-    let mouth: { timing: number | null; timingFails: boolean } | null = null;
-    if (mouthSource && mouthOutput) {
-      const scored = scoreMouth(mouthSource, mouthOutput);
-      mouth = { timing: scored.timing, timingFails: scored.timingFails };
-      issues.push(...scored.issues);
-    } else if (performance) {
+    const tracked =
+      args.track_score && typeof args.track_score === "object"
+        ? (args.track_score as TrackScore)
+        : null;
+    let mouth: MouthScore | null = null;
+    if (tracked) mouth = gateTrackScore(tracked);
+    else if (mouthSource && mouthOutput) mouth = scoreMouth(mouthSource, mouthOutput);
+    if (mouth) issues.push(...mouth.issues);
+    else if (performance) {
       issues.push("mouth: landmarks were not supplied. A rapping shot is not cleared.");
     }
-    const distance = typeof args.identity_distance === "number" ? args.identity_distance : null;
+    const distance =
+      typeof args.identity_distance === "number"
+        ? args.identity_distance
+        : typeof tracked?.identity_distance === "number"
+          ? tracked.identity_distance
+          : null;
     if (performance && distance == null) issues.push("identity was not measured.");
     if (distance != null && distance > IDENTITY_DISTANCE_MAX)
       issues.push(`identity distance ${distance} is above ${IDENTITY_DISTANCE_MAX}`);
-    const verdict = issues.length ? "CHECK" : "PASS";
+    const mouthFail =
+      mouth?.timingFails === true || mouth?.shapeFails === true || (performance && !mouth?.measured);
+    const identityFail = distance == null || distance > IDENTITY_DISTANCE_MAX;
+    const fallback = performance && (mouthFail || identityFail);
+    const putBackPossible = tracked?.pose_ok_for_putback !== false;
+    if (fallback && !putBackPossible)
+      issues.push(
+        `his head is turned ${tracked?.pose_turn_difference} face widths away from the take's, so his original face cannot be laid flat onto the redraw. Neither the redraw nor the put-back is usable: re-roll.`,
+      );
+    const hard = issues.filter((issue) => !issue.includes("provisional"));
+    const verdict = hard.length ? "CHECK" : "PASS";
     return {
       ok: true,
       value: {
@@ -125,7 +143,9 @@ export function runAlterTool(name: string, args: Record<string, unknown>): Resul
         structureMedian: structure,
         motionCorrelation: motion,
         mouth,
-        fallback: performance && verdict === "CHECK",
+        fallback,
+        putBackPossible,
+        identityDistance: distance,
         issues,
         submitted: false,
         spendUsd: 0,

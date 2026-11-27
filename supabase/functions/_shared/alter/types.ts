@@ -22,7 +22,11 @@ export type GrayFrame = { width: number; height: number; data: Uint8Array };
 
 export type MouthPoint = { x: number; y: number };
 
-/** One frame of the mouth. `openness` is lip gap divided by face width. Points are 0..1 in the frame. */
-export type MouthFrame = { openness: number; points?: MouthPoint[] };
+/**
+ * One frame of the mouth. `openness` is lip gap divided by face width. `points` are his lip landmarks in FACE
+ * coordinates (origin mid-face, one unit = the face width; scripts/alter/track_mouth.py writes them), so a distance
+ * between two frames' points is a mouth-shape error in face widths. `found: false` = no face on that frame.
+ */
+export type MouthFrame = { openness: number; points?: MouthPoint[]; found?: boolean };
 
 export type RgbFrame = { width: number; height: number; data: Uint8Array };

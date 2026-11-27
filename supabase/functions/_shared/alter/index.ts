@@ -15,11 +15,22 @@ export {
   IDENTITY_DISTANCE_MAX,
   LANDMARK_DISTANCE_WATCH,
   MOTION_MIN,
+  MOUTH_COVERAGE_MIN,
+  MOUTH_LAG_OK,
+  MOUTH_MAX_LAG,
+  MOUTH_SHAPE_MAX,
   MOUTH_TIMING_MIN,
   RESTYLE_STRUCTURE_MAX,
   STRUCTURE_FLOOR,
 } from "./gates.ts";
-export { identityFails, opennessFromBox, scoreMouth, type MouthScore } from "./mouth.ts";
+export {
+  gateTrackScore,
+  identityFails,
+  opennessFromBox,
+  scoreMouth,
+  type MouthScore,
+  type TrackScore,
+} from "./mouth.ts";
 export { planAlter, planFinalize, type AlterPlan } from "./plan.ts";
 export { buildAlterPrompt } from "./prompt.ts";
 export { ALTER_TOOL_NAMES, ALTER_TOOLS } from "./toolDefs.ts";
