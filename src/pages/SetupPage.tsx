@@ -71,7 +71,7 @@ export default function SetupPage({ projectId }: { projectId: string }) {
   const references = media.list.filter((m) => m.footageRole === "reference");
   const [showAll, setShowAll] = useState(false);
   // footage already in the project that nobody has said what it is: uploads first, everything else on request
-  const untagged = media.list.filter((m) => m.isVideo && !m.footageRole && (showAll || m.sourceTool === "manual" || m.assetType === "reference_video"));
+  const untagged = media.list.filter((m) => m.isVideo && !m.footageRole && !m.isEffectsPreview && (showAll || m.sourceTool === "manual" || m.assetType === "reference_video"));
 
   const aspect = aspectOfProject(project);
   const setAspect = async (next: string) => {

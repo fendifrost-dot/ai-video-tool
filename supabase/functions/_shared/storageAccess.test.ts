@@ -17,6 +17,15 @@ describe("unit: caller-scoped storage access", () => {
     expect(wellFormedObjectPath(`${me}/a.png`)).toBe(true);
     for (const bad of ["", "/x", `${me}`, `${me}//a`, `${me}/../b`, `${me}/./b`, "notauuid/a.png", `${me}\\a`, 42, null]) expect(wellFormedObjectPath(bad), String(bad)).toBe(false);
   });
+  it("refuses an encoded dot segment, a query and a fragment: the URL parser would resolve them after the owner check", async () => {
+    for (const bad of [`${me}/%2e%2e/${other}/${project}/x.png`, `${me}/%2E%2E/${other}/x.png`, `${me}/a%2Fb.png`, `${me}/a.png?x=1`, `${me}/a.png#${other}/b.png`]) {
+      expect(wellFormedObjectPath(bad), bad).toBe(false);
+      expect(await callerMayRead(admin(), me, "project-references", bad), bad).toEqual({ ok: false, reason: "invalid_path" });
+      expect(callerMayWrite(me, bad), bad).toBe(false);
+    }
+    // what the parser does with the first one, were it let through: the other user's object
+    expect(new URL(`https://x/storage/v1/object/sign/project-references/${me}/%2e%2e/${other}/${project}/x.png`).pathname).toBe(`/storage/v1/object/sign/project-references/${other}/${project}/x.png`);
+  });
   it("owner folder is allowed without a lookup; another user's folder is refused", async () => {
     const a = admin();
     expect(await callerMayRead(a, me, "project-references", `${me}/${project}/x.png`)).toEqual({ ok: true, via: "owner" });

@@ -24,6 +24,7 @@ import type { TakeCheck } from "./takeCheck";
 import type { StoredFootageAnalysis } from "./footageRecord";
 import type { AcceptanceRecord } from "./acceptance";
 import type { DressRecord } from "./dress";
+import type { EffectsPreviewRecord } from "./effectsPreview";
 
 export const ASSIGNMENT_ROLES = ["performance", "b_roll", "generated_image", "generated_clip", "reference"] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
@@ -113,6 +114,10 @@ export type MediaAsset = {
   footageAnalyses?: StoredFootageAnalysis[] | null;
   /** What a person has judged of the clip by looking — whether it does what it was asked to (acceptance.ts). */
   acceptance?: AcceptanceRecord | null;
+  /** Set on a preview copy of built effects: the stretch of the song it is the picture of (effectsPreview.ts). Never on a shot. */
+  effectsPreview?: EffectsPreviewRecord | null;
+  /** The row says it is a preview copy, readable or not: it is post's small file, never footage to tag, cut with or build on. */
+  isEffectsPreview?: boolean;
 };
 
 /** A take of the song as filmed: performance footage that was not made from another take. */

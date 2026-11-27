@@ -9,9 +9,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type StorageDecision = { ok: true; via: "owner" | "legacy_grant" } | { ok: false; reason: "invalid_path" | "not_owner" | "lookup_failed" };
 
-/** True for a storage object key with no traversal, no leading slash and a uuid first folder. */
+/**
+ * True for a storage object key with no traversal, no leading slash and a uuid first folder.
+ *
+ * `%`, `?` and `#` are refused (26 Nov 2026): the storage client puts the key into the request URL as it is, and the
+ * URL parser then reads `%2e%2e` as a dot segment, so `<own uid>/%2e%2e/<other uid>/x.png` passed the owner check here
+ * and was signed as `<other uid>/x.png`. `?` and `#` cut the key short the same way. No stored key carries any of the
+ * three (uploads through avt-mcp already refuse `%`).
+ */
 export function wellFormedObjectPath(path: unknown): path is string {
-  if (typeof path !== "string" || !path || path.length > 1024 || path.startsWith("/") || path.includes("\\")) return false;
+  if (typeof path !== "string" || !path || path.length > 1024 || path.startsWith("/") || path.includes("\\") || /[%?#]/.test(path)) return false;
   const parts = path.split("/");
   return parts.length >= 2 && parts.every((p) => p !== "" && p !== "." && p !== "..") && UUID.test(parts[0]);
 }

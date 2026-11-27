@@ -54,6 +54,7 @@ Grok is Fendi's call, not yours ("grok is good for certain things so I don't wan
 - **The route is recipe F** (`montage-shot`, `docs/recipes/BROLL_WITH_HIM_STILL_MOUTH.md`): the action comes from the lines; his face comes from **his face photographs in the tool** (the `character_features` face set, sent by default) plus `@Video1` = a stretch of **his real footage** in the outfit where he is not rapping. Bigger is better: cut the window from the 4K original, cropped waist-up. There is no minimum face size; the result is judged, not the input.
 - **The face put-back keeps the face of the clip it runs on.** On his real take that is his real pixels; on a generated render it is the render's face. It does not paste his real face onto a pose he never filmed. So: real footage of the action exists → use it (his pixels, `place_him_over_plate.py`); it does not → recipe F (his likeness from his photos), then the clothing swap + put-back if the outfit changes.
 - **Never the source of his face:** a generated still of him (Gemini, Grok or any) fed to a video model, or text-to-video of him. That is what failed on Hyenas ("the person was clearly not me in the face").
+- **A redraw of him is judged by the result, not banned outright** (Fendi, 25 Nov 2026: "redraw of me is fine if we can redraw my exact pixels back onto my face or the face passes the same rating as a redraw or original pixels"). A route that redraws him is open when his exact pixels are put back on his face (the put-back, proof 0) or the face passes the same `face_check.py` sheet his original pixels pass. Say which of the two the route relies on and post the sheet. Never rule an option out only because it redraws him.
 - **Judge the output:** `scripts/edit/face_check.py` sheet against his face pictures + `scripts/edit/mouth_scan.py` (mouth at rest) on every render, posted with the clip. Fendi decides whether the face is him. A rejected face is re-rolled (different window, different staging), not argued.
 
 **The exact technique (clothes, face put-back, placing him in any scene): [`docs/recipes/HIS_FACE_IN_ANY_SCENE.md`](docs/recipes/HIS_FACE_IN_ANY_SCENE.md).** Full run-book: `.claude/skills/avt-music-video-build/SKILL.md` §3–§4.
@@ -173,7 +174,7 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 
 **Integration gap:** AVT's Dress and Region swap do **not** run this yet. It is the offline script `scripts/edit/body_only_swap.py`. Until it is in the app, a whole-frame Dress output is an intermediate, never the final picture.
 
-Never use generated lip-sync or a face-altering pass on Fendi.
+Never use generated lip-sync or a face-altering pass on Fendi. (Amended 25 Nov 2026: a redraw is judged by the result; see "MODELS AND HIS LIKENESS" point 2. Generated lip-sync stays out.)
 
 ---
 

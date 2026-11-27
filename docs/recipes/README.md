@@ -42,6 +42,8 @@ The pages below are the evidence and the detail behind them.
 | [`MCP_UPLOAD_AND_FILE.md`](MCP_UPLOAD_AND_FILE.md) | `avt_upload_asset` and filing a result as the shot's primary (columns, assignment rows) |
 | [`ASSET_STORE.md`](ASSET_STORE.md) | asset metadata, skill/effect catalog, licenses, locks, shot list / beat grid / rules |
 | [`IN_APP_EDITOR.md`](IN_APP_EDITOR.md) | the in-app editor |
+| [`EFFECTS_PREVIEW.md`](EFFECTS_PREVIEW.md) | post files a small copy of each built effect; AVT plays it in place over the song |
+| [`LENS_LOOK.md`](LENS_LOOK.md) | shoot card for a target lens (distance, height, phone lens) and the lens look on a finished clip (real-unit background blur from one plane or a depth map, lens character); both 85 mm looks judged right by Fendi, 25 Nov 2026 |
 | [`../style/STYLE_LEARN.md`](../style/STYLE_LEARN.md) | learn a reference video's cut and grade, then draft that rhythm on his footage ($0, local) |
 
 ## Checks that run before a clip is posted ($0)

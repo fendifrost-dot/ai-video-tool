@@ -30,7 +30,9 @@ import {
 } from "@/lib/queries/editSequences";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
 import { useSequenceProvenance } from "@/lib/queries/editProvenance";
-import { useTakeSyncs } from "@/lib/queries/storyboard";
+import { mediaAssetOf, useTakeSyncs } from "@/lib/queries/storyboard";
+import { clipSpans, effectsCoverage, effectsLabel, effectsLayer, effectsPreviewsOf } from "@/lib/storyboard/effectsPreview";
+import { mediaRefKey, useSignedRefs } from "@/components/storyboard/signedUrls";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 import { Button } from "@/components/ui/button";
 import { MediaBrowser } from "./MediaBrowser";
@@ -91,6 +93,7 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
     Record<string, { sourceIn: number; sourceOut: number }>
   >({});
   const [extraUrls, setExtraUrls] = useState<Record<string, string>>({});
+  const [effectsOn, setEffectsOn] = useState(true);
 
   const mediaQ = useEditMediaUrls(sequence);
   const assetsQ = useProjectAssets(projectId);
@@ -290,6 +293,23 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
     );
   }
 
+  // the preview copies post has filed of the effects it built, cut to the stretch of the song this cut covers
+  const cutSeconds = durationSeconds(sequence);
+  // (the layer depends on the project's files alone: an edit to the cut re-cuts it, it does not rebuild it)
+  const allEffects = useMemo(() => effectsLayer(effectsPreviewsOf((assetsQ.data ?? []).map(mediaAssetOf))), [assetsQ.data]);
+  const effects = useMemo(() => clipSpans(allEffects, sequence.songOffset, sequence.songOffset + cutSeconds), [allEffects, sequence.songOffset, cutSeconds]);
+  const effectsRefs = useMemo(() => effects.map((s) => ({ bucket: s.preview.bucket, path: s.preview.path })), [effects]);
+  const effectsSigned = useSignedRefs(effectsRefs);
+  const effectsUrls = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const s of effects) {
+      const url = effectsSigned[mediaRefKey({ bucket: s.preview.bucket, path: s.preview.path })];
+      if (url) out[s.preview.assetId] = url;
+    }
+    return out;
+  }, [effects, effectsSigned]);
+  const effectsCovered = effectsCoverage(effects, sequence.songOffset, sequence.songOffset + cutSeconds);
+
   const mediaByAsset = { ...(mediaQ.data?.byAssetId ?? {}), ...extraUrls };
   const songUrl = mediaQ.data?.songUrl ?? null;
   const previewUrl = previewAssetId ? mediaByAsset[previewAssetId] ?? null : null;
@@ -350,7 +370,51 @@ export function EditorWorkspace({ projectId, sequence: initial, onSequenceId, on
               compareSourceTime={compareSourceTime}
               compareLabel="Original performance"
               compareNote={compareNote}
+              effects={effects}
+              effectsOn={effectsOn}
+              effectsUrls={effectsUrls}
             />
+            {effects.length > 0 && (
+              <div className="mt-2 space-y-1.5" data-testid="editor-effects">
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={effectsOn ? "default" : "outline"}
+                    className="h-7 text-[11px]"
+                    aria-pressed={effectsOn}
+                    onClick={() => setEffectsOn((on) => !on)}
+                    title="Play the preview copies post has filed of the effects it built, in place over the cut"
+                    data-testid="editor-effects-toggle"
+                    data-on={effectsOn ? "true" : "false"}
+                  >
+                    Effects {effectsOn ? "on" : "off"}
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground" data-testid="editor-effects-coverage">
+                    built for {effectsCovered.seconds.toFixed(1)} s of {cutSeconds.toFixed(1)} s ({Math.round(effectsCovered.share * 100)}%). Small preview copies of what post rendered, not the master.
+                  </span>
+                </div>
+                {/* where post has built effects, on the cut's own clock */}
+                <div className="relative h-1.5 w-full rounded-sm bg-foreground/10">
+                  {effects.map((s) => (
+                    <button
+                      key={`${s.preview.assetId}:${s.start}`}
+                      type="button"
+                      onClick={() => setPlayhead(Math.max(0, s.start - sequence.songOffset))}
+                      className={cn("absolute inset-y-0 rounded-sm", effectsOn ? "bg-sky-400/80" : "bg-sky-400/30")}
+                      style={{
+                        left: `${((s.start - sequence.songOffset) / Math.max(0.001, cutSeconds)) * 100}%`,
+                        width: `${((s.end - s.start) / Math.max(0.001, cutSeconds)) * 100}%`,
+                      }}
+                      title={`Effects: ${effectsLabel(s.preview)}`}
+                      aria-label={`Go to the effects preview ${effectsLabel(s.preview)}`}
+                      data-testid="editor-effects-span"
+                      data-section={s.preview.section}
+                      data-version={s.preview.version}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {previewUrl && previewAssetId && (
