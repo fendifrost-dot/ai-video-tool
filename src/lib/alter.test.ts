@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   ALTER_PRESETS,
   IDENTITY_DISTANCE_MAX,
+  MOUTH_COVERAGE_MIN,
+  MOUTH_LAG_OK,
+  MOUTH_SHAPE_MAX,
   MOUTH_TIMING_MIN,
   buildAlterPrompt,
   checkAlter,
   compositeMasked,
   compositeTargetFrame,
+  gateTrackScore,
   listPresets,
   muxOriginalAudioArgv,
   planAlter,
@@ -106,8 +110,78 @@ describe("ALTER checker", () => {
       source.map((frame) => ({ ...frame, points: [{ x: 0.5, y: 0.6 }] })),
       source.map((frame) => ({ ...frame, points: [{ x: 0.7, y: 0.6 }] })),
     );
-    expect(moved.landmarkWatch).toBe(true);
+    expect(moved.shapeFails).toBe(true);
+    expect(moved.landmarkWatch).toBe(false);
+    const near = scoreMouth(
+      source.map((frame) => ({ ...frame, points: [{ x: 0.5, y: 0.6 }] })),
+      source.map((frame) => ({ ...frame, points: [{ x: 0.55, y: 0.6 }] })),
+    );
+    expect(near.shapeFails).toBe(false);
+    expect(near.landmarkWatch).toBe(true);
     expect(IDENTITY_DISTANCE_MAX).toBe(0.25);
+  });
+
+  const rap = Array.from({ length: 72 }, (_, i) => ({
+    openness: 0.02 + 0.09 * Math.abs(Math.sin(i * 0.3)) + 0.03 * Math.abs(Math.sin(i * 0.13)),
+  }));
+
+  it("fails a mouth that is right but late, and passes one frame of slip", () => {
+    const late = (frames: number) => [...rap.slice(0, frames).map(() => rap[0]), ...rap.slice(0, -frames)];
+    const three = scoreMouth(rap, late(3));
+    expect(three.lagFrames).toBe(3);
+    expect(three.timingBest!).toBeGreaterThan(0.95);
+    expect(three.timingFails).toBe(true);
+    expect(three.issues.join(" ")).toContain("re-timed");
+    const one = scoreMouth(rap, late(1));
+    expect(Math.abs(one.lagFrames)).toBeLessThanOrEqual(MOUTH_LAG_OK);
+    expect(one.timing!).toBeGreaterThan(MOUTH_TIMING_MIN);
+    expect(one.timingFails).toBe(false);
+  });
+
+  it("claims nothing when his face was not read on enough frames", () => {
+    const holes = rap.map((frame, i) => (i % 3 === 0 ? frame : { openness: Number.NaN, found: false }));
+    const score = scoreMouth(rap, holes);
+    expect(score.coverage).toBeLessThan(MOUTH_COVERAGE_MIN);
+    expect(score.measured).toBe(false);
+    const report = checkAlter({
+      source: [gray(8, 8, () => 10), gray(8, 8, () => 20)],
+      output: [gray(8, 8, () => 10), gray(8, 8, () => 20)],
+      mode: "swap",
+      performance: true,
+      mouthSource: rap,
+      mouthOutput: holes,
+      identityDistance: 0.1,
+    });
+    expect(report.fallback).toBe(true);
+  });
+
+  it("judges a tracker score with the same gates", () => {
+    // the eight real redraws of 26 Nov 2026 sit at timing 0.744 to 0.950, lag 0, shape 0.026 to 0.029
+    const real = gateTrackScore({ measured: true, coverage: 0.956, timing: 0.744, timing_best: 0.744, lag_frames: 0, mouth_shape_distance: 0.0261 });
+    expect(real.measured).toBe(true);
+    expect(real.timingFails || real.shapeFails).toBe(false);
+    // the same take moved two frames against itself: 0.883 on the clock, 1.0 two frames away
+    const moved = gateTrackScore({ measured: true, coverage: 1, timing: 0.883, timing_best: 1, lag_frames: -2, mouth_shape_distance: 0.0394 });
+    expect(moved.timingFails).toBe(true);
+    // a side-on take: his face read on 9% of the frames
+    expect(gateTrackScore({ measured: false, coverage: 0.09 }).measured).toBe(false);
+    expect(gateTrackScore({ measured: true, coverage: 1, timing: 0.9, lag_frames: 0, mouth_shape_distance: MOUTH_SHAPE_MAX + 0.01 }).shapeFails).toBe(true);
+  });
+
+  it("the check tool refuses a redraw whose head is turned away from the take's", () => {
+    const answer = runAlterTool("avt_alter_check", {
+      mode: "swap",
+      changed_area: 0.1,
+      structure_median: 0.7,
+      motion_correlation: 0.8,
+      track_score: { measured: true, coverage: 1, timing: 0.3, timing_best: 0.3, lag_frames: 0, mouth_shape_distance: 0.02, pose_turn_difference: 0.3, pose_ok_for_putback: false, identity_distance: 0.1 },
+    });
+    expect(answer.ok).toBe(true);
+    const value = (answer as { value: { verdict: string; fallback: boolean; putBackPossible: boolean; issues: string[] } }).value;
+    expect(value.verdict).toBe("CHECK");
+    expect(value.fallback).toBe(true);
+    expect(value.putBackPossible).toBe(false);
+    expect(value.issues.join(" ")).toContain("re-roll");
   });
 
   it("does not finalize a failed draft and does finalize a pass", () => {

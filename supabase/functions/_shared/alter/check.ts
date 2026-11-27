@@ -199,7 +199,8 @@ export function checkAlter(input: {
   if (performance && identity.issue) issues.push(identity.issue);
   else if (!performance && identity.fails && identity.issue) issues.push(identity.issue);
 
-  const mouthFail = mouth?.timingFails === true || (performance && !mouth?.measured);
+  const mouthFail =
+    mouth?.timingFails === true || mouth?.shapeFails === true || (performance && !mouth?.measured);
   const fallback = performance && (mouthFail || identity.fails || !identity.measured);
   const hard = issues.filter((issue) => !issue.includes("provisional") && !issue.includes("Warns"));
   return {
