@@ -34,13 +34,16 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
    python -I scripts/alter/track_mouth.py track take.mp4 take.json     # face_found must be at least 80% of frames
    ```
    Look at the window before paying: his whole head, both hands, room at the edge the action enters from.
+   Cut it at a constant 24 or 30 fps (`-r 24`): a variable-rate file is refused by the timing fix, and at 59.94 the
+   conformed tail holds four frames, which the checker reads as frozen.
 2. **Upload and sign.** `avt_upload_asset` the window to `project-clips/<user>/<project>/alter/<shot>/`;
    `avt_signed_url` it and three of his face photographs (`character_features`, `feature_type` face: neutral,
    three_quarter_left, three_quarter_right). Never print a signed link.
 3. **Plan.** `avt_alter_plan` with `preset: "action"`, `who`, `slots.action` (what happens, with times in seconds: who
    enters from which edge, what he does, when it ends; say that nothing passes in front of his face and his head stays
    where it is), `slots.keep` (his clothes, his seat), `video_url`, `face_image_urls`, `project_id`. Read the prompt it
-   returns. `ready` must be true. Building the plan sends nothing.
+   returns. `ready` must be true: while anything is `blocked`, `draft` is null and there is nothing to send. `ready`
+   means the request is well formed, nothing more. Building the plan sends nothing.
 4. **Send: the paid step.** `avt_call` with the plan's `draft.function` and `draft.body`, unchanged. One generation per
    call. Keep the `providerJobId`; write the ledger row and a `provider_jobs` record row.
 5. **Poll** with the plan's `poll` call (`id` = the `providerJobId`) from a background timer, never a foreground sleep.
@@ -51,15 +54,21 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
      --face neutral.jpg --face three_quarter_left.jpg --face three_quarter_right.jpg
    ```
    It prints the verdict and writes `draft.mp4` (on the take's clock), `score.json`, `report.json`, `face_sheet.jpg`
-   and `compare.mp4` (take left, draft right, the take's audio, plays on a phone). On the passed draft it reads:
-   stretch 1.0787, mouth timing 0.86 at 0 frames, shape 0.0515 (warn), face 96 of 96, CHECK with the face his to judge.
+   and `compare.mp4` (take left, draft right, the take's audio, plays on a phone). `--mode` is the preset's check
+   mode, printed in the plan's `after` line; it is required because `action` is the only mode with the motion gate
+   off. Exit 0 = cleared, or everything measured passed and the face is his to judge; 1 = not cleared. On the passed
+   draft it reads: stretch 1.0787, mouth timing 0.86 at 0 frames, shape 0.0515 (warn), face 96 of 96, CHECK with the
+   face his to judge. `avt_alter_check` with `report` = the contents of `report.json` gives the same judgment from
+   the server's gates.
 7. **Watch `compare.mp4` and open `face_sheet.jpg` yourself**, the whole picture: his hands, the second person, the
    edges, the last frames. Then post both inline with the numbers, and say plainly what is open. With no identity
    number the tool never clears the face: Fendi does.
 8. **Full resolution, only after his pass on the draft.** `avt_alter_plan` again with the same arguments plus
    `draft_check` (the contents of `report.json`), `face_approval` (his words about that draft's face, quoted) and
-   `resolution` (`720p` or `1080p`). It returns `finalize`. That is a NEW render of the same request, not an upscale
-   of the draft he saw: send it (step 4), then steps 5 to 7 again, and he sees it again.
+   `resolution` (`720p` or `1080p`). The report is judged again from its numbers and must be for this preset's check
+   mode. It returns `finalize`. That is a NEW render of the same request, not an upscale of the draft he saw: send it
+   (step 4), then steps 5 to 7 again, and he sees it again. `finalize` is a checklist for you, not proof of anything:
+   the server reads no video and cannot verify his words.
 9. **On the board:** the conformed file with the take's audio (the plan's `audio.argv`), filed like any shot
    (`docs/recipes/MCP_UPLOAD_AND_FILE.md`), `metadata_json.derived_from` naming this page, the take, the window, the
    job and the scores.
@@ -93,5 +102,7 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
 - The provider's own draft-then-finalize path. Its playground lists `bytedance/seedance-2.5/finalize-draft`
   (`draft_id`, `resolution: "1080p"`) and a `draft` switch on the edit; neither is in its API docs, neither is wired in
   Control Center. It would make the approved 480p draft the delivered clip. Until then full resolution is a new render.
+- An identity number. When `arcface_w600k_r50.onnx` is added to `$AVT_MODELS`, pin its sha256 first (as
+  `scripts/edit/lens_look.py` does for its model): from then on a number can clear a face without his eye.
 - A face-steadiness number. The put-back's warp scored BETTER on the mouth gate (0.931) than the clean redraw, so the
   gates here do not see a face that slides. Watch the face in motion; a still sheet cannot show it.

@@ -10,7 +10,8 @@
   5. sheet     his face in the draft beside his face in the take and his photographs (face_check.py) -> face_sheet.jpg
   6. compare   take on the left, draft on the right, the take's audio, playable on a phone -> compare.mp4
 
-It prints one JSON summary. `report.json` is what avt_alter_check / avt_alter_plan (draft_check) take. Run with the
+It prints one JSON summary. `report.json` is what avt_alter_check (report) and avt_alter_plan (draft_check) take.
+Exit 0 = cleared, or everything measured passed and the face is Fendi's to judge; 1 = not cleared; 2 = refused. Run with the
 put-back's Python (~/.avt-venv/bin/python -I) and AVT_MODELS set. Nothing here decides that the face is his: with no
 identity number the checker says so, and Fendi judges the sheet.
 """
@@ -24,12 +25,18 @@ from conform_draft import conform  # noqa: E402
 MODES = ("swap", "recast", "motion", "restyle", "action")
 
 
-def run(cmd, ok=(0,), cwd=None):
+def run(cmd, ok=(0,), cwd=None, label=None):
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
     if r.returncode not in ok:
-        raise RuntimeError(f"{os.path.basename(cmd[1] if len(cmd) > 1 else cmd[0])} failed ({r.returncode}): "
+        raise RuntimeError(f"{label or os.path.basename(cmd[0])} failed ({r.returncode}): "
                            f"{(r.stderr or r.stdout).strip()[-500:]}")
     return r.stdout
+
+
+def need(*programs):
+    """Everything is checked before any work starts, so a missing tool is not found after two minutes of tracking."""
+    missing = [p for p in programs if not shutil.which(p)]
+    if missing: sys.exit(f"REFUSED: not installed or not on PATH: {', '.join(missing)}")
 
 
 def sheet_seconds(frames, rate):
@@ -58,11 +65,14 @@ def main():
     ap.add_argument("--take", required=True, help="the stretch of his take that was sent (the same file)")
     ap.add_argument("--raw", required=True, help="the draft exactly as the provider returned it")
     ap.add_argument("--out", required=True, help="a folder for everything this writes")
-    ap.add_argument("--mode", default="action", choices=MODES)
+    ap.add_argument("--mode", required=True, choices=MODES,
+                    help="the preset's check mode (avt_alter_plan prints it). Required: action is the only mode with the "
+                         "motion gate off, so it is never a default")
     ap.add_argument("--face", action="append", default=[], help="his face photograph from the tool (repeatable)")
     ap.add_argument("--not-performance", action="store_true", help="he is not rapping or singing in this stretch")
     ap.add_argument("--force", action="store_true", help="passed to the conform step")
     a = ap.parse_args()
+    need("ffmpeg", "ffprobe", "node")
     os.makedirs(a.out, exist_ok=True)
     p = lambda name: os.path.join(a.out, name)
     py = [sys.executable, "-I"]
@@ -73,15 +83,16 @@ def main():
     except ValueError as e:
         print(f"REFUSED: {e}", file=sys.stderr); sys.exit(2)
 
-    run(py + [tracker, "track", a.take, p("take.json")])
-    run(py + [tracker, "track", p("draft.mp4"), p("draft.json")])
-    score = json.loads(run(py + [tracker, "score", p("take.json"), p("draft.json"), "--out", p("score.json")]))
+    run(py + [tracker, "track", a.take, p("take.json")], label="track the take")
+    run(py + [tracker, "track", p("draft.mp4"), p("draft.json")], label="track the draft")
+    score = json.loads(run(py + [tracker, "score", p("take.json"), p("draft.json"), "--out", p("score.json")],
+                           label="score"))
 
     check = ["node", "--experimental-strip-types", os.path.join(HERE, "check_clip.ts"), os.path.abspath(a.take),
              os.path.abspath(p("draft.mp4")), "--mode", a.mode, "--track-source", os.path.abspath(p("take.json")),
              "--track-output", os.path.abspath(p("draft.json")), "--score", os.path.abspath(p("score.json"))]
     if a.not_performance: check.append("--not-performance")
-    report = json.loads(run(check, ok=(0, 1), cwd=ROOT))        # exit 1 = CHECK, still a report
+    report = json.loads(run(check, ok=(0, 1), cwd=ROOT, label="check_clip.ts"))   # exit 1 = CHECK, still a report
     json.dump(report, open(p("report.json"), "w"), indent=1)
 
     num, den = facts["take_rate"].split("/"); rate = int(num) / int(den)        # "24/1" -> 24.0
@@ -92,10 +103,10 @@ def main():
                     "--size", sheet_size(facts["width"], facts["height"]),
                     "--seconds", sheet_seconds(facts["take_frames"], rate)]
         for f in a.face: cmd += ["--face", f]
-        run(cmd); written.append("face_sheet.jpg")
-    if shutil.which("ffmpeg"):
-        run(compare_command(a.take, p("draft.mp4"), p("compare.mp4"), min(720, facts["height"] // 2 * 2), round(rate)))
-        written.append("compare.mp4")
+        run(cmd, label="face sheet"); written.append("face_sheet.jpg")
+    run(compare_command(a.take, p("draft.mp4"), p("compare.mp4"), min(720, facts["height"] // 2 * 2), round(rate)),
+        label="side-by-side")
+    written.append("compare.mp4")
 
     mouth = report.get("mouth") or {}
     print(json.dumps({
@@ -108,11 +119,10 @@ def main():
         "identity_distance": score.get("identity_distance"),
         "issues": report.get("issues", []),
         "folder": os.path.abspath(a.out), "written": written,
-        "next": ("Post compare.mp4 (take left, draft right) and face_sheet.jpg. Fendi judges the face."
-                 if report.get("faceNeedsHisEye") else
-                 "Cleared by the numbers: post compare.mp4 and face_sheet.jpg." if report.get("redrawCleared") and not report.get("issues") else
-                 "Not cleared: read the issues. Re-roll or change the staging; do not lay his original face back onto the redraw."),
+        "next": report.get("next", "") + ("" if a.face else " No face sheet was written: pass --face."),
     }, indent=1))
+    # 0 = cleared, or everything measured passed and the face is Fendi's to judge; 1 = not cleared
+    sys.exit(0 if report.get("redrawCleared") or report.get("faceNeedsHisEye") else 1)
 
 
 if __name__ == "__main__":

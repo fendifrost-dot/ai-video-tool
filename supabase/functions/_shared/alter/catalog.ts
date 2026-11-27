@@ -1,4 +1,4 @@
-import raw from "./catalog.json" with { type: "json" };
+import raw from "./catalog.data.ts";
 import type { AlterMode, AlterPreset, CheckMode } from "./types.ts";
 
 type FileShape = {

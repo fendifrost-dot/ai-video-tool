@@ -30,6 +30,16 @@ def test_filter_stretches_interpolates_and_cuts_to_the_take():
     assert ntsc[ntsc.index("-r") + 1] == "60000/1001" and ntsc[ntsc.index("-video_track_timescale") + 1] == "60000"
 
 
+def test_a_variable_frame_rate_file_is_refused():
+    cd.check_constant_rate("take.mp4", Fraction(24), "24/1")                    # constant: fine
+    cd.check_constant_rate("take.mp4", Fraction(30000, 1001), "30000/1001")
+    cd.check_constant_rate("take.mp4", Fraction(24), None)                      # no average reported: not judged
+    cd.check_constant_rate("take.mp4", Fraction(24), "0/0")
+    with pytest.raises(ValueError) as e:                                        # a phone's variable-rate file
+        cd.check_constant_rate("take.mp4", Fraction(30), "72000/2381")
+    assert "variable frame rate" in str(e.value)
+
+
 def test_run_draft_helpers():
     assert rd.sheet_seconds(96, 24.0) == "0.50,1.00,1.50,2.00,2.50,3.00,3.50"
     assert rd.sheet_size(1400, 1400) == "960x960" and rd.sheet_size(640, 640) == "640x640"

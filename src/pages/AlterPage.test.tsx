@@ -11,9 +11,14 @@ describe("alter page", () => {
     fireEvent.click(screen.getByTestId("alter-prepare"));
     const plan = screen.getByTestId("alter-plan");
     expect(plan.textContent).toContain("Submitted: false");
+    // nothing filled in: not ready, and no call is offered to copy
+    expect(plan.textContent).toContain("Ready: false");
+    expect(plan.textContent).toContain("There is no call to send until nothing is blocked.");
+    expect(screen.queryByTestId("alter-call")).toBeNull();
     expect(plan.textContent).toContain("Resolution: 480p");
-    expect(plan.textContent).toContain("Do not lay his original face back");
     expect(plan.textContent).toContain("Audio generated: false");
+    expect(plan.textContent).toContain("Do not lay his original face back");
     expect(plan.textContent).toContain("mouth");
+    expect(screen.getByTestId("alter-faces")).toBeTruthy();
   });
 });

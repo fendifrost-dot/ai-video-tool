@@ -1,17 +1,8 @@
 import { listPresets } from "./catalog.ts";
-import {
-  CHANGED_RANGE,
-  IDENTITY_DISTANCE_MAX,
-  MOTION_GATED,
-  MOTION_MIN,
-  RESTYLE_STRUCTURE_MAX,
-  STRUCTURE_FLOOR,
-} from "./gates.ts";
-import { gateTrackScore, scoreMouth, type MouthScore, type TrackScore } from "./mouth.ts";
+import { rejudge } from "./judge.ts";
 import { planAlter, planFinalize } from "./plan.ts";
-import type { AlterReport } from "./check.ts";
 import { buildAlterPrompt } from "./prompt.ts";
-import type { AlterMode, CheckMode, MouthFrame } from "./types.ts";
+import type { AlterMode } from "./types.ts";
 
 type Result = { ok: true; value: unknown } | { ok: false; error: string };
 
@@ -20,28 +11,50 @@ function uiMode(value: unknown): AlterMode | undefined {
   return undefined;
 }
 
-function checkMode(value: unknown): CheckMode | null {
-  if (
-    value === "swap" ||
-    value === "recast" ||
-    value === "motion" ||
-    value === "restyle" ||
-    value === "action"
-  )
-    return value;
-  return null;
+function text(value: unknown, name: string, max = 4000): string | { error: string } {
+  if (typeof value !== "string") return { error: `${name} must be text.` };
+  if (value.length > max) return { error: `${name} is longer than ${max} characters.` };
+  return value;
 }
 
-function strings(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((item): item is string => typeof item === "string");
+/** Slot values: a plain object of short strings, or nothing. Anything else is an error, never a cast. */
+class SlotError {
+  constructor(readonly message: string) {}
 }
 
-function series(value: unknown): MouthFrame[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value
-    .filter((item): item is number => typeof item === "number")
-    .map((openness) => ({ openness }));
+function slotsOf(value: unknown): Record<string, string> | undefined | SlotError {
+  if (value == null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value))
+    return new SlotError("slots must be an object.");
+  const out: Record<string, string> = Object.create(null);
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (!/^\w{1,40}$/.test(key))
+      return new SlotError(`slot name ${JSON.stringify(key.slice(0, 40))} is not a word.`);
+    if (typeof item !== "string") return new SlotError(`slot ${key} must be text.`);
+    if (item.length > 4000) return new SlotError(`slot ${key} is longer than 4000 characters.`);
+    out[key] = item;
+  }
+  return out;
+}
+
+function common(
+  args: Record<string, unknown>,
+):
+  | { error: string }
+  | { preset: string; who: string; slots?: Record<string, string>; style?: string } {
+  const preset = text(args.preset ?? "", "preset", 80);
+  if (typeof preset !== "string") return preset;
+  const who = text(args.who ?? "", "who", 400);
+  if (typeof who !== "string") return who;
+  const slots = slotsOf(args.slots);
+  if (slots instanceof SlotError) return { error: slots.message };
+  let style: string | undefined;
+  if (args.style != null) {
+    const value = text(args.style, "style", 400);
+    if (typeof value !== "string") return value;
+    style = value;
+  }
+  return { preset, who, slots, style };
 }
 
 export function runAlterTool(name: string, args: Record<string, unknown>): Result {
@@ -66,120 +79,66 @@ export function runAlterTool(name: string, args: Record<string, unknown>): Resul
     };
   }
   if (name === "avt_alter_prompt") {
-    const prompt = buildAlterPrompt({
-      preset: String(args.preset ?? ""),
-      who: String(args.who ?? ""),
-      slots: (args.slots ?? undefined) as Record<string, string> | undefined,
-      style: typeof args.style === "string" ? args.style : undefined,
-      performance: args.performance !== false,
-    });
+    const base = common(args);
+    if ("error" in base) return { ok: false, error: base.error };
+    const prompt = buildAlterPrompt({ ...base, performance: args.performance !== false });
     if (!prompt.ok) return prompt;
     return { ok: true, value: { ...prompt, submitted: false, spendUsd: 0 } };
   }
   if (name === "avt_alter_plan") {
+    const base = common(args);
+    if ("error" in base) return { ok: false, error: base.error };
+    if (args.face_image_urls != null && !Array.isArray(args.face_image_urls))
+      return { ok: false, error: "face_image_urls must be a list of https links." };
+    if (Array.isArray(args.face_image_urls) && args.face_image_urls.length > 16)
+      return { ok: false, error: "face_image_urls: at most 4 are used; more than 16 were given." };
+    for (const key of ["video_url", "target_frame_url", "project_id"] as const)
+      if (args[key] != null && typeof args[key] !== "string")
+        return { ok: false, error: `${key} must be text.` };
     const plan = planAlter({
-      preset: String(args.preset ?? ""),
-      who: String(args.who ?? ""),
-      slots: (args.slots ?? undefined) as Record<string, string> | undefined,
-      style: typeof args.style === "string" ? args.style : undefined,
+      ...base,
       performance: args.performance !== false,
-      videoUrl: typeof args.video_url === "string" ? args.video_url : undefined,
-      targetFrameUrl: typeof args.target_frame_url === "string" ? args.target_frame_url : undefined,
-      faceImageUrls: strings(args.face_image_urls),
-      projectId: typeof args.project_id === "string" ? args.project_id : undefined,
+      videoUrl: args.video_url as string | undefined,
+      targetFrameUrl: args.target_frame_url as string | undefined,
+      faceImageUrls: args.face_image_urls as unknown[] | undefined,
+      projectId: args.project_id as string | undefined,
     });
     if ("ok" in plan) return plan;
-    // A full-resolution call is attached only when the caller hands back the draft's own check.
-    const checked = args.draft_check;
-    if (checked && typeof checked === "object") {
-      const full = args.resolution === "720p" ? "720p" : "1080p";
+    // A full-resolution call is attached only when the caller hands back the draft's own report.
+    if (args.draft_check != null) {
+      if (args.resolution != null && args.resolution !== "720p" && args.resolution !== "1080p")
+        return { ok: false, error: "resolution must be 720p or 1080p." };
+      if (args.face_approval != null && typeof args.face_approval !== "string")
+        return { ok: false, error: "face_approval must be text: Fendi's own words." };
       return {
         ok: true,
-        value: planFinalize(plan, checked as AlterReport, {
-          resolution: full,
-          faceApproval: typeof args.face_approval === "string" ? args.face_approval : undefined,
+        value: planFinalize(plan, args.draft_check, {
+          resolution: (args.resolution as "720p" | "1080p" | undefined) ?? "1080p",
+          faceApproval: args.face_approval as string | undefined,
         }),
       };
     }
     return { ok: true, value: plan };
   }
   if (name === "avt_alter_check") {
-    const mode = checkMode(args.mode);
-    if (!mode)
-      return { ok: false, error: "mode must be swap, recast, motion, restyle, or action." };
-    const changed = Number(args.changed_area);
-    const structure = Number(args.structure_median);
-    const motion = Number(args.motion_correlation);
-    if (![changed, structure, motion].every((value) => Number.isFinite(value))) {
-      return {
-        ok: false,
-        error: "changed_area, structure_median, and motion_correlation are required numbers.",
-      };
-    }
-    const [low, high] = CHANGED_RANGE[mode];
-    const issues: string[] = [];
-    if (Math.abs(Number(args.frame_delta ?? 0)) > 1) issues.push("length: frame counts differ");
-    if (mode === "restyle" && structure > RESTYLE_STRUCTURE_MAX)
-      issues.push(`restyle structure ${structure} > ${RESTYLE_STRUCTURE_MAX}`);
-    if (structure < STRUCTURE_FLOOR[mode])
-      issues.push(`structure ${structure} < ${STRUCTURE_FLOOR[mode]}`);
-    if (changed < low) issues.push(`change ${changed} below ${low}`);
-    else if (changed > high) issues.push(`change ${changed} above ${high}`);
-    if (MOTION_GATED[mode] && motion < MOTION_MIN) issues.push(`motion ${motion} < ${MOTION_MIN}`);
-    const performance = args.performance !== false;
-    const mouthSource = series(args.mouth_source);
-    const mouthOutput = series(args.mouth_output);
-    const tracked =
-      args.track_score && typeof args.track_score === "object"
-        ? (args.track_score as TrackScore)
-        : null;
-    let mouth: MouthScore | null = null;
-    if (tracked) mouth = gateTrackScore(tracked);
-    else if (mouthSource && mouthOutput) mouth = scoreMouth(mouthSource, mouthOutput);
-    if (mouth) issues.push(...mouth.issues);
-    else if (performance) {
-      issues.push("mouth: landmarks were not supplied. A rapping shot is not cleared.");
-    }
-    const distance =
-      typeof args.identity_distance === "number"
-        ? args.identity_distance
-        : typeof tracked?.identity_distance === "number"
-          ? tracked.identity_distance
-          : null;
-    if (performance && distance == null)
-      issues.push(
-        "identity was not measured. The face is cleared by the number or by Fendi's word on the face sheet, not by this check.",
-      );
-    if (distance != null && distance > IDENTITY_DISTANCE_MAX)
-      issues.push(`identity distance ${distance} is above ${IDENTITY_DISTANCE_MAX}`);
-    const mouthFail =
-      mouth?.timingFails === true ||
-      mouth?.shapeFails === true ||
-      (performance && !mouth?.measured);
-    const measured = distance != null;
-    const identityFail = measured && distance > IDENTITY_DISTANCE_MAX;
-    const redrawCleared = !performance || (!mouthFail && measured && !identityFail);
-    const faceNeedsHisEye = performance && !mouthFail && !measured;
-    const hard = issues.filter((issue) => !issue.includes("provisional"));
-    const verdict = hard.length ? "CHECK" : "PASS";
+    const judged = rejudge(args.report);
+    if (!judged.ok) return judged;
+    const r = judged.value;
     return {
       ok: true,
       value: {
-        verdict,
-        mode,
-        changedArea: changed,
-        structureMedian: structure,
-        motionCorrelation: motion,
-        mouth,
-        identity: { measured, fails: identityFail, distance },
-        redrawCleared,
-        faceNeedsHisEye,
-        next: redrawCleared
-          ? "The redraw is cleared by the numbers. Post it with the face sheet."
-          : faceNeedsHisEye
-            ? "The mouth passed. The face has no number: post the side-by-side and the face sheet, and Fendi judges the face."
-            : "Not cleared. Re-roll, change the staging, or use his real take. Do not lay his original face back onto the redraw (failed by Fendi, 27 Nov 2026).",
-        issues,
+        verdict: r.verdict,
+        mode: r.mode,
+        performance: r.performance,
+        redrawCleared: r.redrawCleared,
+        faceNeedsHisEye: r.faceNeedsHisEye,
+        next: r.next,
+        issues: r.issues,
+        mouth: r.mouth,
+        identity: r.identity,
+        measurements: r.measurements,
+        basis:
+          "Judged from the numbers in the supplied report. This server read no video; a report that was edited by hand is judged as edited.",
         submitted: false,
         spendUsd: 0,
       },

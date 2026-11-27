@@ -17,9 +17,11 @@ The method is the MIT `scenario-alter` skill (https://www.scenario.com/explorati
 
 ## Draft, then check, then maybe full resolution
 
-`planAlter` returns the arguments of one `avt_call` for a 480p draft (`generate_audio: false`, the take as `referenceVideoUrl`, an optional target frame as `@Image1`, then up to four of his face photographs with their own `@Image` tags). It is not sent: a person or an agent sends it. A prompt with an unfilled slot, a non-https link or more than four face pictures is not ready.
+`planAlter` returns the arguments of one `avt_call` for a 480p draft (`draft`; null while anything is blocked, with the request shown under `preview` for reading only) (`generate_audio: false`, the take as `referenceVideoUrl`, an optional target frame as `@Image1`, then up to four of his face photographs with their own `@Image` tags). It is not sent: a person or an agent sends it. A prompt with an unfilled slot, a link that is not https or carries credentials, more than four face pictures, or a preset whose change names `@Image1` with no target frame attached, is not ready.
 
-`planFinalize` attaches the full-resolution call (720p or 1080p) only when the draft's check has no open issue, the mouth passed, and the face is cleared: a passing identity number, or, while no number exists, Fendi's own words about that draft's face (`faceApproval`, quoted into the call's note). Full resolution is a new render of the same request, not an upscale of the draft: it is conformed, scored and shown again. The provider's playground also lists a draft switch and `bytedance/seedance-2.5/finalize-draft`; neither is in its API docs and neither is wired (an open item).
+`planFinalize` attaches the full-resolution call (720p or 1080p) for a draft whose report passes. The report (`report.json` from `run_draft.py`) is judged again from its numbers by `judge.ts` `rejudge`: its own verdict, flags and issue list are ignored, a missing or impossible number is an error, and it must be for the preset's check mode and the plan's performance setting. No open issue may stand and the mouth must have passed. The face is cleared by a passing identity number, or, while no number exists, by `faceApproval`: words the caller says are Fendi's about that draft's face. The server cannot verify them, and the call's note says so. This is a checklist that keeps an honest caller on the run sheet, not a spend control: the paid step is `avt_call`, which the same caller can use directly. Full resolution is a new render of the same request, not an upscale of the draft: it is conformed, scored and shown again. The provider's playground also lists a draft switch and `bytedance/seedance-2.5/finalize-draft`; neither is in its API docs and neither is wired (an open item).
+
+One judge: `judge.ts` holds the only verdict logic. `checkAlter` measures frames and calls it; `avt_alter_check` and `planFinalize` call it on a handed-in report. `redrawCleared` and `faceNeedsHisEye` both require that no other issue is open, so an edit that did not take, a frozen draft or a lost scene is never handed to his eye as "only the face is open".
 
 ## The provider route, as tested (26 Nov 2026)
 
@@ -62,7 +64,7 @@ node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 -
 ```
 
 - `score` writes the mouth timing on the take's clock, the best fit within 6 frames and its lag, the mouth-shape distance in face widths, the share of frames read, the head-turn difference, and the identity distance when `$AVT_MODELS/arcface_w600k_r50.onnx` is on disk (null otherwise: a rapping shot is then CHECK).
-- `avt_alter_check` takes that JSON as `track_score` and judges it with the gates above. The measuring happens where the footage is; the thresholds live in `gates.ts` only.
+- `avt_alter_check` takes the checker's report (`report.json`) as `report` and judges it again from its numbers with the gates above. The measuring happens where the footage is; the thresholds live in `gates.ts` and the verdict logic in `judge.ts` only.
 - One command does all of the above after a draft is downloaded: `python -I scripts/alter/run_draft.py --take take.mp4 --raw raw.mp4 --out work/ --mode action --face …`.
 
 ## What the tracker cannot read

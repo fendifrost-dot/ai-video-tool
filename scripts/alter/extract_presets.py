@@ -15,7 +15,22 @@ from pathlib import Path
 MODE = {"O": "swap", "M": "motion", "R": "restyle"}
 
 
+MODULE_HEAD = (
+    "// GENERATED from catalog.json by scripts/alter/extract_presets.py. Do not edit: change catalog.json and regenerate.\n"
+    "// A TypeScript module, not a JSON import: the edge runtime loads avt-mcp through this file, and a JSON module that\n"
+    "// the deploy did not ship or the runtime refused would take every MCP tool down at load.\n"
+)
+
+
+def write_module(payload: dict, dest: Path) -> None:
+    dest.write_text(MODULE_HEAD + "export default " + json.dumps(payload, indent=2) + ";\n")
+
+
 def main() -> None:
+    if len(sys.argv) == 3 and sys.argv[1] == "--module-only":      # regenerate catalog.data.ts from catalog.json
+        source = Path(sys.argv[2])
+        write_module(json.loads(source.read_text()), source.with_name("catalog.data.ts"))
+        return
     source = Path(sys.argv[1])
     dest = Path(sys.argv[2])
     raw = json.loads(source.read_text())
@@ -39,7 +54,7 @@ def main() -> None:
             "title": "scenario-alter",
             "license": "MIT",
             "source": "https://www.scenario.com/explorations/alter/",
-            "note": "Preset text and the checker's published gates come from the scenario-alter skill (frontmatter license: MIT). AVT does not call the Scenario MCP. Prompts address fal's @Video1 and @Image1 tags.",
+            "note": "Preset text and the checker's published gates come from the scenario-alter skill (frontmatter license: MIT). AVT does not call the Scenario MCP. Prompts address the provider's @Video1 and @Image tags.",
         },
         "openings": {key: value.replace("@video1", "@Video1") for key, value in raw["openings"].items()},
         "close": raw["close"],
@@ -47,7 +62,8 @@ def main() -> None:
     }
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"{len(presets)} presets -> {dest}")
+    write_module(payload, dest.with_name("catalog.data.ts"))
+    print(f"{len(presets)} presets -> {dest} and catalog.data.ts")
 
 
 if __name__ == "__main__":

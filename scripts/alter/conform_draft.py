@@ -25,11 +25,22 @@ STRETCH_MIN, STRETCH_MAX = 0.90, 1.20
 def probe(path):
     """(frames, rate as a Fraction, width, height), counted from the stream, not trusted from the header."""
     r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries",
-                        "stream=nb_read_frames,r_frame_rate,width,height", "-of", "json", path],
+                        "stream=nb_read_frames,r_frame_rate,avg_frame_rate,width,height", "-of", "json", path],
                        capture_output=True, text=True)
     if r.returncode != 0: raise RuntimeError(f"ffprobe {path}: {r.stderr.strip()[-300:]}")
     s = json.loads(r.stdout)["streams"][0]
-    return int(s["nb_read_frames"]), Fraction(s["r_frame_rate"]), int(s["width"]), int(s["height"])
+    rate = Fraction(s["r_frame_rate"])
+    check_constant_rate(path, rate, s.get("avg_frame_rate"))
+    return int(s["nb_read_frames"]), rate, int(s["width"]), int(s["height"])
+
+
+def check_constant_rate(path, rate, avg_text, tolerance=0.005):
+    """A variable-frame-rate file has no single clock to conform to: its length is not frames / rate."""
+    try: avg = Fraction(avg_text)
+    except (TypeError, ValueError, ZeroDivisionError): return
+    if avg > 0 and abs(float(avg / rate) - 1) > tolerance:
+        raise ValueError(f"{os.path.basename(path)} has a variable frame rate (nominal {float(rate):.3f}, average "
+                         f"{float(avg):.3f} fps). Re-cut it at a constant rate first (ffmpeg -r 24 …).")
 
 
 def stretch(take_frames, take_rate, raw_frames, raw_rate):
@@ -63,7 +74,7 @@ def conform_command(raw, out, take_frames, take_rate, raw_frames, raw_rate):
 
 def conform(take, raw, out, force=False):
     """Writes `out` and returns the facts. Raises ValueError when the raw file is not this take a little fast."""
-    tf, tr, _, _ = probe(take)
+    tf, tr, _, _ = probe(take)          # raises ValueError on a variable frame rate
     rf, rr, w, h = probe(raw)
     k = float(stretch(tf, tr, rf, rr))
     if not (STRETCH_MIN <= k <= STRETCH_MAX) and not force:

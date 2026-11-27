@@ -1,29 +1,37 @@
+import { judge, type Measurements } from "./judge.ts";
+import { scoreMouth, type MouthScore } from "./mouth.ts";
+import type { CheckMode, GrayFrame, MouthFrame } from "./types.ts";
 import {
   CHANGED_RANGE,
-  MOTION_GATED,
+  IDENTITY_DISTANCE_MAX,
   MOTION_MIN,
   RESTYLE_STRUCTURE_MAX,
   STRUCTURE_FLOOR,
 } from "./gates.ts";
-import { identityFails, scoreMouth, type MouthScore } from "./mouth.ts";
-import type { CheckMode, GrayFrame, MouthFrame } from "./types.ts";
 
+/** What the frame checker writes. `judge.ts` `rejudge` reads the numbers back; flags and issues are rebuilt there. */
 export type AlterReport = {
   verdict: "PASS" | "CHECK";
   mode: CheckMode;
+  performance: boolean;
   framesCompared: number;
+  sourceFrames: number;
+  outputFrames: number;
   changedArea: number;
   structureMedian: number;
   motionCorrelation: number;
+  motionSpread: number;
   jumps: number[];
   tailTrimFrames: number;
   frozenFrom: number[];
+  driftRuns: [number, number][];
   mouth: MouthScore | null;
   identity: { measured: boolean; fails: boolean; distance: number | null };
-  /** True when the redraw may be used as it is: the mouth passed and the face has a passing number. */
+  /** True when the redraw may be used as it is: no open issue, the mouth passed, the face has a passing number. */
   redrawCleared: boolean;
-  /** True when the mouth passed and only the face is open: no identity number, so Fendi judges the face sheet. */
+  /** True when everything measured passed and only the face is open: no identity number, so Fendi judges it. */
   faceNeedsHisEye: boolean;
+  next: string;
   issues: string[];
   gates: {
     structureFloor: number;
@@ -112,12 +120,6 @@ export function checkAlter(input: {
   identityDistance?: number | null;
 }): AlterReport {
   const n = Math.min(input.source.length, input.output.length);
-  const issues: string[] = [];
-  if (Math.abs(input.source.length - input.output.length) > 1) {
-    issues.push(
-      `length: source ${input.source.length} frames, output ${input.output.length} frames`,
-    );
-  }
   const structure: number[] = [];
   for (let i = 0; i < n; i++) structure.push(corr(edges(input.source[i]), edges(input.output[i])));
   const structureMedian = median(structure);
@@ -126,16 +128,6 @@ export function checkAlter(input: {
     .map((value, index) => ({ value, index }))
     .filter((row) => row.value < structureMedian - 4 * mad && row.value < 0.75 * structureMedian)
     .map((row) => row.index);
-  if (input.mode === "restyle" && structureMedian > RESTYLE_STRUCTURE_MAX) {
-    issues.push(
-      `restyle: structure median ${structureMedian.toFixed(2)} > ${RESTYLE_STRUCTURE_MAX}. The source surface survived. Add a target frame.`,
-    );
-  }
-  if (structureMedian < STRUCTURE_FLOOR[input.mode]) {
-    issues.push(
-      `structure: median ${structureMedian.toFixed(2)} < ${STRUCTURE_FLOOR[input.mode]} for a ${input.mode}`,
-    );
-  }
   const runs: number[][] = [];
   for (const index of drops) {
     const last = runs[runs.length - 1];
@@ -144,95 +136,78 @@ export function checkAlter(input: {
   }
   const tail = runs.find((run) => run[run.length - 1] >= n - 2 && run[0] >= n - 12);
   const tailTrimFrames = tail ? n - tail[0] : 0;
-  if (tail)
-    issues.push(`tail drift: trim the last ${tailTrimFrames} frames on every version alike`);
-  for (const run of runs) {
-    if (run === tail) continue;
-    if ((input.mode === "swap" || input.mode === "action") && run.length >= 6) {
-      issues.push(`drift: frames ${run[0]}-${run[run.length - 1]} lose the source structure`);
-    }
-  }
+  const driftRuns = runs
+    .filter((run) => run !== tail)
+    .map((run): [number, number] => [run[0], run[run.length - 1]]);
   const areas: number[] = [];
   for (let i = 0; i < n; i++) areas.push(changedShare(input.source[i], input.output[i]));
   const changedArea = median(areas);
-  const [low, high] = CHANGED_RANGE[input.mode];
-  if (changedArea < low)
-    issues.push(
-      `change: only ${(changedArea * 100).toFixed(1)}% of the frame differs; the ${input.mode} did not take`,
-    );
-  else if (changedArea > high)
-    issues.push(
-      `change: ${Math.round(changedArea * 100)}% of the frame differs; a ${input.mode} should leave most of it alone`,
-    );
 
   const sourceMotion = motionEnergy(input.source.slice(0, n));
   const outputMotion = motionEnergy(input.output.slice(0, n));
   const motionCorrelation = n > 3 ? corr(sourceMotion, outputMotion) : 1;
   const motionSpread = median(sourceMotion.map((value) => Math.abs(value - median(sourceMotion))));
-  const motionGated = MOTION_GATED[input.mode];
-  if (motionGated && motionCorrelation < MOTION_MIN && motionSpread > 0.3) {
-    issues.push(`motion: correlation ${motionCorrelation.toFixed(2)} < ${MOTION_MIN}`);
-  }
   const base = median(outputMotion) + 1e-3;
   const jumps = outputMotion
     .map((value, index) => ({ value, index }))
     .filter((row) => row.value > 3 * (sourceMotion[row.index] ?? 0) + 2 && row.value > 3 * base)
     .map((row) => row.index + 1);
-  if (motionGated && jumps.length) issues.push(`jump at frames ${jumps.slice(0, 10).join(", ")}`);
   const frozenFrom: number[] = [];
   let run = 0;
   for (let i = 0; i < outputMotion.length; i++) {
     run = outputMotion[i] < 0.25 && sourceMotion[i] > 1.2 ? run + 1 : 0;
     if (run === 3) frozenFrom.push(i - 2);
   }
-  if (frozenFrom.length)
-    issues.push(
-      `frozen output while the source moves, from frames ${frozenFrom.slice(0, 10).join(", ")}`,
-    );
 
   const performance = input.performance !== false;
-  let mouth: MouthScore | null = null;
-  if (input.mouthSource && input.mouthOutput) {
-    mouth = scoreMouth(input.mouthSource, input.mouthOutput);
-    issues.push(...mouth.issues);
-    if (mouth.timingFails) {
-      /* already in issues */
-    }
-  } else if (performance) {
-    issues.push(
-      "mouth: landmarks were not supplied. A darkness proxy cannot clear a rapping shot.",
-    );
-  }
-  const identity = identityFails(
-    performance ? input.identityDistance : (input.identityDistance ?? null),
-  );
-  if (performance && identity.issue) issues.push(identity.issue);
-  else if (!performance && identity.fails && identity.issue) issues.push(identity.issue);
-
-  const mouthFail =
-    mouth?.timingFails === true || mouth?.shapeFails === true || (performance && !mouth?.measured);
-  const redrawCleared = !performance || (!mouthFail && identity.measured && !identity.fails);
-  const faceNeedsHisEye = performance && !mouthFail && !identity.measured;
-  const hard = issues.filter((issue) => !issue.includes("provisional") && !issue.includes("Warns"));
-  return {
-    verdict: hard.length ? "CHECK" : "PASS",
+  const mouth =
+    input.mouthSource && input.mouthOutput
+      ? scoreMouth(input.mouthSource, input.mouthOutput)
+      : null;
+  const distance =
+    typeof input.identityDistance === "number" && !Number.isNaN(input.identityDistance)
+      ? input.identityDistance
+      : null;
+  const measurements: Measurements = {
     mode: input.mode,
+    performance,
+    sourceFrames: input.source.length,
+    outputFrames: input.output.length,
+    structureMedian,
+    changedArea,
+    motionCorrelation,
+    motionSpread,
+    jumps,
+    frozenFrom,
+    tailTrimFrames,
+    driftRuns,
+  };
+  const judged = judge(measurements, mouth, distance);
+  return {
+    verdict: judged.verdict,
+    mode: input.mode,
+    performance,
     framesCompared: n,
+    sourceFrames: input.source.length,
+    outputFrames: input.output.length,
     changedArea,
     structureMedian,
     motionCorrelation,
+    motionSpread,
     jumps,
     tailTrimFrames,
     frozenFrom,
+    driftRuns,
     mouth,
     identity: {
-      measured: identity.measured,
-      fails: identity.fails,
-      distance: input.identityDistance ?? null,
+      measured: distance != null,
+      fails: distance != null && distance > IDENTITY_DISTANCE_MAX,
+      distance,
     },
-    redrawCleared,
-    faceNeedsHisEye,
-    issues,
+    redrawCleared: judged.redrawCleared,
+    faceNeedsHisEye: judged.faceNeedsHisEye,
+    next: judged.next,
+    issues: judged.issues,
     gates: {
       structureFloor: STRUCTURE_FLOOR[input.mode],
       changed: CHANGED_RANGE[input.mode],

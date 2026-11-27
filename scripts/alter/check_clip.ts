@@ -1,7 +1,10 @@
 /**
  * Score a local draft against its take. $0. Does not call a provider.
  *
- *   node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 --mode swap
+ *   node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 --mode action
+ *
+ * --mode is required: swap, recast, motion, restyle or action (the preset's `check`). Exit 0 = PASS, 1 = CHECK,
+ * 2 = bad arguments. The JSON it prints is the report avt_alter_check and avt_alter_plan (draft_check) take.
  *
  * His mouth and face come from scripts/alter/track_mouth.py (local, $0):
  *
@@ -17,10 +20,11 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { checkAlter } from "../../supabase/functions/_shared/alter/check.ts";
-import type {
-  CheckMode,
-  GrayFrame,
-  MouthFrame,
+import {
+  CHECK_MODES,
+  type CheckMode,
+  type GrayFrame,
+  type MouthFrame,
 } from "../../supabase/functions/_shared/alter/types.ts";
 
 function frames(path: string): GrayFrame[] {
@@ -99,7 +103,15 @@ function scoreFile(argv: string[]): { identity_distance?: number | null } | null
 }
 
 const argv = process.argv.slice(2);
-const mode = (argv[argv.indexOf("--mode") + 1] ?? "swap") as CheckMode;
+const modeIndex = argv.indexOf("--mode");
+const modeArg = modeIndex >= 0 ? argv[modeIndex + 1] : undefined;
+if (!modeArg || !(CHECK_MODES as readonly string[]).includes(modeArg) || argv.length < 2) {
+  console.error(
+    `usage: check_clip.ts take.mp4 draft.mp4 --mode ${CHECK_MODES.join("|")} [--track-source … --track-output … --score …] [--not-performance]`,
+  );
+  process.exit(2);
+}
+const mode = modeArg as CheckMode;
 const performance = !argv.includes("--not-performance");
 const identityIndex = argv.indexOf("--identity");
 const scored = scoreFile(argv);

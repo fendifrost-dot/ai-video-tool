@@ -9,6 +9,16 @@ export {
   presetGroups,
 } from "./catalog.ts";
 export { checkAlter, type AlterReport } from "./check.ts";
+export {
+  IDENTITY_UNMEASURED,
+  frameIssues,
+  judge,
+  openIssues,
+  rejudge,
+  type Clearance,
+  type Measurements,
+  type Rejudged,
+} from "./judge.ts";
 export { compositeMasked, compositeTargetFrame, muxOriginalAudioArgv } from "./composite.ts";
 export {
   CHANGED_RANGE,

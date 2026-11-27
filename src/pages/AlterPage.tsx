@@ -9,7 +9,6 @@ import {
   getPreset,
   listPresets,
   planAlter,
-  planFinalize,
   type AlterMode,
   type AlterPlan,
 } from "@/lib/alter";
@@ -41,6 +40,7 @@ export default function AlterPage({ projectId }: { projectId: string }) {
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [videoUrl, setVideoUrl] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
+  const [faceUrls, setFaceUrls] = useState("");
   const [performance, setPerformance] = useState(true);
   const [plan, setPlan] = useState<AlterPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +54,11 @@ export default function AlterPage({ projectId }: { projectId: string }) {
       performance,
       videoUrl: videoUrl.trim() || undefined,
       targetFrameUrl: targetUrl.trim() || undefined,
+      faceImageUrls: faceUrls
+        .split(/\s+/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+      projectId,
     });
     if ("ok" in next && next.ok === false) {
       setPlan(null);
@@ -165,6 +170,17 @@ export default function AlterPage({ projectId }: { projectId: string }) {
               data-testid="alter-target"
             />
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            His face photographs (https), one per line, two to four. The draft Fendi passed had
+            three.
+            <textarea
+              value={faceUrls}
+              onChange={(event) => setFaceUrls(event.target.value)}
+              rows={3}
+              className="rounded-md border border-border bg-background px-3 py-2"
+              data-testid="alter-faces"
+            />
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -182,48 +198,46 @@ export default function AlterPage({ projectId }: { projectId: string }) {
               <p>{plan.report}</p>
               <p>
                 Submitted: {String(plan.submitted)}. Ready: {String(plan.ready)}. Resolution:{" "}
-                {plan.draft.body.body.resolution}. Audio generated:{" "}
-                {String(plan.draft.body.body.generate_audio)}.
+                {plan.preview.resolution}. Audio generated: {String(plan.preview.generate_audio)}.
               </p>
               {plan.blocked.map((line) => (
-                <p key={line}>{line}</p>
+                <p key={line} className="text-destructive">
+                  {line}
+                </p>
+              ))}
+              {plan.warnings.map((line) => (
+                <p key={line} className="text-foreground/70">
+                  {line}
+                </p>
               ))}
               <p>{plan.ifItFails}</p>
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                 {plan.prompt}
               </pre>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setPlan(
-                    planFinalize(plan, {
-                      verdict: "CHECK",
-                      mode: preset.check,
-                      framesCompared: 0,
-                      changedArea: 0,
-                      structureMedian: 0,
-                      motionCorrelation: 0,
-                      jumps: [],
-                      tailTrimFrames: 0,
-                      frozenFrom: [],
-                      mouth: null,
-                      identity: { measured: false, fails: false, distance: null },
-                      redrawCleared: false,
-                      faceNeedsHisEye: false,
-                      issues: ["not scored yet"],
-                      gates: {
-                        structureFloor: 0,
-                        changed: [0, 1],
-                        motionMin: MOUTH_TIMING_MIN,
-                        restyleStructureMax: 0.65,
-                      },
-                    }),
-                  )
-                }
-              >
-                Finalize stays off until a draft passes
-              </Button>
+              {plan.draft ? (
+                <>
+                  <p>
+                    The call to send with avt_call. Sending it is one paid generation; this page
+                    does not send it.
+                  </p>
+                  <pre
+                    className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs"
+                    data-testid="alter-call"
+                  >
+                    {JSON.stringify(
+                      { function: plan.draft.function, body: plan.draft.body },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </>
+              ) : (
+                <p>There is no call to send until nothing is blocked.</p>
+              )}
+              <p className="text-foreground/70">
+                Full resolution comes from avt_alter_plan with the draft's report.json, after the
+                draft is conformed, scored and passed.
+              </p>
             </div>
           )}
         </section>

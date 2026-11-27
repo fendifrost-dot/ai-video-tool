@@ -39,10 +39,10 @@ export function buildAlterPrompt(input: {
   const warnings: string[] = [];
   if (performance && preset.check === "recast") {
     warnings.push(
-      "This preset redraws who is on screen. On a rapping take the mouth score has to pass, or his original face and mouth pixels are put back.",
+      "This preset redraws who is on screen. On a rapping take the mouth score has to pass; a draft that fails is re-rolled.",
     );
   }
-  if (preset.targetFrame === true) {
+  if (preset.targetFrame === true && !input.targetFrame) {
     warnings.push(
       "This preset wants a target frame: one frame of the take with the change already in it.",
     );
@@ -51,17 +51,20 @@ export function buildAlterPrompt(input: {
     who,
     style: input.style?.trim() || "the named style",
     ...(preset.opening === "A" ? { keep: "the clothes and the pose" } : {}),
-    ...(input.slots ?? {}),
   };
+  for (const [key, value] of Object.entries(input.slots ?? {}))
+    if (typeof value === "string") values[key] = value;
   const openingKey = preset.mode === "restyle" ? "R" : preset.opening;
   const fill = (text: string) =>
-    text.replace(/\{(\w+)\}/g, (_, key: string) => values[key] ?? `{${key}}`);
+    text.replace(/\{(\w+)\}/g, (_, key: string) =>
+      Object.prototype.hasOwnProperty.call(values, key) ? values[key] : `{${key}}`,
+    );
   const opening = fill(ALTER_OPENINGS[openingKey] ?? ALTER_OPENINGS[preset.opening]);
   const change = fill(preset.change);
   const close = ALTER_CLOSE[openingKey] ?? ALTER_CLOSE[preset.opening];
   const parts = [opening, change, close];
   if (performance) parts.push(PERFORMANCE);
-  const faces = Math.max(0, Math.floor(input.facePictures ?? 0));
+  const faces = Math.min(8, Math.max(0, Math.floor(input.facePictures ?? 0)));
   if (faces > 0) {
     const first = input.targetFrame ? 2 : 1;
     const tags = Array.from({ length: faces }, (_, index) => `@Image${first + index}`);
