@@ -20,8 +20,8 @@ ap.add_argument("--frames", type=int, default=0); ap.add_argument("--stills", de
 ap.add_argument("--only", type=int, default=0)
 A = ap.parse_args()
 P = json.load(open(A.params)); S = json.load(open(os.path.join(A.passes, f"scene_{A.move}.json")))
-W, H, NF = 1080, 1920, (A.frames or P["frames"])
-FPS = 60000 / 1001
+W, H = P.get("frame", [1080, 1920]); NF = (A.frames or P["frames"])
+_fps = P.get("render_fps", [60000, 1001]); FPS = _fps[0] / _fps[1]
 
 lin = lambda v: np.where(v <= 0.04045, v / 12.92, ((v + 0.055) / 1.055) ** 2.4)
 srgb = lambda v: np.where(v <= 0.0031308, v * 12.92, 1.055 * np.power(np.clip(v, 0, None), 1 / 2.4) - 0.055)
@@ -60,7 +60,7 @@ rng = np.random.default_rng(33)
 vw = None
 if not A.stills:
     vw = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
-                           "-r", "60000/1001", "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
+                           "-r", f"{_fps[0]}/{_fps[1]}", "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
                            "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
                            "-movflags", "+faststart", A.out], stdin=subprocess.PIPE)
 frames = [A.only] if A.only else range(1, NF + 1)
@@ -106,7 +106,7 @@ for i in frames:
     px_m = H / 36.0 * f_mm / zf                                      # px per metre at his depth
     hor = S["check_horizon_px"][1]; rs = S.get("room_scale", 1.0); ch = pl["camera_height"] * rs   # this camera's horizon row
     y_head = hor - (src["eye_height"] + 0.12 - ch) * px_m
-    y_counter = hor - (P["island"]["top"] * rs - ch) * px_m
+    y_counter = hor - (P.get("island", {}).get("top", L.get("top_light_low_m", 0.9)) * rs - ch) * px_m   # no island: light.top_light_low_m
     tt = np.clip((rows - y_head) / max(1.0, y_counter - y_head), 0, 1)
     top = 2 ** (L["top_light_stops"][0] * (1 - tt) + L["top_light_stops"][1] * tt)
     him = srgb(np.clip(lin(fg[..., :3]) * gain * top[..., None], 0, 1)).astype(np.float32)

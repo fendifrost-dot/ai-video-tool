@@ -10,7 +10,8 @@ import numpy as np
 
 plate, approved, out = sys.argv[1:4]
 ref = sys.argv[4] if len(sys.argv) > 4 else "marble"
-W, H = 1080, 1920
+W, H = (int(v) for v in sys.argv[5].split("x")) if len(sys.argv) > 5 else (1080, 1920)   # the frame, WxH
+SRC_BOXES = dict(door=(40, 700, 180, 1000), face=(560, 650, 650, 780)) if (W, H) == (1080, 1920) else {}   # the c033 take's surfaces
 def frames(p):
     pr = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-i", p, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
     while len(b := pr.stdout.read(W * H * 3)) == W * H * 3:
@@ -20,10 +21,10 @@ def means(p, boxes):
     for f in frames(p):
         for k, (x0, y0, x1, y1) in boxes.items(): acc[k].append(f[y0:y1, x0:x1].reshape(-1, 3).mean(0) / 255)
     return {k: np.array(v) for k, v in acc.items()}
-boxes = dict(belly=(150, 1030, 215, 1180), marble=(40, 640, 300, 780), counter=(450, 1150, 800, 1250))
+boxes = dict(belly=(150, 1030, 215, 1180), marble=(40, 640, 300, 780), counter=(450, 1150, 800, 1250)) if (W, H) == (1080, 1920) else {}
 if "," in ref: boxes[ref] = tuple(int(v) for v in ref.split(","))
 P = means(plate, boxes)
-Q = means(approved, dict(door=(40, 700, 180, 1000), face=(560, 650, 650, 780)))
+Q = means(approved, SRC_BOXES) if SRC_BOXES else {}
 np.save(out, P[ref])
 for k, v in {**P, **Q}.items(): print(k, "median sRGB", np.median(v, 0).round(3))
 print("wrote", out, ref, len(P[ref]), "plate frames")

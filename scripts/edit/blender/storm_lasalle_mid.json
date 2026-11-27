@@ -1,0 +1,191 @@
+{
+ "_doc": "Partnership storm verse, plan B: the real-face dressed figure standing on LaSalle Street (Gemini plate 2fade1e8), built with the c033 showroom method (build_scene.py / comp_scene.py). Units: metres; pixels at 1920x1080 unless named _full (the still's 2752x1536). Camera frame: X right, depth forward, height up from the road. Every value is MEASURED, SPEC, ESTIMATE or DECISION.",
+ "frame": [
+  1920,
+  1080
+ ],
+ "_frame": "DECISION by Fendi, 16 Nov: 16:9 master",
+ "render_fps": [
+  24,
+  1
+ ],
+ "frames": 24,
+ "fps": "24",
+ "plate": {
+  "fps": 24.0,
+  "start_seconds": 0.0,
+  "motion": "locked-off (one still)",
+  "focal_px": 1067,
+  "_focal": "ESTIMATE: the still was asked for as a 20 mm lens on full frame (1920 * 20 / 36); a one-point street gives no second vanishing point to measure it from. Check: a 1.85 m wide sedan at 13.4 m would be 147 px wide; the left sedan's front reads about 150 px",
+  "horizon_y": 921.1,
+  "_horizon": "ESTIMATE +/- 18 px: 1310 full. MEASURED candidates disagree, as AI stills do: the cornices' vanishing point (RANSAC over line segments, measure_plate_camera.py) is at row 1331 full, the street lamps converge near 1281 full, the road meets the far junction near 1300 full. The road is what his feet stand on, so the ground's own vanishing row is taken",
+  "principal_x": 944.4,
+  "_principal": "MEASURED: the cornices' vanishing point column (1353.6 full)",
+  "camera_height": 0.46,
+  "_height": "ESTIMATE, tied to the horizon above: the left sedan's roof is at row 1197 full and its front tyre contact at 1362 full (car_left_ruler.jpg); for a 1.45 m sedan (SPEC, typical) the camera is 1.45 * (1362 - 1310) / 165 = 0.46 m up. With the horizon at 1331 it would be 0.27 m, at 1281 0.71 m. His size against the parked cars is right for any pair on that line; his size against the far street is not pinned better than that. Verticals lean +1.4 deg on the left half and -1.5 deg on the right (MEASURED): modelled as pitch 0 with a lens shift, as the showroom was"
+ },
+ "proxies": [
+  {
+   "name": "road",
+   "gloss": true,
+   "quad": [
+    [
+     -40,
+     0.3,
+     0
+    ],
+    [
+     40,
+     0.3,
+     0
+    ],
+    [
+     40,
+     190,
+     0
+    ],
+    [
+     -40,
+     190,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "wall_left",
+   "quad": [
+    [
+     -11,
+     0.3,
+     0
+    ],
+    [
+     -11,
+     190,
+     0
+    ],
+    [
+     -11,
+     190,
+     300
+    ],
+    [
+     -11,
+     0.3,
+     300
+    ]
+   ]
+  },
+  {
+   "name": "wall_right",
+   "quad": [
+    [
+     11,
+     0.3,
+     0
+    ],
+    [
+     11,
+     0.3,
+     300
+    ],
+    [
+     11,
+     190,
+     300
+    ],
+    [
+     11,
+     190,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "street_end",
+   "quad": [
+    [
+     -40,
+     190,
+     0
+    ],
+    [
+     40,
+     190,
+     0
+    ],
+    [
+     40,
+     190,
+     300
+    ],
+    [
+     -40,
+     190,
+     300
+    ]
+   ]
+  }
+ ],
+ "_proxies": "ESTIMATE: a flat road; building fronts 11 m either side of the centre line (the parked sedans' centres are about 6 m out at 13.4 m); the street's end far away. With a locked camera they only carry the plate and the depth; a camera move would need the buildings measured. Nothing is further than 190 m: build_scene.py's cameras clip at 200 m (a wall at 400 m rendered as a black bar)",
+ "source": {
+  "camera": "his photo silhouette_front (character_features 1fd67e48), iPhone main lens, 3024x4032, taken from about 1.5 m away at about chest height, tilted down",
+  "roll_deg": 0.0,
+  "_roll": "ESTIMATE: the door frame beside him is vertical within a degree",
+  "px_per_metre_at_face": 498.0,
+  "_ppm": "MEASURED on the 1920x1080 canvas: his eyes (face landmarks, row 140.7) to the soles of his shoes (the matte's lowest row, 1047) = 906 px over 1.82 m (his 1.905 m, eyes 0.115 m below the crown, 0.03 m of sole) -> 498.0 px/m. This is his BODY scale: the outer eye corners (57.8 px over 0.095 m) give 608.2 px/m, 22 % more. The photo was taken close and from above, so his head is 22 % larger against his legs than a far camera would see it. The body scale is used so that he is 6 ft 3 and his feet reach the road; his head is that much too large for this camera. A source photo taken from further back removes it",
+  "horizon_y": 540,
+  "_shorizon": "by construction: the card's centre row; with eye_y and eye_height below it puts his eyes 1.82 m above the road and his soles on it",
+  "eye_y": 140.7,
+  "eye_x": 961.0,
+  "eye_height": 1.82
+ },
+ "performer": {
+  "position": [
+   0.5,
+   5.5
+  ],
+  "_": "DECISION: mid depth: 5.5 m from the lens, 0.5 m right of the centre line; his height on screen is 1067 * 1.978 / 5.5 = 384 px of 1080"
+ },
+ "light": {
+  "white_plate_srgb": [
+   0.455,
+   0.533,
+   0.62
+  ],
+  "_wp": "MEASURED: the flying newspaper page at street level (x 300-420, y 700-790), the brightest fifth, median: white paper in the street's own light",
+  "white_source_srgb": [
+   0.878,
+   0.863,
+   0.827
+  ],
+  "_ws": "MEASURED: the white door beside him in the photo (canvas x 1074-1110, y 405-675), the brighter half, median",
+  "exposure_stops": 1.2,
+  "_exposure": "DECISION (checked on his face at +0.6 and +1.2, frame 1): at +0.6 his face is a dark shape under the hat; +1.2 reads his eyes, glasses and beard and keeps the capelet under the street lamps' brightness",
+  "top_light_stops": [
+   0.0,
+   0.0
+  ],
+  "_top": "DECISION: overcast storm light, no downlight gradient",
+  "top_light_low_m": 0.9,
+  "flash_follow": 0.0,
+  "flash_reference": "800,960,1100,1010"
+ },
+ "lens": {
+  "f_stop": 8.0,
+  "performer_softness_px": 0.5,
+  "wrap": 0.0,
+  "edge_colour_from_inside_px": 1.5,
+  "edge_choke": 0.15,
+  "edge_tween_px": 0,
+  "_": "DECISION: the showroom room 2 values; f/8 for a deep documentary focus; no outline tween (a still has one picture)"
+ },
+ "reflection": {
+  "strength": 0.25,
+  "roughness": 0.18,
+  "_": "ESTIMATE: wet asphalt at a grazing view"
+ },
+ "performer_prep": {
+  "texture_scale": 0.4
+ }
+}

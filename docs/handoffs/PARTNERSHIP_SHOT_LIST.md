@@ -544,3 +544,941 @@ detector reaches the picture). Fendi judges whether the nod reads as him.
 
 The engineering handoff written the same day is `docs/handoffs/HANDOFF_AVT_BUILT_IN_METHODS_2026-11-19.md` (audit of
 YSL / Hyenas / Partnership, the Treatment writer fix, the four methods built into the app).
+
+### Passenger seat v5: no seat belt, and the nod on it, 19 Nov 2026 ($0.27, ledger row 38)
+
+Fendi on nod test 1 (version B, his own pixels moved): "Yes it's fine but remove the seatbelt."
+
+Same verified route as the v3/v4 clean-ups: Gemini edit of v4 (`world-still-proxy`, job `7bad2c0e` → `a4449fe7`,
+references v4 as the frame + the Martini Bear sweater `27e951ad` so the bear under the belt is the real one), then ONLY
+the belt strip taken from the edit (mask = where the edit differs from v4 along the belt, 2.7 % of the frame).
+`max |out-v4| outside the belt mask: 0`; `inside the hard head mask: 0` (39,734 px). Filed `44788e06`
+(`worlds/scene_allen_passenger_seat_v5_nobelt_hishead.png`), T7 `work/allen/passenger_seat_v5/`. OBSERVED: no strap,
+buckle or shadow left on him; the bear is whole with its martini glass; a small dark fitting stays by the door pillar
+(it was there in v4 and is not on him).
+
+Nod redone on v5, version B (`work/allen/nod_test/allen_nod_v5_nobelt.mp4`, filed `22921c2f` under `tests/`): 48 of 72
+frames are the still bit for bit, head moves up to 12.8 px, lip gap never above 0.018 (`mouth_scan.py`). Pending his word.
+
+NEXT (not done): Allen over the real car take at "See you frequently up in my dreams" (song 1:18.10-1:21.78 = file
+74.22-77.90 s of `IMG_6462.MOV`). OBSERVED on that window: the phone is handheld, so the passenger headrest drifts by
+about a twelfth of the frame width and the cabin light changes; the seat sits at the far left edge, so part of his
+shoulder falls outside the frame; the dashboard edge crosses in front of his chest. He has to be tracked to the seat,
+lit with the cabin and tucked behind the dashboard, frame by frame. No verified method for a still layer on a moving
+handheld take: a test.
+
+### Allen beside him in the real car take, test 1, 19 Nov 2026 ($0.036 matte, ledger row 39). NOT VERIFIED: a test
+
+Line: "See you frequently up in my dreams", song 1:18.10-1:21.78 (file 74.22-77.90 s of `IMG_6462.MOV`, 89 frames at
+24 fps, read with `-noautorotate`). VERIFIED by looking at all four car takes at this line: only 6462 shows the
+passenger seat; 6465, 6466 and 6467 are close on him from the wheel.
+
+| Step | What | Measured |
+|---|---|---|
+| Cut-out | `photo_people_cutout.py clip` → `matte-video-proxy` (veed, job `edc3834c`) as delivered → `cut` | people 14.5 % of the still; the dashboard in front of him is not in the matte |
+| Track | the cabin (sunroof edge, headrest, seat backs, rear seats) followed frame to frame (ECC, rotation + shift), from the first frame | match 0.997 median (lowest 0.46 on the light flare); cabin drifts 93 px across and 34 px down at 720p. Chained feature tracking failed here (40 of 89 frames unsolved): too dark and shaky |
+| Place | still → take: scale 1.0, shift (-250, +75) px at 720p, so the headrest's top right corner matches | his head sits in front of the headrest, left shoulder out of frame |
+| Dashboard | the pale dashboard edge found per frame; he is hidden under its top edge | |
+| Light | one gain from the bare headrest beside his head per frame (0.61-1.06 of frame 1), base gain 1.3, saturation 0.88, and the take's own haze (rise of the dark cabin, up to 85 of 255) laid over him | on the frames where a street light floods the car he sinks into the haze with the cabin |
+| Nod | version B (his own pixels moved), frames 48-71 of the line | |
+| Proof | `max |out-take| outside Allen's outline: 0` | Fendi's performance is untouched |
+
+Output: T7 `work/allen/two_shot/allen_two_shot_test1.mp4` (1280x720, with the song), script `allen_two_shot.py` beside
+it. OBSERVED, to fix if he likes the idea: the cut-out's edge is harder than the footage; no shadow from him on the
+seat; he is not blurred when the camera shakes; 720p only (the still is 1376 px wide, so 1080p needs it enlarged 1.4x
+or remade at 2k); the light flare comes from his side and should catch his cheek. Pending his word.
+
+## Allen beside him in the real car take, test 2 ($0, local; asset `3e7ce2a1`, pending)
+
+Fendi on test 1 (19 Nov): "his likeness is correct but we need to figure out a method to make him not look pasted in
+the scene and having things glitch around him. The console screen is appearing and disappearing and the depth is off
+in the image to where Allen almost looks like he is connected to the seat in a 2 dimensional plane where as you can
+see my depth".
+
+| What he saw | Cause in test 1 (VERIFIED by measurement) | Test 2 |
+|---|---|---|
+| The console screen appears and disappears | the dashboard edge was found fresh on every frame by a fixed colour rule; in the light flare (frames 7-22) the rule failed. Allen covered dashboard pixels on all 89 frames, up to 11,924 px | `dash_occluder.py`: the edge tracked as one shape from frame 1, then cut on each frame by GrabCut seeded from that track (colour learned from that frame's own light). Allen covers 0 dashboard pixels on 89 frames; left end steps 3 px per frame median, 10 worst |
+| Flat, joined to the seat | he was tracked to one average of the whole cabin, so he moved as part of the far wall; the take's seat is lit as an empty seat; he was a frozen still | he follows the passenger headrest plus half of the slide the headrest shows against the rear seats (measured: 20 px across, 16 px down, over the clip); he shadows the seat behind him; slow sway of head and body |
+| Pasted | razor edge, no blur on camera shake, brightened 1.3x | edge pulled in and softened, blur along each frame's shake (median 2.5, max 5.2 px per frame), edge shading, light wrap 0.12, exposure 1.12 |
+
+- Script: `two_shot/allen_two_shot_v2.py -250 75 1.0 48` with `EXPO=1.12` (T7). Printed: outside Allen's outline and
+  his shadow on the seat 0; Fendi's half of the frame (x >= 700) 0.
+- HYPOTHESIS, not measured: the depth figures (head 20 cm nearer than the headrest, so `PAR` 0.5) and the light
+  direction of the shadow (front left). Judged by eye only.
+- OBSERVED, still open: 720p; his face is evenly lit while Fendi's light moves; the still looks at eye level and the
+  phone sits low; no verdict from Fendi yet. Not a row in `PROBLEM_INDEX.md` until he approves a version.
+
+## Allen beside him in the real car take, test 3 ($0, local; 1080p asset `f2b78e6a`, pending)
+
+Fendi on test 2 (19 Nov): "Let's try to fix it and remember I'm not here to micromanage I think we can make it happen".
+
+- VERIFIED (measured on test 2, frame 41): his skin sat at Lab a,b (8, 10) beside Fendi's (19, 15) under the same
+  cabin light: grey. Test 2's 0.88 saturation made it worse. Test 3: (14, 14).
+- Test 3 = test 2 plus the light: his colour brought to the take's warm light, a front-and-low ramp over his head
+  (the cabin's light is the dash and phone glow), the dashboard's shade on his chest, the red knit held no louder
+  than the seats. `two_shot/allen_two_shot_v3.py -250 75 1.0 48`, `S=1.5` for 1080p from the 4K original
+  (`take1080/`, frame-matched to the 720p frames, PSNR 49+).
+- Tried and dropped: a rim light from the window side in the flare frames. It drew a glowing outline round him.
+- Printed: outside Allen's outline and his shadow on the seat 0; Fendi's half 0. Flicker: his face changes 1.61 per
+  frame against 1.43 on the take's own bare headrest; the largest steps are the nod.
+- Also posted, not filed: `allen_two_shot_test3_camera_over.mp4`, the frame starting close on Fendi and moving over
+  to Allen for the nod, cut from the 1080p test 3 (720p out).
+
+### Direction from Fendi, same day (DECISION: his, quoted)
+
+- "If we can get it right we can always generate him perfectly swap inside one of the appropriate AI tools and use it
+  as a cut scene. We can pull the camera in on me or change the angle and motion the camera over to him at certain
+  parts or just do montage style cuts. We have options is all I'm saying but setting for the unrealistic 2D isn't the
+  best look unless we can fold my performance down into the same 2D look that might be dope".
+- "I just saw Wan 3.0 is on runway and the prices look ridiculously cheap we should test the realism on that too. If I
+  need to top up my API credits I will but I believe you can run a test straight through the mcp".
+
+### Wan 3.0 test: not run (VERIFIED blockers, 19 Nov)
+
+- Runway connector: the connected workspace (his personal one) is on the Free plan, 2 credits, no video models
+  available; top-up is not offered on Free. Two other workspaces exist on his account; their plans are not visible
+  from this connection, and switching needs the connector disconnected and reconnected.
+- AVT's own Runway route (`runway-video-edit-proxy`, billed to the API key Control Center holds) lists three models
+  (Aleph 2.0, a Runway edit mode, Seedance 2.5 edit) and is built for wardrobe edits of a take; Wan 3.0 is not a row
+  in it. Adding it is a provider change (Class C).
+- Planned test when access exists, no call made, nothing of Allen sent out: (A) the still `44788e06` animated as a
+  cutaway of him alone; (B) the test 3 two-shot edited on his side only, Fendi's half put back from the take (0).
+  A generated face is checked against his photo `34bd95ac`; who he is stays Fendi's word.
+
+## Wan 3.0 realism test 1: Allen alone in the passenger seat ($0.50, ledger row 42)
+
+Fendi, 19 Nov: "Just use the API instead of the connector."
+
+- Route (VERIFIED, worked): `avt_call proxy-provider-call` with `endpoint: video-providers-runway-generate`, body
+  `{mode: "image_to_video", modelVariant: "wan3", duration: 5, aspectRatio: "auto_720p", promptText,
+  referenceImageUrl: <temporary link to the still>}`; Control Center passes `modelVariant` and `aspectRatio` straight to
+  the Runway API. Poll `video-providers-job-status` with `query {provider: "runway", id: <task>}`. Runway API price
+  (docs, 19 Nov): `wan3` 5 / 10 / 20 credits per second at 480p / 720p / 1080p, a credit is $0.01. Control Center's
+  own estimate for this model is wrong (25 cents returned); Runway's task estimate and charge were 50 credits.
+- Result `bfb93450` (as delivered): OBSERVED it reads as real handheld footage: the light moves over him, the seat and
+  cabin have depth, a street light passes. OBSERVED it redraws his face from about 1 s on: eyes open wide (his photo is
+  heavy-lidded), sharper skin, a smirk in the last second. Mouth closed throughout. Not judged by Fendi.
+- `212f2c5e`, $0 local (`wan3_test/wan_face_putback.py`, `FLOW_SIGMA=16`): the same clip with the face rebuilt from the
+  still's own pixels, moved by Wan's smooth head movement and lit by Wan's slow light change. It keeps his photo's
+  expression; it is softer than Wan's redraw and is not pixel-exact after the first frame. Following Wan's fine motion
+  (sigma 2) dragged his eyes and mouth out of shape by the last third: do not use it.
+- Not tested yet: the two-shot (his side regenerated, Fendi's side put back from the take), which needs the
+  video-to-video endpoint; Wan 3.0 Prime; 1080p.
+
+### Fendi's verdict on Wan 3.0 test 1 (19 Nov) and what follows
+
+- Fendi on both versions (`bfb93450` as delivered, `212f2c5e` with his photo face): "I think both are solid the redraw
+  they did wasn't terrible or ridiculous looking". Recorded on both assets; both stay `pending` (test clips, not on a
+  shot).
+- Posted, not filed: `work/allen/cut_demo/allen_dreams_line_cut_demo.mp4`, the "See you frequently up in my dreams"
+  slot as a cut (88 frames, with the song): his real take punched in on him for 44 frames (the empty seat out of
+  frame), then 44 frames of the Wan cutaway, his-photo-face version, clip seconds 1.55-3.38.
+- VERIFIED blocker for the two-shot through Wan: Control Center's `video-providers-runway-video-edit` allows only
+  `aleph2`, `gemini_omni_flash_1.1` and `seedance2_5` (its `contract.ts` on `main`); `wan3` video-to-video needs a row
+  there (sister repo, provider change, Class C). Image-to-video needs no change.
+- RECOMMENDATION: Allen appears in cutaways made this way (a Gemini still with his head put back, then Wan 3.0
+  image-to-video, about $0.77 a shot), cut against Fendi's real takes; the wide two-shot (test 3) only inside a camera
+  move. One test is not a benchmark: `docs/capability/GAPS.md` G2 keeps Wan 3.0 as a candidate until more shots pass.
+
+## Allen's solo shots, 19-20 Nov 2026 ($4.39: seven stills $1.89, five clips $2.50; ledger rows 43-54)
+
+**DECISION (Fendi, 19 Nov, late):** "We can do solo shots of him in those different shots, interchanging the different
+polo sweaters. We can go back to the navy one that you put him in. That was nice. We can do, we can actually create the
+Lexus scene, putting him in front of the green Lexus, putting him standing next to it, getting in the car. We can just
+do different shots of that, different shots of him, Mercedes. Just be creative with it, so we can actually execute that."
+
+What this changes in the notes above:
+- The navy Polo Bear sweater is back in use beside the red one (`400b40c3` approved again; his navy picture with his
+  real head filed approved as `a552f358`).
+- An exterior Lexus scene exists again, for ALLEN ALONE. Still scrapped (his words of 19 Nov stand): the two Lexuses
+  back to back, and him and Allen standing by the cars together.
+- Allen's Lexus is green (new, his word). Its model and year are NOT in any note: the agent chose an early-2000s GS,
+  dark green (plate `2523fc5d`), and a black mid-2000s Mercedes S-Class. HYPOTHESIS until he confirms the cars.
+
+**Method (each step a verified one, except Wan, which he judged "solid" on test 1):**
+1. One picture of the car alone, so it is the same car in every shot (`world-still-proxy`, Gemini, no references).
+2. Per shot: his dressed photo as `screen` + the car as `prop`, prompt "change ONLY the place around and behind him".
+3. His whole head from his photo: `still_face_from_photo.py` with `AVT_FACE_EXACT=<matte of the photo>` then
+   `still_face_putback.py` with `AVT_STILL_HEAD_MASK`: proof 0 on all five (scale 0.84-1.00, residual 0.5-2.0 %).
+4. Wan 3.0 image-to-video, 5 s, 720p, through the Runway API route.
+
+**FAILED, do not repeat (VERIFIED, $0 lost beyond the stills):** `still_face_putback.py <photo> <edit>` on its own. It
+assumes the edit left him where the photo has him. Gemini moved and resized him in every one of these (ECC 0.24-0.48 or
+no convergence), so his head was pasted at the photo's place, floating, and the bad alignment warped two pictures to
+garbage. When the scene around him changes, step 3 is the tool. The first headlights still also drew a different man
+(cap forward, looking away): the prompt has to hold his size and place ("close to the camera, his head near the top").
+
+| Shot | Lyric (song time) | Sweater | Still (his head) | Clip | Seen in the clip |
+|---|---|---|---|---|---|
+| L1 in front of the Lexus | My partner Allen (0:15.7) | navy | `c1b77be4` | `8211213f` | push-in, one nod, mouth closed |
+| L2 at the door, gets in | Had it automatic (0:16.9) | navy | `beb5a848` | `e473e93e` | four beats: look (closed-lip smile) 0-1.3 s, turn 1.3-2.3, gets in 2.3-4.2, door shut 4.2-5; an invented "A" on his cap when he turns |
+| M1 by the Mercedes | All my business partners got Benz's (0:30.8) | red | `d3a500d2` | `b054afcb` | nod, looks at the car and back |
+| L3 gas station | Speaking to your spirit we agree (1:16.0) | red | `38b3a9b6` | `bb4c15a4` | two slow nods, eyes drop on each |
+| L4 headlights | As your guidance shining on to me (1:21.8) | navy | `5509d699` | `1642f563` | headlights flare, mist, he lifts his chin |
+| (earlier) passenger seat | See you frequently up in my dreams (1:18.1) | red | `44788e06` | `bfb93450` / `212f2c5e` | test 1, both "solid" |
+
+OBSERVED, open: the stills are 5:4 (his photo's shape), so the clips are 1068x860; in a 16:9 cut they are cropped or
+shown as snapshots in their own frame. Wan redraws his face in every clip; `wan_face_putback.py` can hold his photo
+face on the ones where his head barely turns (L1, L3, L4, M1), not on L2. All ten assets are `pending`. T7
+`work/allen/solo_shots/` (stills, head checks) and `solo_shots/wan/` (clips as delivered and muted).
+
+## Fendi on the five solo clips, 20 Nov 2026: the face drifts too much; an older Allen, from the photos of the two of them
+
+His words: "The facial drift on these is way too much and but I actually think on these we do a little bit older version
+of Allen pull up some of the pictures with me and him and crop me out so you can get his likeness right".
+
+- DECISION (his): the five clips `8211213f`, `e473e93e`, `bb4c15a4`, `1642f563`, `b054afcb` are not accepted as they
+  are (drift). The Allen of these shots is a little OLDER than the kitchen photo. This replaces "the YOUNGER Allen"
+  of 19 Nov for the solo shots. His likeness is to come from the photos of the two of them, Fendi cropped out.
+- The photos with exactly two people: 02, 04, 08, 09, 10, 11, 12, 14, 20 (`people_points.json`). Who Allen is: 04 = A
+  (his word, 19 Nov). 20 = B by the clothes and room of his confirmed solo photo 18 (not by his face). 02, 08, 09, 10,
+  11, 12, 14: NOT KNOWN, his word needed. Sheet posted: T7 `work/allen/together_sheet_two_rows.jpg`.
+- TESTED, $0, FAILED, not posted: `wan_face_putback.py` on clips L1 and L4. It holds his photo face only while his head
+  barely moves (test 1). On L1 the camera pushes in to twice the size and his eyes come out uneven by the end; on L4
+  the frame moves 460 px and it leaves streaks above his cap. RULE: no push-in and no travelling camera on a clip whose
+  face must be held; a face may shrink in a clip, never grow past its size in the still.
+- TESTED, $0.27 (ledger row 55): older-Allen still T1 from photo 3 (`0882dfee`). OBSERVED: a convincing photograph;
+  the face is Gemini's drawing from his photo. His real head could not be put back from photo 3: the photo cuts his
+  head off above the brow line, tilts it and lights it in a warm shade (gains 3.2 / 7.0 / 8.5, residual 4.3 %), so the
+  exact-pixels mode has no whole head to use. Photo 3 is a likeness reference, not a head source.
+- NEXT, waiting on his word (which man is Allen in 08, 09, 11 and the rest; whether a drawn face of this standard is
+  acceptable or only his photo's pixels): one older-Allen shot end to end, camera locked, before the other four.
+
+## Who Allen is in the nine two-person photos (Fendi's word, 20 Nov 2026) and the older-Allen reference set
+
+His words: "Photo 04, he's to the left in the blue shirt. Photo 20, he's to the right in the red polo. Photo 08, he's on
+the left hand side holding the bottle. Photo 9, These to the left. Photo 11. He's to the left. Photo 2, he's to the
+right. Photo 10, he's to the right. Photo 12, he's to the right. Photo 14, he's to the right. And just for
+clarification ... A is left, B is right." Also: "the collage is not okay" and "In the pictures where it's just me and
+him, he's the obvious other person." RULE (his): no lettered collage and no picture-by-picture questions again; this
+table is the record.
+
+| Photo | File | Allen | Era (OBSERVED from the picture, not from his face) | Crop, Fendi cut out (T7 `work/allen/older_refs/`) |
+|---|---|---|---|---|
+| 04 | IMG_1758 | A, left, blue | later; daylight, face-on, head about 130 px | `allen_older_04A.png` (also ref 01 `862fcdcf`) |
+| 08 | IMG_3070 | A, left, bottle | later; big open smile | `allen_older_08A.png` |
+| 09 | IMG_3071 | A, left | later; sharp, face-on, whole head, mouth closed, faded filter | `allen_older_09A.png`, filed `a4753c00`, matte `allen_older_09A_alpha.png` |
+| 11 | IMG_3073 | A, left | later; dark, soft | `allen_older_11A.png` |
+| 02 | D593AEDD | B, right | younger; profile | `allen_older_02B.png` |
+| 10 | IMG_3072 | B, right | younger; cap | `allen_older_10B.png` |
+| 12 | IMG_3074 | B, right | small | `allen_older_12B.png` |
+| 14 | IMG_3076 | B, right | small, club light | `allen_older_14B.png` |
+| 20 | IMG_3344 | B, right | younger; the kitchen | `allen_older_20B.png` |
+
+OBSERVED on the older-Allen stills (ledger rows 55-56):
+- T1 from photo 3: its head is cut off at the top, so it cannot be a head source.
+- T2 from photo 09 (`33152dfa`, references 09A + 04A + the car + the navy sweater): `still_face_from_photo.py`
+  `AVT_FACE_EXACT` fits (scale 0.67, turn -1.2 deg, residual 2.3 %, gains 0.79 / 0.63 / 0.69, proof 0, 35,322 px) but
+  the result LOOKS PASTED: photo 09 carries a faded filter (lifted blacks, low contrast) and one gain per channel
+  cannot make it sit in a crisp flash picture. Not posted. So for the older Allen the exact-pixels head has no clean
+  source among these photos; the still as Gemini drew it from 09A and 04A is what was animated, for Fendi to judge.
+
+## Older Allen, test shot T2 ($0.77; ledger rows 56-57; still `33152dfa`, clip `402f7c28`, both pending)
+
+- Still: Gemini, 16:9, references 09A + 04A (cast, Fendi cropped out), the green Lexus plate, the navy sweater; night
+  flash snapshot in front of the car; bare head, no chain, mouth closed. The face is DRAWN from his photos.
+- Clip: Wan 3.0, 5 s, 720p, prompt "the camera is locked on a tripod ... he stays the same size ... the same eyes,
+  nose, lips, goatee, beard and hairline as in the first frame". OBSERVED: the same features hold from the first frame
+  to the last, which the five kitchen-photo clips did not do; lips part slightly near 2 s; eyes closed at the end.
+- HYPOTHESIS for why this one held: a sharp, detailed starting face at a size the clip never exceeds, and a camera that
+  does not move. One clip; not a benchmark.
+- DEVIATION, stated to Fendi before the clip: this shot does not carry his photo's own pixels (PROBLEM_INDEX "Allen's
+  likeness" row). Cause: the only whole, sharp, later head (photo 09) is filtered and looks pasted when put back.
+  Whether a drawn likeness of this standard stands in for him is Fendi's call; nothing here is approved.
+
+## LOCKED: the car shot. The older Allen is for ONE shot only (Fendi, 20 Nov 2026)
+
+His words: "I don't want you to change Alan in the car shot. That shot was perfect. Please don't touch that shot. I was
+talking about only the new shot with him in the navy sweater outside of the Lexus. That shot should be a slightly older
+version of him."
+
+- **The car shot is approved and locked:** Allen in the passenger seat, still `44788e06`, clips `bfb93450` (as Wan
+  delivered) and `212f2c5e` (his photo face held). All three are `approved` with these words. NEVER edit, regenerate,
+  re-age or replace them. Which of the two clips goes in the cut has not been said.
+- **CORRECTION to the section above** ("an older Allen ... for the solo shots"): that was the agent's over-reading. The
+  slightly older Allen applies ONLY to the shot of him in the navy sweater outside the Lexus. The older-Allen test T2
+  (still `33152dfa`, clip `402f7c28`) is that shot; it is pending his word on the face.
+- NOT SAID, so not touched: the other solo clips (door `e473e93e`, gas station `bb4c15a4`, headlights `1642f563`,
+  Mercedes `b054afcb`). His drift note on them stands; nothing is redone or re-aged on them without his word.
+
+## Older Allen T3: ONE photo, his own pixels (Fendi, 20 Nov 2026; $1.04, ledger rows 58-60)
+
+His words on T2: "the older version does not look like him. Those are not his pixels. It's close, but pick one of the
+images and not a collection of them. Pick one and use that one as opposed to trying to merge his likeness into several
+different images, because it's multiple different stages of his life over a culmination of about 15 years ... Over time,
+he got heavier and heavier and bigger. So just pick one of him in the club ... Whichever one is the cleanest looking as
+far as the highest quality".
+
+- RULE (his): ONE photo of Allen per likeness. Never several photos of him as references in one request: they are 15
+  years apart and blend into a man who is not him. T2 (`33152dfa`, `402f7c28`) is REJECTED for that reason.
+- The photo: 09 (IMG_3071, the club, Allen on the left), crop `a4753c00`: the largest, sharpest later head, face-on,
+  whole head, mouth closed. DECISION (the agent's pick among the club photos; his to overrule).
+- What made his pixels sit (VERIFIED on this still): grade the WHOLE scene to the photo's own look, not his head to
+  the scene. Per channel, fit the still's drawn face to the photo's face by percentiles (here B, G, R gain 0.52 / 0.78 /
+  0.73, lift 89 / 65 / 73), apply to the whole still, add the photo's softness and grain; then `AVT_FACE_EXACT` needs
+  gains of 0.98 / 1.04 / 1.05, i.e. his head goes on untouched. Asking Gemini for the faded look in words did nothing.
+  Then the verified join clean-up and the same put-back (proof 0, 43,149 px): still `fa83826a`.
+- Clip: Wan 3.0, camera locked, he only breathes and blinks. His head moves 17 px at most, so `wan_face_putback.py`
+  holds his photo face for all 150 frames. Two versions filed, both pending: as delivered, and his face held.
+- OBSERVED, open: the whole picture is as faded as photo 09 (lifted blacks); a single grade over the finished clip can
+  bring it toward the cut's look without separating him from the scene. 720p.
+
+## Older Allen T6: his WHOLE REAL FIGURE from one photo ($1.12, ledger rows 61-65; still `d2ca81b7`, pending)
+
+Fendi on T3 (20 Nov): "His beard is off" / "Your cutting off his goatee" / "And he never connected his goatee" / "the face
+looks glued onto another face around his ear it looks slightly un natural" / "It wasn't that long" / "You should probably
+use another image" / "His black shirt is throwing you off on getting his beard pixels accurate" / "You can see from his
+other pics how he kept his goatee length they are almost identical". T3 (`fa83826a`, `5fb6d7f9`, `b16148a3`) REJECTED.
+
+FACTS about Allen (his word): a thin moustache and a SHORT goatee on the chin; the goatee is NOT connected to the
+moustache; no beard along the jaw; the same length in every photo. Never lengthen, thicken or join it in a prompt.
+
+VERIFIED causes of the T3 faults:
+- The head mask stopped at his chin and the join clean-up was told to clear "the beard under his chin".
+- In photo 09 a black shirt sits right under his chin; brightened, it read as a long beard. It is shirt.
+- A real head on a GENERATED body always leaves a join at the ear and jaw, and the generated neck is lit differently.
+
+**RULE for Allen from here (replaces "whole head, AVT_FACE_EXACT" for any new picture of him):** his whole REAL FIGURE,
+from ONE photo, with only the garment changed. Never a real head on a generated body.
+1. Clothes-only Gemini edit of the one photo (`screen` = the photo, `garment` = the flat sweater; "change ONLY what
+   the man is wearing"; 9:16 for a standing photo).
+2. `still_face_putback.py <photo warped into the edit's frame> <edit> <out>` (the photo is first laid into the wider
+   edit by SIFT similarity: here scale 1.953, shift 82 px). Take the OLD garment's collar out of the head mask
+   (colour test low on the head) or its stripes come back at his neck. Here: ECC 0.88, proof 0, 63,541 px.
+3. `matte-video-proxy` (veed) on a 2 s clip of the dressed photo, as delivered.
+4. `older_v1/figure_over_plate_still.py`: the figure resized (0.52, so his head is no larger than in the photo) over
+   an EMPTY plate; rim colours from inside him. Proof 0 on 156,248 px.
+5. One small grade over the whole finished picture.
+Source photo: 04 (the White House fence), the sharpest by far (Laplacian 666 against 32-89 for the club photos),
+plain daylight, no filter, his goatee against a light collar.
+
+DEAD ENDS this round, not posted: T5 (`4013059a`: photo 04 as `screen` with place AND clothes changed in one edit:
+Gemini enlarged him 1.2x and lit his face 6x brighter; his head at gain 6 was wrecked) and its join clean-up
+(`81eb6fd2`: re-lit his neck and body, a dark line along his jaw).
+NOT DONE: the clip. The still waits for Fendi's word first.
+
+## T6 was WRONG (the agent's error); T7 is the corrected older Allen, with the clip ($0.77, ledger rows 66-67)
+
+Fendi on T6, 20 Nov: "I can't make any judgments without seeing the full animation. The new still ... does not look
+like his original pixels on the image. Are you using the verified method because it doesn't seem like it."
+
+**He was right. VERIFIED by audit:** in T6 only 39 % of his face box was his photo's pixels. The agent's collar-removal
+step on the head mask (colour test + 23 px dilation + 19 px opening) cut his eyes, nose, mouth and goatee out of the
+mask; the put-back then restored only his forehead and hair, and the rest stayed the GENERATED face. The printed proof
+("0 inside the mask") was true and meaningless, and the agent told him the face was his photo's pixels. T6 `d2ca81b7`
+is marked rejected with this record.
+
+**RULES from this (for every put-back, on anyone):**
+- A "proof 0 inside the mask" line is not a proof until the mask is shown to cover the face. Print the share of the
+  face outline (landmarks) that the mask covers; it must be about 1. Then print how many pixels inside the face
+  outline differ from the source photo; it must be 0.
+- Never edit a head mask with colour tests or large morphology. To keep an old collar out, use
+  `scripts/edit/head_mask_no_collar.py`: the tool's own mask above the bottom of the nose, the face outline below it.
+- Look at the mask over the face (a dimmed overlay) before telling Fendi whose pixels they are.
+
+T7 (still `56bfa0a3`, clip with his face held `c90e03ab`, clip as delivered `7e8d7c7b`; all pending):
+- Mask by `head_mask_no_collar.py`: face outline covered 1.000; inside it 0 pixels differ from his photo.
+- Neck tidy (Gemini) for the beard shadow the edit had drawn under his jaw, then the same put-back.
+- `scripts/edit/figure_over_plate_still.py`: his real figure over the plate, no tone change on him.
+- Clip: Wan 3.0, camera locked. As delivered, Wan redraws his face after frame 1 and JOINS HIS GOATEE into a full
+  circle: never usable as his face. `wan_face_putback.py` holds his photo's face on all 150 frames (head movement
+  10 px). OBSERVED on the held version: a slight violet tint on his face after the first second.
+
+## Older Allen: the face is HIM (Fendi, 20 Nov 2026); the neck fixed in T8 ($0, local)
+
+Fendi on the T7 clip with his face held (`c90e03ab`), asked "Is clip 1 him?": **"Yes aside from the coloration of his
+neck"**. Recorded on the asset. The likeness method is therefore the one in the section above: ONE photo (04), his
+whole real figure, only the garment changed, his photo's face held on every frame of the clip.
+
+OBSERVED on T7 (what he meant): the drawn neck was lighter and pinker than his face, with a pale strip under his left
+ear, and from about 1 s a dark line under his chin where Wan's redrawn beard showed below the held face.
+
+T8, $0:
+- `scripts/edit/neck_to_face_tone.py` on the still: the neck (skin joined to his head, below the head mask, above the
+  collar) takes his cheeks' Lab colour at 0.92 of their lightness, its own light and dark patches halved. His head is
+  untouched (printed: max change inside the head mask 0). A percentile fit was tried first and FAILED (it stretched the
+  pale strip greenish-white): do not use it.
+- `scripts/edit/wan_face_putback.py` on the same Wan clip (no new render) with the mask of head AND neck, and
+  `LIGHT=luma` (Wan's brightness change only, not its colour drift, which had tinted his face violet).
+- Clip: T7 `older_v1/allen_older_T8_wan3_his_face_and_neck.mp4`, filed under `allen_solo/`, pending his word on the neck.
+
+## Older Allen: T8's neck REJECTED; the cause found and fixed in T9 ($0, local, 20 Nov 2026)
+
+Fendi on T8 (`333bfb56`): **"The neck is still super light. It doesn't match the skin tone of his face. It's extremely
+apparent. And when you generate it, there was absolutely no movement at all. There should be just some slight
+movement. But fix the neck first before generating anything, and then come back."**
+
+What was wrong with T8 (VERIFIED by measuring frame 76, lightness 0-255):
+- The neck is not light all over. Under his chin it is 46, at the collar 63-68; his jaw and chin are 50-52.
+- A PALE BAND runs down the left side of his neck (viewer's left) at 104, up to 190 where it meets the collar. The light
+  in the scene comes from the other side (forehead 126, that cheek 117; the cheek above the band is 77). A bright band
+  on the shadow side is what he saw.
+- T8's fix never reached the screen: the band is too thin to survive inside the hold's eroded mask, so the clip showed
+  the video model's band, not the toned still's.
+- Two agent errors on the way: (1) comparing the MEDIAN of the neck with the median of his cheeks said "neck darker
+  than face" and hid the band; (2) the agent blamed a colour-cast difference; measured, the colour offset was 1 unit.
+  Rule: for a tone complaint, measure small patches side by side (jaw, each cheek, each side of the neck), not medians.
+- Dead ends, not posted: flattening the neck to one tone (a grey bib), scaling the whole neck (the band stays).
+
+T9, `scripts/edit/neck_match_clip.py` (default `MODE=cap`), per frame:
+- reference = his JAW (bottom fifth of his head mask), not his cheeks; any neck pixel lighter than 1.3 x the jaw is
+  pulled down to it and takes his cheeks' colour; darker pixels keep their own shading;
+- the bright sliver at the collar that the segmenter labels garment is included;
+- his head is untouched (printed: max change inside the head mask 0). Only x 206-304, y 186-268 of the frame changed.
+- Printed: brightest part of the neck 138 -> 89 on the clip (his face's brightest 157), 152 -> 70 on the still.
+  Frame-to-frame change of the band: 0.42 before, 0.48 after (no new flicker).
+- Filed, pending his word: clip `c8681178` (T8 with the fix, no new render), still `e77ee30f` (T7 still with the fix:
+  the source for the next generation).
+
+NEXT, only after his word on the neck: one Wan 3.0 generation from still `e77ee30f` ($0.50), camera locked, with
+SLIGHT MOVEMENT asked for in the prompt (a small weight shift, a slow turn of the head of a few degrees, the sweater
+moving with his breath); then `wan_face_putback.py` (his photo's face) and `neck_match_clip.py` on the result.
+Risk to check: the face hold breaks on large head movement (10 px was fine on T7).
+
+## Performance-shot ideas from Fendi (20 Nov 2026), recorded, NOT started
+
+His words: "I have an idea for the performance shots. I was thinking stained glass windows, cathedral stained glass
+windows, amazing scenery. You can find a real location to place me in or rebuild in Blender for possibly for that shot.
+We may have to swap my outfit to a tuxedo, a purple label Ralph Lauren tuxedo, and also I was thinking about another
+shot being a collage of different patterns and textures and materials, suede, leather, carbon fiber, wood grain, oak,
+etc. I want that the background, the collage background, to be colorful because we're going to do some pixelation
+effects."
+
+1. **Cathedral, stained glass.** His real performance take placed in a cathedral with stained-glass windows: a real
+   location plate (a photograph, or a Gemini still that reads as one) or a Blender rebuild (`scripts/edit/blender/`).
+   Possible outfit swap to a Ralph Lauren Purple Label tuxedo. RECOMMENDATION (methods already proven): Genjutsu
+   `dress-clip` + the face-preserving put-back for the tuxedo (`docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md`), a
+   product picture of the exact tuxedo as the garment reference; a BUILT scene, not a flat still (PROBLEM INDEX: "He
+   looks pasted on a still"); the motion budget of the build skill §3 (coloured light through the glass must stay
+   constant on him: no sweeping light shafts across his jacket). Swap takes need still air.
+2. **Collage of materials.** A colourful background collage of patterns, textures and materials (suede, leather, carbon
+   fibre, wood grain, oak, ...) behind his performance, made colourful on purpose because pixelation effects come on
+   top. RECOMMENDATION: build the collage from photographs of real materials in panels (Gemini stills per material or
+   stock he owns), his take matted over it (`matte-video-proxy` + `composite_over_plate.py`); the pixelation is a
+   VFX-pass step (Grokbot / After Effects) and needs the collage delivered as its own layer.
+Open for him: which take(s) these go on, and the tuxedo's exact product picture.
+
+## Older Allen T10: real movement, his photo's face held while he moves (20 Nov 2026, $0.50)
+
+Fendi on T9: **"What are you prompting for the movement because it looks like a picture ... Alan is perfectly still. No
+hand movement, no head movement ... nothing to symbolize that it's a video as opposed to an image."** Then: **"if the
+motion gets too crazy, as long as there's something we can keep, a couple seconds ... we need a good 2 to 4 seconds of
+solid movement ... if the prompt generates something crazy, as long as there's something in there that is keepable,
+let's put it aside and use it as a montage to cut."**
+
+Cause (VERIFIED, the prompt of Runway task `3cc872b8`): it said "his head does not turn or tilt ... he only breathes,
+shifts his weight very slightly and blinks once". The agent wrote that to protect the face hold. RULE: never ask a
+video model for stillness to protect a put-back; ask for the movement and make the hold follow it.
+
+T10 (Runway task `f1cd363d`, Wan 3.0, 5 s, from still `e77ee30f`): the prompt asks for weight rocking, two nods, the
+hand sign bounced then lowered, the other hand at his hem; head facing the camera; hands never above his chest.
+OBSERVED as delivered (`4f53c575`): he steps about 150 px toward the car, bounces and drops the hand sign, looks down
+at his hand in the middle; the camera drifts although the prompt locked it; the model redraws him as a slimmer,
+different man from the first second (never usable as his face).
+
+The flow-based hold (`wan_face_putback.py`) TORE his face from frame 40 (163 px of travel). New, $0:
+- `scripts/edit/wan_face_putback_track.py`: the still's head and neck are moved onto every frame by the face
+  landmarks of the render (one similarity transform, smoothed 1.5 frames), brightness-only light. It prints how far
+  the render's head is turned from the still's view and lists the usable stretches. It cannot turn a face.
+- The mask must be his silhouette only (head and neck mask AND person segmentation of the still): a loose mask carried
+  a patch of the still's brick wall around his moving head (seen on the first run, fixed).
+- `scripts/edit/neck_match_clip.py` now takes a folder of per-frame head masks (written by the tracker).
+- Printed: face found 150/150; head travels 154 px; turned median 9.1, max 18.7 degrees; fit max 0.047 of the eye
+  distance; neck's brightest part 128 -> 80; max change inside his head mask by the neck step 0.
+- Held clip `838dce7e` (pending). KEEP frames 1-52 (0.0-1.7 s) and 93-150 (3.1-5.0 s). CUT 53-92: he looks down and
+  the photo's face stays facing the camera.
+- NOT checked by the agent: the clip in motion (only frames at 2x). A trembling head on his body would show only in
+  playback; Fendi's eye decides.
+
+For the next roll (each $0.50): keep the movement, ask again for the head to face the camera throughout (no looking
+down), feet planted or one step only; keep every usable stretch as a montage cut.
+
+## The living portrait (Fendi's idea, 20 Nov 2026): first test P1 ($0.27)
+
+Fendi on the T10 held clip (`838dce7e`): **"The clip looks like he's coming out a picture which may work if we use it
+as a split screen as a large portrait hanging on a wall."** DECISION (his): the held-photo look is used on purpose, as
+a portrait of Allen on a wall that moves. Not yet said by him: which wall, which part of the song, what is on the
+other half of the split.
+
+P1:
+- Wall plate `8d4b9e7a` (Gemini, job `77f470e1`, no references): dark walnut panelling, a large gilt frame in portrait
+  format with a flat green card inside, a brass picture light, window light from the left. The agent's pick of room.
+- `scripts/edit/clip_in_wall_frame.py`: finds the card's four corners, warps each clip frame (cropped x 50-607 of
+  1284, his whole travel inside it) onto the card, lays the card's own light over it (lamp above, the lip's shadow),
+  GAIN 0.82 so a daylight picture does not read as a TV in a dim room. Printed: max change outside the card 0.
+- Clip: T7 `work/allen/portrait_wall/allen_portrait_wall_P1.mp4` (1920x1080, 5 s; filed under `allen_solo/`).
+- Split-screen EXAMPLE only: `allen_portrait_wall_P1_split_example.mp4`, left = the wall's centre 960 px, right = 3 s
+  of his car take (not synced to the song, not a slot).
+- OBSERVED: the middle second (he looks down, the photo's face does not) reads less wrong inside a portrait, but it
+  is still there; a cut can use 0.0-1.7 s or 3.1-5.0 s only.
+- Open for him: the room (this panelled wall, or the cathedral of his performance idea), and the other half.
+
+## The living portrait, corrected (Fendi, 20 Nov 2026): HIS gallery scene, test G1 ($0)
+
+Fendi on P1 (the panelled wall and the split-screen example): **"That's not what I meant by split screen and I used
+the wrong terminology the portrait can work but we need a more creative realistic scene with it. Try the image I
+uploaded."** So: NO split screen; the panelled room P1 (`3ea1cd75`, plate `8d4b9e7a`) is set aside. His image: a
+bright gallery wall with four pieces in a row: a walnut shadow box with a white winged rose on blue, an EMPTY ornate
+gilt frame, a small plaque with a dark metal rose, a red rose painting. Allen's portrait goes in the empty frame.
+
+G1, $0, his image untouched outside the frame's opening (printed: max change outside the opening 0):
+- `scripts/edit/clip_in_wall_frame.py` with `RECT=449,172,567,333` (the opening, in his image's pixels), `SUPER=2`
+  (built at 3840x2160), the opening's own light laid over the picture, GAIN 0.82. Clip crop x 72-597.
+- Push-in (`ZOOM=2.6`, eased, from the whole wall to the frame) and the wide shot held: T7
+  `work/allen/portrait_wall/allen_portrait_gallery_G1_push.mp4`, `..._wide.mp4`.
+- OBSERVED: his image is 1024x572, so the wall and the gilt frame go soft as the camera closes in; the portrait itself
+  stays sharp. The room is a still: nothing in it moves but the camera and the portrait.
+- RECOMMENDATION if he likes the direction: one sharper copy of his scene (Gemini, his image as the reference, 2k,
+  $0.27) so the push-in holds up, and life in the room (window light drifting across the wall) built in layers.
+
+## The gallery shot (living portrait): G2 sharp, and HIM at the far right (20 Nov 2026, $0.36)
+
+Fendi on G1: **"First one is much better"** (the push-in). **"Is there a way to add me with clothing swap on the far
+right of this shot as a b role shot"**. **"You can do the sharper image one you reference too first if you need to."**
+**"Make sure it's at a point where I reference Allen."**
+
+G2 (sharper plate, $0.27): Gemini 2k from his image `e122d96c` as the `place` reference, "reproduce exactly", a green
+card in the gilt frame: plate `348d1c96` (2752x1536). OBSERVED: same wall, pieces, places and light; the gilt carving
+is crisp at the end of the push-in. `clip_in_wall_frame.py` fix: the card's edge sits in the lip's shadow, so dark green
+counts as card (a bright-only test left a green line). Push-in: T7 `portrait_wall/allen_portrait_gallery_G2_push_sharp.mp4`.
+
+WHERE IN THE SONG (his rule: a line that references Allen). First-half lines that do, from the table above:
+0:15-0:18 "My partner Allen" (taken by the approved car shot), **0:44-0:51 "Every time I put the polo on / Wishin you
+was here ... livin through these songs"**, 1:16-1:23 "Speaking to your spirit ... see you in my dreams", 1:30-1:47
+"Clean with my partner nem'". RECOMMENDATION: 0:44-0:51, because the portrait shows Allen in the Polo Bear sweater on
+the line about putting the polo on. His to confirm.
+
+HIM in the shot (method: his REAL footage, placed; `docs/recipes/HIS_FACE_IN_ANY_SCENE.md`):
+- Footage: he is not rapping between room takes B and C. `mouth_scan.py` on file 238-258 s: lip gap 0.00-0.02 from
+  240.6 to 244.5 s. Clip `98c51f4d` (240.6-244.7 s, 4.1 s for Genjutsu's 4 s minimum); usable at rest 241.6-244.4 s
+  (2.8 s): front-on, hands clasped, tan leather jacket, black cap, glasses, jeans, thighs up, no fan.
+  The side-profile take D has no rest stretch (he raps throughout; the scanner finds his face on 35 of 673 samples).
+- Matte (`matte-video-proxy`, veed, job `fd222489`): as delivered it KEEPS HIS GREEN QUILT on and off
+  (`matte_stability.py`: 55 of 84 frames see-through in the bottom region, a quilt-shaped blob by his shoulder).
+  New, $0: `scripts/edit/matte_minus_green_backdrop.py` (per frame: delivered matte minus backdrop-green in the
+  picture; green inside him restored from the delivered matte; thin streaks beside him dropped; removes only, adds 0,
+  nothing carried between frames). After: see-through frames top 1, middle 1, bottom 34 (6,496 px in all; was 434,034).
+  NOT a row of PROBLEM_INDEX yet: a test, shown to Fendi. Not for a take where he wears green.
+- Placed with `composite_over_plate.py --scale 0.8 --cx 1722 --push 0.015` over the wide gallery plate with the
+  portrait playing. Scale chosen so his eyes sit at the height of the art's centre (the camera's eye level); at that
+  size he covers the right edge of the red rose and his arm touches the frame edge.
+  T7 `work/gallery_him/gallery_him_T1_own_clothes.mp4`. OWN CLOTHES: a position test only.
+- NEXT, needs his word: the OUTFIT (a picture of the exact garment for the swap). Then `dress-clip` (Genjutsu,
+  about $0.68 per source second, 4.1 s = about $2.80) on `98c51f4d`, `body_only_swap.py` put-back (his face 0),
+  matte of the put-back + the quilt step, the same placement. Swap takes need still air: this stretch has none moving.
+
+## On the board, 20 Nov 2026: the gallery shot and Fendi's Mercedes shot ($0)
+
+Fendi: **"I'll shoot a shot for this so it looks more natural and full body. Adding me to the fore front of this shot
+looks crazy. Just position this shot on the timeline for now and we'll come back to it if necessary it's fine as is."**
+- READING (the agent's): "looks crazy" is against the foreground test of him (`gallery_him_T1_own_clothes.mp4`): it is
+  dropped, no swap is bought, and he will film himself full body for the gallery. The gallery shot WITHOUT him is
+  "fine as is". The at-rest footage `98c51f4d` and `matte_minus_green_backdrop.py` stay on the shelf.
+- PLACED: `c025`, song 0:45.31-0:47.07 ("Every time I put the polo on"), asset `c627f5cf` (primary, pending): the
+  push-in on the sharp plate retimed to the slot's 1.76 s, Allen's frames 93-145. The line is the agent's pick among
+  the lines that reference Allen; he has not named it. The slot's planned twist (hands pulling on a Polo Bears sweater
+  at a mirror) is not made and is displaced for now.
+
+His own Gemini video, **"I have another shot that i had Gemini create i love the car sound effects but hate the
+background music Gemini created maybe we can fix that later. Where do you think this shot can be positioned?"** then
+**"Should go in the all my business partners got Benz's line"**:
+- A grey Mercedes-AMG GT 55 on a rooftop parking deck, skyline behind; 10 s, 1280x720, 24 fps; asset `a7255ac8`
+  (T7 `work/fendi_gemini_shots/gemini_video_76DEC3A9.mp4`).
+- PLACED: `c017`, song 0:32.55-0:33.87 (the Benz line's picture slot, 1.32 s), source 0.00-1.32 s = beats 1-2.
+  `c016` (0:30.79-0:32.55) stays his performance of the line. The slot's planned twist (six black sedans round a
+  conference table) is not made and is displaced for now.
+
+| Beat | Source (s) | Shows | Status |
+|---|---|---|---|
+| 1 | 0.00-0.96 | the whole car on the rooftop, skyline | on `c017` |
+| 2 | 0.96-2.00 | headlight coming on | on `c017` (first 0.36 s) |
+| 3 | 2.00-3.29 | front wheel, red caliper | unused |
+| 4 | 3.29-4.33 | steering wheel and screens through the open door | unused |
+| 5 | 4.33-5.25 | engine bay | unused |
+| 6 | 5.25-10.00 | tail light and GT 55 badge, the spoiler rising, skyline at dusk | unused |
+
+- SOUND, for later (his): keep the car sound effects, lose Gemini's music. Not started. HYPOTHESIS: a stem separation
+  (music / effects) on the clip's audio; to be tested and heard by him before it goes near the song.
+- OPEN: 720p and 24 fps against a 1080p cut; whether the unused beats go on other car lines.
+
+Fendi, 20 Nov 2026, after the placement: **"Still place the gallery shot for now it may be better without me in it."**
+The gallery shot stays on `c025` (`c627f5cf`) WITHOUT him. Him in the gallery is no longer assumed: it is only done
+if he asks again after seeing the cut.
+
+## THE INTRO, rebuilt shot by shot with Fendi (20 Nov 2026)
+
+Fendi on the planned intro (the Lexus radio and a hand on the volume knob): **"That's not strong enough. The first 6
+seconds determine if somebody watches or not we need the most powerful visuals in the first few seconds."** When the
+agent started cutting an opening from existing shots (storm peak, portrait, Mercedes): **"The strongest existing shots
+are irrelevant and not intended for the intro we are creating the intro now and working through shot by shot."**
+RULE: the intro is made of NEW shots, one at a time, with him. Do not recut existing shots into it.
+
+HIS PLAN (his words, speech-to-text: "bends"/"bins" = Benz, "Rockbot" = Grokbot):
+"I created this one in Gemini. This one is solid. The only thing that I would change or implement is blur on the
+license plates. But aside from that, I can actually have Rockbot do that and post. But I think we start off with
+something like this, and then ... cut to a shot with this same bends, and have that shot upside down with a split
+screen. So the top of the screen will be the yellow bends upside down driving through the hills, and we can do Austin
+Hills to make it realistic. And if you can generate me inside the bins, that's fine, but the shot will be far away, so
+it doesn't really matter ... it'll be a scenic shot basically, but it'll be upside down, split screen. At the bottom of
+the split screen, it'll be right side up, and it'll be me getting out a 2006 Pearl Lexus with Allen's green Lexus
+behind me. So me getting out, and then that's when the back-to-back Lexus don't stress us, and then cut to another shot."
+
+| # | Shot | Source | Status |
+|---|---|---|---|
+| I1 | The cream-yellow Mercedes-AMG GT 55 in a marble showroom | HIS Gemini clip, asset `9585c415` (10 s, 720p, 24 fps; T7 `work/fendi_gemini_shots/gemini_video_E64007F9.mp4`) | "This one is solid." TO DO in post (Grokbot): blur the dealer plates |
+| I2 top | The same Benz driving through the Austin hills, scenic, far; shown UPSIDE DOWN in the top half | Gemini still `cb347ac1` (job `ded0f406`, three frames of his clip as the car reference) → Wan 3.0, Runway task `cec5edbc` | still and clip posted (T7 `work/intro/benz_hills_H1_wan.mp4`, 1284x716, 5 s): the drone tracks the car, the scenery slides past. Layout test with the clip rotated 180 degrees in the top half (crop y 200-561 of 716, scaled to 1920x540): `work/intro/intro_I2_split_layout_top_only.mp4`. OBSERVED: the strip is 720p scaled up 1.5x; a 1080p render would be sharper. Pending his word |
+| I2 bottom | Him getting out of a pearl 2006 Lexus, Allen's green Lexus behind him; right side up; lands on "Back to back Lexus" (song 0:06-0:09) | Gemini still `1f24a44a` (job `e6cce72f`; place = green Lexus day plate `45a98a55`, cast = a REAL frame of him `32b267e5`) → his real face put back (`still_face_from_photo.py` default mode + `still_face_putback.py`: face 60 x 70 px, turn -2.7 degrees, residual 3.1 %, proof 0 on 3,147 px, brows to chin) `617ed1bc` → Wan 3.0 at 1080p, Runway task `b451ff93` ($1.00) | Fendi: "I like the shot let's do the bottom half." The pearl car is drawn as a GS 430: the AGENT'S PICK, he has not named the model. Strip crop: he is a little taller than half the frame, so the 32:9 strip cuts him at the ankles |
+
+I1's beats: 0-1 whole car front (dealer plate), 1-2 headlight, 2-3 wheel with yellow caliper, 3-4 side, 4-6.17 GT 55
+badge and tail light, 6.17-7.46 rear bumper (dealer plate large), 7.46-10 rear three-quarter (dealer plate).
+Song: no lyrics until 0:06.16; "Back to back Lexus" starts there. The old intro shots `c001`-`c002` (radio, knob) are
+replaced by this plan; nothing is filed on them yet.
+
+Fendi on the hills shot (`334eb73a`): **"I like the shot let's do the bottom half. Should we do all the 1080 renders now?"**
+ANSWER given (RECOMMENDATION): not all now. A 1080p render is a NEW roll (different motion), not the liked 720p clip
+made sharper, and costs twice as much (VERIFIED on task `b451ff93`: 100 credits against 50). So: new shots with him
+render at 1080p from the first roll; shots already liked at 720p stay until the cut is locked, then either an upscale of
+the liked clip (keeps its motion; no upscaler is proven here yet) or a re-roll he judges again.
+
+INTRO I2, first full version (20 Nov 2026):
+- Bottom clip: Runway task `b451ff93`, Wan 3.0 at 1080p (1926x1074, 5 s, $1.00). OBSERVED as delivered: he straightens
+  up, steps clear, shuts the door, adjusts his jacket and stands by the car; both cars stay put; the model's own face
+  drifts and its mouth parts on some frames.
+- His real face held: `wan_face_putback_track.py` with the real-face still `617ed1bc` and the brows-to-chin mask.
+  Printed: face found 150/150 (eye distance 28 px); head travels 69 px; turned median 4.9, max 18.2 degrees; fit max
+  0.080; usable stretches frames 1-69 (0.0-2.3 s) and 92-150 (3.0-5.0 s); 70-91 he turns his head while shutting the door.
+  T7 `work/intro/intro_I2_bottom_lexus_his_face_1080.mp4`.
+- Split screen v1 (1920x1080, 5 s): top = the hills clip rotated 180 degrees (crop y 200-561 of 716); bottom = the Lexus
+  clip cropped y 286-828 of 1074 (he is cut at the shins; his shoes are below the frame); a 4 px black line between.
+  T7 `work/intro/intro_I2_split_screen_v1.mp4`.
+- NOT checked by the agent: either clip in motion (frames only), and no `mouth_scan.py` / `face_check.py` sheet was run
+  on the held clip yet (SHOT_RULES check owed before it is called final).
+- OPEN (his): the pearl car's model (drawn as a GS 430); how the 6.2 s of intro is split between I1 and I2; the cut
+  point after "Back to back Lexus".
+
+INTRO I2 bottom, Fendi's notes and the double check (20 Nov 2026):
+- Fendi on the first version: **"The white shoes have to go. You can probably cut those out of frame maybe, or change
+  them to ... brown Pradas, or cream Pradas. Cream would probably be better. Make sure that they don't generate huge
+  shoes. Pradas are slim and sleek. Also, you need to regenerate my pixels. Please always follow the workflow. That's
+  not my face. Anytime you generate any B-roll, you're going to have to do the face swap and put my original pixels
+  onto the generated image or generated video."** Then: **"Please check your work before you generate the video. That's
+  not my face."** Then: **"I'm sorry, I just saw the close-up, and that looks about right. Just do a double check real
+  quick."** READING (the agent's): "the close-up" is the full-frame 1080p clip `d8428287`; the split-screen strip, where
+  he is small, is what read as not him.
+- AGENT ERRORS on the first version: SHOT_RULES 7 broken (full body, centre, shoes in frame); the face sheet and the
+  mouth check were not run before posting; the still's face was put back in the DEFAULT mode (brows to chin, re-toned).
+- Waist-up remake `11a6d1f8` ($0.27) with his whole head put on in EXACT mode from the 1080p at-rest frame: coverage of
+  his face outline 0.979, 0 pixels differ from his source, face 196 px wide in the still (his source face is about
+  120 px, so it is upscaled 1.6x): OBSERVED soft, a cut-out edge, the model's larger cap showing round his. FAILED the
+  agent's check; not posted; no video. LESSON: a whole real head on a generated body needs a source at least as large
+  as the target and a generated head no larger than his; otherwise it is a paste-up (the Allen T3 lesson again).
+- Double check of the posted clip `d8428287` ($0): sheet T7 `work/intro/I2_bottom_double_check.jpg` (clip / the model's
+  own drawing / his footage, seven moments). OBSERVED: his eyes, glasses, nose, lips and beard hold steady and his mouth
+  stays closed on every sampled frame, while the model's own drawing parts its lips from 1 s on. A pale edge shows on
+  his left cheek at 1.8-2.6 s (head turned 10-16 degrees). The cap, ears and jaw edge are the model's (mask = brows to
+  chin). `mouth_scan.py`: face found on 44 of 60 samples, lip gap mean 0.064, spread 0.026 (at rest by the rule; the
+  face is about 42 px wide, so the scan is noisy). `face_check.py` found his face on only 5 of 7 samples at this size
+  and cropped his jacket patch twice: its sheet is not usable for a face this small.
+- SHOES: in the split screen the strip is rows 286-828 of 1074; his shoes are below row 850, out of frame on all 150
+  frames. The full-frame clip still shows white sneakers and is not for use full frame.
+- DOCUMENTED ROUTE not yet used for this shot: recipe F (`montage-shot`, his face pictures + the at-rest window
+  `98c51f4d`, waist up, $2.22). The fallback if he rejects the face in the cut.
+
+Fendi on the double check, 20 Nov 2026: **"It'll do After you generate the video, please go back and double check to
+make sure, and if you have to do the face swap, to add my original pixels on, make sure you do that. Also, don't forget
+about the products."**
+- The split screen `a98d8671` stands for now ("It'll do"), using clip stretches 0-2.3 s or 3.0-5.0 s. Not approved in
+  the strong sense; not on the board yet (the intro's timing is not set).
+- RULE (his): every generated video is checked again AFTER it is made, and his original pixels go on wherever the
+  model's face shows.
+- "The products" (READING, the agent's): the wardrobe pieces filed for this video (T7 `wardrobe/` 01-11, the America's
+  Cup sneakers `a4eaa2da`). A generated shot of him wears those exact products from their product pictures. In I2 bottom
+  he wears his own tan leather jacket from the raw footage and invented white sneakers: neither is a product. OPEN (his):
+  whether the intro shot is left as filmed (as the car takes are) or dressed in a product look (A Polo Bears, B Prada
+  puffer, C Prada suede shearling bomber). No product picture of cream Prada sneakers is filed.
+
+PRODUCT 12, the shoes (Fendi sent two screenshots of the brand's page, 20 Nov 2026): Prada America's Cup soft rubber and
+bike fabric sneakers in CREAM (grey mesh panels, white laces, red tab). T7 `wardrobe/12_prada_americas_cup_cream/`
+(`side_on_grey.jpg`, `top_pair_on_grey.jpg`; his screenshots untouched in `wardrobe/_screenshots_from_fendi/`); assets
+`ac8d150a` (side) and `e6e50cc8` (pair from above), cropped to the shoe, nothing redrawn. His rule for them: "Make sure
+that they don't generate huge shoes. Pradas are slim and sleek."
+
+INTRO I2 bottom, version 2 (cream Pradas):
+- Still `8cab1341` (job `e36ea8bb`): the first still edited, shoes only. OBSERVED: slim cream shoes, grey mesh, white
+  laces, both feet; the red tab does not read at this size; the rest is the same picture (the edit re-rendered it with a
+  mean difference of 11 of 255 and gave the model's face an open mouth, which the put-back replaces).
+- His real face put back (default mode, the version he called "about right"): face 65 x 76 px, turn -1.1 degrees,
+  residual 2.6 %, 0 pixels differ from his source inside the mask (3,734 px). T7 `work/intro/lexus_out_B3_realface.png`.
+- Posted BEFORE the video: the still, the shoe close-up beside the product picture, the face sheet.
+- Video: Runway task `751d7f4e`, Wan 3.0 1080p.
+- Video result (task `751d7f4e`, 1926x1074, 5 s, $1.00) and the DOUBLE CHECK run after it (his rule):
+  - `wan_face_putback_track.py`: face found 150/150; head travels 55 px; turned median 4.8, max 12.1 degrees; fit max
+    0.040; usable stretches frames 1-83 and 85-150 (frame 84 alone is at 12.1 degrees).
+  - Sheet T7 `work/intro/I2_bottom_v2_double_check.jpg` (clip / the model's own drawing / his footage / the shoes, seven
+    moments). OBSERVED: his eyes, glasses, nose, lips and beard hold on every sampled frame with his mouth closed; the
+    model's own drawing parts its lips from 1 s; a faint pale edge on his left cheek at 1.8 s; the cap, ears and jaw
+    edge are the model's (mask = brows to chin). The shoes stay cream with grey mesh, slim and low, on every sample.
+  - `mouth_scan.py` on the held clip: face found 42/60, lip gap mean 0.057, spread 0.025 (at rest by the rule; noisy at
+    this face size). On the model's own clip: mean 0.074.
+  - NOT checked: the clip in motion (frames only).
+- Held clip: T7 `work/intro/intro_I2_bottom_lexus_v2_cream_pradas_1080.mp4`.
+- Split screen v2 (1920x1080, 5 s): top 482 px = the hills clip rotated 180 degrees (crop y 215-537 of 716); bottom
+  594 px = the Lexus clip rows 294-890 of 1074, so he shows HEAD TO SHOES with the cream Pradas; 4 px black line.
+  T7 `work/intro/intro_I2_split_screen_v2.mp4`. SHOT_RULES: 1 pass (mouth at rest), 2 his pixels brows to chin, 3 the
+  scene moves (leaves, light), 4 no other people, 5 OBSERVED match of light, 6 pass; 7 (waist up, never his shoes) is
+  SET ASIDE on this shot by his own words of 20 Nov ("change them to ... cream Pradas").
+
+INTRO I2, version 3: the bottom half in SLOW MOTION (20 Nov 2026, $0). Fendi on v2: **"Make the bottom half slow
+motion and we're good"**.
+- Half speed (the agent's pick of rate; he named none). Order of work, so the slow motion does not smear his face:
+  in-between frames made on the RAW render first (`ffmpeg minterpolate` fps 60, mci / aobmc / bidir, 150 -> 297 frames),
+  THEN his real face held on every one (`wan_face_putback_track.py`, `SMOOTH=3`), then played at 30 fps.
+- Printed: face found 297/297; head travels 55 px; turned median 5.0, max 12.2 degrees; fit max 0.041.
+- Check after (his rule), sheet T7 `work/intro/I2_bottom_slowmo_check.jpg`, eight moments, body and face: OBSERVED no
+  ghosting or doubled limbs on the sampled in-between frames (door closing, hands at the jacket); face steady, mouth
+  closed; shoes cream and slim. NOT checked: every frame, or the clip in motion.
+- T7 `work/intro/intro_I2_bottom_lexus_v2_slowmo_1080.mp4` (1926x1074, 9.9 s) and
+  `work/intro/intro_I2_split_screen_v3_slowmo.mp4` (1920x1080, 5 s: the hills at normal speed above, the first 5 s of
+  the slow motion below = he straightens up, steps clear and begins to shut the door).
+- "we're good" = his acceptance of the intro's split screen in this form. Still to set: its place and length on the
+  board, and the cut out of it at "Back to back Lexus".
+
+Fendi on the slow-motion split screen (`90f8077a`), 20 Nov 2026: **"I like it."** (his word on intro shot I2 as built).
+
+His third Gemini clip, the giant Pradas: **"Add this clip when I say, 'I'm [Prada] like my partner still living.'"**
+(speech-to-text wrote "proud of") and **"May need to chop it up to fit"**.
+- Asset `f889c598` (T7 `work/fendi_gemini_shots/gemini_video_45F39D53.mp4`): 20 s, 1280x720, 24 fps, two passes of ten
+  seconds: a giant pair of cream Prada America's Cup in the marble showroom steps over the cream-yellow Benz.
+- The line: song 0:41.80-0:44.94 (`work/lyrics_timed.lrc`). PLACED on `c022` + `c023` (0:41.35-0:43.99, 2.64 s) as one
+  continuous cut, source 2.50-5.14 s. `c024` (0:43.99-0:45.31) stays his performance of the end of the line. The two
+  slots' planned picture (the supermarket dance) is not made and is displaced for now.
+
+| Beat | Source (s) | Shows | Status |
+|---|---|---|---|
+| 1 | 0.0-2.5 | the Benz and the giant pair side by side | unused |
+| 2 | 2.5-5.2 | one giant shoe lifts and steps over the Benz, the camera moving round | on `c022` + `c023` (2.50-5.14) |
+| 3 | 5.2-10.0 | the shoe over the car from the side and rear | unused |
+| 4 | 10.0-13.0 | second pass: the Benz from the front, a shoe up on its toe | unused |
+| 5 | 13.0-17.0 | the shoe walks over the roof | unused |
+| 6 | 17.0-20.0 | the shoe lands by the rear of the car | unused |
+
+- To do in post (Grokbot): blur the dealer plate on the Benz. 720p, 24 fps against a 1080p cut. Its sound is not used.
+- Preview with the song under it (T7 only, never committed): `work/fendi_gemini_shots/prada_line_slot_c022_c023_preview.mp4`.
+
+The Prada line, double speed (20 Nov 2026, $0). Fendi: **"Feel free to speed the pace up to the tempo too if that looks
+better"**, and on the double-speed preview: **"That's better"**.
+- Asset `d1faa6a7` (T7 `work/fendi_gemini_shots/prada_line_c022_c023_2x.mp4`, 1920x1080, 2.67 s): his clip `f889c598`,
+  source 2.36-7.64 s at 2x. In the slot the Prada lifts, steps over the Benz and the camera sweeps to the side and rear;
+  the step crosses the hood at the slot's midpoint (song 0:42.67).
+- PRIMARY on `c022` (0-1.32 s of it) and `c023` (1.32-2.64 s). The normal-speed windows (assignments `744fc9ea`,
+  `7b9bd643`) are kept, not primary.
+- Beats used now: 2 and most of 3. Unused: 1 (the pair beside the car), 4-6 (the second pass).
+
+## The walk to the Lexus and the GX starting up, 20 Nov 2026 ($2.08, ledger rows 79-83; ACCEPTED by Fendi and ON THE BOARD, see the end of this section)
+
+Made in the session "AVT proven methods" on Fendi's request there; recorded here from its report. The assets were
+checked in AVT (VERIFIED: all fourteen rows exist; `b3f755f6` and `f9ccc042` pending). The pictures themselves were
+not looked at from this branch (OBSERVED from the report only).
+
+Fendi, 20 Nov 2026: **"I just added another car shot to the folder it's a video of me walking to the Lexus. I want one
+change to the video. Change the cars in front to the two Benz's parked in sight next to each other and as I walk in
+frame cut to the light's coming on in a satin silk Black wrapped 2022 GX 460 lights coming on as if the car is starting
+similar to the other car montages"**; then **"this is going to go right at the Economy really don't affect us, Put the
+G in GX actin Extra"**; on the first still: **"mercedes should be faced the other direction as if they were backed in
+and the yellow mercedes is literally in the wall"**. He has not judged the result.
+
+- Source: T7 `car shots/IMG_6496.mov` (4K, 24 fps, 27 s, the camera locked on the hood of his GX; he walks in from the
+  right at take 11.1 s). Work folder: T7 `work/walk_to_lexus_6496/`.
+
+| Line | Song | Asset | What it is | Suggested window |
+|---|---|---|---|---|
+| "Economy really don't affect us" | 0:08.78-0:10.86 | `b3f755f6` (edited_clip) | his real take 8.00-13.92 s; the two parked cars changed to the grey and the cream-yellow AMG GT 55, backed in, facing the camera | take 11.42-13.50 s = frames 82-131 of the file |
+| "Put the G in GX acting extra" | 0:10.86-0:12.56 | `f9ccc042` (generated_clip) | the satin black GX 460 starting up, its lights coming on; Runway Wan 3.0 1080p, 5 s, 30 fps, from the Gemini start still `5327587d` of his own photo `c232ea7d` | source 0.80-2.50 s |
+
+- His pixels: only the car area and its hood reflection (18.7 % of the frame) come from the Gemini still `0c9ca075`;
+  reported proof: max |out - take| outside the mask is 0 on all 142 frames, and he never enters the mask in this window.
+- Stills: `0c9ca075` used (backed in, an edit of a tight crop of the bays, reference crop `580a9c1c`); `89b7751b`
+  REJECTED by Fendi (nose-in, the yellow car on the pillar); `81688652` not used and not posted (the pillar moved, the
+  car against it again). References: `8ad6d0a9` (real frame), `b0c941b0` / `81469534` / `f1a40011` (rear views),
+  `ae2aa7c1` / `250dd395` (front views), all frames of his own Gemini clips `a7255ac8` and `9585c415`.
+- Preview with the song (T7 only, never committed): `work/walk_to_lexus_6496/PREVIEW_economy_to_GX_with_song.mp4`.
+
+**Accepted and placed, 20 Nov 2026 ($0, local).** Fendi: **"my walk slow motion"**; then on the slow-motion preview:
+**"that's hard"** and **"I like it"** ("that's hard" is his approval). Placed by the session "AVT proven methods";
+VERIFIED in AVT from this branch: both assignments are primary, both assets approved, on variation `fa7f6b85`.
+
+| Slot | Song | Line | Primary | What it is | Assignment | Displaced planned twist |
+|---|---|---|---|---|---|---|
+| `c004` | 0:09.24-0:11.44 | "Economy really don't affect us" | `e930c8fe` | his real walk-in from IMG_6496 (take 12.38-13.46 s) at half speed, the two Benzes backed in; 53 frames, 24 fps, 1080p | `0138f2ef` | the egg on a velvet cushion (not made) |
+| `c005` | 0:11.44-0:13.64 | "Put the G in GX acting extra" | `1052ce84` | the satin black GX 460, lights coming on; source `f9ccc042` 0.80-3.01 s, conformed to 24 fps, silent | `3d2e882e` | the Lexus in the jewellery store (not made) |
+
+- Half speed is the other session's pick (DECISION). Every other frame of `e930c8fe` is an ffmpeg minterpolate
+  in-between of two of his real frames, so those frames are not his camera's own pixels; reported checked on
+  consecutive frames, no ghosting (OBSERVED from the report, not looked at from this branch).
+- OPEN, his: he judged a preview cut to the lyric times (the cut to the GX at 0:10.86); on the board's slots the cut
+  falls at 0:11.44. The board-timed version was shown to him (T7
+  `work/walk_to_lexus_6496/PREVIEW_v3_board_slots_c004_c005_with_song.mp4`); no word on it yet.
+- **Nothing else goes on `c004` or `c005` without his word.**
+
+## The leather line in the car, and the material wall for the standing performance, 20 Nov 2026 ($0 so far)
+
+Given by Fendi to the session "AVT proven methods"; recorded here from its report. VERIFIED from this branch: the `c006`
+assignment exists and is primary. Everything else below is OBSERVED from the report; no picture was looked at here.
+
+Fendi, 20 Nov 2026: **"I think now we cut to me in the car rapping for pull up you can still smell the leather and
+directly after that line we cut to the standing performance shot. we need to build the wall of fabrics and material and
+figure out what zoom keeps me close to the wall with my body shown the same way the performance seen was shot. DO NOT
+put me in the front of an AI generated image we most likely will need to build the wall in blender and during the shot
+the entire will wall not be in the frame if we are only showing my upper body of course. The wall will be used for B
+role as well so it's important that we do build the entire wall out now. we want colorful but fall colorful with
+burgandy, forest greens, marigold yellow, mustard, olive etc. carbon fiber, gold and so on"**
+
+**`c006` (song 0:13.64-0:15.84, "Pull up you can still smell the leather"): primary `e09f76e2`, PENDING his word.**
+- His real car take IMG_6467, file 10.24-12.45 s (song = file + 3.40), as filmed, 53 frames at 24 fps; he brings his
+  hand to his nose at the end of the line. Assignment `e85b4655`.
+- The take is the other session's pick (DECISION); he has not judged it.
+- Displaced planned twist: the sommelier at the Lexus door (not made).
+
+**The material wall, v1: posted to him, NOT judged.** Binding from his words: never him in front of an AI generated
+image; the wall is built, and built whole, because it serves the b-roll too.
+- A built Blender 5.3 set (Cycles), 7.2 x 3.0 m, 87 panels, 38 computed materials: leather, quilted leather, suede,
+  velvet, corduroy, tweed, satin, carbon twill, walnut / oak / mahogany, brushed / hammered / leaf gold, brass nails.
+  Fall palette. No generated image in it.
+- T7 `work/material_wall/`: `material_wall_build.py`, `material_wall.json`, `out/material_wall.blend`,
+  `out/wall_wide_v1.jpg`, `out/wall_perf_v1.jpg`.
+
+**The zoom, measured on his room takes** (empty-room frame, first half 9:48):
+- MEASURED: the two-gang switch plate (114 mm) is 70 px tall, so the wall he leans on reads 610 px per metre and he
+  reads about 600. He stands AT the wall.
+- MEASURED: phone tilted up 7 degrees, lens about 1.30 m up. ESTIMATE: 62 degrees across, 2.5 m from the wall.
+- So the built wall takes the real wall's plane and he keeps his own size and place in frame; the frame holds
+  3.15 x 1.77 m of wall.
+- Placement preview with take E at song 16.2 (a quick local matte, preview only, not a deliverable):
+  `out/placement_compare.jpg`.
+
+**Open, his:**
+- The wall's look.
+- Which look he wears there (his rule of 18 Nov: any room shot gets a clothing swap).
+- Which slots the standing performance takes after `c006`: `c007`-`c008` were planned for the Allen passenger-seat
+  shots.
+
+## Overnight build, 20 Nov 2026: the bear-head wall, his hat, and 0:15-0:31 shot by shot ($16.40, ledger rows 84-101; ALL PENDING his word)
+
+Fendi, 20 Nov 2026 (going to sleep, full authority): **"The wall is attached please rebuild it in blender to give the room
+depth and the lighting we need. I've attached a prototype of my hat designs see if you can put this on me. I've included
+two different color ways because I'm unsure which matches the jacket best. Let's do the Prada jacket and instead of the
+Prada hat I've attached a mockup of my hat design. So after pull up you can still smell the leather cut to the wall during
+the brief pause in between bars then cut back to the car scene with Allen in the car for 'my partner Allen had it
+automatic'. For run the green treat it like it's salad cut back to the wall scene but with a table made of money with me
+sitting picking through a salad (slow motion) then cut back to the yellow Mercedes driving through a different hill
+country scene for 'remember all them days i ain't have it now I'm steady jumping tax brackets' with different angle than
+before (need to generate this). Carbon fiber slicker than some satin need a montage of the interior of Grey Mercedes
+generated with carbon fiber turning into satin (photo realistic) then cutting to new wall backdrop made from wood and
+stone with modest bear logos on it (attached). Add grey Mercedes in front of wall then cut to no gimmicks shot. ... you
+have full authority to generate the scenes I've stated and do all face and clothing swaps necessary ... don't over think
+it ... any adjustments needed will be handled in the am"**. His six pictures: T7 `wardrobe/_screenshots_from_fendi/20nov_night/`.
+
+Work folder: T7 `work/night_20nov/` (specs, stills, clips, `bear_wall/`, `wall_take/`, `salad/`, `car_c015/`, `preview/`).
+Preview with the song: T7 `work/night_20nov/preview/PREVIEW_night20_c006_to_c015_with_song.mp4` (0:13.64-0:30.79).
+
+### The pieces
+
+- **The bear-head wall, BUILT** (Blender 5.3 Cycles, $0; T7 `work/night_20nov/bear_wall/`): `bear_maps.py` traces the
+  pieces of his picture by hand into a label and height map (only the outlines come from it); `bear_wall_build.py`
+  builds the room: the panelled wall after his picture's layout, the bear head as upholstered pieces (burgundy and
+  cognac leather, suede, marble, pebbled-leather muzzle, carbon nose, gold piping), the fur pad and walnut slab, floor,
+  ceiling, side walls, a window's daylight from the left (his take is lit from his right) and a warm wall-wash.
+  Renders `out_v1/bear_wall_{perf,wide,close}.png`. The perf camera is the other session's MEASURED room camera (1.30 m,
+  tilt 7) with its ESTIMATED 62 degrees and 2.5 m. OBSERVED weak: the suede panels read a little like wood, the fur is a
+  shaded pelt (particle hair blew up in this Blender build), everything is cleaner than his footage. `matlib.py` is a copy
+  of the other session's material helpers (`work/material_wall/`), unchanged.
+- **His hat, filed in the wardrobe:** `character_features` `10ab7ccd` (GOLD) and `0a7923b2` (NATURAL), his front and
+  back pictures in `wardrobe-refs` (`13_fendi_python_cap_gold`, `14_fendi_python_cap_natural`).
+- **The jacket:** READING (the agent's): "the Prada jacket ... instead of the Prada hat" = look B, the black Prada
+  Re-Nylon puffer (`336666fd`), whose look had the Prada Re-Nylon cap. If he meant the suede bomber (`782db74d`), it is
+  one more $2.72 swap on the same window.
+- **The swap, both colourways** (room take E, song 13.5-17.5, window `d5c76e02`): Genjutsu + `body_only_swap.py`
+  (`AVT_HEAD_ZOOM=4`): his face found 119/119, `max |out-original| on face/hair/skin: 0`, both. Matte `matte-video-proxy`
+  (veed) kept the green quilt; `matte_minus_green_backdrop.py` took it out (removes only). `matte_stability.py`:
+  dropouts flagged on 65 / 54 / 92 frames top / middle / bottom (the bottom is below the waist-up crop). Composite over
+  the perf render with `composite_over_plate.py --scale 1 --cx 860 --push 0`, then cropped waist up. Assets `b4a7de97`
+  (gold) and `f5c40742` (natural). OBSERVED: the python pattern shows only when the cap turns side-on; from the front
+  Genjutsu draws it plain sand. A close-up crop pass (row 93) changed nothing.
+- **The salad** (c009+c010): three stills of him seated at a table of banded hundreds failed the agent's face check
+  (his only source is the standing room take, filmed from below; at a seated angle his pixels read as a cut-out, or had
+  to be enlarged 2.25x). Not posted, no video. Made instead: a close insert with NO face, his Prada sleeve and ringed
+  hand forking salad on the money table, the bear-head wall soft behind (still `b7f2eacc`, clip `dc2cdf4a`), half speed
+  (`85d3d4df`). FOR THE WIDE WITH HIS FACE: a real 5 s take of him seated, picking at a plate, phone at table height.
+
+### On the board (variation `fa7f6b85`; every slot was empty; all PENDING)
+
+| Slot | Board time | Line | Primary | Source |
+|---|---|---|---|---|
+| (c006 tail) | song 15.05-15.85 | the pause after "leather" | NOT on the board: wall composite `b4a7de97` (gold) or `f5c40742` (natural), clip 1.55-2.35 s | the pause sits inside `c006` (13.64-15.84), which is the other session's slot |
+| `c007` + `c008` | 15.84-18.48 | My partner Allen / Had it automatic | `212f2c5e` 0-2.64 (the LOCKED passenger-seat shot, his photo face held) | twin as delivered `bfb93450`; which one is still his |
+| `c009` + `c010` | 18.48-21.55 | Flip through green / Treat it like it's salad | `85d3d4df` salad insert, slow motion | planned twists displaced: restaurant cash table, bear at the next table |
+| `c011` + `c012` | 21.55-24.63 | Remember all them days ... tax brackets | `984a23a7` yellow Benz, new road, from `4e239bb3` 0.5-3.58 | displaced: magnet tow truck, old photos |
+| `c013` | 24.63-26.83 | Carbon fiber slicker than some satin | `ee9769e1` montage: console `43747031` 2.2-3.3, door `1cee7d0d` 2.3-3.4 | displaced: tax-office hurdler |
+| `c014` | 26.83-28.15 | Wood grain car feel like a cabinet | `6a134b62`: his bear-logo wall `d5e3af8e` 0.5-1.0, then the grey AMG starting `e7290b9d` 1.6-2.42 | displaced: tailor ironing satin |
+| `c015` | 28.15-30.79 | No exaggeration no gimmicks | `0f0bada9` his real car take 6467, file 24.75-27.39, as filmed | displaced: glovebox cupboard |
+
+OPEN, his (the wall cut in the pause): OBSERVED by the other session on the c006 cut (`e09f76e2`, 53 frames from song
+13.64): his hand-to-nose "smell the leather" gesture, the reason take 6467 was picked, starts rising at song 15.14 and is
+at his nose 15.39-15.84, so it falls INSIDE the vocal pause (15.05-15.85). The two cannot both play in full there:
+(a) the wall shot on the pause, the car take ends at 15.05 and the gesture is cut; (b) the gesture kept to 15.84, then
+"My partner Allen" starts at 15.84 on the Allen shot, leaving no room for the wall unless it moves to another gap or
+replaces part of the Allen cut. Nothing is changed until he chooses.
+
+Song-clock note for the cutter: the board's slots run up to about a second after the sung words (the lyric file has
+"Remember all them days" at 21.76, "Carbon fiber" at 25.84, "Wood grain" at 27.44, "No exaggeration" at 28.90). Cut on
+the words if the slots look late.
+
+### Not checked by the agent
+
+- Any clip in motion at full speed (frames and contact sheets only).
+- The bear-logo wall's bears: Gemini redrew his picture's chest lettering, OBSERVED as unreadable both in his picture and
+  in the still.
+- `face_check.py` / `mouth_scan.py` on the wall composite (his mouth there is his real take; the pause is silent).
+
+## Fendi's notes, 20 Nov 2026 (day): salad, Austin, profile, suede, his cap
+
+His words, in order: "The salad scene is a bit too long and should be a wide cut or zoom out of the scene of a view of
+the money table and then to the shot of the eating salad". "I'm in the wrong Prada jacket for the wall scene it should
+be the suede one". "That's not the wall. Stop right quick". "I thought you were building that scene in blender from the
+image I provided of the wall". "I need a larry June style shot where im inside the yellow Mercedes with the window down
+and the camera catches my side profile from a dope angle. The other hill country shot doesn't look like a real hill
+country location I want one that's in Austin and not generic ... I like the one we have now worse case scenario we keep
+it. Still want to cut that shot in half and have a side profile shot". "Do not use my car footage". "Put me the suede
+Prada Jacket with my modest hat". "I don't have the hat it's a mockup or the jacket and we need to dial in the details
+for the hat as well because key details are missing in the back that make it unique".
+
+- **Salad (c009+c010), v2, pending:** T7 `clips/c009_c010_salad_v2_wide_then_salad.mp4` = 1.5 s pull-back from the
+  money table to the whole bear wall, built in Blender on HIS wall (`bear_wall/money_table.py`, $0: bundles of banded
+  hundreds drawn by `bill_face.py`, bowl, salad, fork, napkin, chair), then 1.57 s of the salad insert `85d3d4df`.
+  OBSERVED: the Blender room still reads somewhat like a render; the insert still shows the black puffer sleeve and a
+  Gemini wall. Not on the board yet.
+- **Austin (c011+c012 first half), pending:** the yellow Benz crossing the Pennybacker (360) Bridge over Lake Austin,
+  clip `744ea54c` (T7 `clips/A1_raw.mp4`, half cut `c011_austin_360bridge_half.mp4` = file 2.6-4.14). The old hills
+  shot `984a23a7` stays as his fallback. Second half: the side profile, not made.
+- **Side profile in the yellow Benz: BLOCKED.** Four Gemini stills (ledger row 106) failed the face rule: his real side
+  photo (`d74c1f3b`, the only uncut profile; `b07ec732` is cut through the nose and lips) does not sit on Gemini's head
+  (head turned toward camera, longer nose, shorter face), and Gemini drew the car right-hand drive every time. The
+  frame-to-frame face tracker also finds no face in a true profile. Options put to him: he films 5 s side-on (any cap,
+  any zip jacket, no wind) and the swap dresses it; or the video model draws his face from his photos (not his pixels).
+- **Wall take in the suede bomber:** gold-cap swap `c9299284`, face put-back proof 0 (119 frames). NOT USABLE YET: it
+  kept the two round patches of his own bomber, the cap came out plain sand (no python front, no pin, no buckle), dark
+  specks by the right cuff on fast moves. Natural-cap swap failed at the provider.
+- **His cap is a mockup, and so is the jacket on him:** every shot of either is a swap. Wardrobe now holds four cap
+  colourways: gold `10ab7ccd`, natural `0a7923b2`, grey `30b6da33`, brown/black `abb36ad0`, all with the back spelled
+  out (python centre-back panel, suede band over the opening, strap with three holes, antique-brass buckle and keeper
+  on his right, the red-jacket bear pin on his left, python top button), and the pin set `70bd48ad` (pin cut-out for
+  pasting: `17_modest_bear_pins/pin_red_jacket_cutout.png`). Side views of the gold cap (`417cd64d` left, `59b74706`
+  right) await his check. Plan: pin and buckle pasted from his mockup pixels, tracked, never left to the model.
+- **Later the same day, Fendi: "You know what scratch that jacket I don't like it anymore".** The Prada suede shearling
+  bomber is out of the wall scene; swaps `c9299284` (gold cap), the failed natural one and the jacket-only pass (job
+  `57ce8d4e`, ledger row 110, sent before his message) are dropped. Which jacket the wall scene wears is his call.
+- **Fendi: "Let's do the black Prada puffer with my white modest cap".** The grey colourway `30b6da33` is renamed White.
+  Swap `32852341` (ledger row 111), put-back proof 0 on 119 frames (T7 `wall_take/putback_puffer_white/`). OBSERVED:
+  the puffer reads right (Prada triangle on the chest pocket); the cap is a plain light-grey cap with no python front,
+  its edge doubling on fast head moves. Genjutsu has not drawn the python front on any front-on take so far. Not
+  matted onto the wall yet.

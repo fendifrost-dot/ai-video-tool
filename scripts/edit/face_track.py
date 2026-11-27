@@ -56,9 +56,20 @@ def track_scene(faces, window=4):
     n = len(faces); idx = [k for k, f in enumerate(faces) if f is not None]
     if not idx: return [None] * n
     fh_med = float(np.median([faces[k][2] for k in idx]))
-    cx = float(np.median([centre(faces[k])[0] for k in idx])); cy = float(np.median([centre(faces[k])[1] for k in idx]))
-    keep = [k for k in idx if abs(centre(faces[k])[0] - cx) <= 0.5 * fh_med and abs(centre(faces[k])[1] - cy) <= 0.5 * fh_med
-            and 0.7 <= faces[k][2] / fh_med <= 1.4]
+    # the centre test is LOCAL: each detection against the median centre of the detections within +-12 frames
+    # (about half a second), not the whole scene's. A scene-wide median dropped every detection of a performer
+    # who walks across the frame (wall take, 21 Nov 2026: 84 of 96 faces found, the oval stayed where he started,
+    # and below its stale brow row the OLD cap, labelled hair, was protected as his). For a performer who stays
+    # put the local median is the scene median, so those shots are unchanged.
+    def ref(k):
+        near = [j for j in idx if abs(j - k) <= 12]
+        return (float(np.median([centre(faces[j])[0] for j in near])), float(np.median([centre(faces[j])[1] for j in near])))
+    keep = []
+    for k in idx:
+        cx, cy = ref(k)
+        if abs(centre(faces[k])[0] - cx) <= 0.5 * fh_med and abs(centre(faces[k])[1] - cy) <= 0.5 * fh_med \
+                and 0.7 <= faces[k][2] / fh_med <= 1.4:
+            keep.append(k)
     if not keep: keep = idx
     ka = np.array(keep, np.float32)
     brows = np.array([faces[k][1] for k in keep], np.float32); eyes = np.array([faces[k][3] for k in keep], np.float32)

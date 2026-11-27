@@ -23,11 +23,11 @@ params_path, plate_dir, perf_dir, out_dir = argv[:4]
 opt = dict(zip(argv[4::2], argv[5::2]))
 PASS = opt.get("--pass", "save"); MOVE = opt.get("--move", "static"); NF = int(opt.get("--frames", "0"))
 P = json.load(open(params_path))
-W, H = 1080, 1920
+W, H = P.get("frame", [1080, 1920])                # the shot's frame; the showroom shots are 1080x1920 (the default)
 DEPTH_RANGE = 50.0                                   # depth pass: metres / 50 in a 16-bit PNG (0.8 mm steps)
 NFR = P["frames"]
 
-pl = P["plate"]; src = P["source"]; isl = P["island"]; perf = P["performer"]
+pl = P["plate"]; src = P["source"]; isl = P.get("island"); perf = P["performer"]   # no island: a scene without one (a street)
 F = pl["focal_px"]; HOR = pl["horizon_y"]
 CX = pl.get("principal_x", W / 2)                  # the optical axis column (MEASURED vanishing point; centre if absent)
 # The plate fixes the room only up to scale (one picture). room_scale sets it: the measured room and the camera
@@ -41,7 +41,7 @@ sc = bpy.context.scene
 sc.render.engine = "CYCLES"
 sc.cycles.device = "CPU"
 sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = W, H, 100
-sc.render.fps, sc.render.fps_base = 60000, 1001
+sc.render.fps, sc.render.fps_base = P.get("render_fps", [60000, 1001])
 sc.frame_start, sc.frame_end = 1, (NF or NFR)
 sc.view_settings.view_transform = "Standard"; sc.view_settings.look = "None"
 sc.view_settings.exposure = 0; sc.view_settings.gamma = 1
@@ -147,9 +147,10 @@ def box_island():
     return ax, A_, B_, T
 if "proxies" in P:
     # the room's surfaces as quads [x, depth, height] (metres), each MEASURED or ESTIMATE in params.json
-    for q in P["proxies"]:
-        room.append(mesh_obj(q["name"], [tuple(v) for v in q["quad"]], [(0, 1, 2, 3)], room_mat))
-    ax, A_, B_, T = box_island()
+    for q in P["proxies"]:                          # "gloss": true = a surface that shows his reflection (a wet road)
+        room.append(mesh_obj(q["name"], [tuple(v) for v in q["quad"]], [(0, 1, 2, 3)], top_mat if q.get("gloss") else room_mat))
+    if isl: ax, A_, B_, T = box_island()
+    else: ax, A_, B_, T = Vector((1, 0, 0)), Vector((0, 0, 0)), Vector((0, 0, 0)), 0.0
 else:
     # floor and ceiling (ceiling height ESTIMATE 3.3 m)
     room.append(mesh_obj("floor", [(-30, 0.3, 0), (30, 0.3, 0), (30, 60, 0), (-30, 60, 0)], [(0, 1, 2, 3)], room_mat))
@@ -167,7 +168,7 @@ else:
     cx0, cx1, chh = P.get("room_v5", {}).get("car_proxy", [-1.4, 2.8, 1.9])   # the v5 room's car is shrunk to its spec size
     room.append(mesh_obj("car", [(cx0, cz, 0), (cx1, cz, 0), (cx1, cz, chh), (cx0, cz, chh)], [(0, 1, 2, 3)], room_mat))
 # penguin card at its measured depth so a camera move moves it correctly against the kitchen
-pg = P["penguin"]
+pg = P.get("penguin", {"in_scene": False})
 if pg.get("in_scene", True):
     px_, pz_ = pg["position"]
     room.append(mesh_obj("penguin", [(px_ - 0.45, pz_, 0), (px_ + 0.45, pz_, 0), (px_ + 0.45, pz_, 1.4), (px_ - 0.45, pz_, 1.4)],
@@ -265,7 +266,7 @@ elif PASS == "refl":
     for m in (room_mat, top_mat):
         m.node_tree.nodes[m["emission_node"]].inputs["Strength"].default_value = 0.0
     sc.cycles.samples = 32; sc.cycles.use_adaptive_sampling = True
-    border_for([o for o in room if o.name == "island_top"])
+    border_for([o for o in room if o.name == "island_top" or top_mat.name in [m.name for m in o.data.materials]])
 elif PASS == "fg":
     for ob in room: ob.hide_render = True
     sc.render.film_transparent = True
