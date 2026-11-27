@@ -36,7 +36,10 @@ Rules 3 to 6 below are cases of this one.
 6. **Angle and scale are the scene's.** He is as large as his distance from the camera says, and faces where the
    scene says (the approved line, e.g. "him at the couch in profile"). A frontal take in a scene written in profile
    is the wrong take, not a placement problem.
-7. **Waist up or closer, never centre-front, never his shoes.** (Fendi, 17 Oct.)
+7. **Waist up or closer, never centre-front, never his shoes.** (Fendi, 17 Oct.) **Amended 27 Nov 2026:** the
+   ban is on a cut-out of him that is not proportioned to the scene (a waist-up take laid at the front of a frame
+   with full-body people behind him, so he reads cropped in). Him centre-front, whole body included, is allowed when
+   he is the size his distance in the scene says and the scene is built to his take's camera (rules 5 and 6).
 
 ## The structure of a shot with the cast
 
@@ -68,4 +71,5 @@ Rules 3 to 6 below are cases of this one.
 | Date | Rule | Fendi's words | Effect |
 |---|---|---|---|
 | 24 Nov 2026 | 4 | "The lounge shot shouldn't have been a case for never putting me in front of other people. The lounge shot was specific ... it looked unnatural and like I was pasted in the shot, as opposed to a free-flowing shot where the people look blended in to the actual scene. That's totally different and perfectly fine." | the ban is on the paste-up, not on people in his frame; a moving scene with people behind him is allowed and judged by rules 3, 5 and 6 |
+| 27 Nov 2026 | 7 | "The never front and center is too stringent and was put in place when I shot a waste up shot another agent put me in the forefront with waist cutout with full body characters behind me looking unnatural and honestly crazy" / "My proportioned body was not reflective of the scene and it looked cropped into the shot" | centre-front is allowed; what is banned is a cut-out not proportioned to the scene (waist-up at the front of full-body people) |
 | 24 Nov 2026 | all (rule of thumb) | "I think the rule of thumb should be the scene has to match the way the video, not the video, but the way the clip was shot." | the scene is built to his clip's camera and light, never his clip bent to a finished scene |
