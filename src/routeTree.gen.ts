@@ -41,6 +41,7 @@ import { Route as ProductsIdManufacturingRouteImport } from './routes/products.$
 import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
 import { Route as ProjectsIdAlterRouteImport } from './routes/projects.$id.alter'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
+import { Route as ProjectsIdCameraMovesRouteImport } from './routes/projects.$id.camera-moves'
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdCoverFlightRouteImport } from './routes/projects.$id.cover-flight'
 import { Route as ProjectsIdEditorRouteImport } from './routes/projects.$id.editor'
@@ -223,6 +224,11 @@ const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdCameraMovesRoute = ProjectsIdCameraMovesRouteImport.update({
+  id: '/camera-moves',
+  path: '/camera-moves',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdContinuityRoute = ProjectsIdContinuityRouteImport.update({
   id: '/continuity',
   path: '/continuity',
@@ -360,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/alter': typeof ProjectsIdAlterRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/camera-moves': typeof ProjectsIdCameraMovesRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
   '/projects/$id/editor': typeof ProjectsIdEditorRoute
@@ -406,6 +413,7 @@ export interface FileRoutesByTo {
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/alter': typeof ProjectsIdAlterRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/camera-moves': typeof ProjectsIdCameraMovesRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
   '/projects/$id/editor': typeof ProjectsIdEditorRoute
@@ -462,6 +470,7 @@ export interface FileRoutesById {
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/alter': typeof ProjectsIdAlterRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/camera-moves': typeof ProjectsIdCameraMovesRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
   '/projects/$id/editor': typeof ProjectsIdEditorRoute
@@ -519,6 +528,7 @@ export interface FileRouteTypes {
     | '/products/$id/manufacturing'
     | '/projects/$id/alter'
     | '/projects/$id/assets'
+    | '/projects/$id/camera-moves'
     | '/projects/$id/continuity'
     | '/projects/$id/cover-flight'
     | '/projects/$id/editor'
@@ -565,6 +575,7 @@ export interface FileRouteTypes {
     | '/products/$id/manufacturing'
     | '/projects/$id/alter'
     | '/projects/$id/assets'
+    | '/projects/$id/camera-moves'
     | '/projects/$id/continuity'
     | '/projects/$id/cover-flight'
     | '/projects/$id/editor'
@@ -620,6 +631,7 @@ export interface FileRouteTypes {
     | '/products/$id/manufacturing'
     | '/projects/$id/alter'
     | '/projects/$id/assets'
+    | '/projects/$id/camera-moves'
     | '/projects/$id/continuity'
     | '/projects/$id/cover-flight'
     | '/projects/$id/editor'
@@ -883,6 +895,13 @@ declare module '@tanstack/react-router' {
       path: '/assets'
       fullPath: '/projects/$id/assets'
       preLoaderRoute: typeof ProjectsIdAssetsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/camera-moves': {
+      id: '/projects/$id/camera-moves'
+      path: '/camera-moves'
+      fullPath: '/projects/$id/camera-moves'
+      preLoaderRoute: typeof ProjectsIdCameraMovesRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
     '/projects/$id/continuity': {
@@ -1163,6 +1182,7 @@ const ProjectsIdShotsRouteWithChildren = ProjectsIdShotsRoute._addFileChildren(
 interface ProjectsIdRouteChildren {
   ProjectsIdAlterRoute: typeof ProjectsIdAlterRoute
   ProjectsIdAssetsRoute: typeof ProjectsIdAssetsRoute
+  ProjectsIdCameraMovesRoute: typeof ProjectsIdCameraMovesRoute
   ProjectsIdContinuityRoute: typeof ProjectsIdContinuityRoute
   ProjectsIdCoverFlightRoute: typeof ProjectsIdCoverFlightRoute
   ProjectsIdEditorRoute: typeof ProjectsIdEditorRoute
@@ -1186,6 +1206,7 @@ interface ProjectsIdRouteChildren {
 const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdAlterRoute: ProjectsIdAlterRoute,
   ProjectsIdAssetsRoute: ProjectsIdAssetsRoute,
+  ProjectsIdCameraMovesRoute: ProjectsIdCameraMovesRoute,
   ProjectsIdContinuityRoute: ProjectsIdContinuityRoute,
   ProjectsIdCoverFlightRoute: ProjectsIdCoverFlightRoute,
   ProjectsIdEditorRoute: ProjectsIdEditorRoute,

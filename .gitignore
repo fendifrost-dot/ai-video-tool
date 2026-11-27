@@ -37,6 +37,9 @@ docs/reconstruct/artifacts/**/.ppm/
 # local AVT render outputs written by Claude/Cursor sessions
 _avt_outputs/
 
+# rendered camera-move reference clips (the catalog stores hashes; the bytes are staged locally)
+camera-moves/out/
+
 # Python bytecode from the pipeline scripts
 __pycache__/
 *.pyc

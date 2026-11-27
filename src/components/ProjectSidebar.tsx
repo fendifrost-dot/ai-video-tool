@@ -20,6 +20,7 @@ import {
   Download,
   ClipboardCheck,
   Palette,
+  Aperture,
   Replace,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,7 @@ export const advancedItems: readonly NavItem[] = [
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
   { to: "/projects/$id/scorecards", label: "Clip Scorecards", icon: ClipboardCheck, key: "scorecards" },
   { to: "/projects/$id/style", label: "Style Learn", icon: Palette, key: "style" },
+  { to: "/projects/$id/camera-moves", label: "Camera moves", icon: Aperture, key: "camera-moves" },
   { to: "/projects/$id/alter", label: "Alter", icon: Replace, key: "alter" },
   { to: "/projects/$id/runs", label: "Runs", icon: ListVideo, key: "runs" },
 ] as const;

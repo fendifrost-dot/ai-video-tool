@@ -37,6 +37,7 @@ export const DEFAULT_ENGINEERING_MODE: EngineeringMode = "creative";
  * - `timeline`      — music-video editor / timeline
  * - `continuity`    — temporal continuity locking
  * - `runs`          — batch runs: a shot list submitted to the providers from the app
+ * - `camera-moves` — camera-move library and an unsent Seedance reference plan
  * - `alter`         — one change on a take, drafted and checked, not sent
  */
 export const ADVANCED_DESTINATION_KEYS = [
@@ -47,6 +48,7 @@ export const ADVANCED_DESTINATION_KEYS = [
   "video",
   "scorecards",
   "style",
+  "camera-moves",
   "alter",
   "shots",
   "cover-flight",
