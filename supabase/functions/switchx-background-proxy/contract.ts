@@ -147,7 +147,7 @@ export function isSwitchxLane(lane: unknown): lane is string {
   return typeof lane === "string" && SWITCHX_LANES.includes(lane);
 }
 
-/** What a record says about a video's frames: the measured columns (`avt_asset_describe`), never a declared length. */
+/** What a record says it measured of a video's frames (read from `metadata_json`; see `measuredVideo` in index.ts), never a declared length. */
 export type MeasuredVideo = { frames: number | null; fps: number | null; width: number | null; height: number | null };
 
 /**
@@ -161,8 +161,8 @@ export function switchxKeepMaskCheck(input: { source: MeasuredVideo; mask: Measu
   if (input.sameAsset) return { ok: false, why: "the matte is the take itself" };
   if (!input.maskIsVideo) return { ok: false, why: "the matte must be a video, one frame per frame of the take" };
   const { source: s, mask: m } = input;
-  if (!(s.frames && s.frames > 0)) return { ok: false, why: "the take has no measured frame count on its record (describe the asset first)" };
-  if (!(m.frames && m.frames > 0)) return { ok: false, why: "the matte has no measured frame count on its record (describe the asset first)" };
+  if (!(s.frames && s.frames > 0)) return { ok: false, why: "the take has no measured frame count on its record (set metadata_json.frame_count from a probe of the file)" };
+  if (!(m.frames && m.frames > 0)) return { ok: false, why: "the matte has no measured frame count on its record (set metadata_json.frame_count from a probe of the file)" };
   if (s.frames !== m.frames) return { ok: false, why: `the matte is ${m.frames} frames and the take ${s.frames}; they must be the same frames` };
   if (s.fps && m.fps && Math.abs(s.fps - m.fps) > 0.01) return { ok: false, why: `the matte is ${m.fps} fps and the take ${s.fps} fps` };
   if (s.width && s.height && m.width && m.height && Math.abs(s.width / s.height - m.width / m.height) > 0.01)

@@ -95,10 +95,18 @@ type Body = {
 /**
  * What a record says it measured of a video. The measured columns of project_assets (frame_count, fps, width, height:
  * migration 20261113120000) are not applied to the live database (STORE-5), so these are read from `metadata_json`,
- * where the filing recipe writes them; selecting the columns would fail every call.
+ * where whoever files the asset writes them from a probe of the file (live rows carry `frame_count` or `frames`, and
+ * `fps` as a number or as ffprobe's "30/1"); selecting the columns would fail every call. They are the filer's own
+ * words, not a server measurement (SWITCHX-1).
  */
 function measuredVideo(meta: Record<string, unknown>): MeasuredVideo {
-  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
+  const n = (v: unknown) => {
+    if (typeof v === "string") {
+      const m = /^(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?$/.exec(v.trim());
+      v = m ? Number(m[1]) / (m[2] ? Number(m[2]) : 1) : NaN;
+    }
+    return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+  };
   const frames = n(meta.frame_count) ?? n(meta.frames);
   return { frames: frames != null && Number.isInteger(frames) ? frames : null, fps: n(meta.fps), width: n(meta.width), height: n(meta.height) };
 }
@@ -376,7 +384,8 @@ serve(async (req) => {
   const answerReference = reference ? { assetId: reference.id, bucket: reference.bucket, path: reference.path } : null;
   const answerAlpha = alpha ? { assetId: alpha.id, seconds: alpha.seconds, bytes: alpha.bytes, bucket: alpha.bucket, path: alpha.path } : null;
 
-  // The reference picture's file is checked here too, so a dry run that answers ok is not refused at the real submit.
+  // The reference picture's file is owner-checked here too, so a dry run that answers ok is not refused for
+  // ownership at the real submit (a file that is missing still fails at signing, before any spend).
   if (reference) {
     const may = await callerMayRead(admin, userId, reference.bucket, reference.path);
     if (!may.ok) return json(refusalResponse(may).status, { error: refusalResponse(may).error });
