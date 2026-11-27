@@ -74,6 +74,15 @@ high, level, his left profile. 6550: 0.5x, 1.1 m, 0.25 m high, level, front quar
 soft everywhere, no hard shadows, steady through each take; his sources were LED panels (one high on the wardrobe, two
 low), the vanity mirror and late-afternoon window light. Picture: `/Volumes/T7/_avt_work/meditate_2026-11-26/cams/four_cameras.jpg`.
 
+**Step 3, the two choice stills (26 Nov, $0 on the API):** made on his Gemini plan through gemini.google.com in his
+Chrome (Fendi: "use my browser to run Gemini it's logged in and it doesn't count against my api credits"). FIRST AGENT
+RUN OF THE WEBSITE ROUTE, VERIFIED: the download button gives 1536x2752 JPEG (9:16), no visible watermark in the
+corners; the page preview is only 768x1376, so always use the download button; files land in ~/Downloads, move them to
+the T7 at once. Prompts followed `docs/recipes/PLATE_REALISM_PROMPT.md`, camera written as 6547's (26 mm, level, 1 m
+high, empty seat 2.3 m away). Files: `/Volumes/T7/_avt_work/meditate_2026-11-26/gemini/` (rock_garden_v1, dojo_v1,
+choice_side_by_side). OBSERVED: the dojo scroll's characters may not be real text; fix in the build if it is chosen.
+Waiting on Fendi's choice.
+
 **Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
 on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
 Studio. When told so, he answered "no you don't have to stop": light work carries on on the MacBook; run the heavy
