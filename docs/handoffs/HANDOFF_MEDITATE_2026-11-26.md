@@ -62,10 +62,14 @@ there is more footage or that stretch is the fight alone. Do not plan it before 
 
 **Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
 on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
-Studio. Run the rest of this build in a session on the Mac Studio, with the T7 plugged into it. Check with
+Studio. When told so, he answered "no you don't have to stop": light work carries on on the MacBook; run the heavy
+jobs (Blender scene, renders, mattes measured locally) in a session on the Mac Studio when one is open, with the T7 there. Check with
 `system_profiler SPHardwareDataType | grep -E "Model Name|Memory"` before the first heavy job.
 
-Not yet: the project row in AVT, filing the song, writing the syncs into AVT. No matte, no scene, no generation.
+| AVT project created | `295ebf3f-3d92-449c-be13-e2b0f8b3fbc3` (9:16, the takes are portrait) | VERIFIED 26 Nov |
+| Song filed | asset `6e1a926d-7cea-4fd5-aca5-c9f49c7b296f`, project-audio, sha256 matches the T7 file | VERIFIED 26 Nov |
+
+No matte, no scene, no generation yet. Coverage picture: `/Volumes/T7/_avt_work/meditate_2026-11-26/song_coverage.jpg`.
 
 ## 2. Not done: the build, in order
 
