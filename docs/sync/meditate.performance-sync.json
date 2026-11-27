@@ -3,11 +3,63 @@
   "formula": "song_time = file_time + offset_seconds (drift none measured)",
   "measured": "2026-11-26, $0, on the MacBook Pro; two methods: scripts/performance-sync.mjs (band-pass envelope GCC-PHAT) and scripts/sync/align_song_performance.py (GCC-PHAT 10 s windows); they agree within 3 ms on every take",
   "takes": [
-    {"file": "IMG_6547.MOV", "view": "wide, front, low", "offset_seconds": -18.114, "song_0_at_file": 18.114, "covers_song": [0.0, 196.51], "agreement_ms": 1, "confidence": "8/10 windows"},
-    {"file": "IMG_6548.MOV", "view": "close, low, 45 deg right", "offset_seconds": -12.121, "song_0_at_file": 12.121, "covers_song": [0.0, 170.92], "agreement_ms": 1, "confidence": "4/11 windows, tight median"},
-    {"file": "IMG_6549.MOV", "view": "close, low, side profile", "offset_seconds": -10.168, "song_0_at_file": 10.168, "covers_song": [0.0, 193.41], "agreement_ms": 3, "confidence": "6/11 windows, tight median"},
-    {"file": "IMG_6550.MOV", "view": "medium, low, front quarter", "offset_seconds": -12.641, "song_0_at_file": 12.641, "covers_song": [0.0, 184.39], "agreement_ms": 1, "confidence": "5/11 windows, tight median"}
+    {
+      "file": "IMG_6547.MOV",
+      "view": "wide, front, low",
+      "offset_seconds": -18.114,
+      "song_0_at_file": 18.114,
+      "covers_song": [
+        0.0,
+        196.51
+      ],
+      "agreement_ms": 1,
+      "confidence": "8/10 windows"
+    },
+    {
+      "file": "IMG_6548.MOV",
+      "view": "close, low, 45 deg right",
+      "offset_seconds": -12.121,
+      "song_0_at_file": 12.121,
+      "covers_song": [
+        0.0,
+        170.92
+      ],
+      "agreement_ms": 1,
+      "confidence": "4/11 windows, tight median"
+    },
+    {
+      "file": "IMG_6549.MOV",
+      "view": "close, low, side profile",
+      "offset_seconds": -10.168,
+      "song_0_at_file": 10.168,
+      "covers_song": [
+        0.0,
+        193.41
+      ],
+      "agreement_ms": 3,
+      "confidence": "6/11 windows, tight median"
+    },
+    {
+      "file": "IMG_6550.MOV",
+      "view": "medium, low, front quarter",
+      "offset_seconds": -12.641,
+      "song_0_at_file": 12.641,
+      "covers_song": [
+        0.0,
+        184.39
+      ],
+      "agreement_ms": 1,
+      "confidence": "5/11 windows, tight median"
+    }
   ],
-  "gap": "No take covers song 3:16.5 to 4:44.2. The song stays loud to about 4:20, then fades. Asked Fendi 26 Nov whether more footage exists or that stretch is fight-only.",
-  "per_window_tables": "/Volumes/T7/_avt_work/meditate_2026-11-26/sync/"
+  "gap": "Moot: Fendi cut the video to the first half (song 0:00-3:11.48, asset e0b6ce33), 26 Nov. 6547 and 6549 cover all of it.",
+  "per_window_tables": "/Volumes/T7/_avt_work/meditate_2026-11-26/sync/",
+  "video_song": {
+    "asset_id": "e0b6ce33-8027-4eeb-95a7-c17d1f047ca7",
+    "song_seconds": [
+      0.0,
+      191.48
+    ],
+    "same_clock": "lag 0 samples at 10, 100, 180 s"
+  }
 }

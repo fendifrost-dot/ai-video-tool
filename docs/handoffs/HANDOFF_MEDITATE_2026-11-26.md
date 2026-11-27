@@ -56,9 +56,12 @@ the song: find which stretch each take covers before planning anything (section 
 
 | Each take synced to the song (step 1, the measuring half) | `docs/sync/meditate.performance-sync.json` | VERIFIED 26 Nov, two methods within 3 ms. song = file + offset: 6547 -18.114, 6548 -12.121, 6549 -10.168, 6550 -12.641 (camera rolled before the song in all four) |
 
-**The gap (VERIFIED):** the takes cover song 0:00 to at most 3:16.5 (6547); 6548 ends at 2:50.9, 6549 at 3:13.4, 6550
-at 3:04.4. Song 3:16.5 to 4:44.2 has no footage of him, and the song is loud to about 4:20. Asked Fendi (26 Nov) whether
-there is more footage or that stretch is the fight alone. Do not plan it before his answer.
+**The video is the first half of the song (DECISION, Fendi 26 Nov):** "the second half of the song is being cut from
+the video we only need the first half for this one". Project song = asset `e0b6ce33-8027-4eeb-95a7-c17d1f047ca7`,
+song 0:00 to 3:11.48 (the second half's beat hits at 3:11.50), same clock as the full song to the sample, so the syncs
+hold. Shape (local Whisper, OBSERVED): chant 0:03-0:17, verse 1 0:17-1:08, chant 1:08-1:52, fast verse 2 1:52-2:19.6,
+chant 2:20-2:49, beat 2:49-3:04, spoken outro 3:04-3:11 ("... cut that alarm off of me. Thank you."). 6547 and 6549
+cover all of it; 6550 ends at 3:04.4, 6548 at 2:50.9. The uncovered stretch from 3:16 is gone with the second half.
 
 **Where to run (Fendi, 26 Nov):** "if possible can you do all of your processing on here [the Mac Studio] to save memory
 on my mac". The session that wrote this ran on the MacBook Pro (M1, 8 GB, `FENDI MacBook Pro`) with no SSH link to the
