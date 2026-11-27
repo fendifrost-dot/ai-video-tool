@@ -2,7 +2,7 @@ export const ALTER_TOOLS = [
   {
     name: "avt_alter_presets",
     description:
-      "List the 36 ALTER presets (swap, motion transfer, restyle). Read only. $0. Does not call a model.",
+      "List the ALTER presets: the 36 of the scenario-alter set (swap, motion transfer, restyle) and AVT's own `action` (something happens in his take while he keeps rapping). Read only. $0. Does not call a model.",
     inputSchema: { type: "object", properties: { mode: { type: "string" } } },
   },
   {
@@ -24,7 +24,7 @@ export const ALTER_TOOLS = [
   {
     name: "avt_alter_plan",
     description:
-      "Build an unsent fal Seedance 480p draft for an ALTER preset. generate_audio is false. Original audio is muxed back by an ffmpeg argv that is not run. $0.",
+      "Build the exact avt_call arguments for a 480p ALTER draft on the route Fendi passed (proxy-provider-call -> video-providers-higgsfield-model, seedance-2.5-edit). Nothing is sent and nothing is spent here: sending `draft` with avt_call is the paid step. Returns the poll call and the local steps for the file that comes back (it arrives about 7% fast and must be conformed before scoring). Pass draft_check (the report scripts/alter/run_draft.py wrote for the conformed draft) to get the full-resolution call for a draft that passed; with no identity number that also needs face_approval, Fendi's own words about that draft's face.",
     inputSchema: {
       type: "object",
       properties: {
@@ -33,10 +33,21 @@ export const ALTER_TOOLS = [
         slots: { type: "object" },
         style: { type: "string" },
         performance: { type: "boolean" },
-        put_face_back: { type: "boolean" },
-        video_url: { type: "string" },
+        video_url: {
+          type: "string",
+          description:
+            "A signed https link to the stretch of the take: at least 4 s, cut waist-up from the 4K original so his face is large.",
+        },
         target_frame_url: { type: "string" },
-        source_seconds: { type: "number" },
+        face_image_urls: {
+          type: "array",
+          items: { type: "string" },
+          description: "Signed https links to two to four of his face photographs from the tool.",
+        },
+        project_id: { type: "string" },
+        draft_check: { type: "object" },
+        face_approval: { type: "string" },
+        resolution: { type: "string", description: "720p or 1080p, for the full-resolution call." },
       },
       required: ["preset", "who"],
     },
@@ -44,7 +55,7 @@ export const ALTER_TOOLS = [
   {
     name: "avt_alter_check",
     description:
-      "Score a draft the caller already measured: changed area, structure, motion, plus optional mouth openness series and an identity distance. Does not read video and does not call a model. $0. A rapping shot without a mouth series does not pass.",
+      "Judge a CONFORMED draft the caller already measured (scripts/alter/run_draft.py writes every number): changed area, structure, motion, the mouth score and an identity distance. Mode `action` is for a shot that adds movement (the motion gate is reported, not judged). Does not read video and does not call a model. $0. A rapping shot without a mouth score does not pass; without an identity number the face is Fendi's to judge.",
     inputSchema: {
       type: "object",
       properties: {

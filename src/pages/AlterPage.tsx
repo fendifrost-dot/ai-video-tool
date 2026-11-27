@@ -42,7 +42,6 @@ export default function AlterPage({ projectId }: { projectId: string }) {
   const [videoUrl, setVideoUrl] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [performance, setPerformance] = useState(true);
-  const [putBack, setPutBack] = useState(true);
   const [plan, setPlan] = useState<AlterPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +52,6 @@ export default function AlterPage({ projectId }: { projectId: string }) {
       who,
       slots,
       performance,
-      putFaceBack: putBack,
       videoUrl: videoUrl.trim() || undefined,
       targetFrameUrl: targetUrl.trim() || undefined,
     });
@@ -76,11 +74,13 @@ export default function AlterPage({ projectId }: { projectId: string }) {
       />
       <section className="rounded-xl border border-border bg-card/80 p-4 text-sm text-foreground/80">
         <p>
-          The three modes and 36 presets follow the MIT scenario-alter skill. This page builds a fal
-          Seedance draft and does not send it. A rapping redraw is kept only when the mouth timing
-          stays at or above {MOUTH_TIMING_MIN} and the identity distance stays at or below{" "}
-          {IDENTITY_DISTANCE_MAX}. Otherwise his original face and mouth pixels go back on. Every
-          output is planned with the original audio.
+          The three modes and 36 presets follow the MIT scenario-alter skill; the action preset is
+          AVT's own. This page builds the Seedance video-edit request for the route Fendi passed and
+          does not send it. A rapping redraw is kept only when the mouth timing stays at or above{" "}
+          {MOUTH_TIMING_MIN} and the face passes: an identity distance at or below{" "}
+          {IDENTITY_DISTANCE_MAX}, or his own word on the face sheet. A draft that fails is
+          re-rolled. His original face is not laid back onto a redraw. Every output is planned with
+          the take's audio.
         </p>
       </section>
 
@@ -173,14 +173,6 @@ export default function AlterPage({ projectId }: { projectId: string }) {
             />
             He is rapping in this take
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={putBack}
-              onChange={(event) => setPutBack(event.target.checked)}
-            />
-            Put his original face and mouth back if the score fails
-          </label>
           <Button type="button" onClick={prepare} data-testid="alter-prepare">
             Prepare 480p draft
           </Button>
@@ -189,14 +181,14 @@ export default function AlterPage({ projectId }: { projectId: string }) {
             <div className="flex flex-col gap-2 text-sm" data-testid="alter-plan">
               <p>{plan.report}</p>
               <p>
-                Submitted: {String(plan.submitted)}. Ready: {String(plan.ready)}. Draft:{" "}
-                {String(plan.draft.input.draft)}. Audio generated:{" "}
-                {String(plan.draft.input.generate_audio)}.
+                Submitted: {String(plan.submitted)}. Ready: {String(plan.ready)}. Resolution:{" "}
+                {plan.draft.body.body.resolution}. Audio generated:{" "}
+                {String(plan.draft.body.body.generate_audio)}.
               </p>
               {plan.blocked.map((line) => (
                 <p key={line}>{line}</p>
               ))}
-              <p>{plan.fallback.when}</p>
+              <p>{plan.ifItFails}</p>
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                 {plan.prompt}
               </pre>
@@ -217,7 +209,8 @@ export default function AlterPage({ projectId }: { projectId: string }) {
                       frozenFrom: [],
                       mouth: null,
                       identity: { measured: false, fails: false, distance: null },
-                      fallback: true,
+                      redrawCleared: false,
+                      faceNeedsHisEye: false,
                       issues: ["not scored yet"],
                       gates: {
                         structureFloor: 0,

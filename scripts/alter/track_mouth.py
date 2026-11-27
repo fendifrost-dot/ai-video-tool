@@ -7,6 +7,8 @@ ALTER face and mouth tracker. Local, $0, no provider call, no download.
   score    two tracks (the take, the redraw) -> mouth timing, mouth shape, pose difference, identity distance, coverage.
   putback  the take + the redraw + both tracks -> the redraw with his ORIGINAL face pixels moved onto the redraw's face
            (similarity fit on his eyes and nose), feathered, graded to the redraw's surround, original audio put back.
+           FAILED BY FENDI on 27 Nov 2026 ("The face was warping on clip 3"): the laid-on face slides in motion on a
+           small face. Kept for study only; it is not a step of any shot. A draft whose mouth or face fails is re-rolled.
 
     python -I scripts/alter/track_mouth.py track take.mp4 take.json [--start 12 --duration 4]
     python -I scripts/alter/track_mouth.py score take.json draft.json
@@ -258,6 +260,7 @@ def main():
         if a.out: json.dump(r, open(a.out, "w"), indent=1)
         print(json.dumps(r, indent=1))
     else:
+        print("NOTE: Fendi failed this put-back on 27 Nov 2026 (the face warps in motion). Study only, never a deliverable.", file=sys.stderr)
         print(json.dumps(putback(a.take, a.draft, json.load(open(a.take_track)), json.load(open(a.draft_track)), a.out, grade=not a.no_grade), indent=1))
 
 

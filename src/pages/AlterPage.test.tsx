@@ -11,7 +11,8 @@ describe("alter page", () => {
     fireEvent.click(screen.getByTestId("alter-prepare"));
     const plan = screen.getByTestId("alter-plan");
     expect(plan.textContent).toContain("Submitted: false");
-    expect(plan.textContent).toContain("Draft: true");
+    expect(plan.textContent).toContain("Resolution: 480p");
+    expect(plan.textContent).toContain("Do not lay his original face back");
     expect(plan.textContent).toContain("Audio generated: false");
     expect(plan.textContent).toContain("mouth");
   });

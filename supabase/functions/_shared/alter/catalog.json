@@ -3,7 +3,7 @@
     "title": "scenario-alter",
     "license": "MIT",
     "source": "https://www.scenario.com/explorations/alter/",
-    "note": "Preset text and the checker's published gates come from the scenario-alter skill (frontmatter license: MIT). AVT does not call the Scenario MCP. Prompts address fal's @Video1 and @Image1 tags."
+    "note": "Preset text and the checker's published gates come from the scenario-alter skill (frontmatter license: MIT). AVT does not call the Scenario MCP. Prompts address the provider's @Video1 and @Image tags."
   },
   "openings": {
     "O": "Edit @Video1. Keep absolutely everything exactly the same, frame for frame: {who} (face, body, every movement and expression), the camera movement, framing and lens, the set, the light and the timing.",

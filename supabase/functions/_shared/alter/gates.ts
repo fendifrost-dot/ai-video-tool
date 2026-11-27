@@ -22,6 +22,7 @@ export const STRUCTURE_FLOOR: Record<CheckMode, number> = {
   recast: 0.45,
   motion: 0.08,
   restyle: 0.12,
+  action: 0.45,
 };
 
 export const CHANGED_RANGE: Record<CheckMode, readonly [number, number]> = {
@@ -29,6 +30,21 @@ export const CHANGED_RANGE: Record<CheckMode, readonly [number, number]> = {
   recast: [0.01, 0.55],
   motion: [0.05, 1],
   restyle: [0.15, 1],
+  action: [0.004, 0.55],
+};
+
+/**
+ * Motion correlation and the jump test compare how much each frame moves in the take and in the draft. An action
+ * shot adds movement the take does not have, so both trip on the change that was asked for: the draft Fendi passed
+ * on 26 and 27 Nov 2026 read -0.16 with 33 "jumps" (docs/alter/TEST_2026-11-26.md). They are reported, not gated,
+ * for an action. Frozen frames, tail drift, structure and the mouth are still gated.
+ */
+export const MOTION_GATED: Record<CheckMode, boolean> = {
+  swap: true,
+  recast: true,
+  motion: true,
+  restyle: true,
+  action: false,
 };
 
 export const RESTYLE_STRUCTURE_MAX = 0.65;
@@ -54,6 +70,8 @@ export const GATE_PROVENANCE = {
   changedRange: "scenario-alter qa.md. Swap floor 0.4% is the cup-to-can case (1.9% changed).",
   restyleStructureMax:
     "scenario-alter qa.md. Above 0.65 the source surface survived (anime-over-a-photo, re-grade).",
+  action:
+    "A decision resting on one sample: the swap structure floor and change range, without the motion and jump gates. The draft Fendi passed (Meditate, 26 and 27 Nov 2026) kept structure 0.69 and changed 8.2% of the frame.",
   motionMin:
     "scenario-alter qa.md. Below 0.60 the output was re-timed or frozen on their coarse grid.",
   mouthTimingMin:

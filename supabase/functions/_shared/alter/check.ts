@@ -1,4 +1,10 @@
-import { CHANGED_RANGE, MOTION_MIN, RESTYLE_STRUCTURE_MAX, STRUCTURE_FLOOR } from "./gates.ts";
+import {
+  CHANGED_RANGE,
+  MOTION_GATED,
+  MOTION_MIN,
+  RESTYLE_STRUCTURE_MAX,
+  STRUCTURE_FLOOR,
+} from "./gates.ts";
 import { identityFails, scoreMouth, type MouthScore } from "./mouth.ts";
 import type { CheckMode, GrayFrame, MouthFrame } from "./types.ts";
 
@@ -14,7 +20,10 @@ export type AlterReport = {
   frozenFrom: number[];
   mouth: MouthScore | null;
   identity: { measured: boolean; fails: boolean; distance: number | null };
-  fallback: boolean;
+  /** True when the redraw may be used as it is: the mouth passed and the face has a passing number. */
+  redrawCleared: boolean;
+  /** True when the mouth passed and only the face is open: no identity number, so Fendi judges the face sheet. */
+  faceNeedsHisEye: boolean;
   issues: string[];
   gates: {
     structureFloor: number;
@@ -139,7 +148,7 @@ export function checkAlter(input: {
     issues.push(`tail drift: trim the last ${tailTrimFrames} frames on every version alike`);
   for (const run of runs) {
     if (run === tail) continue;
-    if (input.mode === "swap" && run.length >= 6) {
+    if ((input.mode === "swap" || input.mode === "action") && run.length >= 6) {
       issues.push(`drift: frames ${run[0]}-${run[run.length - 1]} lose the source structure`);
     }
   }
@@ -160,7 +169,8 @@ export function checkAlter(input: {
   const outputMotion = motionEnergy(input.output.slice(0, n));
   const motionCorrelation = n > 3 ? corr(sourceMotion, outputMotion) : 1;
   const motionSpread = median(sourceMotion.map((value) => Math.abs(value - median(sourceMotion))));
-  if (motionCorrelation < MOTION_MIN && motionSpread > 0.3) {
+  const motionGated = MOTION_GATED[input.mode];
+  if (motionGated && motionCorrelation < MOTION_MIN && motionSpread > 0.3) {
     issues.push(`motion: correlation ${motionCorrelation.toFixed(2)} < ${MOTION_MIN}`);
   }
   const base = median(outputMotion) + 1e-3;
@@ -168,7 +178,7 @@ export function checkAlter(input: {
     .map((value, index) => ({ value, index }))
     .filter((row) => row.value > 3 * (sourceMotion[row.index] ?? 0) + 2 && row.value > 3 * base)
     .map((row) => row.index + 1);
-  if (jumps.length) issues.push(`jump at frames ${jumps.slice(0, 10).join(", ")}`);
+  if (motionGated && jumps.length) issues.push(`jump at frames ${jumps.slice(0, 10).join(", ")}`);
   const frozenFrom: number[] = [];
   let run = 0;
   for (let i = 0; i < outputMotion.length; i++) {
@@ -201,7 +211,8 @@ export function checkAlter(input: {
 
   const mouthFail =
     mouth?.timingFails === true || mouth?.shapeFails === true || (performance && !mouth?.measured);
-  const fallback = performance && (mouthFail || identity.fails || !identity.measured);
+  const redrawCleared = !performance || (!mouthFail && identity.measured && !identity.fails);
+  const faceNeedsHisEye = performance && !mouthFail && !identity.measured;
   const hard = issues.filter((issue) => !issue.includes("provisional") && !issue.includes("Warns"));
   return {
     verdict: hard.length ? "CHECK" : "PASS",
@@ -219,7 +230,8 @@ export function checkAlter(input: {
       fails: identity.fails,
       distance: input.identityDistance ?? null,
     },
-    fallback,
+    redrawCleared,
+    faceNeedsHisEye,
     issues,
     gates: {
       structureFloor: STRUCTURE_FLOOR[input.mode],

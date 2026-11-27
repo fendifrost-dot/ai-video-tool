@@ -22,6 +22,10 @@ export function buildAlterPrompt(input: {
   /** Rapping or sung. Default true: the mouth rule is on unless the caller turns it off. */
   performance?: boolean;
   style?: string;
+  /** How many face photographs are attached after the target frame. They get their own @Image tags. */
+  facePictures?: number;
+  /** True when a target frame is attached: it is @Image1 and the face photographs follow it. */
+  targetFrame?: boolean;
 }): AlterPrompt | { ok: false; error: string } {
   const preset = getPreset(input.preset);
   if (!preset) return { ok: false, error: `No alter preset ${input.preset}.` };
@@ -46,6 +50,7 @@ export function buildAlterPrompt(input: {
   const values: Record<string, string> = {
     who,
     style: input.style?.trim() || "the named style",
+    ...(preset.opening === "A" ? { keep: "the clothes and the pose" } : {}),
     ...(input.slots ?? {}),
   };
   const openingKey = preset.mode === "restyle" ? "R" : preset.opening;
@@ -56,6 +61,16 @@ export function buildAlterPrompt(input: {
   const close = ALTER_CLOSE[openingKey] ?? ALTER_CLOSE[preset.opening];
   const parts = [opening, change, close];
   if (performance) parts.push(PERFORMANCE);
+  const faces = Math.max(0, Math.floor(input.facePictures ?? 0));
+  if (faces > 0) {
+    const first = input.targetFrame ? 2 : 1;
+    const tags = Array.from({ length: faces }, (_, index) => `@Image${first + index}`);
+    const list =
+      tags.length > 1 ? `${tags.slice(0, -1).join(", ")} and ${tags[tags.length - 1]}` : tags[0];
+    parts.push(
+      `${who.charAt(0).toUpperCase()}${who.slice(1)} is the person in the photograph${faces > 1 ? "s" : ""} ${list}: the same face, unchanged.`,
+    );
+  }
   const unfilled = [...parts.join(" ").matchAll(/\{(\w+)\}/g)].map((match) => match[1]);
   if (unfilled.length)
     warnings.push(`Fill these before sending: ${[...new Set(unfilled)].join(", ")}.`);

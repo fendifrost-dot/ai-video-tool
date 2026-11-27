@@ -2,14 +2,15 @@ export const ALTER_MODES = ["swap", "motion", "restyle"] as const;
 export type AlterMode = (typeof ALTER_MODES)[number];
 
 /** Checker mode. Recast is a motion-transfer preset that changes who is on screen. */
-export const CHECK_MODES = ["swap", "recast", "motion", "restyle"] as const;
+/** Action is AVT's own: something new happens in the take (a second person, a block) while the performer keeps his performance. */
+export const CHECK_MODES = ["swap", "recast", "motion", "restyle", "action"] as const;
 export type CheckMode = (typeof CHECK_MODES)[number];
 
 export type AlterPreset = {
   name: string;
   group: string;
   mode: AlterMode;
-  opening: "O" | "M" | "R";
+  opening: "O" | "M" | "R" | "A";
   check: CheckMode;
   /** true, false, or "optional" (restyles: add a redrawn first frame only if the draft stays photographic). */
   targetFrame: boolean | "optional";

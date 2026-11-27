@@ -1,8 +1,9 @@
 # ALTER in AVT
 
-Class C (a fal payload and a face composite). The planner does not submit. No SQL. Sign-off before merge.
+Class C (a provider payload that redraws him on a performance take). The planner does not submit. No SQL.
+**To run a shot, use the run sheet: [`../recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md`](../recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md).** This page is the design behind it.
 
-The method is the MIT `scenario-alter` skill (https://www.scenario.com/explorations/alter/, frontmatter `license: MIT`). AVT does not call the Scenario MCP. The edit, when someone later approves a spend, is fal `bytedance/seedance-2.5/reference-to-video`.
+The method is the MIT `scenario-alter` skill (https://www.scenario.com/explorations/alter/, frontmatter `license: MIT`). AVT does not call the Scenario MCP. The edit runs on the route that rendered the draft Fendi passed on 26 and 27 Nov 2026: AVT `proxy-provider-call` -> Control Center `video-providers-higgsfield-model`, variant `seedance-2.5-edit` (Higgsfield `bytedance/seedance-2.5/video-edit`).
 
 ## Modes
 
@@ -12,20 +13,24 @@ The method is the MIT `scenario-alter` skill (https://www.scenario.com/explorati
 | Motion transfer | performance and camera | who is on screen, or the place |
 | Restyle | motion and framing | the whole look |
 
-36 presets. A target frame is one still of the change already sitting in a frame of the take. `compositeTargetFrame` is the local $0 paste. The skill's Gemini "photograph it in" pass is not run.
+36 presets from the skill, plus AVT's own `action` preset (swap mode, checker mode `action`): something happens in the take while the performer keeps his performance. Its wording is the prompt of the passed draft with the shot's particulars turned into slots; it lives in `catalog.ts`, outside the MIT `catalog.json`. A target frame is one still of the change already sitting in a frame of the take. `compositeTargetFrame` is the local $0 paste. The skill's Gemini "photograph it in" pass is not run.
 
-## Draft, then check, then maybe a full body
+## Draft, then check, then maybe full resolution
 
-The draft body sets `draft: true` (fal forces 480p) and `generate_audio: false`. It is not sent. `planFinalize` attaches an unsent 1080p body only when the checker returns PASS and the face fallback is not required.
+`planAlter` returns the arguments of one `avt_call` for a 480p draft (`generate_audio: false`, the take as `referenceVideoUrl`, an optional target frame as `@Image1`, then up to four of his face photographs with their own `@Image` tags). It is not sent: a person or an agent sends it. A prompt with an unfilled slot, a non-https link or more than four face pictures is not ready.
 
-Scenario's "Draft Complete" model was not a separate id in the fal schema checked on 26 Nov 2026. The 1080p body is a second reference call, not a claimed draft-completion endpoint.
+`planFinalize` attaches the full-resolution call (720p or 1080p) only when the draft's check has no open issue, the mouth passed, and the face is cleared: a passing identity number, or, while no number exists, Fendi's own words about that draft's face (`faceApproval`, quoted into the call's note). Full resolution is a new render of the same request, not an upscale of the draft: it is conformed, scored and shown again. The provider's playground also lists a draft switch and `bytedance/seedance-2.5/finalize-draft`; neither is in its API docs and neither is wired (an open item).
 
 ## The provider route, as tested (26 Nov 2026)
 
-`TEST_2026-11-26.md` is the first real draft. Two things it proved, both binding on any caller:
+`TEST_2026-11-26.md` is the first real draft. Two things it proved, both built in now:
 
-- **An edit goes to the video-edit endpoint.** On Higgsfield the edit wording ("Edit @Video1 …") is refused on `reference-to-video`, because an edit takes its length and frame from the source. The working route is Control Center `seedance-2.5-edit` (`bytedance/seedance-2.5/video-edit`): the source clip, optional pictures, a resolution; no duration, no aspect ratio. `plan.ts` still builds the reference body and has not been sent to fal.
-- **Conform the draft before scoring it.** The draft comes back about 7% fast (89 frames for a 96-frame source), as Genjutsu does. Stretch it to the take's length and interpolate to the take's rate (`scripts/edit/swap_rate.py`'s filter) first. Unconformed, the mouth gate reads 0.15 and calls a good draft re-timed; conformed, the same draft reads 0.86 at 0 frames.
+- **An edit goes to the video-edit endpoint.** The edit wording ("Edit @Video1 …") is refused on `reference-to-video`, because an edit takes its length and frame from the source. `plan.ts` builds the `seedance-2.5-edit` body: the source clip, pictures, a resolution; no duration, no aspect ratio.
+- **Conform the draft before scoring it.** The draft comes back about 7% fast (89 frames for a 96-frame source), as Genjutsu does. `scripts/alter/conform_draft.py` stretches it to the take's length, interpolates to the take's rate with `scripts/edit/swap_rate.py`'s filter, and writes exactly the take's frame count with no B-frames. It refuses a file whose length is outside 0.90 to 1.20 of the take's: that is not the take played a little fast. Unconformed, the mouth gate reads 0.15 and calls a good draft re-timed; conformed, the same draft reads 0.86 at 0 frames. `scripts/alter/run_draft.py` runs conform, track, score, check, face sheet and the side-by-side in one command.
+
+## If a draft fails
+
+Re-roll, change the staging, or use his real take. **His original face is not laid back onto a redraw.** Fendi failed that step on 27 Nov 2026 ("Clip 3 is the putback. That's the fail. The face was warping on clip 3."): the laid-on face slides in motion on a face about 96 pixels wide, and the mouth gate did not see it (the put-back scored 0.931 against the clean redraw's 0.860). `track_mouth.py putback` stays in the file for study and prints that note. This says nothing about the clothing-swap put-back (`scripts/edit/body_only_swap.py`), which works on his real take.
 
 ## Gates, and where the numbers come from
 
@@ -40,9 +45,9 @@ Scenario's "Draft Complete" model was not a separate id in the fal schema checke
 | Mouth shape | fail above 0.06 face widths, warn above 0.04 | Same run. Identical footage at 480p reads 0.030 to 0.032 apart (the tracker's noise); real redraws 0.026 to 0.029. |
 | Face read | 80% of frames, in both clips | A decision. Below it nothing is claimed about the mouth. |
 | Identity distance | 0.25 | `scripts/edit/camera_coverage.py` `identity_max`. Lower is closer. NOT measured on his footage: the ArcFace file is not on the machine. |
-| Head turn for the put-back | 0.12 face widths | A decision, not measured. Above it his original face is not laid onto the redraw: a flat face on a turned head is a paste-up. |
+| Motion and jumps in `action` mode | reported, not judged | A decision on one sample: the passed draft read -0.16 with 33 "jumps", which is the action that was asked for. Structure, change, frozen frames, tail drift and the mouth are still judged. |
 
-A rapping shot with no mouth series, or no identity distance, is CHECK. The redraw is not finalized. If "put his face back" is on, the deliverable is the masked composite of his original face and mouth, then the original audio.
+A rapping shot with no mouth score is CHECK. With no identity distance it is also CHECK, marked `faceNeedsHisEye`: the tool does not clear a face it did not measure; Fendi judges the face sheet.
 
 ## Reading his face and mouth (local, $0)
 
@@ -52,14 +57,13 @@ A rapping shot with no mouth series, or no identity distance, is CHECK. The redr
 python -I scripts/alter/track_mouth.py track take.mp4 take.json          # --start S --duration D for a stretch of a long take
 python -I scripts/alter/track_mouth.py track draft.mp4 draft.json
 python -I scripts/alter/track_mouth.py score take.json draft.json --out score.json
-node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 --mode swap \
+node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 --mode action \
   --track-source take.json --track-output draft.json --score score.json
-python -I scripts/alter/track_mouth.py putback take.mp4 draft.mp4 take.json draft.json out.mp4   # the fallback
 ```
 
 - `score` writes the mouth timing on the take's clock, the best fit within 6 frames and its lag, the mouth-shape distance in face widths, the share of frames read, the head-turn difference, and the identity distance when `$AVT_MODELS/arcface_w600k_r50.onnx` is on disk (null otherwise: a rapping shot is then CHECK).
 - `avt_alter_check` takes that JSON as `track_score` and judges it with the gates above. The measuring happens where the footage is; the thresholds live in `gates.ts` only.
-- `putback` moves his ORIGINAL face pixels onto the redraw's face (a similarity fit on his eye corners and nose bridge, the redraw's face outline as the mask, feathered, graded to the redraw's surround) and puts the original audio back. It refuses when the head is turned differently.
+- One command does all of the above after a draft is downloaded: `python -I scripts/alter/run_draft.py --take take.mp4 --raw raw.mp4 --out work/ --mode action --face …`.
 
 ## What the tracker cannot read
 

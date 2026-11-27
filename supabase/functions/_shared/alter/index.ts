@@ -3,6 +3,7 @@ export {
   ALTER_CLOSE,
   ALTER_OPENINGS,
   ALTER_PRESETS,
+  AVT_PRESETS,
   getPreset,
   listPresets,
   presetGroups,
@@ -14,6 +15,7 @@ export {
   GATE_PROVENANCE,
   IDENTITY_DISTANCE_MAX,
   LANDMARK_DISTANCE_WATCH,
+  MOTION_GATED,
   MOTION_MIN,
   MOUTH_COVERAGE_MIN,
   MOUTH_LAG_OK,
@@ -31,7 +33,15 @@ export {
   type MouthScore,
   type TrackScore,
 } from "./mouth.ts";
-export { planAlter, planFinalize, type AlterPlan } from "./plan.ts";
+export {
+  ALTER_ROUTE,
+  MAX_FACE_PICTURES,
+  planAlter,
+  planFinalize,
+  type AlterCall,
+  type AlterEditBody,
+  type AlterPlan,
+} from "./plan.ts";
 export { buildAlterPrompt } from "./prompt.ts";
 export { ALTER_TOOL_NAMES, ALTER_TOOLS } from "./toolDefs.ts";
 export { runAlterTool } from "./tools.ts";

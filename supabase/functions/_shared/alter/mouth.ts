@@ -102,7 +102,9 @@ export function scoreMouth(source: MouthFrame[], output: MouthFrame[]): MouthSco
     return {
       measured: false,
       ...empty,
-      issues: ["mouth: fewer than 3 frames with his face in both clips, so lip sync was not scored"],
+      issues: [
+        "mouth: fewer than 3 frames with his face in both clips, so lip sync was not scored",
+      ],
     };
   }
   if (coverage < MOUTH_COVERAGE_MIN) {
@@ -255,7 +257,8 @@ export function identityFails(distance: number | null | undefined): {
     return {
       measured: false,
       fails: false,
-      issue: "identity was not measured. A rapping redraw is not cleared without it.",
+      issue:
+        "identity was not measured. The face is cleared by the number or by Fendi's word on the face sheet, not by this check.",
     };
   }
   if (distance > IDENTITY_DISTANCE_MAX) {
