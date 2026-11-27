@@ -63,6 +63,12 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
 7. **Watch `compare.mp4` and open `face_sheet.jpg` yourself**, the whole picture: his hands, the second person, the
    edges, the last frames. Then post both inline with the numbers, and say plainly what is open. With no identity
    number the tool never clears the face: Fendi does.
+   **Record his verdict the same turn** (Fendi, 27 Nov 2026: the pass/fail line is tested inside the video being
+   built, not on older projects). When what he says is about the face:
+   `python -I scripts/alter/face_evidence.py add --run <out> --project <video> --label "<shot, draft>" --verdict pass|reject --words "<his words>"`
+   with `AVT_FACE_EVIDENCE=/Volumes/T7/_avt_work/alter_face_evidence/<video>.jsonl`. About something else: add
+   `--about action|scene|mouth`. A draft the tool fails on the identity line is shown to him with its number before
+   any re-roll. Method and the two measures: `../alter/IDENTITY_2026-11-27.md` "The test group".
 8. **Full resolution, only after his pass on the draft.** `avt_alter_plan` again with the same arguments plus
    `draft_check` (the contents of `report.json`), `face_approval` (his words about that draft's face, quoted) and
    `resolution` (`720p` or `1080p`). The report is judged again from its numbers and must be for this preset's check
@@ -107,5 +113,7 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
   27 Nov 2026: the model's licence line is not a stop; do not park the model or the work over it). What is missing
   is evidence for the line: no face he rejected has been measured. A number never clears his face until the line is
   certified.
-- A face-steadiness number. The put-back's warp scored BETTER on the mouth gate (0.931) than the clean redraw, so the
-  gates here do not see a face that slides. Watch the face in motion; a still sheet cannot show it.
+- A face-steadiness gate. The put-back's warp scored BETTER on the mouth gate (0.931) and on identity (0.010) than
+  the clean redraw. Two steadiness numbers (`face_steadiness` in the `run_draft.py` summary) read that one pair the
+  right way round, 1.58 and 1.32 against 0.77 and 0.82, but one pair is not a line: they are recorded, not gated.
+  Watch the face in motion; a still sheet cannot show it.

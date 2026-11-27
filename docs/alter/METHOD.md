@@ -66,6 +66,7 @@ node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 -
 - `score` writes the mouth timing on the take's clock, the best fit within 6 frames and its lag, the mouth-shape distance in face widths, the share of frames read, the head-turn difference, and the identity distance when `$AVT_MODELS/arcface_w600k_r50.onnx` is on disk with the pinned checksum (null otherwise; another file under that name is refused).
 - `avt_alter_check` takes the checker's report (`report.json`) as `report` and judges it again from its numbers with the gates above. The measuring happens where the footage is; the thresholds live in `gates.ts` and the verdict logic in `judge.ts` only.
 - One command does all of the above after a draft is downloaded: `python -I scripts/alter/run_draft.py --take take.mp4 --raw raw.mp4 --out work/ --mode action --face …`.
+- `scripts/alter/face_evidence.py` keeps the test group for the face lines: `add` records Fendi's verdict on a draft's face with three numbers (identity distance, embedding jitter and shape wobble against the take), `show` says whether each number separates the faces he passed from the faces he rejected. `run_draft.py` prints the two steadiness numbers as `face_steadiness`. None of them is a gate; the method is in `IDENTITY_2026-11-27.md` "The test group".
 
 ## What the tracker cannot read
 
