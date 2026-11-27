@@ -17,6 +17,22 @@ CLOSED (passed, method written into the build skill) · PARKED (not pursued now)
 | G6 | **Variety across shots in one outfit** without extra rolls | eight mastic b-rolls read as one shot; fixed in VFX only partly | storyboard intent row filled; staging differs in two of distance/side/action/lens across the run | not a tool gap: `docs/STORYBOARD_INTENT.md` | CLOSED by process |
 | G7 | **Lifting him together with a creature or prop out of a take** | NOT A GAP. `matte-video-proxy` (the YSL showroom matte, recipe E1') keeps him, the creature and a thin chain in one matte (VERIFIED Hyenas 13 Nov 2026). Opened in error on 12 Nov after the wrong tools were tried first | n/a | `matte-video-proxy` | CLOSED: use the existing tool |
 
+## Candidate notes
+
+- **22 Nov 2026, Beeble SwitchX 3.0** (`scans/2026-11-22_switchx3.md`; asked for by Fendi): a CANDIDATE for G1 and G2
+  and for the swap engine of the canonical clothing swap, by the vendor's wording only (kept region "pixel for pixel"
+  but always relit; clothes regenerated from a prompt and up to four references in the web app, one through the API;
+  camera tracking and moving backgrounds). Not offered: placing his face on a generated body. Our own SwitchX runs
+  before it changed the wardrobe's colours (YSL, 16 Oct) and redrew his face (Hyenas, 13 Nov). Benchmarks B1 and B2
+  are written, not run, not funded.
+- **26 Nov 2026, SwitchX keep-mask through the API, run 1** (same scan file, last section; PR #538 added the lane to
+  `switchx-background-proxy`): one 4 s job on his standing take with our own matte and one product picture. The
+  product's print came through; the garment kept the old jacket's cut (long sleeves, not the short-sleeved shirt asked
+  for); the kept region was regraded (18.5 of 255 on average, 13.6 on his face); the garment flickers 1.8x the take.
+  His hands were inside our matte's generated region and came back damaged, which says nothing about the model. The
+  API's SwitchX version is not stated by Beeble; 3.0 by name needs a paid web plan (his purchase). Still a candidate,
+  no change to the approved route.
+
 ## How a candidate is tested
 
 1. One real take of his, 4 s, that shows the failure (for G1: c041-style with the train plate and a light sweep).
