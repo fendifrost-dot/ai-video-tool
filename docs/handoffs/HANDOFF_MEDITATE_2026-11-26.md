@@ -155,10 +155,18 @@ branch. Files: `/Volumes/T7/_avt_work/alter_test_2026-11-26/`; project assets `f
 - VERIFIED: his mouth stayed on the song. Timing 0.86 on the take's clock (gate 0.65), best fit 0 frames off, mouth
   shape 0.051 face widths (warn band, fail is 0.06), face read on 96 of 96 frames.
 - Fendi's words on it, same evening: "The face put back doesn't work as shown the face redraw as generated looked
-  clean. That's definitely a pass." Then: "The face redraw had my face warping." My reading (mine, to be confirmed by
-  him): the redraw as generated passes, and the clip with his face laid back on is the one that warps. Measured: the
-  face region changes 26 % more from frame to frame in the put-back than in the redraw (4.90 against 3.88).
-  **Until he confirms that reading, treat neither clip as approved for a shot.**
+  clean. That's definitely a pass." Then: "The face redraw had my face warping." Asked which clip he meant, he
+  answered on 27 Nov: "Clip 2 is the redraw, the generated clip. Clip 3 is the putback. That's the fail. The face was
+  warping on clip 3. The mouth looks fine to me on the lip sync as well. This is a short clip. If longer generations
+  or other generations show a timing issue or another issue, that's a separate issue that needs to be resolved. But
+  from what I can see, the timing of the wording in the lip sync was accurate."
+- **DECISION (Fendi, 26 and 27 Nov): the redraw as generated passed; his face laid back onto the redraw failed.**
+  The lip-sync test his face rule asked for has held once (4 s, 480p, his head still). So the redraw route is open
+  for a rapping shot where an action is added to his take. Do not lay his face back onto such a redraw: it warps in
+  motion (measured: the face region changes 26 % more from frame to frame, 4.90 against 3.88). That verdict is about
+  this step on a redraw; the clothing-swap put-back on his real take (`body_only_swap.py`) is untouched by it.
+- His limit on the pass: a short clip. A longer stretch, a different move or a higher resolution is a new draft that
+  is conformed, scored and shown to him like this one; a fault there is a separate issue, not a reason to reopen this.
 - Identity still has no number (the ArcFace file is not on the Mac).
 
 **The route, if a shot of this kind is approved** (do not rediscover it):
