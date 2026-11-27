@@ -7,7 +7,7 @@ import { ALTER_TOOLS } from "../_shared/alter/toolDefs.ts";
 import { JOB_TOOL_DEFS } from "./jobContract.ts";
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.10.0";
+export const SERVER_VERSION = "1.10.1";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [

@@ -13,8 +13,18 @@ The mouth gates (timing 0.65 on the take's clock, re-timed at two or more frames
 shape 0.06 of face width with a watch at 0.04, face read on 80% of frames) are this
 repo's own, measured on Fendi's footage on 26 Nov 2026
 (`docs/alter/CALIBRATION_2026-11-26.md`). The identity-distance maximum 0.25 is the
-existing sung-line gate in `scripts/edit/camera_coverage.py` (`identity_max`) and is
-not measured here. The `action` preset, its wording and its check mode are AVT's own
+existing sung-line gate in `scripts/edit/camera_coverage.py` (`identity_max`). It is
+not certified (`docs/alter/IDENTITY_2026-11-27.md`): a number above it fails a draft,
+a number under it clears nothing.
+
+The identity model the tracker can read (`scripts/alter/track_mouth.py`, pinned by
+sha256) is InsightFace's `buffalo_l` `w600k_r50.onnx`. It is not in this repo and the
+ALTER scripts never fetch it. (An older research script, `scripts/qa/realism_gate.py`,
+does fetch the same model, unpinned: `RISK_REGISTER.md` MODEL-1.) InsightFace licenses its trained models for non-commercial
+research only and asks to be contacted for other use
+(https://github.com/deepinsight/insightface, README "License", read 27 Nov 2026). It
+was used by the ALTER tracker on 27 Nov 2026 to evaluate the gate and is kept outside
+`$AVT_MODELS`; using it on shots is Fendi's decision. The `action` preset, its wording and its check mode are AVT's own
 (`catalog.ts`), not part of the skill.
 
 `catalog.data.ts` is generated from `catalog.json` by `scripts/alter/extract_presets.py`

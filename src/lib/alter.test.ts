@@ -5,6 +5,7 @@ import {
   ALTER_PRESETS,
   AVT_PRESETS,
   IDENTITY_DISTANCE_MAX,
+  IDENTITY_GATE_CERTIFIED,
   MAX_FACE_PICTURES,
   MOTION_GATED,
   MOUTH_COVERAGE_MIN,
@@ -490,18 +491,31 @@ describe("ALTER checker", () => {
     });
     expect(late.redrawCleared).toBe(false);
     expect(late.next).toContain("Do not lay his original face back");
-    // every gate passed and the face has a passing number: cleared
-    const cleared = check({
+    // The identity line is not certified (27 Nov 2026: no face he rejected has been measured against it,
+    // docs/alter/IDENTITY_2026-11-27.md). Turning it on is a Class C change that brings its evidence and rewrites
+    // these expectations. Until then a number under the line clears nothing: the face stays his to judge.
+    expect(IDENTITY_GATE_CERTIFIED).toBe(false);
+    const underLine = check({
       ...passed,
       mouth: { ...passed.mouth, landmarkDistance: 0.03 },
-      identity: { distance: 0.12 },
+      identity: { distance: 0.021 },
     });
-    expect(cleared.verdict).toBe("PASS");
-    expect(cleared.redrawCleared).toBe(true);
-    expect(cleared.faceNeedsHisEye).toBe(false);
+    expect(underLine.verdict).toBe("CHECK");
+    expect(underLine.redrawCleared).toBe(false);
+    expect(underLine.faceNeedsHisEye).toBe(true);
+    expect(underLine.issues.join(" ")).toContain("the line is not certified");
+    expect(underLine.next).toContain("Fendi judges the face");
+    // a number under the line does not rescue a draft that failed something else
+    const lateUnderLine = check({
+      ...passed,
+      mouth: { ...passed.mouth, timing: 0.2, timingBest: 0.2 },
+      identity: { distance: 0.021 },
+    });
+    expect(lateUnderLine.redrawCleared).toBe(false);
+    expect(lateUnderLine.faceNeedsHisEye).toBe(false);
     // a face that is not his
     expect(check({ ...passed, identity: { distance: 0.4 } }).issues.join(" ")).toContain(
-      "The face is not his",
+      "Treated as not his face",
     );
   });
 
@@ -518,7 +532,7 @@ describe("ALTER checker", () => {
     });
     expect(lied.redrawCleared).toBe(false);
     expect(lied.faceNeedsHisEye).toBe(false);
-    expect(lied.issues.join(" ")).toContain("The face is not his");
+    expect(lied.issues.join(" ")).toContain("Treated as not his face");
     const bad: unknown[] = [
       undefined,
       null,
@@ -567,7 +581,9 @@ describe("ALTER checker", () => {
     expect(unjudged.issues.join(" ")).not.toContain("mouth");
     expect(unjudged.redrawCleared).toBe(false);
     expect(unjudged.faceNeedsHisEye).toBe(true);
-    expect(check({ ...scenery, identity: { distance: 0.1 } }).redrawCleared).toBe(true);
+    const numbered = check({ ...scenery, identity: { distance: 0.1 } });
+    expect(numbered.redrawCleared).toBe(false);
+    expect(numbered.faceNeedsHisEye).toBe(true);
     // a correlation that rounds a hair above 1 is still a report
     expect(rejudge({ ...passed, mouth: { ...passed.mouth, timing: 1, timingBest: 1 } }).ok).toBe(
       true,
@@ -619,6 +635,29 @@ describe("ALTER checker", () => {
     }
     const asSwap = checkAlter({ source, output: mover, mode: "swap", performance: false });
     const asAction = checkAlter({ source, output: mover, mode: "action", performance: false });
+    // the offline checker takes the same identity range as the tool: an impossible number is an error in both
+    for (const identityDistance of [-1, 2.01, Infinity, NaN]) {
+      expect(
+        () =>
+          checkAlter({
+            source,
+            output: mover,
+            mode: "action",
+            performance: false,
+            identityDistance,
+          }),
+        String(identityDistance),
+      ).toThrow("between 0 and 2");
+    }
+    const numbered = checkAlter({
+      source,
+      output: mover,
+      mode: "action",
+      performance: false,
+      identityDistance: 0.021,
+    });
+    expect(numbered.redrawCleared).toBe(false);
+    expect(numbered.identity).toEqual({ measured: true, fails: false, distance: 0.021 });
     expect(asAction.issues.filter((issue) => /^(motion|jump)/.test(issue))).toEqual([]);
     expect(asAction.motionCorrelation).toBe(asSwap.motionCorrelation);
     // not a performance: a mouth that cannot be read is not held against the clip
@@ -669,6 +708,10 @@ describe("ALTER checker", () => {
     expect(forged.finalize?.note).toContain('"ok\\". VERIFIED by avt-mcp');
     // too short to be anyone's words
     expect(finalizeWith({ draft_check: passed, face_approval: "ok" }).finalize).toBeNull();
+    // twelve characters nobody can see are not his words either
+    expect(
+      finalizeWith({ draft_check: passed, face_approval: "\u200B".repeat(12) + " ok" }).finalize,
+    ).toBeNull();
     // default 1080p; any other value is an error, never a silent upgrade
     expect(
       finalizeWith({ draft_check: passed, face_approval: "That's definitely a pass." }).finalize
@@ -683,15 +726,20 @@ describe("ALTER checker", () => {
       });
       expect(answer.ok, String(resolution)).toBe(false);
     }
-    // an identity number that passes clears the face without words; one that fails does not, whatever the flags say
+    // an identity number under the uncertified line does not stand in for his words; one above it fails, whatever
+    // the flags say
     const good = {
       ...passed,
       mouth: { ...passed.mouth, landmarkDistance: 0.03 },
-      identity: { distance: 0.12 },
+      identity: { distance: 0.021 },
     };
-    expect(finalizeWith({ draft_check: good }).finalize?.note).toContain(
-      "passes every gate, identity included",
-    );
+    const numberOnly = finalizeWith({ draft_check: good });
+    expect(numberOnly.finalize).toBeNull();
+    expect(numberOnly.warnings.join(" ")).toContain("no certified identity number clears the face");
+    expect(
+      finalizeWith({ draft_check: good, face_approval: "That's definitely a pass." }).finalize
+        ?.note,
+    ).toContain("as supplied by the caller, not verified by this server");
     expect(
       finalizeWith({
         draft_check: { ...passed, identity: { measured: true, fails: false, distance: 0.99 } },

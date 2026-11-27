@@ -14,7 +14,8 @@
  *   node --experimental-strip-types scripts/alter/check_clip.ts take.mp4 draft.mp4 --mode swap \
  *     --track-source take.json --track-output draft.json --score score.json
  *
- * --score supplies the identity distance (null when the ArcFace file is not on disk: the shot is then CHECK).
+ * --score supplies the identity distance (null when the pinned identity model is not on disk). With or without a
+ * number the face is Fendi's to judge: the identity line is not certified, so a number can fail a draft, never pass one.
  * --mouth-source / --mouth-output still take comma-separated openness values. A performance with neither is CHECK.
  */
 import { readFileSync } from "node:fs";

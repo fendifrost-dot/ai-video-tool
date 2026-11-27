@@ -223,10 +223,15 @@ export function planAlter(input: {
  * This is a checklist for the caller, not a control: the same caller can send any body through avt_call, and this
  * module reads no video. The report is judged again from its numbers (judge.ts `rejudge`); its own flags decide
  * nothing. It must be a report for this preset's check mode and this plan's performance setting. The mouth must
- * have passed. The face needs a passing identity number, or, while no number exists, `faceApproval`: words the
+ * have passed. The face needs a number under a CERTIFIED identity line (none is certified today, gates.ts), or `faceApproval`: words the
  * CALLER says are Fendi's about this draft's face. The server cannot verify them and says so in the note.
  * Full resolution is a new render of the same request, not an upscale of the draft: conform, score and show it again.
  */
+/** Characters a reader can see: spaces, control and zero-width characters are not anyone's words. */
+function visibleLength(text: string): number {
+  return text.replace(/[\p{White_Space}\p{Cc}\p{Cf}]/gu, "").length;
+}
+
 export function planFinalize(
   plan: AlterPlan,
   report: unknown,
@@ -251,11 +256,11 @@ export function planFinalize(
   const approval = typeof options.faceApproval === "string" ? options.faceApproval.trim() : "";
   if (r.redrawCleared) {
     /* cleared by the numbers */
-  } else if (r.faceNeedsHisEye && approval.length >= 12) {
+  } else if (r.faceNeedsHisEye && visibleLength(approval) >= 12) {
     /* cleared on the caller's statement of Fendi's words */
   } else if (r.faceNeedsHisEye) {
     return refuse(
-      "Everything measured passed, but the face has no identity number and no face_approval (Fendi's own words about this draft's face).",
+      "Everything measured passed, but no certified identity number clears the face and there is no face_approval (Fendi's own words about this draft's face).",
     );
   } else {
     return refuse(r.next);

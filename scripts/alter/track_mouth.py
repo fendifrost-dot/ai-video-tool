@@ -15,7 +15,8 @@ ALTER face and mouth tracker. Local, $0, no provider call, no download.
     python -I scripts/alter/track_mouth.py putback take.mp4 draft.mp4 take.json draft.json out.mp4
 
 Models: $AVT_MODELS/face_landmarker.task and selfie_multiclass_256x256.tflite (the put-back's own files). Identity is
-measured only if $AVT_MODELS/arcface_w600k_r50.onnx exists; this script never fetches it.
+measured only if $AVT_MODELS/arcface_w600k_r50.onnx exists and has the pinned checksum (ARC_SHA256; another file is
+refused); this script never fetches it.
 
 Face coordinates: origin at the middle of the face (between landmarks 234 and 454), x along 234 -> 454, one unit = the
 face width. Lip points in that frame do not change when he moves, turns in the picture plane or changes size, so the
@@ -31,9 +32,34 @@ ANCHORS = [33, 133, 362, 263, 168, 6]          # eye corners and nose bridge: ri
 ARC_TEMPLATE = np.array([[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.7366], [41.5493, 92.3655], [70.7299, 92.2041]], np.float32)
 MAX_LAG = 6                                    # frames searched either side for a re-timed mouth (gates.ts MOUTH_MAX_LAG)
 POSE_TURN_MAX = 0.12                           # head-turn difference (nose offset in face widths) above which a 2D put-back reads as pasted
+ARC_FILE = "arcface_w600k_r50.onnx"            # InsightFace buffalo_l recognition model (w600k_r50.onnx), 174,383,860 bytes
+ARC_SHA256 = "4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43"   # pinned 27 Nov 2026, docs/alter/IDENTITY_2026-11-27.md
 
 
 # ----------------------------------------------------------------------------- pure numpy (tested without the models)
+def arc_model(models_dir):
+    """The identity model's bytes, or None when the file is not on disk. The file is read once and those bytes are both
+    hashed and loaded, so what is checked is what runs. A file with another checksum is refused: an identity number
+    from an unknown model would fail or pass his face on nothing."""
+    import hashlib
+    p = os.path.join(models_dir, ARC_FILE)
+    if not os.path.exists(p): return None
+    try:
+        with open(p, "rb") as f: data = f.read()
+    except OSError as e:
+        raise SystemExit(f"refused: {p} cannot be read as the identity model ({e.__class__.__name__}); remove it or put the pinned file there")
+    got = hashlib.sha256(data).hexdigest()
+    if got != ARC_SHA256:
+        raise SystemExit(f"refused: {p} is not the pinned identity model (sha256 {got[:12]}, expected {ARC_SHA256[:12]}); "
+                         "remove it or put the pinned file there")
+    return data
+
+
+def same_identity_model(src, out):
+    """An identity distance means something only between two tracks made with the pinned model."""
+    return src.get("identity_model_sha256") == ARC_SHA256 and out.get("identity_model_sha256") == ARC_SHA256
+
+
 def face_frame(P):
     """Origin, x axis, y axis and width of the face from the full landmark array (pixels)."""
     a, b = P[234], P[454]
@@ -97,12 +123,13 @@ def score_tracks(src, out):
                 "open_mean_output": round(float(b.mean()), 4), "open_range_source": round(float(a.max() - a.min()), 4),
                 "pose_turn_difference": round(pose, 4), "pose_ok_for_putback": pose <= POSE_TURN_MAX})
     ea = [p[0]["emb"] for p in both if p[0].get("emb") and p[1].get("emb")]; eb = [p[1]["emb"] for p in both if p[0].get("emb") and p[1].get("emb")]
-    if len(ea) >= 8:
+    if len(ea) >= 8 and same_identity_model(src, out):
         ma = np.mean(ea, axis=0); ma /= np.linalg.norm(ma) + 1e-9; mb = np.mean(eb, axis=0); mb /= np.linalg.norm(mb) + 1e-9
         per = [1.0 - float(np.dot(np.array(e) / (np.linalg.norm(e) + 1e-9), ma)) for e in eb]
-        rep.update({"identity_distance": round(float(1.0 - np.dot(ma, mb)), 3), "identity_p95": round(float(np.percentile(per, 95)), 3)})
+        rep.update({"identity_distance": round(float(1.0 - np.dot(ma, mb)), 3), "identity_p95": round(float(np.percentile(per, 95)), 3),
+                    "identity_model_sha256": ARC_SHA256})
     else:
-        rep.update({"identity_distance": None, "identity_p95": None})
+        rep.update({"identity_distance": None, "identity_p95": None, "identity_model_sha256": None})
     return rep
 
 
@@ -150,10 +177,10 @@ class Finder:
             base_options=BaseOptions(model_asset_path=os.path.join(M, "selfie_multiclass_256x256.tflite")), running_mode=vision.RunningMode.IMAGE, output_category_mask=True))
         self.lmk = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=os.path.join(M, "face_landmarker.task")), running_mode=vision.RunningMode.IMAGE, num_faces=1))
-        arc = os.path.join(M, "arcface_w600k_r50.onnx"); self.arc = None
-        if os.path.exists(arc):
+        arc = arc_model(M); self.arc = None
+        if arc is not None:
             import onnxruntime as ort
-            self.arc = ort.InferenceSession(arc); self.ain = self.arc.get_inputs()[0].name
+            self.arc = ort.InferenceSession(arc, providers=["CPUExecutionProvider"]); self.ain = self.arc.get_inputs()[0].name
 
     def _detect(self, img):
         r = self.lmk.detect(self.mp.Image(image_format=self.mp.ImageFormat.SRGB, data=np.ascontiguousarray(img)))
@@ -201,7 +228,7 @@ def track(path, width=1080, start=None, duration=None, finder=None):
                        "lips": np.round(to_face(P, INNER_LIPS), 4).tolist(), "oval": np.round(P[FACE_OVAL] / [W, H], 4).tolist(),
                        "anchors": np.round(P[ANCHORS] / [W, H], 5).tolist(), "emb": finder.identity(img, P)})
     return {"clip": os.path.basename(path), "start": start, "duration": duration, "fps": fps, "width": W, "height": H,
-            "identity_model": finder.arc is not None, "frames": frames}
+            "identity_model": finder.arc is not None, "identity_model_sha256": ARC_SHA256 if finder.arc is not None else None, "frames": frames}
 
 
 def putback(take, draft, tsrc, tout, out_path, feather=0.06, grade=True):

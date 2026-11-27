@@ -90,3 +90,36 @@ def test_a_clip_of_another_frame_rate_is_paired_by_time():
     a = frames(slow); b = {"frames": [dict(f) for f in a["frames"][::2]]}
     r = tm.score_tracks(a, b)
     assert r["measured"] and r["paired"] == 96 and r["timing"] > 0.9
+
+
+def test_the_identity_model_is_used_only_with_its_pinned_checksum(tmp_path, monkeypatch):
+    import hashlib, pytest
+    # not on disk: identity is simply not measured
+    assert tm.arc_model(str(tmp_path)) is None
+    # some other file under the model's name: refused, never loaded
+    other = tmp_path / tm.ARC_FILE; other.write_bytes(b"not the model")
+    with pytest.raises(SystemExit) as stop: tm.arc_model(str(tmp_path))
+    assert "not the pinned identity model" in str(stop.value)
+    # the pinned file: the very bytes that were hashed come back, so nothing can be swapped between check and load
+    monkeypatch.setattr(tm, "ARC_SHA256", hashlib.sha256(b"not the model").hexdigest())
+    assert tm.arc_model(str(tmp_path)) == b"not the model"
+    monkeypatch.undo()
+    # a folder under the model's name is refused in words, not with a bare error
+    other.unlink(); other.mkdir()
+    with pytest.raises(SystemExit) as stop: tm.arc_model(str(tmp_path))
+    assert "cannot be read as the identity model" in str(stop.value)
+    # the real pin is the InsightFace buffalo_l w600k_r50.onnx, read from three listings on 27 Nov 2026
+    assert tm.ARC_SHA256 == "4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43"
+
+
+def test_an_identity_distance_is_given_only_between_two_tracks_made_with_the_pinned_model():
+    rng = np.random.default_rng(1); e = rng.normal(size=512); e = (e / np.linalg.norm(e)).tolist()
+    def track(sha):
+        t = frames([20, 10, 30, 5, 25, 15, 35, 8, 22, 12]); t["identity_model_sha256"] = sha
+        for f in t["frames"]: f["emb"] = e
+        return t
+    both = tm.score_tracks(track(tm.ARC_SHA256), track(tm.ARC_SHA256))
+    assert both["identity_distance"] == 0.0 and both["identity_model_sha256"] == tm.ARC_SHA256
+    for a, b in ((tm.ARC_SHA256, None), (None, tm.ARC_SHA256), ("0" * 64, "0" * 64), (None, None)):
+        r = tm.score_tracks(track(a), track(b))
+        assert r["identity_distance"] is None and r["identity_model_sha256"] is None and r["measured"] is True

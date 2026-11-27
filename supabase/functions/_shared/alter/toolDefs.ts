@@ -24,7 +24,7 @@ export const ALTER_TOOLS = [
   {
     name: "avt_alter_plan",
     description:
-      "Build the exact avt_call arguments for a 480p ALTER draft on the route Fendi passed (proxy-provider-call -> video-providers-higgsfield-model, seedance-2.5-edit). Nothing is sent and nothing is spent here: sending `draft` with avt_call is the paid step. Returns the poll call and the local steps for the file that comes back (it arrives about 7% fast and must be conformed before scoring). `draft` is null until the request is ready (read `blocked`). Pass draft_check (report.json from scripts/alter/run_draft.py for the conformed draft) to get the full-resolution call: the report is judged again from its numbers, must be for this preset's check mode, and with no identity number also needs face_approval, Fendi's own words about that draft's face (not verifiable by this server). This is a checklist, not a spend control: the paid step is avt_call.",
+      "Build the exact avt_call arguments for a 480p ALTER draft on the route Fendi passed (proxy-provider-call -> video-providers-higgsfield-model, seedance-2.5-edit). Nothing is sent and nothing is spent here: sending `draft` with avt_call is the paid step. Returns the poll call and the local steps for the file that comes back (it arrives about 7% fast and must be conformed before scoring). `draft` is null until the request is ready (read `blocked`). Pass draft_check (report.json from scripts/alter/run_draft.py for the conformed draft) to get the full-resolution call: the report is judged again from its numbers, must be for this preset's check mode, and it also needs face_approval, Fendi's own words about that draft's face (not verifiable by this server): no identity line is certified, so a number does not clear his face. This is a checklist, not a spend control: the paid step is avt_call.",
     inputSchema: {
       type: "object",
       properties: {
@@ -55,7 +55,7 @@ export const ALTER_TOOLS = [
   {
     name: "avt_alter_check",
     description:
-      "Judge a CONFORMED draft from the report scripts/alter/run_draft.py wrote (report.json: frame measurements, the mouth score, the identity distance). Only the report's numbers are read; the verdict, flags and issues are rebuilt here with the gates in gates.ts. Does not read video and does not call a model. $0. `redrawCleared` means every gate passed, identity included (the mouth is judged only on a performance; the face on every clip). `faceNeedsHisEye` means everything measured passed and only the face has no number: Fendi judges the face sheet. Anything else is not cleared.",
+      "Judge a CONFORMED draft from the report scripts/alter/run_draft.py wrote (report.json: frame measurements, the mouth score, the identity distance). Only the report's numbers are read; the verdict, flags and issues are rebuilt here with the gates in gates.ts. Does not read video and does not call a model. $0. `redrawCleared` means every gate passed, a certified identity line included (the mouth is judged only on a performance; the face on every clip); no identity line is certified today, so it stays false. `faceNeedsHisEye` means everything measured passed and the face is Fendi's to judge on the face sheet: there is no identity number, or the number is under a line that is not certified. An identity number above the line fails the draft. Anything else is not cleared.",
     inputSchema: {
       type: "object",
       properties: {
