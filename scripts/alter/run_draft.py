@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 from conform_draft import conform  # noqa: E402
-from face_evidence import measure as face_measure  # noqa: E402
+from face_evidence import steadiness_summary  # noqa: E402
 
 MODES = ("swap", "recast", "motion", "restyle", "action")
 
@@ -113,7 +113,10 @@ def main():
     written.append("compare.mp4")
 
     mouth = report.get("mouth") or {}
-    steadiness = face_measure(json.load(open(p("take.json"))), json.load(open(p("draft.json"))))
+    try:                                    # extra numbers for the sheet; a fault here must not lose the summary
+        steadiness = steadiness_summary(json.load(open(p("take.json"))), json.load(open(p("draft.json"))))
+    except Exception as e:                  # noqa: BLE001
+        steadiness = {"error": f"{type(e).__name__}: {e}"}
     print(json.dumps({
         "verdict": report["verdict"], "mode": report["mode"],
         "redrawCleared": report.get("redrawCleared"), "faceNeedsHisEye": report.get("faceNeedsHisEye"),
@@ -122,8 +125,7 @@ def main():
                   "shape": score.get("mouth_shape_distance"), "coverage": score.get("coverage"),
                   "timingFails": mouth.get("timingFails"), "shapeFails": mouth.get("shapeFails")},
         "identity_distance": score.get("identity_distance"),
-        # against the take: above 1 = less steady than his real face. Recorded, not gated (face_evidence.py).
-        "face_steadiness": {k: steadiness[k] for k in ("embedding_jitter", "shape_wobble")},
+        "face_steadiness": steadiness,     # against the take; recorded, not gated (face_evidence.py)
         "issues": report.get("issues", []),
         "folder": os.path.abspath(a.out), "written": written,
         "next": report.get("next", "") + ("" if a.face else " No face sheet was written: pass --face."),

@@ -66,8 +66,8 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
    **Record his verdict the same turn** (Fendi, 27 Nov 2026: the pass/fail line is tested inside the video being
    built, not on older projects). When what he says is about the face:
    `python -I scripts/alter/face_evidence.py add --run <out> --project <video> --label "<shot, draft>" --verdict pass|reject --words "<his words>"`
-   with `AVT_FACE_EVIDENCE=/Volumes/T7/_avt_work/alter_face_evidence/<video>.jsonl`. About something else: add
-   `--about action|scene|mouth`. A draft the tool fails on the identity line is shown to him with its number before
+   with `AVT_FACE_EVIDENCE=/Volumes/T7/_avt_work/alter_face_evidence/<video>.jsonl`. A rejected face also takes
+   `--fault who|steady|other` (not him / warps or slides). About something else: add `--about action|scene|mouth`. A draft the tool fails on the identity line is shown to him with its number before
    any re-roll. Method and the two measures: `../alter/IDENTITY_2026-11-27.md` "The test group".
 8. **Full resolution, only after his pass on the draft.** `avt_alter_plan` again with the same arguments plus
    `draft_check` (the contents of `report.json`), `face_approval` (his words about that draft's face, quoted) and
@@ -115,5 +115,6 @@ the T7 only. Say the method (this page), the asset it passed on and the Never li
   certified.
 - A face-steadiness gate. The put-back's warp scored BETTER on the mouth gate (0.931) and on identity (0.010) than
   the clean redraw. Two steadiness numbers (`face_steadiness` in the `run_draft.py` summary) read that one pair the
-  right way round, 1.58 and 1.32 against 0.77 and 0.82, but one pair is not a line: they are recorded, not gated.
+  right way round, 1.58 and 1.22 against 0.77 and 0.88 (the take against its own small copy: 0.90 and 1.10), but
+  one pair is not a line: they are printed with every draft, recorded when he judges it, and gate nothing.
   Watch the face in motion; a still sheet cannot show it.
