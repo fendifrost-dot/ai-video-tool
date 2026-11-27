@@ -37,6 +37,7 @@ export const DEFAULT_ENGINEERING_MODE: EngineeringMode = "creative";
  * - `timeline`      — music-video editor / timeline
  * - `continuity`    — temporal continuity locking
  * - `runs`          — batch runs: a shot list submitted to the providers from the app
+ * - `camera-moves` — camera-move library and an unsent Seedance reference plan
  */
 export const ADVANCED_DESTINATION_KEYS = [
   // 2026-10-03: the creative workflow is Setup → Treatment → Storyboard → Review → Export. The library, the
@@ -46,6 +47,7 @@ export const ADVANCED_DESTINATION_KEYS = [
   "video",
   "scorecards",
   "style",
+  "camera-moves",
   "shots",
   "cover-flight",
   "hero-frame",
