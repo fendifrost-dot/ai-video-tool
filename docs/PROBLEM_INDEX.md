@@ -58,6 +58,7 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 | Allen's likeness | his photo: clothes-only Gemini edit + `still_face_putback.py`; in a scene: whole head, `AVT_FACE_EXACT` | `34bd95ac`, `077a3515` | the default face mode |
 | Generated clip: wrong trousers/shoes | animate a full-figure still; crop after | storm s04 `ca645fd0` | a knees-up still as source |
 | Grok is the right tool | Fendi makes it in Grok Imagine, or his words go in `grok_approval` on `avt_call` | 12 Nov | a Grok generation without his words |
+| He must do an action he never filmed while he raps (block, dodge) | Seedance 2.5 **video edit** on a window of his real take: `proxy-provider-call` → `video-providers-higgsfield-model`, `modelVariant: "seedance-2.5-edit"`; conform the draft (it comes back ~7 % fast) before scoring; score the mouth with `scripts/alter/track_mouth.py`. Run sheet: `handoffs/HANDOFF_MEDITATE_2026-11-26.md` §4 | one 480p draft, 26 Nov (mouth 0.86 on the take's clock, 0 frames off); his verdict on the face is recorded there and awaits one confirmation | the edit wording on `seedance-2.5-reference` or `montage-shot` (refused); scoring an unconformed draft (reads 0.15, a false "re-timed"); generated lip-sync; calling it approved for a shot before he confirms |
 
 ## The build
 
