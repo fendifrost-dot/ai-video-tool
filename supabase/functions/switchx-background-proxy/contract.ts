@@ -127,7 +127,10 @@ export function switchxBackgroundRequest(input: { sourceVideoUrl: string; refere
  * own matte video says, frame by frame, what is kept from the take (WHITE) and what Beeble generates from the words and
  * the reference picture (BLACK). Beeble's guide, "Upload" mode: "White in the alpha: kept from your original footage,
  * frame for frame, and only relit and restyled", "Black in the alpha: completely generated from your prompt and
- * reference images". This is the pass a clothing change uses (the garment black; his face, cap, hands and the room white).
+ * reference images". A CANDIDATE UNDER BENCHMARK for a clothing change (the garment black; his face, cap and the room
+ * white). It has no approved asset: the approved route on his real takes stays Genjutsu `dress-clip` + the put-back.
+ * This is Beeble's video path (one job of at most 240 frames), not the per-frame `vton-frame` action of the same
+ * Control Center function.
  *
  * What it is NOT: a finished picture of him. The kept region is relit by the model, so the face-preserving put-back
  * (docs/recipes/FACE_PRESERVING_CLOTHING_SWAP.md) still runs after it, and the proof line is still ours to print.
@@ -137,29 +140,33 @@ export const SWITCHX_KEEP_LANE = "switchx_keep_mask";
 export const SWITCHX_KEEP_MODE = "custom";
 /** The lanes this function files and answers for. */
 export const SWITCHX_LANES: readonly string[] = [SWITCHX_BG_LANE, SWITCHX_KEEP_LANE];
-/** The matte may differ from the take by this much and still be sent (about one frame at 24 fps). */
-export const SWITCHX_KEEP_LENGTH_SLACK_SECONDS = 0.05;
+/** Control Center refuses a prompt shorter than this, after our record is written: refused here first. */
+export const SWITCHX_KEEP_PROMPT_MIN = 4;
 
 export function isSwitchxLane(lane: unknown): lane is string {
   return typeof lane === "string" && SWITCHX_LANES.includes(lane);
 }
 
+/** What a record says about a video's frames: the measured columns (`avt_asset_describe`), never a declared length. */
+export type MeasuredVideo = { frames: number | null; fps: number | null; width: number | null; height: number | null };
+
 /**
  * Whether a matte may be sent with a take, and why not. Beeble pairs them frame by frame, so a matte of another
- * length (or a still) would keep and generate the wrong pixels: it is refused here, before anything is spent.
+ * frame count (or a still) would keep and generate the wrong pixels, on a paid job. It fails closed: both records must
+ * carry a measured frame count, the counts must be EQUAL, and the frame rate and picture size must agree where both
+ * are measured. A length in seconds is not compared: the same seconds at 24 and 30 fps are different frames, and a
+ * take with sound and a silent matte differ in seconds with the same frames.
  */
-export function switchxKeepMaskCheck(input: {
-  sourceSeconds: number;
-  maskSeconds: number | null;
-  maskIsVideo: boolean;
-  sameAsset: boolean;
-}): { ok: true } | { ok: false; why: string } {
+export function switchxKeepMaskCheck(input: { source: MeasuredVideo; mask: MeasuredVideo; maskIsVideo: boolean; sameAsset: boolean }): { ok: true } | { ok: false; why: string } {
   if (input.sameAsset) return { ok: false, why: "the matte is the take itself" };
   if (!input.maskIsVideo) return { ok: false, why: "the matte must be a video, one frame per frame of the take" };
-  if (input.maskSeconds == null || !(input.maskSeconds > 0)) return { ok: false, why: "the matte has no length on its record" };
-  const diff = Math.abs(input.maskSeconds - input.sourceSeconds);
-  if (diff > SWITCHX_KEEP_LENGTH_SLACK_SECONDS)
-    return { ok: false, why: `the matte is ${input.maskSeconds.toFixed(2)} s and the take ${input.sourceSeconds.toFixed(2)} s; they must be the same frames` };
+  const { source: s, mask: m } = input;
+  if (!(s.frames && s.frames > 0)) return { ok: false, why: "the take has no measured frame count on its record (describe the asset first)" };
+  if (!(m.frames && m.frames > 0)) return { ok: false, why: "the matte has no measured frame count on its record (describe the asset first)" };
+  if (s.frames !== m.frames) return { ok: false, why: `the matte is ${m.frames} frames and the take ${s.frames}; they must be the same frames` };
+  if (s.fps && m.fps && Math.abs(s.fps - m.fps) > 0.01) return { ok: false, why: `the matte is ${m.fps} fps and the take ${s.fps} fps` };
+  if (s.width && s.height && m.width && m.height && Math.abs(s.width / s.height - m.width / m.height) > 0.01)
+    return { ok: false, why: `the matte is ${m.width}x${m.height} and the take ${s.width}x${s.height}: not the same picture shape` };
   return { ok: true };
 }
 
@@ -169,8 +176,58 @@ export function switchxKeepMaskCheck(input: {
  */
 export function keepMaskPrompt(prompt: unknown): { ok: true; prompt: string } | { ok: false; why: string } {
   const p = typeof prompt === "string" ? prompt.trim().replace(/\s+/g, " ") : "";
-  if (!p) return { ok: false, why: "a keep-mask pass needs the words for what is generated" };
+  if (p.length < SWITCHX_KEEP_PROMPT_MIN) return { ok: false, why: "a keep-mask pass needs the words for what is generated" };
   return { ok: true, prompt: p.slice(0, SWITCHX_BG_PROMPT_MAX) };
+}
+
+/**
+ * Whether Control Center's answer says the job it queued is the keep-mask job that was asked for. Its mode reader
+ * sends a mode it does not know to "background": an older deployment would drop the matte, run a paid background
+ * pass and answer ok. The answer's own `generation_metadata.beeble_alpha_mode` is the evidence.
+ */
+export function ccRanKeepMask(generationMetadata: unknown): boolean {
+  const g = (generationMetadata && typeof generationMetadata === "object" ? generationMetadata : {}) as Record<string, unknown>;
+  return g.beeble_alpha_mode === SWITCHX_KEEP_MODE && typeof g.alpha_url === "string" && g.alpha_url.length > 0;
+}
+
+/**
+ * What the record keeps of Control Center's `generation_metadata`: the words that say what ran. The rest is left out
+ * because it carries the signed links to the take, the matte and the reference picture for as long as they live.
+ */
+export function recordedGenerationMetadata(generationMetadata: unknown): Record<string, unknown> | null {
+  if (!generationMetadata || typeof generationMetadata !== "object") return null;
+  const g = generationMetadata as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of ["mode", "beeble_alpha_mode", "alpha_generated", "polarity_override"]) {
+    const v = g[k];
+    if (typeof v === "string" ? v.length <= 64 : typeof v === "boolean") out[k] = v;
+  }
+  return out;
+}
+
+/** An upstream error line with every link taken out (a provider may quote the signed input it could not fetch). */
+export function withoutLinks(text: string): string {
+  return text.replace(/https?:\/\/\S+/gi, "<link>").replace(/token=[^\s&"']+/gi, "token=<removed>");
+}
+
+/**
+ * Whether the caller asked for a dry run. `dryRun` and `dry_run` (the spelling the MCP tools use) both count; a value
+ * that is not a boolean is refused, because the other reading of a mistyped flag is a paid job.
+ */
+export function readDryRun(body: { dryRun?: unknown; dry_run?: unknown }): { ok: true; dryRun: boolean } | { ok: false } {
+  let dry = false;
+  for (const v of [body.dryRun, body.dry_run]) {
+    if (v === undefined) continue;
+    if (typeof v !== "boolean") return { ok: false };
+    dry = dry || v;
+  }
+  return { ok: true, dryRun: dry };
+}
+
+/** The frames Beeble will see: the measured count when the record has one, else the length at the measured or default rate. */
+export function switchxFramesOf(measured: MeasuredVideo, seconds: number, declaredFps: number | null): number {
+  if (measured.frames && measured.frames > 0) return measured.frames;
+  return switchxFrames(seconds, measured.fps && measured.fps > 0 ? measured.fps : declaredFps);
 }
 
 export type SwitchxKeepMaskRequest = {

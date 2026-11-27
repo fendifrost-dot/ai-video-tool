@@ -1,8 +1,8 @@
 // AVT edge — switchx-background-proxy
 //
 // The OTHER way of putting him in a place, for the benchmark against the composite lane: Beeble SwitchX "background"
-// mode regenerates the background and relights him in one generative pass with its own matte; his face, clothes and
-// motion are preserved by the model. Control Center's `switchx-restyle` is the Beeble orchestrator (CC holds
+// mode regenerates the background and relights him in one generative pass with its own matte. The vendor says the
+// subject is kept; our runs found it relights his face and changed wardrobe colours (16 Oct, 13 Nov 2026). Control Center's `switchx-restyle` is the Beeble orchestrator (CC holds
 // BEEBLE_API_KEY; AVT never does); this function signs the caller's own take and reference picture for it and keeps
 // the record. Two actions:
 //
@@ -14,9 +14,11 @@
 //   { action: "submit", assetId, alphaAssetId, prompt, referenceAssetId? }          (the keep-mask pass, 26 Nov 2026)
 //       -> the same answer, lane "switchx_keep_mask", CC mode "custom" (Beeble alpha_mode "custom").
 //          `alphaAssetId` is the caller's own matte VIDEO of the same frames as the take: WHITE is kept from the take
-//          (and relit by the model), BLACK is generated from the words and the reference picture. This is the pass a
-//          clothing change uses (the garment black). It is an intermediate: the kept region is relit, so the
-//          face-preserving put-back still runs after it. The words are required (no default).
+//          (and relit by the model), BLACK is generated from the words and the reference picture. A CANDIDATE UNDER
+//          BENCHMARK for a clothing change (the garment black); the approved route on his real takes stays Genjutsu
+//          `dress-clip` + the put-back. It is an intermediate: the kept region is relit, so the face-preserving
+//          put-back still runs after it. The words are required (no default). Both records must carry a measured
+//          frame count (metadata_json.frame_count) and the counts must be equal.
 //   { action: "submit", …, dryRun: true }
 //       -> { ok, dryRun: true, lane, mode, estimate, prompt, source, reference, alpha } after every check, with nothing
 //          signed, recorded or sent.
@@ -53,8 +55,14 @@ import {
   NO_RENDER_LINK,
   SWITCHX_BG_RESOLUTION,
   switchxBackgroundRequest,
-  switchxFrames,
+  ccRanKeepMask,
+  type MeasuredVideo,
+  readDryRun,
+  recordedGenerationMetadata,
+  SWITCHX_BG_MAX_FRAMES,
+  switchxFramesOf,
   switchxKeepMaskCheck,
+  withoutLinks,
   switchxKeepMaskRequest,
   switchxSourceCheck,
 } from "./contract.ts";
@@ -77,11 +85,23 @@ type Body = {
   action?: string;
   assetId?: string;
   referenceAssetId?: string;
-  alphaAssetId?: string;
+  alphaAssetId?: unknown;
   prompt?: string;
   jobId?: string;
-  dryRun?: boolean;
+  dryRun?: unknown;
+  dry_run?: unknown;
 };
+
+/**
+ * What a record says it measured of a video. The measured columns of project_assets (frame_count, fps, width, height:
+ * migration 20261113120000) are not applied to the live database (STORE-5), so these are read from `metadata_json`,
+ * where the filing recipe writes them; selecting the columns would fail every call.
+ */
+function measuredVideo(meta: Record<string, unknown>): MeasuredVideo {
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
+  const frames = n(meta.frame_count) ?? n(meta.frames);
+  return { frames: frames != null && Number.isInteger(frames) ? frames : null, fps: n(meta.fps), width: n(meta.width), height: n(meta.height) };
+}
 
 /**
  * The size of a stored object, read off storage (the row's own word on it is the caller's to edit). The bucket and
@@ -206,10 +226,11 @@ serve(async (req) => {
       /* keep empty */
     }
     if (!resp.ok) {
-      const detail = typeof (cc as { error?: unknown }).error === "string" ? (cc as { error: string }).error : `cc_${resp.status}`;
+      const detail = withoutLinks(typeof (cc as { error?: unknown }).error === "string" ? (cc as { error: string }).error : `cc_${resp.status}`);
       return json(502, { error: "status_failed", detail });
     }
     const read = readBeebleStatus(cc);
+    if (read.error) read.error = withoutLinks(read.error);
     if (read.state === "running") return json(200, { ok: true, state: "running", status: read.status, estimate });
     const frames = read.frames ?? (typeof (payload.source as { frames?: unknown })?.frames === "number" ? ((payload.source as { frames: number }).frames) : null);
     const resolution = (read.resolution === "1080p" ? "1080p" : SWITCHX_BG_RESOLUTION) as "720p" | "1080p";
@@ -244,12 +265,17 @@ serve(async (req) => {
   const referenceAssetId = typeof body.referenceAssetId === "string" ? body.referenceAssetId.trim() : "";
   if (referenceAssetId && !UUID_RE.test(referenceAssetId)) return json(400, { error: "bad_reference_asset_id" });
   // A matte makes it the keep-mask pass; none, the background pass as before.
+  // A matte key that is present must be a record id: any other value would otherwise fall through to a paid
+  // background pass the caller did not ask for.
+  const alphaGiven = body.alphaAssetId !== undefined;
   const alphaAssetId = typeof body.alphaAssetId === "string" ? body.alphaAssetId.trim() : "";
-  if (alphaAssetId && !UUID_RE.test(alphaAssetId)) return json(400, { error: "bad_alpha_asset_id" });
-  const keepMask = alphaAssetId !== "";
+  if (alphaGiven && !UUID_RE.test(alphaAssetId)) return json(400, { error: "bad_alpha_asset_id" });
+  const keepMask = alphaGiven;
   const lane = keepMask ? SWITCHX_KEEP_LANE : SWITCHX_BG_LANE;
   const mode = keepMask ? SWITCHX_KEEP_MODE : SWITCHX_BG_MODE;
-  const dryRun = body.dryRun === true;
+  const dry = readDryRun(body);
+  if (!dry.ok) return json(400, { error: "bad_dry_run", detail: "dryRun must be true or false" });
+  const dryRun = dry.dryRun;
 
   // The assets are read as the caller (RLS): a row that is not theirs is simply not found.
   const { data: asset, error: assetErr } = await userClient
@@ -299,8 +325,8 @@ serve(async (req) => {
     const amime = typeof ameta.mime_type === "string" ? ameta.mime_type : "";
     const aseconds = Number(ameta.duration_seconds);
     const acheck = switchxKeepMaskCheck({
-      sourceSeconds: seconds,
-      maskSeconds: Number.isFinite(aseconds) && aseconds > 0 ? aseconds : null,
+      source: measuredVideo(meta),
+      mask: measuredVideo(ameta),
       maskIsVideo: amime.startsWith("video/") || VIDEO_RE.test(String(a.file_url)),
       sameAsset: a.id === asset.id,
     });
@@ -343,11 +369,18 @@ serve(async (req) => {
     .limit(1);
   if (inFlight && inFlight.length) return json(409, { error: "switchx_in_flight", jobId: inFlight[0].id });
 
-  const frames = switchxFrames(seconds, typeof meta.fps === "number" ? meta.fps : null);
+  const frames = switchxFramesOf(measuredVideo(meta), seconds, typeof meta.fps === "number" ? meta.fps : null);
+  if (frames > SWITCHX_BG_MAX_FRAMES) return json(400, { error: "source_refused", detail: `the source is ${frames} frames; Beeble takes at most ${SWITCHX_BG_MAX_FRAMES} a job` });
   const estimate = beebleEstimateUsd(frames, SWITCHX_BG_RESOLUTION, keepMask ? "keep-mask" : "background");
   const answerSource = { assetId, seconds, frames, bytes, bucket, path };
   const answerReference = reference ? { assetId: reference.id, bucket: reference.bucket, path: reference.path } : null;
   const answerAlpha = alpha ? { assetId: alpha.id, seconds: alpha.seconds, bytes: alpha.bytes, bucket: alpha.bucket, path: alpha.path } : null;
+
+  // The reference picture's file is checked here too, so a dry run that answers ok is not refused at the real submit.
+  if (reference) {
+    const may = await callerMayRead(admin, userId, reference.bucket, reference.path);
+    if (!may.ok) return json(refusalResponse(may).status, { error: refusalResponse(may).error });
+  }
 
   // A dry run stops here: every check has passed, nothing is signed, recorded or sent.
   if (dryRun)
@@ -428,16 +461,34 @@ serve(async (req) => {
   }
   const beebleJobId = typeof cc.beeble_job_id === "string" ? cc.beeble_job_id : null;
   if (!resp.ok || !beebleJobId) {
-    const detail = typeof cc.error === "string" ? `${cc.error}${typeof cc.detail === "string" ? `: ${cc.detail}` : ""}` : `cc_${resp.status}`;
+    // A provider may quote the signed input it could not fetch: no link reaches the log, the record or the answer.
+    const detail = withoutLinks(typeof cc.error === "string" ? `${cc.error}${typeof cc.detail === "string" ? `: ${cc.detail}` : ""}` : `cc_${resp.status}`);
     console.error(`[switchx-background-proxy] submit_failed http=${resp.status} asset=${assetId} error=${detail.slice(0, 300)}`);
     await admin.from("provider_jobs").update({ status: "failed", error_text: detail.slice(0, 500) }).eq("id", job.id);
     return json(502, { error: "switchx_submit_failed", detail: detail.slice(0, 500) });
+  }
+  const generationMetadata = recordedGenerationMetadata(cc.generation_metadata);
+  // A keep-mask job that Control Center did not run as one (an older deployment reads an unknown mode as
+  // "background" and drops the matte) is a paid job of the wrong kind: it is filed failed, with Beeble's id kept so
+  // the spend is on the record, and never handed on as a keep-mask result.
+  if (keepMask && !ccRanKeepMask(cc.generation_metadata)) {
+    console.error(`[switchx-background-proxy] cc_mode_mismatch asset=${assetId} job=${job.id} beeble=${beebleJobId}`);
+    await admin
+      .from("provider_jobs")
+      .update({
+        status: "failed",
+        error_text: "cc_mode_mismatch",
+        external_job_id: beebleJobId,
+        response_payload_json: { status: "queued", beeble_job_id: beebleJobId, generation_metadata: generationMetadata, error: "cc_mode_mismatch" },
+      })
+      .eq("id", job.id);
+    return json(502, { error: "cc_mode_mismatch", detail: "Control Center did not queue a keep-mask job; the job it queued is on the record as spent", jobId: job.id, beeble_job_id: beebleJobId });
   }
   await admin
     .from("provider_jobs")
     .update({
       external_job_id: beebleJobId,
-      response_payload_json: { status: "queued", beeble_job_id: beebleJobId, generation_metadata: cc.generation_metadata ?? null },
+      response_payload_json: { status: "queued", beeble_job_id: beebleJobId, generation_metadata: generationMetadata },
     })
     .eq("id", job.id);
   console.log(`[switchx-background-proxy] submitted asset=${assetId} frames=${frames} bytes=${bytes} job=${job.id} beeble=${beebleJobId}`);

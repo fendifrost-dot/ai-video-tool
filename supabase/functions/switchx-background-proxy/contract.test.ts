@@ -5,15 +5,20 @@ import {
   SWITCHX_KEEP_LANE,
   SWITCHX_KEEP_MODE,
   beebleEstimateUsd,
+  ccRanKeepMask,
   isBeebleAnswerUrl,
   isSwitchxLane,
   defaultBackgroundPrompt,
   keepMaskPrompt,
   normalizePrompt,
   readBeebleStatus,
+  readDryRun,
+  recordedGenerationMetadata,
   switchxBackgroundRequest,
   switchxFrames,
+  switchxFramesOf,
   switchxKeepMaskCheck,
+  withoutLinks,
   switchxKeepMaskRequest,
   switchxSourceCheck,
 } from "./contract.ts";
@@ -98,19 +103,69 @@ describe("the SwitchX keep-mask pass", () => {
     expect(isSwitchxLane(undefined)).toBe(false);
   });
 
-  it("refuses a matte that cannot pair with the take frame by frame", () => {
-    expect(switchxKeepMaskCheck({ sourceSeconds: 3.9667, maskSeconds: 3.9667, maskIsVideo: true, sameAsset: false })).toEqual({ ok: true });
-    expect(switchxKeepMaskCheck({ sourceSeconds: 3.9667, maskSeconds: 4.0, maskIsVideo: true, sameAsset: false })).toEqual({ ok: true });
-    expect(switchxKeepMaskCheck({ sourceSeconds: 3.9667, maskSeconds: 4.2, maskIsVideo: true, sameAsset: false })).toMatchObject({ ok: false, why: expect.stringMatching(/same frames/) });
-    expect(switchxKeepMaskCheck({ sourceSeconds: 4, maskSeconds: null, maskIsVideo: true, sameAsset: false })).toMatchObject({ ok: false, why: expect.stringMatching(/no length/) });
-    expect(switchxKeepMaskCheck({ sourceSeconds: 4, maskSeconds: 4, maskIsVideo: false, sameAsset: false })).toMatchObject({ ok: false, why: expect.stringMatching(/must be a video/) });
-    expect(switchxKeepMaskCheck({ sourceSeconds: 4, maskSeconds: 4, maskIsVideo: true, sameAsset: true })).toMatchObject({ ok: false, why: expect.stringMatching(/the take itself/) });
+  it("refuses a matte that cannot pair with the take frame by frame: measured frames, never seconds", () => {
+    const take = { frames: 119, fps: 30, width: 1920, height: 1080 };
+    const ok = { source: take, mask: { ...take }, maskIsVideo: true, sameAsset: false };
+    expect(switchxKeepMaskCheck(ok)).toEqual({ ok: true });
+    // a matte at another size of the same shape pairs; one frame off does not
+    expect(switchxKeepMaskCheck({ ...ok, mask: { frames: 119, fps: 30, width: 1280, height: 720 } })).toEqual({ ok: true });
+    expect(switchxKeepMaskCheck({ ...ok, mask: { ...take, frames: 120 } })).toMatchObject({ ok: false, why: expect.stringMatching(/120 frames and the take 119/) });
+    expect(switchxKeepMaskCheck({ ...ok, mask: { ...take, fps: 24 } })).toMatchObject({ ok: false, why: expect.stringMatching(/24 fps/) });
+    expect(switchxKeepMaskCheck({ ...ok, mask: { ...take, width: 1080, height: 1080 } })).toMatchObject({ ok: false, why: expect.stringMatching(/picture shape/) });
+    // fails closed without a measured count on either record
+    expect(switchxKeepMaskCheck({ ...ok, mask: { ...take, frames: null } })).toMatchObject({ ok: false, why: expect.stringMatching(/matte has no measured frame count/) });
+    expect(switchxKeepMaskCheck({ ...ok, source: { ...take, frames: null } })).toMatchObject({ ok: false, why: expect.stringMatching(/take has no measured frame count/) });
+    expect(switchxKeepMaskCheck({ ...ok, maskIsVideo: false })).toMatchObject({ ok: false, why: expect.stringMatching(/must be a video/) });
+    expect(switchxKeepMaskCheck({ ...ok, sameAsset: true })).toMatchObject({ ok: false, why: expect.stringMatching(/the take itself/) });
+  });
+
+  it("counts Beeble's frames from the measured count, then the measured rate, then the declared one", () => {
+    expect(switchxFramesOf({ frames: 119, fps: 30, width: null, height: null }, 3.9667, null)).toBe(119);
+    expect(switchxFramesOf({ frames: null, fps: 30, width: null, height: null }, 3.9667, 24)).toBe(120);
+    expect(switchxFramesOf({ frames: null, fps: null, width: null, height: null }, 4.0, null)).toBe(96);
+  });
+
+  it("takes a dry run in either spelling and refuses a flag that is not a boolean", () => {
+    expect(readDryRun({})).toEqual({ ok: true, dryRun: false });
+    expect(readDryRun({ dryRun: true })).toEqual({ ok: true, dryRun: true });
+    expect(readDryRun({ dry_run: true })).toEqual({ ok: true, dryRun: true });
+    expect(readDryRun({ dryRun: false, dry_run: true })).toEqual({ ok: true, dryRun: true });
+    for (const bad of ["true", 1, null, "yes"]) expect(readDryRun({ dry_run: bad }), String(bad)).toEqual({ ok: false });
+    expect(readDryRun({ dryRun: "false" })).toEqual({ ok: false });
+  });
+
+  it("tells a keep-mask job from the background job an older Control Center would queue instead", () => {
+    expect(ccRanKeepMask({ mode: "custom", beeble_alpha_mode: "custom", alpha_url: "https://s/matte.mp4?token=t" })).toBe(true);
+    expect(ccRanKeepMask({ mode: "background", beeble_alpha_mode: "auto", alpha_url: null })).toBe(false);
+    expect(ccRanKeepMask({ beeble_alpha_mode: "custom", alpha_url: null })).toBe(false);
+    expect(ccRanKeepMask(null)).toBe(false);
+  });
+
+  it("keeps no link in the record or in an upstream error", () => {
+    const g = recordedGenerationMetadata({
+      mode: "custom",
+      beeble_alpha_mode: "custom",
+      alpha_generated: false,
+      polarity_override: "auto",
+      source_video_url: "https://x.supabase.co/storage/v1/object/sign/project-clips/u/take.mp4?token=SECRET",
+      alpha_url: "https://x.supabase.co/storage/v1/object/sign/project-clips/u/matte.mp4?token=SECRET",
+      prompt: "P",
+    });
+    expect(g).toEqual({ mode: "custom", beeble_alpha_mode: "custom", alpha_generated: false, polarity_override: "auto" });
+    expect(JSON.stringify(g)).not.toMatch(/SECRET|https?:/);
+    expect(recordedGenerationMetadata(undefined)).toBeNull();
+    const e = withoutLinks('beeble_submit_422: could not fetch "https://x.supabase.co/storage/v1/object/sign/p/u/take.mp4?token=SECRET" (token=SECRET2)');
+    expect(e).not.toMatch(/SECRET|https?:/);
+    expect(e).toContain("beeble_submit_422");
   });
 
   it("has no default words: the caller says what is generated, on one bounded line", () => {
     expect(keepMaskPrompt(undefined)).toMatchObject({ ok: false });
     expect(keepMaskPrompt("   ")).toMatchObject({ ok: false, why: expect.stringMatching(/needs the words/) });
     expect(keepMaskPrompt(" a short-sleeved\n polo  shirt ")).toEqual({ ok: true, prompt: "a short-sleeved polo shirt" });
+    // Control Center refuses under four characters, after our record is written: refused here first
+    expect(keepMaskPrompt("tee")).toMatchObject({ ok: false });
+    expect(keepMaskPrompt("polo")).toEqual({ ok: true, prompt: "polo" });
     const long = keepMaskPrompt("x".repeat(5000));
     expect(long.ok && long.prompt.length).toBe(1500);
   });
