@@ -1,4 +1,4 @@
-import raw from "./catalog.json";
+import raw from "./catalog.json" with { type: "json" };
 import { CATEGORY_LABELS, type CameraMove, type CatalogFile, type MotionKind } from "./types.ts";
 
 const file = raw as CatalogFile;

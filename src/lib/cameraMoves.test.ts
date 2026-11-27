@@ -55,6 +55,7 @@ describe("camera-move library", () => {
     expect(prompt.text).toContain("【Maintain Consistency】");
     expect(prompt.text).toContain("@Video1");
     expect(prompt.text).toContain("No person, face, mouth, or body is generated.");
+    expect(prompt.text).not.toContain("Edit @Video1");
     expect(prompt.text).not.toMatch(/lip-sync/i);
     const empty = buildCameraPrompt({ move: move!, place: "  " });
     expect(empty.ok).toBe(false);
@@ -122,6 +123,14 @@ describe("camera-move library", () => {
   it("does not call fetch from the planner", () => {
     const source = readFileSync(resolve("supabase/functions/_shared/cameraMoves/fal.ts"), "utf8");
     expect(source).not.toMatch(/\bfetch\s*\(/);
+  });
+
+  it("imports the catalog as JSON so Deno can load avt-mcp", () => {
+    const source = readFileSync(
+      resolve("supabase/functions/_shared/cameraMoves/catalog.ts"),
+      "utf8",
+    );
+    expect(source).toContain('import raw from "./catalog.json" with { type: "json" };');
   });
 
   it("ranks a pan above a crane and reads a rightward yaw from frames", () => {

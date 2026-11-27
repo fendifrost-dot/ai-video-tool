@@ -24,6 +24,10 @@ The Seedance route that already runs in production is Higgsfield `seedance-2.5-r
 
 `generate_audio` is false. Duration is the move length clamped to fal's 4–30 enum. Default output is 9:16 at 720p, which is the music-video frame. The pill itself is a wide blockout.
 
+The prompt is a generation goal. It does not open with "Edit @Video1". On 26 Nov 2026 Higgsfield refused that wording on `reference-to-video` and required `video-edit` (recorded on #543). This plan stays on reference-to-video because the pill is a camera reference, not an edit of a take.
+
+Fal bills a video reference's seconds and the output seconds. For the same job that is about twice Higgsfield's list price (read 27 Nov 2026, `docs/alter/TEST_2026-11-26.md` on #543). This planner does not submit, so it does not spend. A later send should say that price before anyone approves it.
+
 ## Library
 
 137 moves, MIT, Copyright (c) 2026 Sirio Berati, commit `602aa2348b0ae67589ce533fff571adced724811`. Notice: `supabase/functions/_shared/cameraMoves/NOTICE.md`. Poster stills are in `public/camera-moves/posters/`. Pill bytes are not in git (about 124 MB). Hashes are in the catalog.

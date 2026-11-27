@@ -255,6 +255,7 @@ export function planCameraMove(input: {
     report: [
       `${known.id} accepts a reference video as video_urls. The prompt calls it ${known.promptTag}.`,
       "Checked on the fal queue OpenAPI, 2026-11-26. Text-to-video and image-to-video do not have video_urls.",
+      'The prompt is a generation, not an edit. Higgsfield refuses "Edit @Video1" on reference-to-video and requires video-edit (ALTER test, 26 Nov 2026). Fal bills the reference seconds and the output seconds, about twice Higgsfield\'s list price for the same job (read 27 Nov 2026).',
       note,
       blocked.length
         ? `Not ready: ${blocked.join(" ")}`
