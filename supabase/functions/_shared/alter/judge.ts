@@ -66,10 +66,13 @@ export function frameIssues(m: Measurements): string[] {
     );
   if (m.tailTrimFrames > 0)
     issues.push(`tail drift: trim the last ${m.tailTrimFrames} frames on every version alike`);
-  if (m.mode === "swap" || m.mode === "action")
-    for (const [first, last] of m.driftRuns)
-      if (last - first + 1 >= 6)
-        issues.push(`drift: frames ${first}-${last} lose the source structure`);
+  if (m.mode === "swap" || m.mode === "action") {
+    const long = m.driftRuns.filter(([first, last]) => last - first + 1 >= 6);
+    for (const [first, last] of long.slice(0, 10))
+      issues.push(`drift: frames ${first}-${last} lose the source structure`);
+    if (long.length > 10)
+      issues.push(`drift: ${long.length - 10} more runs lose the source structure`);
+  }
   const [low, high] = CHANGED_RANGE[m.mode];
   if (m.changedArea < low)
     issues.push(
@@ -125,7 +128,9 @@ export function judge(
     redrawCleared,
     faceNeedsHisEye,
     next: redrawCleared
-      ? "Cleared by the numbers. Post the side-by-side and the face sheet."
+      ? m.performance
+        ? "Cleared by the numbers, identity included. Post the side-by-side and the face sheet."
+        : "The frame gates pass. Not a performance, so the mouth and the face were not judged: look at it and post it."
       : faceNeedsHisEye
         ? "Everything measured passed. The face has no number: post the side-by-side and the face sheet, and Fendi judges the face."
         : "Not cleared: read the issues. Re-roll, change the staging, or use his real take. Do not lay his original face back onto the redraw (failed by Fendi, 27 Nov 2026).",
@@ -145,7 +150,7 @@ function num(value: unknown, low: number, high: number): number | null {
 }
 
 function frames(value: unknown): number[] | null {
-  if (!Array.isArray(value) || value.length > 100000) return null;
+  if (!Array.isArray(value) || value.length > 10000) return null;
   return value.every((item) => typeof item === "number" && Number.isInteger(item) && item >= 0)
     ? (value as number[])
     : null;
@@ -187,7 +192,8 @@ export function rejudge(
   const tailTrimFrames = num(report.tailTrimFrames, 0, 1e6);
   const jumps = frames(report.jumps);
   const frozenFrom = frames(report.frozenFrom);
-  const runs = Array.isArray(report.driftRuns) ? report.driftRuns : null;
+  const runs =
+    Array.isArray(report.driftRuns) && report.driftRuns.length <= 1000 ? report.driftRuns : null;
   if (
     sourceFrames == null ||
     outputFrames == null ||

@@ -27,6 +27,7 @@ import {
   type RgbFrame,
 } from "@/lib/alter";
 import catalogData from "../../supabase/functions/_shared/alter/catalog.data.ts";
+import cameraCatalogData from "../../supabase/functions/_shared/cameraMoves/catalog.data.ts";
 
 function gray(width: number, height: number, paint: (x: number, y: number) => number): GrayFrame {
   const data = new Uint8Array(width * height);
@@ -48,12 +49,26 @@ function rgb(width: number, height: number, color: [number, number, number]): Rg
 describe("ALTER presets and prompt", () => {
   it("keeps JSON modules out of the edge tree: avt-mcp loads through these files", () => {
     // Deno refuses a JSON module without an import attribute, and nothing proves the edge deploy ships a .json
-    // file from _shared. Either would take every MCP tool down at load, so the presets are a .ts module.
-    const dir = resolve(__dirname, "../../supabase/functions/_shared/alter");
-    for (const file of readdirSync(dir).filter((name) => name.endsWith(".ts")))
-      expect(readFileSync(resolve(dir, file), "utf8"), file).not.toMatch(/from\s+"[^"]+\.json"/);
-    const json = JSON.parse(readFileSync(resolve(dir, "catalog.json"), "utf8"));
-    expect(catalogData).toEqual(json); // regenerate with scripts/alter/extract_presets.py --module-only
+    // file from _shared. Either would take every MCP tool down at load, so each catalog is a generated .ts module.
+    const shared = resolve(__dirname, "../../supabase/functions/_shared");
+    for (const [folder, data] of [
+      ["alter", catalogData],
+      ["cameraMoves", cameraCatalogData],
+    ] as const) {
+      const dir = resolve(shared, folder);
+      for (const file of readdirSync(dir).filter((name) => name.endsWith(".ts")))
+        expect(readFileSync(resolve(dir, file), "utf8"), `${folder}/${file}`).not.toMatch(
+          /from\s+"[^"]+\.json"/,
+        );
+      // regenerate with the folder's extract script when this fails
+      expect(data, folder).toEqual(JSON.parse(readFileSync(resolve(dir, "catalog.json"), "utf8")));
+    }
+    for (const file of readdirSync(resolve(shared, "../avt-mcp")).filter((name) =>
+      name.endsWith(".ts"),
+    ))
+      expect(readFileSync(resolve(shared, "../avt-mcp", file), "utf8"), file).not.toMatch(
+        /^import[^\n]*from\s+"[^"]+\.json"/m,
+      );
   });
 
   it("has the three modes and 36 presets", () => {
@@ -531,6 +546,29 @@ describe("ALTER checker", () => {
       const answer = runAlterTool("avt_alter_check", { report });
       expect(answer.ok, JSON.stringify(report)?.slice(0, 80)).toBe(false);
     }
+    expect(rejudge({ ...passed, driftRuns: Array.from({ length: 1001 }, () => [0, 5]) }).ok).toBe(
+      false,
+    );
+    const drifting = check({
+      ...passed,
+      driftRuns: Array.from({ length: 40 }, (_, i) => [i * 10, i * 10 + 6]),
+    });
+    expect(drifting.issues.filter((issue) => issue.startsWith("drift:"))).toHaveLength(11);
+    // not a performance: cleared means the frame gates only, and the words say so
+    const scenery = runAlterTool("avt_alter_check", {
+      report: {
+        ...passed,
+        performance: false,
+        mouth: null,
+        identity: { distance: null },
+        mode: "swap",
+        jumps: [],
+        motionCorrelation: 0.9,
+      },
+    });
+    if (!scenery.ok) throw new Error(scenery.error);
+    expect((scenery.value as Checked).redrawCleared).toBe(true);
+    expect((scenery.value as Checked).next).toContain("the mouth and the face were not judged");
     expect(rejudge({ ...passed, mouth: null }).ok).toBe(true); // no mouth score: judged, and not cleared
     const noMouth = check({ ...passed, mouth: null });
     expect(noMouth.issues.join(" ")).toContain("no mouth score was supplied");
@@ -715,6 +753,8 @@ describe("ALTER checker", () => {
       { ...planArgs, video_url: { href: "https://cdn.example/take.mp4" } },
       { ...planArgs, draft_check: passed, face_approval: { toString: 1 } },
       { ...planArgs, style: 4 },
+      { ...planArgs, slots: { ...planArgs.slots, who: "someone else" } },
+      { ...planArgs, project_id: "x".repeat(2000) },
     ];
     for (const args of hostile) {
       let answer: ReturnType<typeof runAlterTool> | undefined;

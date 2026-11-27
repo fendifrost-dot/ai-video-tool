@@ -1,7 +1,7 @@
-import raw from "./catalog.json" with { type: "json" };
+import raw from "./catalog.data.ts";
 import { CATEGORY_LABELS, type CameraMove, type CatalogFile, type MotionKind } from "./types.ts";
 
-const file = raw as CatalogFile;
+const file = raw as unknown as CatalogFile;
 
 export const CAMERA_MOVE_ATTRIBUTION = file.attribution;
 export const CAMERA_MOVES: readonly CameraMove[] = file.moves;

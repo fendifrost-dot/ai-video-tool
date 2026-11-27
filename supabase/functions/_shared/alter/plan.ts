@@ -262,7 +262,9 @@ export function planFinalize(
   }
   const resolution = options.resolution ?? "1080p";
   const how = r.redrawCleared
-    ? "the supplied report passes every gate, identity included"
+    ? r.performance
+      ? "the supplied report passes every gate, identity included"
+      : "the supplied report passes the frame gates; not a performance, so the mouth and the face were not judged"
     : `the supplied report passes every measured gate; the face rests on face_approval as supplied by the caller, not verified by this server: ${JSON.stringify(approval.slice(0, 300))}`;
   return {
     ...plan,

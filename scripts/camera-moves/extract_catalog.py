@@ -237,6 +237,14 @@ def main() -> None:
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    # The edge runtime imports a TypeScript module, never the JSON file (see the header it writes).
+    args.out.with_name("catalog.data.ts").write_text(
+        "// GENERATED from catalog.json by scripts/camera-moves/extract_catalog.py. Do not edit: change catalog.json and regenerate.\n"
+        "// A TypeScript module, not a JSON import: the edge runtime loads avt-mcp through this file, and a JSON module that\n"
+        "// the deploy did not ship or the runtime refused would take every MCP tool down at load.\n"
+        "export default " + json.dumps(payload, indent=2) + ";\n",
+        encoding="utf-8",
+    )
     print(f"moves {len(moves)} -> {args.out}")
 
 

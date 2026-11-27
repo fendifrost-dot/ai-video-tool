@@ -30,6 +30,8 @@ function slotsOf(value: unknown): Record<string, string> | undefined | SlotError
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (!/^\w{1,40}$/.test(key))
       return new SlotError(`slot name ${JSON.stringify(key.slice(0, 40))} is not a word.`);
+    if (key === "who" || key === "style")
+      return new SlotError(`${key} is its own argument, not a slot.`);
     if (typeof item !== "string") return new SlotError(`slot ${key} must be text.`);
     if (item.length > 4000) return new SlotError(`slot ${key} is longer than 4000 characters.`);
     out[key] = item;
@@ -95,6 +97,8 @@ export function runAlterTool(name: string, args: Record<string, unknown>): Resul
     for (const key of ["video_url", "target_frame_url", "project_id"] as const)
       if (args[key] != null && typeof args[key] !== "string")
         return { ok: false, error: `${key} must be text.` };
+    if (typeof args.project_id === "string" && !/^[\w-]{1,64}$/.test(args.project_id))
+      return { ok: false, error: "project_id must be the project's id (letters, digits, dashes)." };
     const plan = planAlter({
       ...base,
       performance: args.performance !== false,
