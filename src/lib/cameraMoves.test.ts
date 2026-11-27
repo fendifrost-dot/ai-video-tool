@@ -125,12 +125,16 @@ describe("camera-move library", () => {
     expect(source).not.toMatch(/\bfetch\s*\(/);
   });
 
-  it("imports the catalog as JSON so Deno can load avt-mcp", () => {
+  it("imports the catalog as a TypeScript module so avt-mcp loads on the edge runtime", () => {
+    // Deno needs an import attribute for a JSON module, and nothing proves the edge deploy ships a .json file from
+    // _shared; either would take every MCP tool down at load. catalog.data.ts is generated from catalog.json by
+    // scripts/camera-moves/extract_catalog.py; src/lib/alter.test.ts pins that the two are equal.
     const source = readFileSync(
       resolve("supabase/functions/_shared/cameraMoves/catalog.ts"),
       "utf8",
     );
-    expect(source).toContain('import raw from "./catalog.json" with { type: "json" };');
+    expect(source).toContain('import raw from "./catalog.data.ts";');
+    expect(source).not.toContain(".json");
   });
 
   it("ranks a pan above a crane and reads a rightward yaw from frames", () => {

@@ -57,7 +57,7 @@ Deep docs: `recipes/README.md`, `recipes/HIS_FACE_IN_ANY_SCENE.md`, `SHOT_RULES.
 | Animating a still / clothing on real footage | Seedance (`montage-shot`) / Genjutsu (`dress-clip`) | YSL | `grok-broll-proxy`, any `grok-imagine-video*` |
 | Allen's likeness | his photo: clothes-only Gemini edit + `still_face_putback.py`; in a scene: whole head, `AVT_FACE_EXACT` | `34bd95ac`, `077a3515` | the default face mode |
 | Generated clip: wrong trousers/shoes | animate a full-figure still; crop after | storm s04 `ca645fd0` | a knees-up still as source |
-| He raps while an action is added to his take (a block) | `seedance-2.5-edit`, draft conformed (7 % fast): `handoffs/HANDOFF_MEDITATE_2026-11-26.md` §4 | IMG_6550, 480p, 4 s ("definitely a pass") | edit wording on `seedance-2.5-reference`; his face laid back on the redraw (warps) |
+| He raps while an action is added to his take (a block) | `seedance-2.5-edit`, draft conformed (7 % fast): `recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md` | IMG_6550, 480p, 4 s ("definitely a pass") | edit wording on `seedance-2.5-reference`; his face laid back on the redraw (warps) |
 | Grok is the right tool | Fendi makes it in Grok Imagine, or his words go in `grok_approval` on `avt_call` | 12 Nov | a Grok generation without his words |
 
 ## The build

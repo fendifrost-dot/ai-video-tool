@@ -3,10 +3,11 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 import { CAMERA_MOVE_TOOLS } from "../_shared/cameraMoves/toolDefs.ts";
+import { ALTER_TOOLS } from "../_shared/alter/toolDefs.ts";
 import { JOB_TOOL_DEFS } from "./jobContract.ts";
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.9.0";
+export const SERVER_VERSION = "1.10.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -17,6 +18,7 @@ export const INSTRUCTIONS = [
   "Projects: video_projects; boards: shots (per video_variations); casting/continuity: continuity_entities; generated files: project_assets + provider_jobs.",
   "Put bytes into Storage with avt_upload_asset (a signed upload URL, or base64 up to 50 MB). File a shot primary in one transaction with avt_file_asset. Delete one of your own objects with avt_delete_object. None of these call a paid provider.",
   "Camera moves: avt_camera_move_list, avt_camera_move_get, avt_camera_move_prompt, avt_camera_move_match, avt_camera_move_plan. The plan builds a fal Seedance reference-to-video body and does not submit it. The default plate has no generated person.",
+  "ALTER (something changes in a take while the performance is kept): avt_alter_presets, avt_alter_prompt, avt_alter_plan, avt_alter_check. avt_alter_plan returns the exact avt_call arguments for the Seedance video edit and sends nothing; sending them is the paid step. The clip comes back about 7% fast: conform and score it with scripts/alter/run_draft.py before judging it. A rapping shot without a mouth score does not pass. Run sheet: docs/recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md.",
 ].join("\n");
 
 // ---------------------------------------------------------------------------------------------------- credentials
@@ -1200,6 +1202,7 @@ export const TOOLS = [
     },
   },
   ...CAMERA_MOVE_TOOLS,
+  ...ALTER_TOOLS,
   ...JOB_TOOL_DEFS,
 ] as const;
 

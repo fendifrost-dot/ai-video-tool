@@ -169,17 +169,11 @@ branch. Files: `/Volumes/T7/_avt_work/alter_test_2026-11-26/`; project assets `f
   is conformed, scored and shown to him like this one; a fault there is a separate issue, not a reason to reopen this.
 - Identity still has no number (the ArcFace file is not on the Mac).
 
-**The route, if a shot of this kind is approved** (do not rediscover it):
-
-1. `avt_call proxy-provider-call`, endpoint `video-providers-higgsfield-model`, `modelVariant: "seedance-2.5-edit"`,
-   `mode: "video_to_video"`, `referenceVideoUrl` (one signed link to the window), `referenceImageUrls` (his face
-   photographs), `resolution`, `generate_audio: false`. Poll `video-providers-job-status`, `provider: "higgsfield"`.
-2. Never send the edit wording ("Edit @Video1 …") to `seedance-2.5-reference` or `montage-shot`: the provider refuses
-   it before rendering.
-3. The draft comes back about 7 % fast (89 frames for 96). Conform it to the take's length and interpolate to the
-   take's rate before scoring or cutting it in. Scored as delivered, a good draft reads 0.15 and looks re-timed.
-4. Score with `scripts/alter/track_mouth.py` (PR #534 branch): `track` both clips, then `score`.
-5. One draft is one sample: 720p and 1080p, a longer stretch and a dodge that moves his head are not tested.
+**The route is wired into the tool (27 Nov 2026; Fendi: "Let's wire everything in now so Meditate session can operate
+effectively").** Run sheet, with the Never list: [`../recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md`](../recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md).
+In short: `avt_alter_plan` (preset `action`) builds the request, `avt_call` sends it, `scripts/alter/run_draft.py`
+conforms the clip (it comes back about 7 % fast), scores his mouth, and writes the face sheet and the side-by-side.
+One draft is one sample: 720p and 1080p, a longer stretch and a dodge that moves his head are not tested.
 
 ## 5. Must-dos (each one is a mistake that already cost money)
 

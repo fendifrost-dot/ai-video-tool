@@ -32,6 +32,8 @@ import { deleteGuardStatus } from "./storeContract.ts";
 import { lockedPathBlock, runStoreTool, STORE_TOOL_NAMES } from "./storeHandlers.ts";
 import { CAMERA_MOVE_TOOL_NAMES } from "../_shared/cameraMoves/toolDefs.ts";
 import { runCameraMoveTool } from "../_shared/cameraMoves/tools.ts";
+import { ALTER_TOOL_NAMES } from "../_shared/alter/toolDefs.ts";
+import { runAlterTool } from "../_shared/alter/tools.ts";
 import { planStyleFromToolArgs } from "../_shared/styleLearn.ts";
 import type { EditSequence, RenderAspect, RenderKind } from "../_shared/editModel.ts";
 import {
@@ -537,6 +539,11 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
   }
   if ((CAMERA_MOVE_TOOL_NAMES as readonly string[]).includes(name)) {
     const planned = runCameraMoveTool(name, args);
+    if (!planned.ok) throw new ToolError(planned.error);
+    return toolText(planned.value);
+  }
+  if ((ALTER_TOOL_NAMES as readonly string[]).includes(name)) {
+    const planned = runAlterTool(name, args);
     if (!planned.ok) throw new ToolError(planned.error);
     return toolText(planned.value);
   }
