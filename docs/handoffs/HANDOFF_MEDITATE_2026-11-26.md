@@ -168,7 +168,8 @@ branch. Files: `/Volumes/T7/_avt_work/alter_test_2026-11-26/`; project assets `f
 - His limit on the pass: a short clip. A longer stretch, a different move or a higher resolution is a new draft that
   is conformed, scored and shown to him like this one; a fault there is a separate issue, not a reason to reopen this.
 - Identity: first readings on 27 Nov (`docs/alter/IDENTITY_2026-11-27.md`; the passed draft 0.021). The line is not
-  certified and the model's licence is non-commercial, so no shot is scored with it and a number never clears his face.
+  certified, so a number never clears his face. The model is in `$AVT_MODELS` and every draft is scored with it
+  (Fendi, 27 Nov 2026: its licence line is not a stop on using the tool).
 
 **The route is wired into the tool (27 Nov 2026; Fendi: "Let's wire everything in now so Meditate session can operate
 effectively").** Run sheet, with the Never list: [`../recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md`](../recipes/ALTER_ACTION_ON_A_RAPPING_TAKE.md).
