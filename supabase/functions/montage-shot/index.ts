@@ -12,9 +12,8 @@
 //   1. the shot (by id, or by spec key on the project's active variation) — its window on the song, its events;
 //   2. its DRESSED take: the newest non-rejected clip on the shot whose derived_from.method is "dressed" (the
 //      selected one first) and that take's place on the song (performance_syncs) — the montage wears what the video
-//      wears. A shot with no dressed take is refused: dress it first (the browser's fallback to cutting the raw
-//      take needs an encoder this function does not have). Or, `reference: { assetId }`, a SILENT clip of him in
-//      the shot's outfit (a non-rapping stretch of a take, cut to the shot's length, filed as a video asset), placed
+//      wears. A shot with no dressed take is refused: dress it first. Or, `reference: { assetId }`, a SILENT clip
+//      of him in the shot's outfit (a non-rapping stretch of a take, cut to the shot's length, filed as a video asset), placed
 //      with its first frame on the shot's first frame: b-roll with him copies that clip's movement and his mouth
 //      stays shut on its own (Fendi, 24 Oct 2026);
 //   3. the place: the newest usable plate still (metadata lane world_still) of the scene the shot falls in
@@ -23,8 +22,8 @@
 //   4. the scenes (the director's lines, one per line, each optionally timed "2.0-2.7 s: …"; absent = the dialog's
 //      prefill), the prompt, the estimate;
 //   5. the provider_jobs row FIRST (write-ahead, status queued), then proxy-provider-call → CC
-//      video-providers-higgsfield-model (reference_to_video, seedance-2.5-reference, 720p unless a continuous take
-//      names 1080p, the project's frame), then
+//      video-providers-higgsfield-model (reference_to_video, seedance-2.5-reference, 720p by default, the project's
+//      frame), then
 //      the row's external_job_id. The tick runner polls the job, saves the clip and files it on the shot unselected
 //      as a take in sync (its first frame = the dressed take's first frame on the song).
 //
