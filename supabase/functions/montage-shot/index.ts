@@ -5,7 +5,7 @@
 // Center, filed on the shot UNSELECTED when the job runner finishes it (provider-jobs-tick → _shared/jobProgress.ts,
 // settings.alternate). Built 16 Oct 2026 for the MCP (avt_montage / avt_call): Fendi — "the montage is the go-to
 // for all performance shots … you do not need the browser; whatever you need the browser for, build it into the
-// MCP." Before this, a montage needed a headless Chrome pressing the storyboard (scripts/agent-browser).
+// MCP."
 //
 // What it does, in order (the pure half is plan.ts; the words are _shared/montagePrompt.ts, a copy of the app's
 // held to it by a test):
@@ -23,14 +23,15 @@
 //   4. the scenes (the director's lines, one per line, each optionally timed "2.0-2.7 s: …"; absent = the dialog's
 //      prefill), the prompt, the estimate;
 //   5. the provider_jobs row FIRST (write-ahead, status queued), then proxy-provider-call → CC
-//      video-providers-higgsfield-model (reference_to_video, seedance-2.5-reference, 720p, the project's frame), then
+//      video-providers-higgsfield-model (reference_to_video, seedance-2.5-reference, 720p unless a continuous take
+//      names 1080p, the project's frame), then
 //      the row's external_job_id. The tick runner polls the job, saves the clip and files it on the shot unselected
 //      as a take in sync (its first frame = the dressed take's first frame on the song).
 //
 // Cost: one Seedance 2.5 call, 720p, the dressed take's whole length (4 s → about $2.22 list; the API has charged
 // ≈ $1.55 for it). dryRun: true answers with the exact prompt, request and job settings and sends nothing.
-// A continuous take may ask for 1080p by name (continuous.resolution): about 2.5 times the 720p estimate by the
-// published token rule, a price that has never been charged and so is NOT verified (the answer says so: estimateNote).
+// continuous.resolution "1080p" (a continuous take only): about 2.5 times the 720p estimate, a price never charged
+// and so NOT verified (the answer says so: estimateNote).
 //
 // Auth: the caller's user JWT (verify_jwt) and getUser(); anonymous sessions are refused. Everything is read and
 // written as the caller (RLS), so a shot that is not theirs is simply not found. The source and the plate are
