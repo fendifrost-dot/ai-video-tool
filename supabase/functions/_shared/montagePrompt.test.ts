@@ -194,6 +194,13 @@ describe("the Deno copy of the montage's words is the app's, word for word", () 
   it("the price rule", () => {
     for (const s of [4, 5, 6, 12])
       expect(edge.seedanceUsd("720p", s)).toBeCloseTo(seedanceUsd("720p", s), 10);
+    // a continuous take may name 1080p (plan.ts planContinuous): the edge copy is held to the app's at that size too,
+    // with a take under it and with none (a shot of the place: no video input, no input factor)
+    for (const [out, input] of [[10, 4], [15, 12], [15, 0], [5, 0]] as const) {
+      expect(edge.seedanceUsd("1080p", out, input)).toBeCloseTo(seedanceUsd("1080p", out, input), 10);
+      expect(edge.seedanceUsd("720p", out, input)).toBeCloseTo(seedanceUsd("720p", out, input), 10);
+    }
+    expect(edge.seedanceUsd("1080p", 15, 0)).toBeCloseTo(17.06, 1);
     expect(edge.seedanceUsd("720p", 4)).toBeCloseTo(2.219, 2);
   });
 });

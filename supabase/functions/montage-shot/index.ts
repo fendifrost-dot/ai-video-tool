@@ -5,16 +5,15 @@
 // Center, filed on the shot UNSELECTED when the job runner finishes it (provider-jobs-tick → _shared/jobProgress.ts,
 // settings.alternate). Built 16 Oct 2026 for the MCP (avt_montage / avt_call): Fendi — "the montage is the go-to
 // for all performance shots … you do not need the browser; whatever you need the browser for, build it into the
-// MCP." Before this, a montage needed a headless Chrome pressing the storyboard (scripts/agent-browser).
+// MCP."
 //
 // What it does, in order (the pure half is plan.ts; the words are _shared/montagePrompt.ts, a copy of the app's
 // held to it by a test):
 //   1. the shot (by id, or by spec key on the project's active variation) — its window on the song, its events;
 //   2. its DRESSED take: the newest non-rejected clip on the shot whose derived_from.method is "dressed" (the
 //      selected one first) and that take's place on the song (performance_syncs) — the montage wears what the video
-//      wears. A shot with no dressed take is refused: dress it first (the browser's fallback to cutting the raw
-//      take needs an encoder this function does not have). Or, `reference: { assetId }`, a SILENT clip of him in
-//      the shot's outfit (a non-rapping stretch of a take, cut to the shot's length, filed as a video asset), placed
+//      wears. A shot with no dressed take is refused: dress it first. Or, `reference: { assetId }`, a SILENT clip
+//      of him in the shot's outfit (a non-rapping stretch of a take, cut to the shot's length, filed as a video asset), placed
 //      with its first frame on the shot's first frame: b-roll with him copies that clip's movement and his mouth
 //      stays shut on its own (Fendi, 24 Oct 2026);
 //   3. the place: the newest usable plate still (metadata lane world_still) of the scene the shot falls in
@@ -23,12 +22,15 @@
 //   4. the scenes (the director's lines, one per line, each optionally timed "2.0-2.7 s: …"; absent = the dialog's
 //      prefill), the prompt, the estimate;
 //   5. the provider_jobs row FIRST (write-ahead, status queued), then proxy-provider-call → CC
-//      video-providers-higgsfield-model (reference_to_video, seedance-2.5-reference, 720p, the project's frame), then
+//      video-providers-higgsfield-model (reference_to_video, seedance-2.5-reference, 720p by default, the project's
+//      frame), then
 //      the row's external_job_id. The tick runner polls the job, saves the clip and files it on the shot unselected
 //      as a take in sync (its first frame = the dressed take's first frame on the song).
 //
 // Cost: one Seedance 2.5 call, 720p, the dressed take's whole length (4 s → about $2.22 list; the API has charged
 // ≈ $1.55 for it). dryRun: true answers with the exact prompt, request and job settings and sends nothing.
+// continuous.resolution "1080p" (a continuous take only): about 2.5 times the 720p estimate, a price never charged
+// and so NOT verified (the answer says so: estimateNote).
 //
 // Auth: the caller's user JWT (verify_jwt) and getUser(); anonymous sessions are refused. Everything is read and
 // written as the caller (RLS), so a shot that is not theirs is simply not found. The source and the plate are
@@ -123,6 +125,8 @@ type Body = {
     images?: { assetId?: string; featureId?: string; as: string }[];
     /** "still": he is in it but never moves his mouth — no lyric lines, no vocals under it (b-roll with him; Fendi, 23 Oct 2026). */
     mouth?: "still";
+    /** "720p" (default) or "1080p" (about 2.5x by the list rule; never charged yet). */
+    resolution?: "720p" | "1080p";
   };
 };
 
@@ -451,6 +455,7 @@ serve(async (req) => {
         action: String(continuous.action ?? ""),
         endMotion: String(continuous.endMotion ?? ""),
         seconds: continuous.seconds,
+        resolution: continuous.resolution,
         images: contImages,
         light,
         lyrics: takeLyrics,
@@ -521,6 +526,9 @@ serve(async (req) => {
     cutOnBeats: ((plan.payload.settings as Row).variant as Row | undefined)?.cutOn ?? null,
     thing: plan.thing,
     estimateUsd: plan.estimateUsd,
+    ...(plan.body.resolution === "1080p"
+      ? { estimateNote: "1080p: the published token rule, never yet charged; an estimate, not a verified price" }
+      : {}),
     prompt: plan.prompt,
   };
   if (dryRun)

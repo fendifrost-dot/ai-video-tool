@@ -57,6 +57,27 @@ describe("one continuous take", () => {
     expect(without.plan.estimateUsd).toBeLessThan(withHim.plan.estimateUsd);
   });
 
+  it("renders at 720p unless 1080p is asked for by name, prices it, records it, and refuses any other size", () => {
+    const base = { projectId: "pr", userId: "u", aspect: "9:16", shot, take: null, plate, camera: "locked off", action: "A fight in the hall", endMotion: "still fighting", seconds: 8 };
+    const def = planContinuous(base);
+    const hi = planContinuous({ ...base, resolution: "1080p" });
+    expect(def.ok && hi.ok).toBe(true);
+    if (!def.ok || !hi.ok) return;
+    expect(def.plan.body.resolution).toBe("720p");
+    expect(((def.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).resolution).toBeUndefined();
+    expect(hi.plan.body.resolution).toBe("1080p");
+    expect(((hi.plan.payload.settings as Record<string, unknown>).variant as Record<string, unknown>).resolution).toBe("1080p");
+    // 2.25 times the pixels at a higher token rate: the estimate must show it before anything is sent
+    expect(hi.plan.estimateUsd / def.plan.estimateUsd).toBeGreaterThan(2.3);
+    expect(hi.plan.estimateUsd / def.plan.estimateUsd).toBeLessThan(2.6);
+    expect(hi.plan.prompt).toBe(def.plan.prompt);
+    for (const bad of ["4k", "480p", 1080, "", "1080P"]) {
+      const r = planContinuous({ ...base, resolution: bad });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toBe("bad_resolution");
+    }
+  });
+
   it("refuses a take without words for its move, action or end", () => {
     const r = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: " ", action: "x", endMotion: "y" });
     expect(r).toMatchObject({ ok: false, error: "missing_camera" });

@@ -483,7 +483,7 @@ export function seedanceAnglePrompt(
   return parts.join(" ");
 }
 
-/** Seedance 2.5 at 720p with a video input as long as the output (worldBatch/estimate.ts seedanceUsd, config/provider_rates.json seedance_tokens). */
+/** Seedance 2.5 with a video input as long as the output (worldBatch/estimate.ts seedanceUsd, config/provider_rates.json seedance_tokens). Only 720p has been charged; 480p and 1080p are the published rule, unverified. */
 export const SEEDANCE_TOKENS = {
   usd_per_1000_tokens: { "480p": 0.0214, "720p": 0.0214, "1080p": 0.0234 },
   video_input_factor: 0.6,
