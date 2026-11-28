@@ -1,0 +1,6 @@
+# Real local dense-flow compute for the warp-worker prototype.
+# Pinned to what the prototype was verified against on macOS/arm64 (py3.9).
+numpy<2
+opencv-python-headless==4.11.0.86
+scipy==1.13.1
+Pillow>=10
