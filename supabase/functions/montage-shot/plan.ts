@@ -494,7 +494,16 @@ export type ContinuousInput = {
   audio?: boolean;
   /** "still": he is in it with his mouth shut — no lyrics, no vocals (continuousPrompt MOUTH_STILL; b-roll with him). */
   mouth?: "still";
+  /**
+   * The size the clip is rendered at: "720p" (the default, RESTAGE_RESOLUTION) or "1080p". A plate that his 4K take is
+   * composited over at 1080 wide is soft at 720p (Meditate, 27 Nov 2026: "resolution mismatches"); 1080p costs about
+   * 2.5 times as much (seedanceUsd), so it is asked for by name, never by default. Anything else is refused.
+   */
+  resolution?: unknown;
 };
+
+/** The sizes a continuous take may be rendered at (the montage and the b-roll montage stay at RESTAGE_RESOLUTION). */
+export const CONTINUOUS_RESOLUTIONS = ["720p", "1080p"] as const;
 
 /**
  * One continuous take on a shot (montage-shot's `continuous` mode; _shared/continuousPrompt.ts says why): one Seedance
@@ -515,6 +524,9 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
   if (!(shot.end - shot.start > 0)) return refuse(422, "shot_has_no_length", "the shot's window on the song is empty");
   if (take && take.seconds > RESTAGE_MAX_SECONDS)
     return refuse(422, "take_too_long", `the dressed take is ${take.seconds.toFixed(2)} s; at most ${RESTAGE_MAX_SECONDS} s go to the model as a reference`);
+  const resolution = input.resolution === undefined || input.resolution === null ? RESTAGE_RESOLUTION : input.resolution;
+  if (resolution !== "720p" && resolution !== "1080p")
+    return refuse(400, "bad_resolution", `resolution is "720p" (the default) or "1080p"`);
   const seconds = continuousSeconds(input.seconds);
   const songStart = continuousSongStart(shot.start, shot.end, seconds);
   const images = input.images ?? [];
@@ -531,14 +543,14 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
     audio: withHim && !still && !!input.audio,
     ...(still ? { mouth: "still" as const } : {}),
   });
-  const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds, take ? Math.round(take.seconds) : 0).toFixed(3));
+  const estimateUsd = Number(seedanceUsd(resolution, seconds, take ? Math.round(take.seconds) : 0).toFixed(3));
   const aspect = clipAspect(input.aspect);
   const body = {
     promptText: prompt,
     mode: "reference_to_video",
     modelVariant: SEEDANCE_MODEL,
     duration: seconds,
-    resolution: RESTAGE_RESOLUTION,
+    resolution,
     aspectRatio: aspect,
     generate_audio: false,
     avt_user_id: input.userId,
@@ -552,6 +564,7 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
     endMotion: input.endMotion.trim(),
     withHim,
     images: images.map((i) => ({ path: i.path, as: i.as })),
+    ...(resolution !== RESTAGE_RESOLUTION ? { resolution } : {}),
     ...(withHim ? (still ? { mouth: "still" as const } : { lyrics: input.lyrics ?? [], audio: !!input.audio }) : {}),
   };
   const settings = {

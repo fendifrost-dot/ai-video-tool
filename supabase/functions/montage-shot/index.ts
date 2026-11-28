@@ -123,6 +123,8 @@ type Body = {
     images?: { assetId?: string; featureId?: string; as: string }[];
     /** "still": he is in it but never moves his mouth — no lyric lines, no vocals under it (b-roll with him; Fendi, 23 Oct 2026). */
     mouth?: "still";
+    /** The size it is rendered at: "720p" (default) or "1080p" (about 2.5 times the price; the estimate says so). */
+    resolution?: "720p" | "1080p";
   };
 };
 
@@ -451,6 +453,7 @@ serve(async (req) => {
         action: String(continuous.action ?? ""),
         endMotion: String(continuous.endMotion ?? ""),
         seconds: continuous.seconds,
+        resolution: (continuous as { resolution?: unknown }).resolution,
         images: contImages,
         light,
         lyrics: takeLyrics,
