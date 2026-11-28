@@ -496,14 +496,13 @@ export type ContinuousInput = {
   mouth?: "still";
   /**
    * The size the clip is rendered at: "720p" (the default, RESTAGE_RESOLUTION) or "1080p". A plate that his 4K take is
-   * composited over at 1080 wide is soft at 720p (Meditate, 27 Nov 2026: "resolution mismatches"); 1080p costs about
-   * 2.5 times as much (seedanceUsd), so it is asked for by name, never by default. Anything else is refused.
+   * composited over at 1080 wide is soft at 720p (Meditate, 27 Nov 2026: "resolution mismatches"). By the published
+   * token rule 1080p is about 2.5 times the price (seedanceUsd), but only 720p has ever been charged
+   * (config/provider_rates.json): the 1080p figure is an estimate, not a verified price. It is asked for by name,
+   * never by default (the montage and the b-roll montage stay at RESTAGE_RESOLUTION). Anything else is refused.
    */
   resolution?: unknown;
 };
-
-/** The sizes a continuous take may be rendered at (the montage and the b-roll montage stay at RESTAGE_RESOLUTION). */
-export const CONTINUOUS_RESOLUTIONS = ["720p", "1080p"] as const;
 
 /**
  * One continuous take on a shot (montage-shot's `continuous` mode; _shared/continuousPrompt.ts says why): one Seedance

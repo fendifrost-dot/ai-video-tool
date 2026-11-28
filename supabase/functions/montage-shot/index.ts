@@ -29,6 +29,8 @@
 //
 // Cost: one Seedance 2.5 call, 720p, the dressed take's whole length (4 s → about $2.22 list; the API has charged
 // ≈ $1.55 for it). dryRun: true answers with the exact prompt, request and job settings and sends nothing.
+// A continuous take may ask for 1080p by name (continuous.resolution): about 2.5 times the 720p estimate by the
+// published token rule, a price that has never been charged and so is NOT verified (the answer says so: estimateNote).
 //
 // Auth: the caller's user JWT (verify_jwt) and getUser(); anonymous sessions are refused. Everything is read and
 // written as the caller (RLS), so a shot that is not theirs is simply not found. The source and the plate are
@@ -123,7 +125,7 @@ type Body = {
     images?: { assetId?: string; featureId?: string; as: string }[];
     /** "still": he is in it but never moves his mouth — no lyric lines, no vocals under it (b-roll with him; Fendi, 23 Oct 2026). */
     mouth?: "still";
-    /** The size it is rendered at: "720p" (default) or "1080p" (about 2.5 times the price; the estimate says so). */
+    /** "720p" (default) or "1080p" (about 2.5x by the list rule; never charged yet). */
     resolution?: "720p" | "1080p";
   };
 };
@@ -453,7 +455,7 @@ serve(async (req) => {
         action: String(continuous.action ?? ""),
         endMotion: String(continuous.endMotion ?? ""),
         seconds: continuous.seconds,
-        resolution: (continuous as { resolution?: unknown }).resolution,
+        resolution: continuous.resolution,
         images: contImages,
         light,
         lyrics: takeLyrics,
@@ -524,6 +526,9 @@ serve(async (req) => {
     cutOnBeats: ((plan.payload.settings as Row).variant as Row | undefined)?.cutOn ?? null,
     thing: plan.thing,
     estimateUsd: plan.estimateUsd,
+    ...(plan.body.resolution === "1080p"
+      ? { estimateNote: "1080p: the published token rule, never yet charged; an estimate, not a verified price" }
+      : {}),
     prompt: plan.prompt,
   };
   if (dryRun)
